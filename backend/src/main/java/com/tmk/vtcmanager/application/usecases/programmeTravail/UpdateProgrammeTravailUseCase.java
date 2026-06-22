@@ -1,0 +1,108 @@
+package com.tmk.vtcmanager.application.usecases.programmeTravail;
+
+import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
+import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
+import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeChauffeur;
+import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
+import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
+import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedException;
+import com.tmk.vtcmanager.application.exception.ChauffeurNotFoundException;
+import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
+import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
+import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
+import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@RequiredArgsConstructor
+public class UpdateProgrammeTravailUseCase {
+
+    private final ProgrammeTravailRepository programmeRepository;
+    private final VehiculeRepository vehiculeRepository;
+    private final ChauffeurRepository chauffeurRepository;
+
+    @Transactional
+    public ProgrammeTravail execute(Long vehiculeId, ProgrammeTravail programme) {
+        Vehicule vehicule = vehiculeRepository.findById(vehiculeId)
+                .orElseThrow(() -> new VehiculeNotFoundException(vehiculeId));
+
+        if (vehicule.getConditionTravail() == null) {
+            throw new IllegalStateException(
+                    "Le véhicule doit être lié à une condition de travail avant la configuration des chauffeurs.");
+        }
+
+        ProgrammeTravail ancien = programmeRepository.findByVehiculeId(vehiculeId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Aucun programme configuré pour ce véhicule. Utilisez la création."));
+
+        Set<Long> anciensChauffeurIds = ancien.getChauffeurs().stream()
+                .map(ProgrammeChauffeur::getChauffeurId)
+                .collect(Collectors.toSet());
+
+        programme.setVehiculeId(vehiculeId);
+        programme.synchronizeWithCondition(vehicule.getConditionTravail());
+        programme.normalize();
+        programme.validate();
+
+        List<Chauffeur> nouveauxChauffeurs = validateAndLoadChauffeurs(programme, vehiculeId);
+
+        ProgrammeTravail saved = programmeRepository.save(programme);
+
+        Set<Long> nouveauxIds = programme.getChauffeurs().stream()
+                .map(ProgrammeChauffeur::getChauffeurId)
+                .collect(Collectors.toSet());
+
+        for (Chauffeur chauffeur : nouveauxChauffeurs) {
+            if (!vehiculeId.equals(getVehiculeIdOf(chauffeur))) {
+                chauffeur.assignVehicule(vehicule);
+                chauffeurRepository.save(chauffeur);
+            }
+        }
+
+        for (Long ancienId : anciensChauffeurIds) {
+            if (!nouveauxIds.contains(ancienId)) {
+                chauffeurRepository.findById(ancienId).ifPresent(c -> {
+                    c.unassignVehicule();
+                    chauffeurRepository.save(c);
+                });
+            }
+        }
+
+        return saved;
+    }
+
+    private List<Chauffeur> validateAndLoadChauffeurs(ProgrammeTravail programme, Long vehiculeId) {
+        List<Chauffeur> result = new ArrayList<>();
+        for (ProgrammeChauffeur pc : programme.getChauffeurs()) {
+            if (pc.getDateService() == null) {
+                throw new IllegalArgumentException(
+                        "La date de prise de service est obligatoire pour chaque chauffeur sélectionné.");
+            }
+            Chauffeur chauffeur = chauffeurRepository.findById(pc.getChauffeurId())
+                    .orElseThrow(() -> new ChauffeurNotFoundException(pc.getChauffeurId()));
+            if (chauffeur.getStatut() != ChauffeurStatus.ACTIF) {
+                throw new IllegalArgumentException(
+                        "Seuls les chauffeurs actifs peuvent être affectés à un programme.");
+            }
+            Long vehiculeActuelId = getVehiculeIdOf(chauffeur);
+            if (vehiculeActuelId != null && !vehiculeActuelId.equals(vehiculeId)) {
+                throw new ChauffeurAlreadyAssignedException(
+                        chauffeur.getId(),
+                        chauffeur.getFullName(),
+                        vehiculeActuelId,
+                        chauffeur.getVehicule().getImmatriculation());
+            }
+            result.add(chauffeur);
+        }
+        return result;
+    }
+
+    private Long getVehiculeIdOf(Chauffeur chauffeur) {
+        return chauffeur.getVehicule() != null ? chauffeur.getVehicule().getId() : null;
+    }
+}

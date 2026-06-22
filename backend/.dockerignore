@@ -1,0 +1,23 @@
+# Build artifacts
+target/
+!target/*.jar
+
+# Git / IDE
+.git/
+.gitignore
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+*.log
+
+# Docker
+Dockerfile
+.dockerignore
+compose*.yml
+
+# Divers
+scripts/
+README*.md

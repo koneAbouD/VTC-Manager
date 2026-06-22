@@ -1,0 +1,64 @@
+import '../../../../core/network/api_client.dart';
+
+class ReferentielItem {
+  final int id;
+  final String nom;
+  const ReferentielItem({required this.id, required this.nom});
+
+  factory ReferentielItem.fromJson(Map<String, dynamic> json) =>
+      ReferentielItem(
+        id: json['id'] as int,
+        nom: (json['nom'] ?? json['libelle'] ?? json['name'] ?? '').toString(),
+      );
+
+  @override
+  bool operator ==(Object other) => other is ReferentielItem && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+class ReferentielDatasource {
+  final ApiClient _api;
+  const ReferentielDatasource(this._api);
+
+  Future<List<ReferentielItem>> getTypesVehicules() async {
+    final data = await _api.get('/v1/types-vehicules') as List;
+    return data
+        .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<ReferentielItem>> getTypesActivites() async {
+    final data = await _api.get('/v1/types-activites') as List;
+    return data
+        .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<ReferentielItem>> getMarquesByType(int typeId) async {
+    final data =
+        await _api.get('/v1/marques/by-type/$typeId') as List;
+    return data
+        .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<ReferentielItem>> getModelesByTypeAndMarque(
+      int typeId, int marqueId) async {
+    final data = await _api.get(
+      '/v1/modeles/by-type-and-marque',
+      query: {'typeId': '$typeId', 'marqueId': '$marqueId'},
+    ) as List;
+    return data
+        .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<ReferentielItem>> getGroupes() async {
+    final data = await _api.get('/v1/groupes') as List;
+    return data
+        .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+}

@@ -1,0 +1,13 @@
+spring:
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    out-of-order: true
+    locations: classpath:db/migration/flyway/schema,classpath:db/migration/flyway/jdd/prod
+
+  jpa:
+    defer-datasource-initialization: true
+
+logging:
+  level:
+    org.flywaydb: INFO

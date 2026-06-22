@@ -1,0 +1,62 @@
+# Docker Compose de PRODUCTION (VPS)
+# L'infrastructure (PostgreSQL, Keycloak, Redis, MinIO) est déjà en place.
+# Ce fichier n'orchestre que l'image du backend et la raccorde à l'infra existante.
+#
+# Lancement :  docker compose -f compose.prod.yml --env-file .env up -d --build
+# Mise à jour : docker compose -f compose.prod.yml --env-file .env up -d --build backend
+#
+# NB : Redis n'est pas une dépendance du backend (absent du pom.xml) — non configuré ici.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: tmk/vtc-manager-backend:${APP_VERSION:-latest}
+    container_name: vtc-manager-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      # --- Base de données (infra existante) ---
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # --- Keycloak (infra existante) ---
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI}
+      KEYCLOAK_JWK_URI: ${KEYCLOAK_JWK_URI}
+      KEYCLOAK_AUTH_SERVER_URL: ${KEYCLOAK_AUTH_SERVER_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+      # --- MinIO (infra existante) ---
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-vtc-documents}
+    ports:
+      - "${APP_PORT:-8081}:8081"
+    networks:
+      - infra
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+# Réseau de l'infra déjà existante sur le VPS.
+# Récupère le nom exact via : docker network ls
+# puis renseigne INFRA_NETWORK dans .env (ex: infra_default).
+networks:
+  infra:
+    external: true
+    name: ${INFRA_NETWORK:-infra}

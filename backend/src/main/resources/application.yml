@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: vtc-manager
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:vtc_manager}}
+    username: ${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:vtc_user}}
+    password: ${DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD:vtc_password}}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # URL d'émission du realm Keycloak
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/vtc-manager}
+          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:8080/realms/vtc-manager/protocol/openid-connect/certs}
+
+server:
+  port: 8081
+
+# Configuration pour le scheduler (rappels de maintenance)
+app:
+  scheduler:
+    maintenance-reminder-cron: "0 0 8 * * *" # tous les jours à 8h
+  cors:
+    allowed-origins: "*"
+
+  # Configuration Keycloak — le backend gère toute l'authentification
+  keycloak:
+    auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://localhost:8080}
+    realm: ${KEYCLOAK_REALM:vtc-manager}
+    # Client pour l'authentification des utilisateurs (login/refresh/logout)
+    client-id: ${KEYCLOAK_CLIENT_ID:vtc-manager-backend}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET:xXY4bWOidZELQEr1avPRCXzk45L9pc3b}
+    # Client admin (service account) pour la gestion des utilisateurs et rôles
+    admin:
+      client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:vtc-manager-admin}
+      client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:ZxkzmwzbjcGRy1IZtEJ773vLJQ7B8qw1}
+
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket: ${MINIO_BUCKET:vtc-documents}
+
+logging:
+  level:
+    org.springframework.security: INFO
+    com.tmk.vtcmanager: DEBUG
