@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.infrastructure.keycloak;
 
 import com.tmk.vtcmanager.application.domain.auth.TokenResponse;
+import com.tmk.vtcmanager.application.exception.SessionExpiredException;
 import com.tmk.vtcmanager.application.ports.auth.KeycloakAuthPort;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,7 +48,7 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
         form.add("username", username);
         form.add("password", password);
 
-        return exchangeToken(form);
+        return exchangeToken(form, false);
     }
 
     @Override
@@ -58,7 +59,7 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
         form.add("client_secret", clientSecret);
         form.add("refresh_token", refreshToken);
 
-        return exchangeToken(form);
+        return exchangeToken(form, true);
     }
 
     @Override
@@ -83,7 +84,7 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
     }
 
     @SuppressWarnings("unchecked")
-    private TokenResponse exchangeToken(MultiValueMap<String, String> form) {
+    private TokenResponse exchangeToken(MultiValueMap<String, String> form, boolean isRefresh) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
@@ -105,7 +106,14 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
                     .build();
 
         } catch (HttpClientErrorException e) {
-            log.error("Erreur Keycloak token: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            log.warn("Erreur Keycloak token ({}): {} - {}",
+                    isRefresh ? "refresh" : "login", e.getStatusCode(), e.getResponseBodyAsString());
+            // Pour un refresh, toute erreur 4xx (typiquement 400 invalid_grant ou
+            // 401) signifie que le refresh token est expiré/invalide → 401.
+            if (isRefresh) {
+                throw new SessionExpiredException(
+                        "Votre session a expiré. Veuillez vous reconnecter.");
+            }
             if (e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
                 throw new IllegalArgumentException("Identifiants invalides");
             }

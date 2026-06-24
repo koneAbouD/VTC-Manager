@@ -54,7 +54,7 @@ INSERT INTO vehicules (
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Premium'),
 'Gris', 16200, 'EN_SERVICE', '2022-05-12', '2024-11-12', '2022-04-01', '2022-05-20', NOW(), NOW()),
 
-('2025-50373-WWW-01',
+('AB-929-FE-01',
 (SELECT id FROM marques WHERE nom = 'Suzuki' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture')),
 (SELECT id FROM modeles WHERE nom = 'S-Presso'   AND marque_id = (SELECT id FROM marques WHERE nom = 'Suzuki' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture'))),
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
@@ -85,7 +85,7 @@ INSERT INTO vehicules (
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
 (SELECT id FROM types_activite WHERE nom = 'VTC'),
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Standard'),
-'Orange', 31200, 'DISPONIBLE', '2021-08-30', '2024-07-30', '2021-07-20', '2021-09-05', NOW(), NOW()),
+'Orange', 31200, 'DISPONIBLE', '2021-08-30', '2024-07-30', '2021-07-20', '2021-09-05', NOW(), NOW());
 
 -- Véhicules en maintenance
 ('AB-192-EJ-01',

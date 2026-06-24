@@ -20,16 +20,21 @@ import com.tmk.vtcmanager.application.exception.ModePaiementNonAutoriseException
 import com.tmk.vtcmanager.application.exception.ResourceAlreadyExistsException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.exception.RoleInsufficientException;
+import com.tmk.vtcmanager.application.exception.SessionExpiredException;
 import com.tmk.vtcmanager.application.exception.VehiculeOuChauffeurSansLigneCotisationActiveException;
 import com.tmk.vtcmanager.application.exception.VehiculeOuChauffeurSansLigneActiveException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.hibernate.exception.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,6 +44,12 @@ import java.util.regex.Pattern;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /** Taille max d'un fichier (telle que configurée dans application.yml), ex. "10MB". */
+    @Value("${spring.servlet.multipart.max-file-size:10MB}")
+    private String maxFileSize;
 
     // ── Messages lisibles par contrainte DB ────────────────────────────────
     private static final Map<String, String> CONSTRAINT_MESSAGES = Map.of(
@@ -56,6 +67,46 @@ public class GlobalExceptionHandler {
     private static final Pattern CONSTRAINT_PATTERN =
             Pattern.compile("constraint [\"\\[]([\\w]+)[\"\\]]", Pattern.CASE_INSENSITIVE);
 
+    // ── Fabrique de réponse + journalisation centralisée ───────────────────
+    //
+    // Tout passe par cette méthode : un seul point pour des logs cohérents.
+    //   • 5xx (erreurs serveur inattendues) → ERROR + stacktrace pour diagnostic.
+    //   • 4xx (erreurs métier/client attendues) → WARN concis, sans stacktrace.
+
+    private ResponseEntity<ApiError> respond(HttpStatus status, String code, String message,
+                                             HttpServletRequest request, List<String> details, Exception ex) {
+        logError(status, code, message, request, ex);
+        return ResponseEntity.status(status).body(
+                ApiError.builder()
+                        .status(status.value())
+                        .error(code)
+                        .message(message)
+                        .path(request.getRequestURI())
+                        .timestamp(LocalDateTime.now())
+                        .details(details)
+                        .build()
+        );
+    }
+
+    private ResponseEntity<ApiError> respond(HttpStatus status, String code, String message,
+                                             HttpServletRequest request, Exception ex) {
+        return respond(status, code, message, request, null, ex);
+    }
+
+    private void logError(HttpStatus status, String code, String message,
+                          HttpServletRequest request, Exception ex) {
+        String req = request.getMethod() + " " + request.getRequestURI();
+        if (status.is5xxServerError()) {
+            log.error("[{}] {} ({}) -> {} {} : {}", req, ex.getClass().getSimpleName(), code,
+                    status.value(), status.getReasonPhrase(), message, ex);
+        } else {
+            log.warn("[{}] {} ({}) -> {} : {}", req, ex.getClass().getSimpleName(), code,
+                    status.value(), message);
+        }
+    }
+
+    // ── Intégrité base de données ──────────────────────────────────────────
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
         // Déterminer le SQLState pour distinguer NOT NULL (23502) de UNIQUE (23505) et CHECK (23514)
@@ -66,15 +117,8 @@ public class GlobalExceptionHandler {
 
         if ("23502".equals(sqlState)) {
             // Violation NOT NULL : erreur de données côté client → 400
-            return ResponseEntity.badRequest().body(
-                    ApiError.builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                            .message("Données incomplètes : un champ obligatoire est manquant.")
-                            .path(request.getRequestURI())
-                            .timestamp(LocalDateTime.now())
-                            .build()
-            );
+            return respond(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                    "Données incomplètes : un champ obligatoire est manquant.", request, ex);
         }
 
         // Violation UNIQUE (23505) ou CHECK (23514) → 409
@@ -85,284 +129,174 @@ public class GlobalExceptionHandler {
             String constraintName = m.group(1);
             message = CONSTRAINT_MESSAGES.getOrDefault(constraintName, message);
         }
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                ApiError.builder()
-                        .status(HttpStatus.CONFLICT.value())
-                        .error(HttpStatus.CONFLICT.getReasonPhrase())
-                        .message(message)
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.CONFLICT, HttpStatus.CONFLICT.getReasonPhrase(), message, request, ex);
     }
+
+    // ── Dépassement de taille d'un document uploadé ────────────────────────
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleMaxUploadSize(MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        String message = "Le document est trop volumineux. La taille maximale autorisée est de "
+                + maxFileSize + ". Veuillez choisir un fichier plus léger.";
+        return respond(HttpStatus.PAYLOAD_TOO_LARGE, "DOCUMENT_TROP_VOLUMINEUX", message, request,
+                List.of("tailleMaxAutorisee:" + maxFileSize), ex);
+    }
+
+    // ── Conflits / ressources ──────────────────────────────────────────────
 
     @ExceptionHandler(ChauffeurAlreadyAssignedException.class)
     public ResponseEntity<ApiError> handleChauffeurAlreadyAssigned(ChauffeurAlreadyAssignedException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                ApiError.builder()
-                        .status(HttpStatus.CONFLICT.value())
-                        .error("CHAUFFEUR_ALREADY_ASSIGNED")
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .details(List.of(
-                                "chauffeurId:" + ex.getChauffeurId(),
-                                "chauffeurNom:" + ex.getChauffeurNom(),
-                                "vehiculeActuelId:" + ex.getVehiculeActuelId(),
-                                "vehiculeActuelImmatriculation:" + ex.getVehiculeActuelImmatriculation()
-                        ))
-                        .build()
-        );
+        return respond(HttpStatus.CONFLICT, "CHAUFFEUR_ALREADY_ASSIGNED", ex.getMessage(), request,
+                List.of(
+                        "chauffeurId:" + ex.getChauffeurId(),
+                        "chauffeurNom:" + ex.getChauffeurNom(),
+                        "vehiculeActuelId:" + ex.getVehiculeActuelId(),
+                        "vehiculeActuelImmatriculation:" + ex.getVehiculeActuelImmatriculation()
+                ), ex);
     }
 
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     public ResponseEntity<ApiError> handleAlreadyExists(ResourceAlreadyExistsException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                ApiError.builder()
-                        .status(HttpStatus.CONFLICT.value())
-                        .error(HttpStatus.CONFLICT.getReasonPhrase())
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.CONFLICT, HttpStatus.CONFLICT.getReasonPhrase(), ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LigneCotisationNotFoundException.class)
     public ResponseEntity<ApiError> handleLigneCotisationNotFound(LigneCotisationNotFoundException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.builder()
-                .status(HttpStatus.NOT_FOUND.value()).error(HttpStatus.NOT_FOUND.getReasonPhrase())
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(java.time.LocalDateTime.now()).build());
+        return respond(HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.getReasonPhrase(), ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LigneCotisationDejaSoldeeException.class)
     public ResponseEntity<ApiError> handleLigneCotisationDejaSoldee(LigneCotisationDejaSoldeeException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.builder()
-                .status(HttpStatus.CONFLICT.value()).error("LIGNE_COTISATION_DEJA_SOLDEE")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(java.time.LocalDateTime.now()).build());
+        return respond(HttpStatus.CONFLICT, "LIGNE_COTISATION_DEJA_SOLDEE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(VehiculeOuChauffeurSansLigneCotisationActiveException.class)
     public ResponseEntity<ApiError> handleSansLigneCotisationActive(VehiculeOuChauffeurSansLigneCotisationActiveException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.builder()
-                .status(HttpStatus.CONFLICT.value()).error("AUCUNE_LIGNE_COTISATION_ACTIVE")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(java.time.LocalDateTime.now()).build());
+        return respond(HttpStatus.CONFLICT, "AUCUNE_LIGNE_COTISATION_ACTIVE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(EncaissementDepasseMontantDuException.class)
     public ResponseEntity<ApiError> handleDepasseMontantDu(EncaissementDepasseMontantDuException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError.builder()
-                .status(HttpStatus.UNPROCESSABLE_ENTITY.value()).error("ENCAISSEMENT_DEPASSE_MONTANT_DU")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(java.time.LocalDateTime.now()).build());
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "ENCAISSEMENT_DEPASSE_MONTANT_DU", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LigneRecetteNotFoundException.class)
     public ResponseEntity<ApiError> handleLigneRecetteNotFound(LigneRecetteNotFoundException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                ApiError.builder()
-                        .status(HttpStatus.NOT_FOUND.value())
-                        .error(HttpStatus.NOT_FOUND.getReasonPhrase())
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.getReasonPhrase(), ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LigneRecetteDejaSoldeeException.class)
     public ResponseEntity<ApiError> handleLigneRecetteDejaSoldee(LigneRecetteDejaSoldeeException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                ApiError.builder()
-                        .status(HttpStatus.CONFLICT.value())
-                        .error("LIGNE_RECETTE_DEJA_SOLDEE")
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.CONFLICT, "LIGNE_RECETTE_DEJA_SOLDEE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(VehiculeOuChauffeurSansLigneActiveException.class)
     public ResponseEntity<ApiError> handleSansLigneActive(VehiculeOuChauffeurSansLigneActiveException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                ApiError.builder()
-                        .status(HttpStatus.CONFLICT.value())
-                        .error("AUCUNE_LIGNE_RECETTE_ACTIVE")
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.CONFLICT, "AUCUNE_LIGNE_RECETTE_ACTIVE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(EncaissementDepasseMontantAttenduException.class)
     public ResponseEntity<ApiError> handleDepasseMontant(EncaissementDepasseMontantAttenduException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
-                ApiError.builder()
-                        .status(HttpStatus.UNPROCESSABLE_ENTITY.value())
-                        .error("ENCAISSEMENT_DEPASSE_MONTANT")
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "ENCAISSEMENT_DEPASSE_MONTANT", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(ModePaiementNonAutoriseException.class)
     public ResponseEntity<ApiError> handleModePaiementNonAutorise(ModePaiementNonAutoriseException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
-                ApiError.builder()
-                        .status(HttpStatus.UNPROCESSABLE_ENTITY.value())
-                        .error("MODE_PAIEMENT_NON_AUTORISE")
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "MODE_PAIEMENT_NON_AUTORISE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                ApiError.builder()
-                        .status(HttpStatus.NOT_FOUND.value())
-                        .error(HttpStatus.NOT_FOUND.getReasonPhrase())
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.getReasonPhrase(), ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(RoleInsufficientException.class)
     public ResponseEntity<ApiError> handleRoleInsufficient(RoleInsufficientException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                ApiError.builder()
-                        .status(HttpStatus.FORBIDDEN.value())
-                        .error(HttpStatus.FORBIDDEN.getReasonPhrase())
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.FORBIDDEN, HttpStatus.FORBIDDEN.getReasonPhrase(), ex.getMessage(), request, ex);
     }
+
+    @ExceptionHandler(SessionExpiredException.class)
+    public ResponseEntity<ApiError> handleSessionExpired(SessionExpiredException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNAUTHORIZED, "SESSION_EXPIRED", ex.getMessage(), request, ex);
+    }
+
+    // ── Validation des requêtes ────────────────────────────────────────────
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<String> details = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .toList();
-        return ResponseEntity.badRequest().body(
-                ApiError.builder()
-                        .status(HttpStatus.BAD_REQUEST.value())
-                        .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                        .message("Validation échouée")
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .details(details)
-                        .build()
-        );
+        return respond(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                "Validation échouée", request, details, ex);
     }
+
+    // ── Pénalités ──────────────────────────────────────────────────────────
 
     @ExceptionHandler(LignePenaliteNotFoundException.class)
     public ResponseEntity<ApiError> handleLignePenaliteNotFound(LignePenaliteNotFoundException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.builder()
-                .status(HttpStatus.NOT_FOUND.value()).error(HttpStatus.NOT_FOUND.getReasonPhrase())
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(LocalDateTime.now()).build());
+        return respond(HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.getReasonPhrase(), ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LignePenaliteNonEncaissableException.class)
     public ResponseEntity<ApiError> handleNonEncaissable(LignePenaliteNonEncaissableException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.builder()
-                .status(HttpStatus.CONFLICT.value()).error("PENALITE_NON_ENCAISSABLE")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(LocalDateTime.now()).build());
+        return respond(HttpStatus.CONFLICT, "PENALITE_NON_ENCAISSABLE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LignePenaliteNonExecutableException.class)
     public ResponseEntity<ApiError> handleNonExecutable(LignePenaliteNonExecutableException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.builder()
-                .status(HttpStatus.CONFLICT.value()).error("PENALITE_NON_EXECUTABLE")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(LocalDateTime.now()).build());
+        return respond(HttpStatus.CONFLICT, "PENALITE_NON_EXECUTABLE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LignePenaliteNonNotifiableException.class)
     public ResponseEntity<ApiError> handleNonNotifiable(LignePenaliteNonNotifiableException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.builder()
-                .status(HttpStatus.CONFLICT.value()).error("PENALITE_NON_NOTIFIABLE")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(LocalDateTime.now()).build());
+        return respond(HttpStatus.CONFLICT, "PENALITE_NON_NOTIFIABLE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LignePenaliteNonDemarrableException.class)
     public ResponseEntity<ApiError> handleNonDemarrable(LignePenaliteNonDemarrableException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.builder()
-                .status(HttpStatus.CONFLICT.value()).error("PENALITE_NON_DEMARRABLE")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(LocalDateTime.now()).build());
+        return respond(HttpStatus.CONFLICT, "PENALITE_NON_DEMARRABLE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LignePenaliteNonLevableException.class)
     public ResponseEntity<ApiError> handleNonLevable(LignePenaliteNonLevableException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.builder()
-                .status(HttpStatus.CONFLICT.value()).error("PENALITE_NON_LEVABLE")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(LocalDateTime.now()).build());
+        return respond(HttpStatus.CONFLICT, "PENALITE_NON_LEVABLE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(LignePenaliteDejaTermineeException.class)
     public ResponseEntity<ApiError> handlePenaliteDejaTerminee(LignePenaliteDejaTermineeException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.builder()
-                .status(HttpStatus.CONFLICT.value()).error("PENALITE_DEJA_TERMINEE")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(LocalDateTime.now()).build());
+        return respond(HttpStatus.CONFLICT, "PENALITE_DEJA_TERMINEE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(EncaissementPenaliteDepasseMontantException.class)
     public ResponseEntity<ApiError> handleEncaissementDepassePenalite(EncaissementPenaliteDepasseMontantException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError.builder()
-                .status(HttpStatus.UNPROCESSABLE_ENTITY.value()).error("ENCAISSEMENT_PENALITE_DEPASSE_MONTANT")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(LocalDateTime.now()).build());
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "ENCAISSEMENT_PENALITE_DEPASSE_MONTANT", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(AucunePenaliteAmendePendingException.class)
     public ResponseEntity<ApiError> handleAucunePenaliteAmende(AucunePenaliteAmendePendingException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.builder()
-                .status(HttpStatus.CONFLICT.value()).error("AUCUNE_PENALITE_AMENDE_PENDING")
-                .message(ex.getMessage()).path(request.getRequestURI()).timestamp(LocalDateTime.now()).build());
+        return respond(HttpStatus.CONFLICT, "AUCUNE_PENALITE_AMENDE_PENDING", ex.getMessage(), request, ex);
     }
+
+    // ── Erreurs génériques d'argument / d'état ─────────────────────────────
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
-        return ResponseEntity.badRequest().body(
-                ApiError.builder()
-                        .status(HttpStatus.BAD_REQUEST.value())
-                        .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.getReasonPhrase(), ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiError> handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                ApiError.builder()
-                        .status(HttpStatus.CONFLICT.value())
-                        .error(HttpStatus.CONFLICT.getReasonPhrase())
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.CONFLICT, HttpStatus.CONFLICT.getReasonPhrase(), ex.getMessage(), request, ex);
     }
+
+    // ── Filet de sécurité : toute exception non gérée ──────────────────────
+    // Le détail technique est journalisé (ERROR + stacktrace) mais jamais
+    // exposé au client, qui reçoit un message neutre.
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                ApiError.builder()
-                        .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                        .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                        .message(ex.getMessage())
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
-        );
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
+                "Une erreur interne est survenue. Veuillez réessayer plus tard.", request, ex);
     }
 }

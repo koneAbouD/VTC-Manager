@@ -17,6 +17,14 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  # Limites de taille des documents uploadés (carte grise, assurance, etc.)
+  servlet:
+    multipart:
+      # Taille maximale d'un fichier document
+      max-file-size: ${MAX_FILE_SIZE:1MB}
+      # Taille maximale de la requête complète (fichier + métadonnées)
+      max-request-size: ${MAX_REQUEST_SIZE:1MB}
+
   security:
     oauth2:
       resourceserver:
@@ -27,6 +35,11 @@ spring:
 
 server:
   port: 8081
+  tomcat:
+    # Laisse Tomcat consommer tout le corps d'une requête trop volumineuse afin
+    # que Spring renvoie proprement le 413 (sinon la connexion est coupée et le
+    # client ne reçoit jamais le message de dépassement de taille).
+    max-swallow-size: -1
 
 # Configuration pour le scheduler (rappels de maintenance)
 app:
