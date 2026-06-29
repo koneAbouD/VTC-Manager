@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.application.usecases.indisponibilite;
 import com.tmk.vtcmanager.application.domain.indisponibilite.Indisponibilite;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.exception.ChauffeurNeTravaillePasCeJourException;
+import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ public class CreateIndisponibiliteUseCase {
 
     private final IndisponibiliteRepository indisponibiliteRepository;
     private final ProgrammeTravailRepository programmeTravailRepository;
+    private final ChauffeurStatutEventPublisher chauffeurStatutEventPublisher;
 
     @Transactional
     public Indisponibilite execute(Indisponibilite indisponibilite) {
@@ -28,7 +30,13 @@ public class CreateIndisponibiliteUseCase {
         indisponibilite.initializeDefaults();
         // Modèle "overlay" : aucune mutation du programme. Le remplacement est
         // calculé par date à la lecture/génération, uniquement sur la période.
-        return indisponibiliteRepository.save(indisponibilite);
+        Indisponibilite saved = indisponibiliteRepository.save(indisponibilite);
+
+        // Le titulaire peut devenir EN_CONGE si la période couvre aujourd'hui.
+        if (saved.getChauffeur() != null) {
+            chauffeurStatutEventPublisher.publishStatutDirty(saved.getChauffeur().getId());
+        }
+        return saved;
     }
 
     /**

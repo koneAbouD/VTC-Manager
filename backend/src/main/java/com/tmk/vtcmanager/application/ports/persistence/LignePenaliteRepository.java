@@ -23,6 +23,9 @@ public interface LignePenaliteRepository {
 
     boolean hasAmendePendingByVehiculeOrChauffeur(Long vehiculeId, Long chauffeurId);
 
+    /** Indique si une immobilisation pénalité est actuellement en cours sur le véhicule. */
+    boolean hasImmobilisationActiveByVehiculeId(Long vehiculeId);
+
     void updateStatut(Long id, StatutLignePenalite statut);
 
     void updateStatutAndMontantEncaisse(Long id, StatutLignePenalite statut, BigDecimal montantEncaisse);

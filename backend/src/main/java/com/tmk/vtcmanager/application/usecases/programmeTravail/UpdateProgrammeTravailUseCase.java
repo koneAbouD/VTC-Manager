@@ -2,19 +2,23 @@ package com.tmk.vtcmanager.application.usecases.programmeTravail;
 
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
+import com.tmk.vtcmanager.application.domain.document.CibleDocument;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeChauffeur;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedException;
 import com.tmk.vtcmanager.application.exception.ChauffeurNotFoundException;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
+import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
+import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -27,6 +31,8 @@ public class UpdateProgrammeTravailUseCase {
     private final VehiculeRepository vehiculeRepository;
     private final ChauffeurRepository chauffeurRepository;
     private final IndisponibiliteNettoyageService indisponibiliteNettoyageService;
+    private final DocumentRepository documentRepository;
+    private final VehiculeStatutEventPublisher statutEventPublisher;
 
     @Transactional
     public ProgrammeTravail execute(Long vehiculeId, ProgrammeTravail programme) {
@@ -78,6 +84,9 @@ public class UpdateProgrammeTravailUseCase {
             }
         }
 
+        // Affectation/désaffectation effectuées → recalcul du statut du véhicule.
+        statutEventPublisher.publishStatutDirty(vehiculeId);
+
         return saved;
     }
 
@@ -90,9 +99,23 @@ public class UpdateProgrammeTravailUseCase {
             }
             Chauffeur chauffeur = chauffeurRepository.findById(pc.getChauffeurId())
                     .orElseThrow(() -> new ChauffeurNotFoundException(pc.getChauffeurId()));
-            if (chauffeur.getStatut() != ChauffeurStatus.ACTIF) {
+            // Verrou RH : seuls INACTIF/SUSPENDU bloquent. EN_CONGE est autorisé car
+            // le titulaire reste dans le programme (modèle overlay), il est juste
+            // remplacé par date pendant son absence.
+            if (chauffeur.getStatut() == ChauffeurStatus.INACTIF
+                    || chauffeur.getStatut() == ChauffeurStatus.SUSPENDU) {
                 throw new IllegalArgumentException(
-                        "Seuls les chauffeurs actifs peuvent être affectés à un programme.");
+                        "Un chauffeur inactif ou suspendu ne peut pas être affecté à un programme.");
+            }
+            // Blocage si le permis de conduire est expiré.
+            boolean permisExpire = documentRepository
+                    .findByCibleAndCibleId(CibleDocument.CHAUFFEUR, chauffeur.getId())
+                    .stream()
+                    .anyMatch(d -> d.estPermis() && d.estExpireLe(LocalDate.now()));
+            if (permisExpire) {
+                throw new IllegalArgumentException(
+                        "Le chauffeur " + chauffeur.getFullName()
+                                + " a un permis de conduire expiré : affectation impossible.");
             }
             Long vehiculeActuelId = getVehiculeIdOf(chauffeur);
             if (vehiculeActuelId != null && !vehiculeActuelId.equals(vehiculeId)) {

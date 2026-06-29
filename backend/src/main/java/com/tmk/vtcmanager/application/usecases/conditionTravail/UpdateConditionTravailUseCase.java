@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.domain.conditionTravail.TypeSanction;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeChauffeur;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
+import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConditionTravailRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
@@ -33,6 +34,7 @@ public class UpdateConditionTravailUseCase {
     private final ChauffeurRepository chauffeurRepository;
     private final ConfigurationRecetteSynchronizer configurationRecetteSynchronizer;
     private final IndisponibiliteNettoyageService indisponibiliteNettoyageService;
+    private final VehiculeStatutEventPublisher statutEventPublisher;
 
     private static final Set<String> TYPES_PENALITE_VALIDES = Arrays.stream(TypePenalite.values())
             .map(Enum::name)
@@ -67,10 +69,14 @@ public class UpdateConditionTravailUseCase {
                 programme.normalize();
                 // (2) Réduction du nombre de chauffeurs : retirer les chauffeurs
                 // en trop, les dé-affecter et nettoyer leurs indispos orphelines.
-                reduireChauffeursSiNecessaire(programme);
+                boolean chauffeursRetires = reduireChauffeursSiNecessaire(programme);
                 programmeTravailRepository.save(programme);
                 // (3) Nettoyer les indispos rendues inertes par le nouveau planning.
                 indisponibiliteNettoyageService.nettoyerInertes(programme);
+                // (4) Si des chauffeurs ont été dé-affectés, recalculer le statut du véhicule.
+                if (chauffeursRetires) {
+                    statutEventPublisher.publishStatutDirty(vehiculeId);
+                }
             });
         }
 
@@ -83,11 +89,11 @@ public class UpdateConditionTravailUseCase {
      * élevé), les dé-affecte du véhicule et nettoie leurs indisponibilités
      * devenues orphelines.
      */
-    private void reduireChauffeursSiNecessaire(ProgrammeTravail programme) {
+    private boolean reduireChauffeursSiNecessaire(ProgrammeTravail programme) {
         final Integer max = programme.getNombreChauffeursAutorises();
         if (max == null || programme.getChauffeurs() == null
                 || programme.getChauffeurs().size() <= max) {
-            return;
+            return false;
         }
         final List<ProgrammeChauffeur> tries = new ArrayList<>(programme.getChauffeurs());
         tries.sort(Comparator.comparing(
@@ -107,6 +113,7 @@ public class UpdateConditionTravailUseCase {
             });
             indisponibiliteNettoyageService.nettoyerSiOrphelin(chauffeurId);
         }
+        return !retiresIds.isEmpty();
     }
 
     private void validate(ConditionTravail ct) {

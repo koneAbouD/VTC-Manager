@@ -29,13 +29,9 @@ class _ChauffeurSelectorPageState
       _ => [],
     };
 
-    final actifs = allChauffeurs
-        .where((c) => c.statut == ChauffeurStatus.actif)
-        .toList();
-
     final filtered = _query.isEmpty
-        ? actifs
-        : actifs
+        ? allChauffeurs
+        : allChauffeurs
             .where((c) =>
                 c.displayName
                     .toLowerCase()
@@ -82,7 +78,7 @@ class _ChauffeurSelectorPageState
                       const Text('Aucun chauffeur trouvé',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text('Aucun chauffeur actif disponible',
+                      Text('Aucun chauffeur disponible',
                           style: TextStyle(
                               color: Colors.grey.shade500, fontSize: 13)),
                     ],
@@ -145,6 +141,8 @@ class _ChauffeurSelectorPageState
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              _StatutPill(statut: c.statut),
                             ],
                           ),
                         ),
@@ -154,6 +152,42 @@ class _ChauffeurSelectorPageState
           ),
 
         ],
+      ),
+    );
+  }
+}
+
+/// Petite pastille de statut, pour distinguer les chauffeurs non affectables
+/// (inactif/suspendu) lorsqu'on affiche l'ensemble du parc chauffeurs.
+class _StatutPill extends StatelessWidget {
+  final ChauffeurStatus? statut;
+  const _StatutPill({required this.statut});
+
+  static Color _color(ChauffeurStatus? s) => switch (s) {
+        ChauffeurStatus.actif => const Color(0xFF2E7D32),
+        ChauffeurStatus.inactif => Colors.grey,
+        ChauffeurStatus.enConge => const Color(0xFFE65100),
+        ChauffeurStatus.suspendu => const Color(0xFFC62828),
+        null => Colors.grey,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color(statut);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        statut?.label ?? 'Inconnu',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }

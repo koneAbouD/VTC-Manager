@@ -28,6 +28,8 @@ public class Vehicule {
     private String couleur;
     private Integer kilometrage;
     private VehiculeStatus statut;
+    /** Statut manuel verrouillant (IMMOBILISE pour panne/accident, HORS_PARC). Prioritaire sur le calcul. */
+    private VehiculeStatus statutManuel;
     private TypeVehicule type;
     private TypeActivite activite;
     private GroupeVehicule groupe;
@@ -61,16 +63,41 @@ public class Vehicule {
         }
     }
 
-    public void activate() {
-        this.statut = VehiculeStatus.EN_SERVICE;
+    /**
+     * Indique si le véhicule porte un statut manuel verrouillant
+     * (IMMOBILISE/HORS_PARC) qui doit primer sur le statut calculé.
+     */
+    public boolean estVerrouille() {
+        return statutManuel != null;
     }
 
-    public void release() {
-        this.statut = VehiculeStatus.DISPONIBLE;
+    /**
+     * Applique le statut résultant des signaux métier, en respectant un
+     * éventuel statut manuel verrouillant.
+     *
+     * @param immobilisationActive immobilisation pénalité en cours sur le véhicule
+     * @param maintenanceEnCours   au moins une maintenance EN_COURS
+     * @param chauffeurAffecte      un chauffeur est affecté au véhicule
+     */
+    public void appliquerStatutCalcule(boolean immobilisationActive,
+                                       boolean maintenanceEnCours,
+                                       boolean chauffeurAffecte) {
+        this.statut = estVerrouille()
+                ? statutManuel
+                : VehiculeStatusPolicy.compute(immobilisationActive, maintenanceEnCours, chauffeurAffecte);
     }
 
-    public void setToMaintenance() {
-        this.statut = VehiculeStatus.EN_MAINTENANCE;
+    /**
+     * Applique un statut demandé manuellement (saisie). Les statuts décidés par
+     * un humain (IMMOBILISE pour panne/accident, HORS_PARC) posent un verrou ;
+     * les statuts calculables lèvent le verrou et laissent le recalcul reprendre
+     * la main.
+     */
+    public void appliquerStatutManuel(VehiculeStatus demande) {
+        this.statutManuel = (demande == VehiculeStatus.IMMOBILISE || demande == VehiculeStatus.HORS_PARC)
+                ? demande
+                : null;
+        this.statut = demande;
     }
 
     public void updateKilometrage(Integer newKilometrage) {

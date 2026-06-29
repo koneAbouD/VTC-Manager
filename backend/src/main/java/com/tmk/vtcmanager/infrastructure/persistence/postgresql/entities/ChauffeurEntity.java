@@ -58,6 +58,10 @@ public class ChauffeurEntity extends AbstractAuditEntity {
     @Column(length = 30)
     private ChauffeurStatus statut;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statut_manuel", length = 30)
+    private ChauffeurStatus statutManuel;
+
     @Column(name = "date_embauche")
     private LocalDate dateEmbauche;
 

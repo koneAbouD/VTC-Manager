@@ -51,7 +51,7 @@ public class UpdateChauffeurUseCase {
         existing.setTelephone(data.getTelephone());
         existing.setEmail(data.getEmail());
         existing.setAdresse(data.getAdresse());
-        if (data.getStatut() != null) existing.setStatut(data.getStatut());
+        if (data.getStatut() != null) existing.appliquerStatutManuel(data.getStatut());
         existing.setDateEmbauche(data.getDateEmbauche());
 
         if (deletePhoto) {

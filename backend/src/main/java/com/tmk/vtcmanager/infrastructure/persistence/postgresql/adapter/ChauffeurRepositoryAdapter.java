@@ -47,6 +47,7 @@ public class ChauffeurRepositoryAdapter implements ChauffeurRepository {
         entity.setEmail(domain.getEmail());
         entity.setAdresse(domain.getAdresse());
         entity.setStatut(domain.getStatut());
+        entity.setStatutManuel(domain.getStatutManuel());
         entity.setDateEmbauche(domain.getDateEmbauche());
         entity.setPhotoUrl(domain.getPhotoUrl());
         if (domain.getVehicule() != null) {
@@ -72,6 +73,12 @@ public class ChauffeurRepositoryAdapter implements ChauffeurRepository {
     @Transactional(readOnly = true)
     public List<Chauffeur> findByStatut(ChauffeurStatus statut) {
         return mapper.toDomainList(jpaRepository.findByStatut(statut, Sort.by(Sort.Direction.DESC, "updatedAt")));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByVehiculeId(Long vehiculeId) {
+        return jpaRepository.existsByVehiculeId(vehiculeId);
     }
 
     @Override

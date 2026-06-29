@@ -38,4 +38,23 @@ public class Document {
 
     /** true si le document n'a pas de date d'expiration */
     private Boolean permanence;
+
+    /** Vrai s'il s'agit d'un permis de conduire (au moins une catégorie renseignée). */
+    public boolean estPermis() {
+        return categorie != null && !categorie.isEmpty();
+    }
+
+    /**
+     * Vrai si le document est expiré à la date donnée. Un document archivé ou
+     * permanent (sans expiration) n'est jamais considéré comme expiré.
+     */
+    public boolean estExpireLe(LocalDate date) {
+        if (statut == DocumentStatut.ARCHIVE || Boolean.TRUE.equals(permanence)) {
+            return false;
+        }
+        if (statut == DocumentStatut.EXPIRE) {
+            return true;
+        }
+        return dateExpiration != null && date != null && dateExpiration.isBefore(date);
+    }
 }

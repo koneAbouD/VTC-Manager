@@ -110,6 +110,15 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public boolean hasImmobilisationActiveByVehiculeId(Long vehiculeId) {
+        return jpaRepository.existsImmobilisationActive(
+                vehiculeId,
+                TypeSanction.IMMOBILISATION,
+                StatutLignePenalite.EN_COURS);
+    }
+
+    @Override
     @Transactional
     public void updateStatut(Long id, StatutLignePenalite statut) {
         jpaRepository.updateStatut(id, statut);

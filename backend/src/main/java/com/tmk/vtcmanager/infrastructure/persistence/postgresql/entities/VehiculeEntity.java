@@ -69,6 +69,10 @@ public class VehiculeEntity extends AbstractAuditEntity {
     @Column(length = 30)
     private VehiculeStatus statut;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statut_manuel", length = 30)
+    private VehiculeStatus statutManuel;
+
     @Column(name = "date_achat")
     private LocalDate dateAchat;
 

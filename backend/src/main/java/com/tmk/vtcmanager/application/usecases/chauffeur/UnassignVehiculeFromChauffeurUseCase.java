@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.application.usecases.chauffeur;
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.ChauffeurNotFoundException;
+import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
@@ -17,6 +18,7 @@ public class UnassignVehiculeFromChauffeurUseCase {
     private final VehiculeRepository vehiculeRepository;
     private final ProgrammeTravailRepository programmeTravailRepository;
     private final IndisponibiliteNettoyageService indisponibiliteNettoyageService;
+    private final VehiculeStatutEventPublisher statutEventPublisher;
 
     @Transactional
     public Chauffeur execute(Long chauffeurId) {
@@ -24,9 +26,9 @@ public class UnassignVehiculeFromChauffeurUseCase {
                 .orElseThrow(() -> new ChauffeurNotFoundException(chauffeurId));
 
         Vehicule vehicule = chauffeur.getVehicule();
+        final Long vehiculeId = vehicule != null ? vehicule.getId() : null;
 
-        if (vehicule != null) {
-            final Long vehiculeId = vehicule.getId();
+        if (vehiculeId != null) {
             programmeTravailRepository.findByVehiculeId(vehiculeId).ifPresent(programme -> {
                 programme.getChauffeurs().removeIf(pc -> chauffeurId.equals(pc.getChauffeurId()));
                 programmeTravailRepository.save(programme);
@@ -39,6 +41,10 @@ public class UnassignVehiculeFromChauffeurUseCase {
         // Le chauffeur ne conduit plus : clôturer/annuler ses indisponibilités
         // devenues sans effet.
         indisponibiliteNettoyageService.nettoyerSiOrphelin(chauffeurId);
+
+        // Le véhicule n'est plus affecté : recalcul du statut (→ DISPONIBLE, sauf
+        // maintenance/immobilisation en cours).
+        statutEventPublisher.publishStatutDirty(vehiculeId);
 
         return saved;
     }

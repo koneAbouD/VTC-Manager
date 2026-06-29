@@ -54,6 +54,8 @@ import com.tmk.vtcmanager.application.ports.persistence.EncaissementPenaliteRepo
 import com.tmk.vtcmanager.application.ports.persistence.EncaissementRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
+import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
+import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.usecases.catalogueElementMaintenance.*;
 import com.tmk.vtcmanager.application.usecases.categorieOperation.*;
@@ -105,6 +107,16 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public RecomputeVehiculeStatusUseCase recomputeVehiculeStatusUseCase(
+            VehiculeRepository vehiculeRepository,
+            ChauffeurRepository chauffeurRepository,
+            MaintenanceRepository maintenanceRepository,
+            LignePenaliteRepository lignePenaliteRepository) {
+        return new RecomputeVehiculeStatusUseCase(vehiculeRepository, chauffeurRepository,
+                maintenanceRepository, lignePenaliteRepository);
+    }
+
+    @Bean
     public GetVehiculeByIdUseCase getVehiculeByIdUseCase(
             VehiculeRepository repo,
             VehiculePhotoRepository photoRepository,
@@ -147,9 +159,11 @@ public class UseCaseBeanConfiguration {
             ProgrammeTravailRepository programmeRepository,
             VehiculeRepository vehiculeRepository,
             ChauffeurRepository chauffeurRepository,
-            IndisponibiliteNettoyageService indisponibiliteNettoyageService) {
+            IndisponibiliteNettoyageService indisponibiliteNettoyageService,
+            DocumentRepository documentRepository,
+            VehiculeStatutEventPublisher statutEventPublisher) {
         return new CreateProgrammeTravailUseCase(programmeRepository, vehiculeRepository,
-                chauffeurRepository, indisponibiliteNettoyageService);
+                chauffeurRepository, indisponibiliteNettoyageService, documentRepository, statutEventPublisher);
     }
 
     @Bean
@@ -165,9 +179,11 @@ public class UseCaseBeanConfiguration {
             ProgrammeTravailRepository programmeRepository,
             VehiculeRepository vehiculeRepository,
             ChauffeurRepository chauffeurRepository,
-            IndisponibiliteNettoyageService indisponibiliteNettoyageService) {
+            IndisponibiliteNettoyageService indisponibiliteNettoyageService,
+            DocumentRepository documentRepository,
+            VehiculeStatutEventPublisher statutEventPublisher) {
         return new UpdateProgrammeTravailUseCase(programmeRepository, vehiculeRepository,
-                chauffeurRepository, indisponibiliteNettoyageService);
+                chauffeurRepository, indisponibiliteNettoyageService, documentRepository, statutEventPublisher);
     }
 
     @Bean
@@ -238,8 +254,9 @@ public class UseCaseBeanConfiguration {
 
     @Bean
     public AssignVehiculeToChauffeurUseCase assignVehiculeToChauffeurUseCase(
-            ChauffeurRepository chauffeurRepo, VehiculeRepository vehiculeRepo) {
-        return new AssignVehiculeToChauffeurUseCase(chauffeurRepo, vehiculeRepo);
+            ChauffeurRepository chauffeurRepo, VehiculeRepository vehiculeRepo,
+            VehiculeStatutEventPublisher statutEventPublisher) {
+        return new AssignVehiculeToChauffeurUseCase(chauffeurRepo, vehiculeRepo, statutEventPublisher);
     }
 
     @Bean
@@ -247,9 +264,10 @@ public class UseCaseBeanConfiguration {
             ChauffeurRepository chauffeurRepo,
             VehiculeRepository vehiculeRepo,
             ProgrammeTravailRepository programmeTravailRepository,
-            IndisponibiliteNettoyageService indisponibiliteNettoyageService) {
+            IndisponibiliteNettoyageService indisponibiliteNettoyageService,
+            VehiculeStatutEventPublisher statutEventPublisher) {
         return new UnassignVehiculeFromChauffeurUseCase(chauffeurRepo, vehiculeRepo,
-                programmeTravailRepository, indisponibiliteNettoyageService);
+                programmeTravailRepository, indisponibiliteNettoyageService, statutEventPublisher);
     }
 
     // ----- Contravention -----
@@ -293,20 +311,25 @@ public class UseCaseBeanConfiguration {
     public ScheduleMaintenanceUseCase scheduleMaintenanceUseCase(
             MaintenanceRepository maintenanceRepo,
             VehiculeRepository vehiculeRepo,
-            CategorieOperationRepository categorieOperationRepository) {
-        return new ScheduleMaintenanceUseCase(maintenanceRepo, vehiculeRepo, categorieOperationRepository);
+            CategorieOperationRepository categorieOperationRepository,
+            VehiculeStatutEventPublisher statutEventPublisher) {
+        return new ScheduleMaintenanceUseCase(maintenanceRepo, vehiculeRepo,
+                categorieOperationRepository, statutEventPublisher);
     }
 
     @Bean
     public UpdateMaintenanceUseCase updateMaintenanceUseCase(
             MaintenanceRepository repo,
-            CategorieOperationRepository categorieOperationRepository) {
-        return new UpdateMaintenanceUseCase(repo, categorieOperationRepository);
+            CategorieOperationRepository categorieOperationRepository,
+            VehiculeStatutEventPublisher statutEventPublisher) {
+        return new UpdateMaintenanceUseCase(repo, categorieOperationRepository, statutEventPublisher);
     }
 
     @Bean
-    public DeleteMaintenanceUseCase deleteMaintenanceUseCase(MaintenanceRepository repo) {
-        return new DeleteMaintenanceUseCase(repo);
+    public DeleteMaintenanceUseCase deleteMaintenanceUseCase(
+            MaintenanceRepository repo,
+            VehiculeStatutEventPublisher statutEventPublisher) {
+        return new DeleteMaintenanceUseCase(repo, statutEventPublisher);
     }
 
     @Bean
@@ -324,9 +347,10 @@ public class UseCaseBeanConfiguration {
             MaintenanceRepository repo,
             OperationFinanciereRepository operationRepository,
             CategorieOperationRepository categorieOperationRepository,
-            SousCategorieOperationRepository sousCategorieOperationRepository) {
+            SousCategorieOperationRepository sousCategorieOperationRepository,
+            VehiculeStatutEventPublisher statutEventPublisher) {
         return new CompleteMaintenanceUseCase(repo, operationRepository,
-                categorieOperationRepository, sousCategorieOperationRepository);
+                categorieOperationRepository, sousCategorieOperationRepository, statutEventPublisher);
     }
 
     @Bean
@@ -383,11 +407,13 @@ public class UseCaseBeanConfiguration {
             ProgrammeTravailRepository programmeTravailRepository,
             ChauffeurRepository chauffeurRepository,
             ConfigurationRecetteSynchronizer configurationRecetteSynchronizer,
-            IndisponibiliteNettoyageService indisponibiliteNettoyageService) {
+            IndisponibiliteNettoyageService indisponibiliteNettoyageService,
+            VehiculeStatutEventPublisher statutEventPublisher) {
         return new UpdateConditionTravailUseCase(
                 conditionTravailRepository, vehiculeRepository,
                 programmeTravailRepository, chauffeurRepository,
-                configurationRecetteSynchronizer, indisponibiliteNettoyageService);
+                configurationRecetteSynchronizer, indisponibiliteNettoyageService,
+                statutEventPublisher);
     }
 
     @Bean
@@ -632,13 +658,17 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
-    public DemarrerImmobilisationUseCase demarrerImmobilisationUseCase(LignePenaliteRepository lignePenaliteRepository) {
-        return new DemarrerImmobilisationUseCase(lignePenaliteRepository);
+    public DemarrerImmobilisationUseCase demarrerImmobilisationUseCase(
+            LignePenaliteRepository lignePenaliteRepository,
+            VehiculeStatutEventPublisher statutEventPublisher) {
+        return new DemarrerImmobilisationUseCase(lignePenaliteRepository, statutEventPublisher);
     }
 
     @Bean
-    public LeverImmobilisationUseCase leverImmobilisationUseCase(LignePenaliteRepository lignePenaliteRepository) {
-        return new LeverImmobilisationUseCase(lignePenaliteRepository);
+    public LeverImmobilisationUseCase leverImmobilisationUseCase(
+            LignePenaliteRepository lignePenaliteRepository,
+            VehiculeStatutEventPublisher statutEventPublisher) {
+        return new LeverImmobilisationUseCase(lignePenaliteRepository, statutEventPublisher);
     }
 
     @Bean
@@ -722,20 +752,23 @@ public class UseCaseBeanConfiguration {
 
     @Bean
     public CreateIndisponibiliteUseCase createIndisponibiliteUseCase(
-            IndisponibiliteRepository repo, ProgrammeTravailRepository programmeTravailRepository) {
-        return new CreateIndisponibiliteUseCase(repo, programmeTravailRepository);
+            IndisponibiliteRepository repo, ProgrammeTravailRepository programmeTravailRepository,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
+        return new CreateIndisponibiliteUseCase(repo, programmeTravailRepository, chauffeurStatutEventPublisher);
     }
 
     @Bean
     public UpdateIndisponibiliteUseCase updateIndisponibiliteUseCase(
-            IndisponibiliteRepository repo, ProgrammeTravailRepository programmeTravailRepository) {
-        return new UpdateIndisponibiliteUseCase(repo, programmeTravailRepository);
+            IndisponibiliteRepository repo, ProgrammeTravailRepository programmeTravailRepository,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
+        return new UpdateIndisponibiliteUseCase(repo, programmeTravailRepository, chauffeurStatutEventPublisher);
     }
 
     @Bean
     public DeleteIndisponibiliteUseCase deleteIndisponibiliteUseCase(
-            IndisponibiliteRepository repo) {
-        return new DeleteIndisponibiliteUseCase(repo);
+            IndisponibiliteRepository repo,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
+        return new DeleteIndisponibiliteUseCase(repo, chauffeurStatutEventPublisher);
     }
 
     @Bean
@@ -750,13 +783,22 @@ public class UseCaseBeanConfiguration {
 
     @Bean
     public TerminerIndisponibiliteUseCase terminerIndisponibiliteUseCase(
-            IndisponibiliteRepository repo) {
-        return new TerminerIndisponibiliteUseCase(repo);
+            IndisponibiliteRepository repo,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
+        return new TerminerIndisponibiliteUseCase(repo, chauffeurStatutEventPublisher);
     }
 
     @Bean
     public SynchroniserIndisponibilitesUseCase synchroniserIndisponibilitesUseCase(
-            IndisponibiliteRepository repo) {
-        return new SynchroniserIndisponibilitesUseCase(repo);
+            IndisponibiliteRepository repo,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
+        return new SynchroniserIndisponibilitesUseCase(repo, chauffeurStatutEventPublisher);
+    }
+
+    @Bean
+    public RecomputeChauffeurStatusUseCase recomputeChauffeurStatusUseCase(
+            ChauffeurRepository chauffeurRepository,
+            IndisponibiliteRepository indisponibiliteRepository) {
+        return new RecomputeChauffeurStatusUseCase(chauffeurRepository, indisponibiliteRepository);
     }
 }

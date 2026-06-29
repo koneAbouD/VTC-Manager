@@ -37,7 +37,7 @@ public class UpdateVehiculeUseCase {
         if (cmd.identifiantBalise() != null) existing.setIdentifiantBalise(cmd.identifiantBalise());
         if (cmd.couleur() != null) existing.setCouleur(cmd.couleur());
         if (cmd.kilometrage() != null) existing.setKilometrage(cmd.kilometrage());
-        if (cmd.statut() != null) existing.setStatut(cmd.statut());
+        if (cmd.statut() != null) existing.appliquerStatutManuel(cmd.statut());
         if (cmd.dateAchat() != null) existing.setDateAchat(cmd.dateAchat());
         if (cmd.dateProchaineMaintenance() != null) existing.setDateProchaineMaintenance(cmd.dateProchaineMaintenance());
         if (cmd.dateMiseEnCirculation() != null) existing.setDateMiseEnCirculation(cmd.dateMiseEnCirculation());

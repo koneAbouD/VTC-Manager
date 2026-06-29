@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.application.usecases.maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
+import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ public class UpdateMaintenanceUseCase {
 
     private final MaintenanceRepository maintenanceRepository;
     private final CategorieOperationRepository categorieOperationRepository;
+    private final VehiculeStatutEventPublisher statutEventPublisher;
 
     @Transactional
     public Maintenance execute(Long id, Maintenance data) {
@@ -31,7 +33,14 @@ public class UpdateMaintenanceUseCase {
         existing.setCout(data.getCout());
         existing.setPrestataire(data.getPrestataire());
         if (data.getStatut() != null) existing.setStatut(data.getStatut());
-        return maintenanceRepository.save(existing);
+        Maintenance saved = maintenanceRepository.save(existing);
+
+        // Le statut de la maintenance a pu changer (EN_COURS / TERMINEE / ANNULEE)
+        // → recalcul du statut du véhicule.
+        if (existing.getVehicule() != null) {
+            statutEventPublisher.publishStatutDirty(existing.getVehicule().getId());
+        }
+        return saved;
     }
 
     private void validerType(String type) {

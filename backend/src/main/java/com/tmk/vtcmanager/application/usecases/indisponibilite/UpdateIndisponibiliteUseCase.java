@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.domain.indisponibilite.IndisponibiliteStat
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.exception.ChauffeurNeTravaillePasCeJourException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
+import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,11 +18,15 @@ public class UpdateIndisponibiliteUseCase {
 
     private final IndisponibiliteRepository indisponibiliteRepository;
     private final ProgrammeTravailRepository programmeTravailRepository;
+    private final ChauffeurStatutEventPublisher chauffeurStatutEventPublisher;
 
     @Transactional
     public Indisponibilite execute(Long id, Indisponibilite data) {
         Indisponibilite existing = indisponibiliteRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Indisponibilité", id));
+        // Titulaire d'origine (peut changer) : il faudra recalculer son statut aussi.
+        final Long ancienTitulaireId = existing.getChauffeur() != null
+                ? existing.getChauffeur().getId() : null;
         if (existing.getStatut() == IndisponibiliteStatut.TERMINEE
                 || existing.getStatut() == IndisponibiliteStatut.ANNULEE) {
             throw new IllegalArgumentException(
@@ -70,7 +75,16 @@ public class UpdateIndisponibiliteUseCase {
         // Modèle "overlay" : aucune mutation du programme (substitution calculée
         // par date). Le programme normal est donc rétabli automatiquement hors
         // période / à la fin de l'indisponibilité.
-        return indisponibiliteRepository.save(existing);
+        Indisponibilite saved = indisponibiliteRepository.save(existing);
+
+        // Recalcul du statut pour l'ancien et le nouveau titulaire (la période ou
+        // le titulaire ont pu changer).
+        chauffeurStatutEventPublisher.publishStatutDirty(ancienTitulaireId);
+        Long nouveauTitulaireId = saved.getChauffeur() != null ? saved.getChauffeur().getId() : null;
+        if (nouveauTitulaireId != null && !nouveauTitulaireId.equals(ancienTitulaireId)) {
+            chauffeurStatutEventPublisher.publishStatutDirty(nouveauTitulaireId);
+        }
+        return saved;
     }
 
     private void validerJourTravaille(Indisponibilite indispo) {

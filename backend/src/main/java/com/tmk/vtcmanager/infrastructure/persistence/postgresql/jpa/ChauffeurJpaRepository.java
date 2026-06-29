@@ -13,4 +13,6 @@ import java.util.Optional;
 public interface ChauffeurJpaRepository extends JpaRepository<ChauffeurEntity, Long> {
 
     List<ChauffeurEntity> findByStatut(ChauffeurStatus statut, Sort sort);
+
+    boolean existsByVehiculeId(Long vehiculeId);
 }

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,6 +43,12 @@ public class IndisponibiliteRepositoryAdapter implements IndisponibiliteReposito
     @Override
     public List<Indisponibilite> findByStatut(IndisponibiliteStatut statut) {
         return mapper.toDomainList(jpaRepository.findByStatut(statut));
+    }
+
+    @Override
+    public boolean isEnCongeAt(Long chauffeurId, LocalDate date) {
+        return jpaRepository.isEnCongeAt(chauffeurId, date,
+                List.of(IndisponibiliteStatut.PLANIFIEE, IndisponibiliteStatut.EN_COURS));
     }
 
     @Override

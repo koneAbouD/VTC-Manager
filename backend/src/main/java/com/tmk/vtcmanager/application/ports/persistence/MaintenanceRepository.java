@@ -19,6 +19,9 @@ public interface MaintenanceRepository {
 
     List<Maintenance> findByStatut(MaintenanceStatus statut);
 
+    /** Indique s'il existe au moins une maintenance dans ce statut pour le véhicule. */
+    boolean existsByVehiculeIdAndStatut(Long vehiculeId, MaintenanceStatus statut);
+
     List<Maintenance> findByType(String type);
 
     List<Maintenance> findByDatePrevueLessThanEqualAndStatut(LocalDate date, MaintenanceStatus statut);

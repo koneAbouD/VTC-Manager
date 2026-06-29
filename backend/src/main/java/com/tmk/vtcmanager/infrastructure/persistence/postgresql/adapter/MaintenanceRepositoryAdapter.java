@@ -47,6 +47,11 @@ public class MaintenanceRepositoryAdapter implements MaintenanceRepository {
     }
 
     @Override
+    public boolean existsByVehiculeIdAndStatut(Long vehiculeId, MaintenanceStatus statut) {
+        return jpaRepository.existsByVehiculeIdAndStatut(vehiculeId, statut);
+    }
+
+    @Override
     public List<Maintenance> findByType(String type) {
         return mapper.toDomainList(jpaRepository.findByType(type));
     }

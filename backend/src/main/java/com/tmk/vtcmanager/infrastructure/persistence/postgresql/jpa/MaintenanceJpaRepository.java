@@ -17,6 +17,8 @@ public interface MaintenanceJpaRepository extends JpaRepository<MaintenanceEntit
 
     List<MaintenanceEntity> findByStatut(MaintenanceStatus statut);
 
+    boolean existsByVehiculeIdAndStatut(Long vehiculeId, MaintenanceStatus statut);
+
     List<MaintenanceEntity> findByType(String type);
 
     List<MaintenanceEntity> findByDatePrevueLessThanEqualAndStatut(LocalDate date, MaintenanceStatus statut);

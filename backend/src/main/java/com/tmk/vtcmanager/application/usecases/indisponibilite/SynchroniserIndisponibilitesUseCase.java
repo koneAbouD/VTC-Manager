@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.application.usecases.indisponibilite;
 
 import com.tmk.vtcmanager.application.domain.indisponibilite.Indisponibilite;
 import com.tmk.vtcmanager.application.domain.indisponibilite.IndisponibiliteStatut;
+import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ import java.util.List;
 public class SynchroniserIndisponibilitesUseCase {
 
     private final IndisponibiliteRepository indisponibiliteRepository;
+    private final ChauffeurStatutEventPublisher chauffeurStatutEventPublisher;
 
     /** @return nombre d'indisponibilités modifiées. */
     @Transactional
@@ -37,6 +39,7 @@ public class SynchroniserIndisponibilitesUseCase {
                     && (i.getDateFin() == null || !i.getDateFin().isBefore(today))) {
                 i.setStatut(IndisponibiliteStatut.EN_COURS);
                 indisponibiliteRepository.save(i);
+                publierRecalculTitulaire(i);
                 modifiees++;
             }
         }
@@ -48,9 +51,17 @@ public class SynchroniserIndisponibilitesUseCase {
             if (i.getDateFin() != null && i.getDateFin().isBefore(today)) {
                 i.setStatut(IndisponibiliteStatut.TERMINEE);
                 indisponibiliteRepository.save(i);
+                publierRecalculTitulaire(i);
                 modifiees++;
             }
         }
         return modifiees;
+    }
+
+    /** Recalcul du statut du titulaire (entrée/sortie d'EN_CONGE au fil des dates). */
+    private void publierRecalculTitulaire(Indisponibilite indispo) {
+        if (indispo.getChauffeur() != null) {
+            chauffeurStatutEventPublisher.publishStatutDirty(indispo.getChauffeur().getId());
+        }
     }
 }

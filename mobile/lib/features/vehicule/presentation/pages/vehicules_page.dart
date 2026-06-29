@@ -266,7 +266,6 @@ class _VehiculeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDisponible = vehicule.statut == 'DISPONIBLE';
     final statut = StatutVehicule.resolve(
         vehicule.statut, ref.watch(statutsVehiculeResolvedProvider));
     final statutColor = statut.couleur;
@@ -310,13 +309,11 @@ class _VehiculeCard extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          if (!isDisponible) ...[
-                            const SizedBox(width: 8),
-                            _StatusChip(
-                              label: statut.libelle,
-                              color: statutColor,
-                            ),
-                          ],
+                          const SizedBox(width: 8),
+                          _StatusChip(
+                            label: statut.libelle,
+                            color: statutColor,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 3),

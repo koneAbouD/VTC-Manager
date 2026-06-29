@@ -45,6 +45,18 @@ public interface LignePenaliteJpaRepository
             @Param("typePenalite") TypePenalite typePenalite,
             @Param("dateFaute") LocalDate dateFaute);
 
+    @Query("""
+            SELECT CASE WHEN COUNT(l) > 0 THEN true ELSE false END
+            FROM LignePenaliteEntity l
+            WHERE l.vehicule.id = :vehiculeId
+              AND l.typeSanction = :typeSanction
+              AND l.statut = :statut
+            """)
+    boolean existsImmobilisationActive(
+            @Param("vehiculeId") Long vehiculeId,
+            @Param("typeSanction") TypeSanction typeSanction,
+            @Param("statut") StatutLignePenalite statut);
+
     @Modifying
     @Query("UPDATE LignePenaliteEntity l SET l.statut = :statut WHERE l.id = :id")
     void updateStatut(@Param("id") Long id, @Param("statut") StatutLignePenalite statut);

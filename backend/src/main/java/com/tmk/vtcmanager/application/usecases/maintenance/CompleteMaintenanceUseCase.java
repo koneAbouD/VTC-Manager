@@ -10,6 +10,7 @@ import com.tmk.vtcmanager.application.domain.operation.SousCategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
+import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
@@ -29,6 +30,7 @@ public class CompleteMaintenanceUseCase {
     private final OperationFinanciereRepository operationRepository;
     private final CategorieOperationRepository categorieRepository;
     private final SousCategorieOperationRepository sousCategorieRepository;
+    private final VehiculeStatutEventPublisher statutEventPublisher;
 
     @Transactional
     public Maintenance execute(Long id, BigDecimal cout, LocalDate dateEffectuee,
@@ -72,6 +74,11 @@ public class CompleteMaintenanceUseCase {
                     .build();
 
             operationRepository.save(operation);
+        }
+
+        // Maintenance terminée → recalcul du statut du véhicule (sortie de EN_MAINTENANCE).
+        if (saved.getVehicule() != null) {
+            statutEventPublisher.publishStatutDirty(saved.getVehicule().getId());
         }
 
         return saved;

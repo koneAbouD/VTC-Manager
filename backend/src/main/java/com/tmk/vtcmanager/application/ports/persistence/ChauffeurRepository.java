@@ -16,5 +16,8 @@ public interface ChauffeurRepository {
 
     List<Chauffeur> findByStatut(ChauffeurStatus statut);
 
+    /** Indique si un chauffeur est actuellement affecté à ce véhicule. */
+    boolean existsByVehiculeId(Long vehiculeId);
+
     void deleteById(Long id);
 }

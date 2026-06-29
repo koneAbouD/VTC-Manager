@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
+import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
@@ -23,6 +24,7 @@ public class ScheduleMaintenanceUseCase {
     private final MaintenanceRepository maintenanceRepository;
     private final VehiculeRepository vehiculeRepository;
     private final CategorieOperationRepository categorieOperationRepository;
+    private final VehiculeStatutEventPublisher statutEventPublisher;
 
     @Transactional
     public Maintenance execute(Long vehiculeId, Maintenance maintenance) {
@@ -40,7 +42,11 @@ public class ScheduleMaintenanceUseCase {
         }
 
         maintenance.initializeDefaults();
-        return maintenanceRepository.save(maintenance);
+        Maintenance saved = maintenanceRepository.save(maintenance);
+
+        // Recalcul du statut (→ EN_MAINTENANCE si la maintenance est créée EN_COURS).
+        statutEventPublisher.publishStatutDirty(vehiculeId);
+        return saved;
     }
 
     private void validerType(String type) {
