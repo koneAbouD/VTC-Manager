@@ -65,11 +65,12 @@ public class Chauffeur {
      * éventuel statut manuel verrouillant.
      *
      * @param enConge une indisponibilité couvre la date du jour
+     * @param affecte le chauffeur est affecté à un véhicule
      */
-    public void appliquerStatutCalcule(boolean enConge) {
+    public void appliquerStatutCalcule(boolean enConge, boolean affecte) {
         this.statut = estVerrouille()
                 ? statutManuel
-                : ChauffeurStatusPolicy.compute(enConge);
+                : ChauffeurStatusPolicy.compute(enConge, affecte);
     }
 
     /**

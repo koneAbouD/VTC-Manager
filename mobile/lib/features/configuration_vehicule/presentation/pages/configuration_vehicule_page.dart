@@ -9,6 +9,8 @@ import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../chauffeur/domain/entities/chauffeur.dart';
 import '../../../chauffeur/domain/enums/chauffeur_status.dart';
+import '../../../chauffeur/presentation/providers/chauffeur_provider.dart';
+import '../../../vehicule/presentation/providers/vehicule_provider.dart';
 import '../../../condition_travail/presentation/pages/condition_travail_selector_page.dart';
 import '../../../condition_travail/presentation/providers/condition_travail_by_vehicule_provider.dart';
 import '../../../condition_travail/presentation/providers/programme_travail_provider.dart';
@@ -394,6 +396,11 @@ class _ConfigurationVehiculePageState
         {'chauffeurs': _buildChauffeursList()},
       );
       ref.invalidate(programmeTravailByVehiculeIdProvider(widget.vehiculeId));
+
+      // Les statuts ont été recalculés côté backend (véhicule → En service,
+      // chauffeur(s) → En service). Recharger les listes pour les refléter tout de suite.
+      ref.read(vehiculeNotifierProvider.notifier).loadVehicules();
+      ref.read(chauffeurNotifierProvider.notifier).loadChauffeurs();
 
       if (!mounted) return;
       _appToast(context, 'Véhicule configuré avec succès.');

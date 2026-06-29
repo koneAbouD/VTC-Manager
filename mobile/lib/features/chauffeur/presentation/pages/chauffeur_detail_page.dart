@@ -270,6 +270,12 @@ class _StatusPill extends StatelessWidget {
           'Actif',
           Icons.check_circle,
         ),
+      ChauffeurStatus.enService => (
+          const Color(0xFFE3F2FD),
+          const Color(0xFF1565C0),
+          'En service',
+          Icons.directions_car,
+        ),
       ChauffeurStatus.enConge => (
           const Color(0xFFFFF3E0),
           const Color(0xFFE65100),

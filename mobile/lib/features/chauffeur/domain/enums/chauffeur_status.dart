@@ -1,6 +1,7 @@
 /// Statut d'un chauffeur — miroir de [ChauffeurStatus].
 enum ChauffeurStatus {
   actif('ACTIF', 'Actif'),
+  enService('EN_SERVICE', 'En service'),
   inactif('INACTIF', 'Inactif'),
   enConge('EN_CONGE', 'En congé'),
   suspendu('SUSPENDU', 'Suspendu');

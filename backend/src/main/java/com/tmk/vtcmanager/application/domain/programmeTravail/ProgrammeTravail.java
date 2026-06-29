@@ -302,19 +302,23 @@ public class ProgrammeTravail {
             return tous;
         }
 
-        // 2 chauffeurs : jour de travail commun → les deux conduisent.
-        if (joursAlternanceSemaine != null && !joursAlternanceSemaine.isEmpty()
-                && joursAlternanceSemaine.contains(JourSemaine.from(date.getDayOfWeek()))) {
-            return tous;
-        }
-
+        // Mode AUTOMATIQUE : alternance stricte, un seul conducteur par jour.
+        // Prioritaire sur les « jours partagés » : sinon, comme ceux-ci sont par
+        // défaut initialisés à toute la semaine, l'alternance ne s'appliquerait
+        // jamais (les deux conduiraient tous les jours).
         if (modeAlternance == ModeAlternance.AUTOMATIQUE
                 && dateDebutAlternance != null && joursAlternance != null) {
             Long c = chauffeurAlternanceAuto(date);
             return c != null ? List.of(c) : List.of();
         }
 
-        // Mode MANUELLE : tous les chauffeurs assignés.
+        // Mode MANUELLE : jour de travail commun → les deux conduisent.
+        if (joursAlternanceSemaine != null && !joursAlternanceSemaine.isEmpty()
+                && joursAlternanceSemaine.contains(JourSemaine.from(date.getDayOfWeek()))) {
+            return tous;
+        }
+
+        // Mode MANUELLE (hors jours partagés) : tous les chauffeurs assignés.
         return tous;
     }
 

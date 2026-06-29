@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.application.usecases.chauffeur;
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.ChauffeurNotFoundException;
+import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
@@ -19,6 +20,7 @@ public class UnassignVehiculeFromChauffeurUseCase {
     private final ProgrammeTravailRepository programmeTravailRepository;
     private final IndisponibiliteNettoyageService indisponibiliteNettoyageService;
     private final VehiculeStatutEventPublisher statutEventPublisher;
+    private final ChauffeurStatutEventPublisher chauffeurStatutEventPublisher;
 
     @Transactional
     public Chauffeur execute(Long chauffeurId) {
@@ -45,6 +47,8 @@ public class UnassignVehiculeFromChauffeurUseCase {
         // Le véhicule n'est plus affecté : recalcul du statut (→ DISPONIBLE, sauf
         // maintenance/immobilisation en cours).
         statutEventPublisher.publishStatutDirty(vehiculeId);
+        // Le chauffeur n'est plus affecté : recalcul (→ ACTIF, sauf congé).
+        chauffeurStatutEventPublisher.publishStatutDirty(chauffeurId);
 
         return saved;
     }

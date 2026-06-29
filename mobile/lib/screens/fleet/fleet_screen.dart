@@ -24,6 +24,7 @@ import 'fleet_filter_provider.dart';
 
 Color _cStatutColor(ChauffeurStatus? s) => switch (s) {
       ChauffeurStatus.actif => const Color(0xFF2E7D32),
+      ChauffeurStatus.enService => const Color(0xFF1565C0),
       ChauffeurStatus.inactif => Colors.grey,
       ChauffeurStatus.enConge => const Color(0xFFE65100),
       ChauffeurStatus.suspendu => const Color(0xFFC62828),

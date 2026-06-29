@@ -161,9 +161,11 @@ public class UseCaseBeanConfiguration {
             ChauffeurRepository chauffeurRepository,
             IndisponibiliteNettoyageService indisponibiliteNettoyageService,
             DocumentRepository documentRepository,
-            VehiculeStatutEventPublisher statutEventPublisher) {
+            VehiculeStatutEventPublisher statutEventPublisher,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
         return new CreateProgrammeTravailUseCase(programmeRepository, vehiculeRepository,
-                chauffeurRepository, indisponibiliteNettoyageService, documentRepository, statutEventPublisher);
+                chauffeurRepository, indisponibiliteNettoyageService, documentRepository,
+                statutEventPublisher, chauffeurStatutEventPublisher);
     }
 
     @Bean
@@ -181,9 +183,11 @@ public class UseCaseBeanConfiguration {
             ChauffeurRepository chauffeurRepository,
             IndisponibiliteNettoyageService indisponibiliteNettoyageService,
             DocumentRepository documentRepository,
-            VehiculeStatutEventPublisher statutEventPublisher) {
+            VehiculeStatutEventPublisher statutEventPublisher,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
         return new UpdateProgrammeTravailUseCase(programmeRepository, vehiculeRepository,
-                chauffeurRepository, indisponibiliteNettoyageService, documentRepository, statutEventPublisher);
+                chauffeurRepository, indisponibiliteNettoyageService, documentRepository,
+                statutEventPublisher, chauffeurStatutEventPublisher);
     }
 
     @Bean
@@ -255,8 +259,10 @@ public class UseCaseBeanConfiguration {
     @Bean
     public AssignVehiculeToChauffeurUseCase assignVehiculeToChauffeurUseCase(
             ChauffeurRepository chauffeurRepo, VehiculeRepository vehiculeRepo,
-            VehiculeStatutEventPublisher statutEventPublisher) {
-        return new AssignVehiculeToChauffeurUseCase(chauffeurRepo, vehiculeRepo, statutEventPublisher);
+            VehiculeStatutEventPublisher statutEventPublisher,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
+        return new AssignVehiculeToChauffeurUseCase(chauffeurRepo, vehiculeRepo,
+                statutEventPublisher, chauffeurStatutEventPublisher);
     }
 
     @Bean
@@ -265,9 +271,11 @@ public class UseCaseBeanConfiguration {
             VehiculeRepository vehiculeRepo,
             ProgrammeTravailRepository programmeTravailRepository,
             IndisponibiliteNettoyageService indisponibiliteNettoyageService,
-            VehiculeStatutEventPublisher statutEventPublisher) {
+            VehiculeStatutEventPublisher statutEventPublisher,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
         return new UnassignVehiculeFromChauffeurUseCase(chauffeurRepo, vehiculeRepo,
-                programmeTravailRepository, indisponibiliteNettoyageService, statutEventPublisher);
+                programmeTravailRepository, indisponibiliteNettoyageService,
+                statutEventPublisher, chauffeurStatutEventPublisher);
     }
 
     // ----- Contravention -----
@@ -408,12 +416,13 @@ public class UseCaseBeanConfiguration {
             ChauffeurRepository chauffeurRepository,
             ConfigurationRecetteSynchronizer configurationRecetteSynchronizer,
             IndisponibiliteNettoyageService indisponibiliteNettoyageService,
-            VehiculeStatutEventPublisher statutEventPublisher) {
+            VehiculeStatutEventPublisher statutEventPublisher,
+            ChauffeurStatutEventPublisher chauffeurStatutEventPublisher) {
         return new UpdateConditionTravailUseCase(
                 conditionTravailRepository, vehiculeRepository,
                 programmeTravailRepository, chauffeurRepository,
                 configurationRecetteSynchronizer, indisponibiliteNettoyageService,
-                statutEventPublisher);
+                statutEventPublisher, chauffeurStatutEventPublisher);
     }
 
     @Bean

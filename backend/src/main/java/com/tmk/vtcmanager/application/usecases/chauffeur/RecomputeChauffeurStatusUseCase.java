@@ -30,9 +30,10 @@ public class RecomputeChauffeurStatusUseCase {
                 .orElseThrow(() -> new ChauffeurNotFoundException(chauffeurId));
 
         boolean enConge = indisponibiliteRepository.isEnCongeAt(chauffeurId, LocalDate.now());
+        boolean affecte = chauffeur.getVehicule() != null;
 
         ChauffeurStatus avant = chauffeur.getStatut();
-        chauffeur.appliquerStatutCalcule(enConge);
+        chauffeur.appliquerStatutCalcule(enConge, affecte);
 
         if (chauffeur.getStatut() != avant) {
             chauffeurRepository.save(chauffeur);

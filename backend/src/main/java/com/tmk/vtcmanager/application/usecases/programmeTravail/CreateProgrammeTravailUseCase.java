@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.exception.ChauffeurNotFoundException;
 import com.tmk.vtcmanager.application.exception.ChauffeurPermisExpireException;
 import com.tmk.vtcmanager.application.exception.ChauffeurSuspenduException;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
+import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
@@ -36,6 +37,7 @@ public class CreateProgrammeTravailUseCase {
     private final IndisponibiliteNettoyageService indisponibiliteNettoyageService;
     private final DocumentRepository documentRepository;
     private final VehiculeStatutEventPublisher statutEventPublisher;
+    private final ChauffeurStatutEventPublisher chauffeurStatutEventPublisher;
 
     @Transactional
     public ProgrammeTravail execute(Long vehiculeId, ProgrammeTravail programme) {
@@ -74,6 +76,8 @@ public class CreateProgrammeTravailUseCase {
                 chauffeur.assignVehicule(vehicule);
                 chauffeurRepository.save(chauffeur);
             }
+            // Affecté → recalcul du statut chauffeur (→ EN_SERVICE).
+            chauffeurStatutEventPublisher.publishStatutDirty(chauffeur.getId());
         }
 
         // Désassigner les chauffeurs retirés du programme
@@ -85,6 +89,8 @@ public class CreateProgrammeTravailUseCase {
                 });
                 // Indisponibilités du chauffeur retiré devenues sans effet.
                 indisponibiliteNettoyageService.nettoyerSiOrphelin(ancienId);
+                // Retiré → recalcul du statut chauffeur (→ ACTIF, sauf congé).
+                chauffeurStatutEventPublisher.publishStatutDirty(ancienId);
             }
         }
 

@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.domain.conditionTravail.TypeSanction;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeChauffeur;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
+import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConditionTravailRepository;
@@ -35,6 +36,7 @@ public class UpdateConditionTravailUseCase {
     private final ConfigurationRecetteSynchronizer configurationRecetteSynchronizer;
     private final IndisponibiliteNettoyageService indisponibiliteNettoyageService;
     private final VehiculeStatutEventPublisher statutEventPublisher;
+    private final ChauffeurStatutEventPublisher chauffeurStatutEventPublisher;
 
     private static final Set<String> TYPES_PENALITE_VALIDES = Arrays.stream(TypePenalite.values())
             .map(Enum::name)
@@ -112,6 +114,8 @@ public class UpdateConditionTravailUseCase {
                 chauffeurRepository.save(c);
             });
             indisponibiliteNettoyageService.nettoyerSiOrphelin(chauffeurId);
+            // Retiré du véhicule → recalcul du statut chauffeur (→ ACTIF).
+            chauffeurStatutEventPublisher.publishStatutDirty(chauffeurId);
         }
         return !retiresIds.isEmpty();
     }
