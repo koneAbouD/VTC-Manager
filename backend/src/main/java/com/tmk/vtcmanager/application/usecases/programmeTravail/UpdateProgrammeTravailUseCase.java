@@ -8,6 +8,8 @@ import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedException;
 import com.tmk.vtcmanager.application.exception.ChauffeurNotFoundException;
+import com.tmk.vtcmanager.application.exception.ChauffeurPermisExpireException;
+import com.tmk.vtcmanager.application.exception.ChauffeurSuspenduException;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
@@ -99,13 +101,11 @@ public class UpdateProgrammeTravailUseCase {
             }
             Chauffeur chauffeur = chauffeurRepository.findById(pc.getChauffeurId())
                     .orElseThrow(() -> new ChauffeurNotFoundException(pc.getChauffeurId()));
-            // Verrou RH : seuls INACTIF/SUSPENDU bloquent. EN_CONGE est autorisé car
-            // le titulaire reste dans le programme (modèle overlay), il est juste
-            // remplacé par date pendant son absence.
-            if (chauffeur.getStatut() == ChauffeurStatus.INACTIF
-                    || chauffeur.getStatut() == ChauffeurStatus.SUSPENDU) {
-                throw new IllegalArgumentException(
-                        "Un chauffeur inactif ou suspendu ne peut pas être affecté à un programme.");
+            // Verrou RH : seul un chauffeur SUSPENDU est refusé. INACTIF et EN_CONGE
+            // sont autorisés (EN_CONGE = titulaire conservé, remplacé par date — overlay).
+            if (chauffeur.getStatut() == ChauffeurStatus.SUSPENDU) {
+                throw new ChauffeurSuspenduException(
+                        chauffeur.getId(), chauffeur.getFullName(), chauffeur.getDateSuspension());
             }
             // Blocage si le permis de conduire est expiré.
             boolean permisExpire = documentRepository
@@ -113,9 +113,7 @@ public class UpdateProgrammeTravailUseCase {
                     .stream()
                     .anyMatch(d -> d.estPermis() && d.estExpireLe(LocalDate.now()));
             if (permisExpire) {
-                throw new IllegalArgumentException(
-                        "Le chauffeur " + chauffeur.getFullName()
-                                + " a un permis de conduire expiré : affectation impossible.");
+                throw new ChauffeurPermisExpireException(chauffeur.getId(), chauffeur.getFullName());
             }
             Long vehiculeActuelId = getVehiculeIdOf(chauffeur);
             if (vehiculeActuelId != null && !vehiculeActuelId.equals(vehiculeId)) {

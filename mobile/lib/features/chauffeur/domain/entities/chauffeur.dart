@@ -24,6 +24,9 @@ class Chauffeur {
   final String? email;
   final String? adresse;
   final ChauffeurStatus? statut;
+
+  /// Date de prise d'effet de la suspension (présente si statut == suspendu).
+  final DateTime? dateSuspension;
   final DateTime? dateEmbauche;
   final Geolocalisation? geolocalisation;
 
@@ -50,6 +53,7 @@ class Chauffeur {
     this.email,
     this.adresse,
     this.statut,
+    this.dateSuspension,
     this.dateEmbauche,
     this.geolocalisation,
     this.vehiculeId,
@@ -99,6 +103,7 @@ class Chauffeur {
     String? email,
     String? adresse,
     ChauffeurStatus? statut,
+    DateTime? dateSuspension,
     DateTime? dateEmbauche,
     Geolocalisation? geolocalisation,
     int? vehiculeId,
@@ -121,6 +126,7 @@ class Chauffeur {
       email: email ?? this.email,
       adresse: adresse ?? this.adresse,
       statut: statut ?? this.statut,
+      dateSuspension: dateSuspension ?? this.dateSuspension,
       dateEmbauche: dateEmbauche ?? this.dateEmbauche,
       geolocalisation: geolocalisation ?? this.geolocalisation,
       vehiculeId: vehiculeId ?? this.vehiculeId,

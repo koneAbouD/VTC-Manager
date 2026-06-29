@@ -21,6 +21,7 @@ class ChauffeurModel extends Chauffeur {
     super.email,
     super.adresse,
     super.statut,
+    super.dateSuspension,
     super.dateEmbauche,
     super.geolocalisation,
     super.vehiculeId,
@@ -70,6 +71,9 @@ class ChauffeurModel extends Chauffeur {
       email: json['email'] as String?,
       adresse: json['adresse'] as String?,
       statut: ChauffeurStatus.fromJson(json['statut']),
+      dateSuspension: json['dateSuspension'] != null
+          ? DateTime.tryParse(json['dateSuspension'] as String)
+          : null,
       dateEmbauche: json['dateEmbauche'] != null
           ? DateTime.tryParse(json['dateEmbauche'] as String)
           : null,
@@ -96,6 +100,7 @@ class ChauffeurModel extends Chauffeur {
         email: c.email,
         adresse: c.adresse,
         statut: c.statut,
+        dateSuspension: c.dateSuspension,
         dateEmbauche: c.dateEmbauche,
         geolocalisation: c.geolocalisation,
         vehiculeId: c.vehiculeId,

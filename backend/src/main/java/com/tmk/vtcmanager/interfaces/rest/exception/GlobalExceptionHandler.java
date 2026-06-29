@@ -2,6 +2,8 @@ package com.tmk.vtcmanager.interfaces.rest.exception;
 
 import com.tmk.vtcmanager.application.exception.AucunePenaliteAmendePendingException;
 import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedException;
+import com.tmk.vtcmanager.application.exception.ChauffeurPermisExpireException;
+import com.tmk.vtcmanager.application.exception.ChauffeurSuspenduException;
 import com.tmk.vtcmanager.application.exception.EncaissementPenaliteDepasseMontantException;
 import com.tmk.vtcmanager.application.exception.LignePenaliteDejaTermineeException;
 import com.tmk.vtcmanager.application.exception.LignePenaliteNonDemarrableException;
@@ -153,6 +155,25 @@ public class GlobalExceptionHandler {
                         "chauffeurNom:" + ex.getChauffeurNom(),
                         "vehiculeActuelId:" + ex.getVehiculeActuelId(),
                         "vehiculeActuelImmatriculation:" + ex.getVehiculeActuelImmatriculation()
+                ), ex);
+    }
+
+    @ExceptionHandler(ChauffeurSuspenduException.class)
+    public ResponseEntity<ApiError> handleChauffeurSuspendu(ChauffeurSuspenduException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "CHAUFFEUR_SUSPENDU", ex.getMessage(), request,
+                List.of(
+                        "chauffeurId:" + ex.getChauffeurId(),
+                        "chauffeurNom:" + ex.getChauffeurNom(),
+                        "dateSuspension:" + (ex.getDateSuspension() != null ? ex.getDateSuspension() : "")
+                ), ex);
+    }
+
+    @ExceptionHandler(ChauffeurPermisExpireException.class)
+    public ResponseEntity<ApiError> handleChauffeurPermisExpire(ChauffeurPermisExpireException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "CHAUFFEUR_PERMIS_EXPIRE", ex.getMessage(), request,
+                List.of(
+                        "chauffeurId:" + ex.getChauffeurId(),
+                        "chauffeurNom:" + ex.getChauffeurNom()
                 ), ex);
     }
 

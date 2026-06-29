@@ -62,6 +62,9 @@ public class ChauffeurEntity extends AbstractAuditEntity {
     @Column(name = "statut_manuel", length = 30)
     private ChauffeurStatus statutManuel;
 
+    @Column(name = "date_suspension")
+    private LocalDate dateSuspension;
+
     @Column(name = "date_embauche")
     private LocalDate dateEmbauche;
 

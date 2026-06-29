@@ -29,6 +29,8 @@ public class Chauffeur {
     private ChauffeurStatus statut;
     /** Statut manuel verrouillant (INACTIF, SUSPENDU). Prioritaire sur le calcul (EN_CONGE/ACTIF). */
     private ChauffeurStatus statutManuel;
+    /** Date de prise d'effet de la suspension (renseignée quand le statut passe à SUSPENDU). */
+    private LocalDate dateSuspension;
     private LocalDate dateEmbauche;
     private Geolocalisation geolocalisation;
     private Vehicule vehicule;
@@ -76,9 +78,21 @@ public class Chauffeur {
      * (ACTIF/EN_CONGE) lèvent le verrou et laissent le recalcul reprendre la main.
      */
     public void appliquerStatutManuel(ChauffeurStatus demande) {
-        this.statutManuel = (demande == ChauffeurStatus.INACTIF || demande == ChauffeurStatus.SUSPENDU)
-                ? demande
-                : null;
+        if (demande == ChauffeurStatus.SUSPENDU) {
+            this.statutManuel = ChauffeurStatus.SUSPENDU;
+            // Mémorise la date de suspension à la première mise en SUSPENDU
+            // (préservée tant que le chauffeur reste suspendu).
+            if (this.dateSuspension == null) {
+                this.dateSuspension = LocalDate.now();
+            }
+        } else if (demande == ChauffeurStatus.INACTIF) {
+            this.statutManuel = ChauffeurStatus.INACTIF;
+            this.dateSuspension = null;
+        } else {
+            // ACTIF / EN_CONGE : pas de verrou, le statut sera (re)calculé.
+            this.statutManuel = null;
+            this.dateSuspension = null;
+        }
         this.statut = demande;
     }
 }

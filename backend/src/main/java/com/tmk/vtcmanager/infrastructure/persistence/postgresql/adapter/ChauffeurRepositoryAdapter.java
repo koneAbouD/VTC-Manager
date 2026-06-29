@@ -48,6 +48,7 @@ public class ChauffeurRepositoryAdapter implements ChauffeurRepository {
         entity.setAdresse(domain.getAdresse());
         entity.setStatut(domain.getStatut());
         entity.setStatutManuel(domain.getStatutManuel());
+        entity.setDateSuspension(domain.getDateSuspension());
         entity.setDateEmbauche(domain.getDateEmbauche());
         entity.setPhotoUrl(domain.getPhotoUrl());
         if (domain.getVehicule() != null) {

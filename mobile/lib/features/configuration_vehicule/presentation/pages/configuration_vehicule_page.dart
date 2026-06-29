@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../chauffeur/domain/entities/chauffeur.dart';
+import '../../../chauffeur/domain/enums/chauffeur_status.dart';
 import '../../../condition_travail/presentation/pages/condition_travail_selector_page.dart';
 import '../../../condition_travail/presentation/providers/condition_travail_by_vehicule_provider.dart';
 import '../../../condition_travail/presentation/providers/programme_travail_provider.dart';
@@ -166,7 +167,19 @@ class _ConfigurationVehiculePageState
 
   Future<Chauffeur?> _pickChauffeur() => Navigator.push<Chauffeur>(
         context,
-        MaterialPageRoute(builder: (_) => const ChauffeurSelectorPage()),
+        MaterialPageRoute(
+          builder: (_) => ChauffeurSelectorPage(
+            // Non affectables à la configuration : suspendus et chauffeurs en congé.
+            nonSelectionnables: const {
+              ChauffeurStatus.suspendu,
+              ChauffeurStatus.enConge,
+            },
+            // Un chauffeur déjà actif sur un autre véhicule n'est pas sélectionnable
+            // (l'immatriculation de ce véhicule est affichée).
+            bloquerDejaAffectes: true,
+            vehiculeAutoriseId: widget.vehiculeId,
+          ),
+        ),
       );
 
   String? _validate() {
@@ -391,6 +404,10 @@ class _ConfigurationVehiculePageState
       final conflict = _parseChauffeurConflict(e);
       if (conflict != null) {
         await _showConflictDialog(conflict);
+      } else if (e.body?['error'] == 'CHAUFFEUR_SUSPENDU' ||
+          e.body?['error'] == 'CHAUFFEUR_PERMIS_EXPIRE') {
+        // Message backend déjà explicite (suspension datée / permis expiré).
+        _showError(e.message);
       } else {
         _showError(_humanizeBackendError(e.toString()));
       }

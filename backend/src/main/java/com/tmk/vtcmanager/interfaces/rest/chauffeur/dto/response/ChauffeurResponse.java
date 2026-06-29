@@ -23,6 +23,7 @@ public record ChauffeurResponse(
         String email,
         String adresse,
         ChauffeurStatus statut,
+        LocalDate dateSuspension,
         LocalDate dateEmbauche,
         GeolocalisationResponse geolocalisation,
         VehiculeResponse vehicule
