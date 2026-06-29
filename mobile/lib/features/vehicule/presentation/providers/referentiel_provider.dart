@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/referentiel_datasource.dart';
+import '../../domain/entities/statut_vehicule.dart';
 
 // ── Infrastructure (réutilise les mêmes singletons) ────────────────────────
 
@@ -48,4 +49,20 @@ final modelesByTypeAndMarqueProvider =
 final groupesProvider =
     FutureProvider<List<ReferentielItem>>((ref) async {
   return ref.watch(_referentielDatasourceProvider).getGroupes();
+});
+
+// ── Statuts de véhicule (libellés + couleurs pilotés par la base) ───────────
+
+final statutsVehiculeProvider =
+    FutureProvider<List<StatutVehicule>>((ref) async {
+  return ref.watch(_referentielDatasourceProvider).getStatutsVehicule();
+});
+
+/// Liste résolue pour usage synchrone dans les widgets : renvoie les statuts
+/// de l'API si disponibles, sinon le repli local ([StatutVehicule.fallback]).
+final statutsVehiculeResolvedProvider = Provider<List<StatutVehicule>>((ref) {
+  return ref.watch(statutsVehiculeProvider).maybeWhen(
+        data: (list) => list.isNotEmpty ? list : StatutVehicule.fallback,
+        orElse: () => StatutVehicule.fallback,
+      );
 });

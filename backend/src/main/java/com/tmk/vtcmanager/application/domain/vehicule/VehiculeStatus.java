@@ -1,8 +1,9 @@
 package com.tmk.vtcmanager.application.domain.vehicule;
 
 public enum VehiculeStatus {
-    DISPONIBLE,
     EN_SERVICE,
+    DISPONIBLE,
     EN_MAINTENANCE,
-    HORS_SERVICE
+    IMMOBILISE,
+    HORS_PARC
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../chauffeur/domain/entities/chauffeur.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
@@ -75,6 +76,7 @@ class _ProgrammeTravailFormPageState
   late Set<JourSemaine> _joursAlternanceSemaine;
   late List<ProgrammeChauffeur> _chauffeurs;
   bool _saving = false;
+  String? _submitError;
 
   @override
   void initState() {
@@ -104,6 +106,14 @@ class _ProgrammeTravailFormPageState
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
         children: [
+          if (_submitError != null) ...[
+            const SizedBox(height: 12),
+            AppErrorBanner(
+              message: _submitError!,
+              onClose: () => setState(() => _submitError = null),
+            ),
+            const SizedBox(height: 8),
+          ],
           const Text(
             'Programme\nde travail',
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
@@ -129,7 +139,7 @@ class _ProgrammeTravailFormPageState
             child: FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF3B5BDB),
+                backgroundColor: const Color(0xFF43A047),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
@@ -190,7 +200,7 @@ class _ProgrammeTravailFormPageState
       width: 34,
       height: 34,
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFF3B5BDB) : Colors.grey.shade200,
+        color: selected ? const Color(0xFF43A047) : Colors.grey.shade200,
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
@@ -379,6 +389,7 @@ class _ProgrammeTravailFormPageState
 
   // ── Sauvegarde ────────────────────────────────────────────────────────────
   Future<void> _save({bool force = false}) async {
+    setState(() => _submitError = null);
     if (widget.vehicule.id == null) {
       _showError(
           'Le véhicule doit être enregistré avant de configurer le programme.');
@@ -485,7 +496,7 @@ class _ProgrammeTravailFormPageState
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF3B5BDB)),
+                backgroundColor: const Color(0xFF43A047)),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Confirmer le transfert'),
           ),
@@ -503,8 +514,10 @@ class _ProgrammeTravailFormPageState
         ),
       );
 
-  void _showError(String message) =>
-      _appToast(context, message, type: _ToastType.error);
+  void _showError(String message) {
+    setState(() => _submitError = message);
+    _appToast(context, message, type: _ToastType.error);
+  }
 }
 
 // ── Card slot chauffeur ───────────────────────────────────────────────────────
@@ -536,7 +549,7 @@ class _ChauffeurSlotCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF1F8),
+        color: const Color(0xFFE8F5E9),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -613,7 +626,7 @@ class _ChauffeurSlotCard extends StatelessWidget {
             const Icon(
               Icons.event_available_outlined,
               size: 18,
-              color: Color(0xFF3B5BDB),
+              color: Color(0xFF43A047),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -659,12 +672,12 @@ class _ChauffeurSlotCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: const Color(0xFFEFF4FF),
+            backgroundColor: const Color(0xFFE8F5E9),
             child: Text(
               _initials(pc.nomComplet),
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF3B5BDB),
+                color: Color(0xFF43A047),
                 fontSize: 13,
               ),
             ),
@@ -704,7 +717,7 @@ class _ChauffeurSlotCard extends StatelessWidget {
           Switch(
             value: value,
             activeThumbColor: Colors.white,
-            activeTrackColor: const Color(0xFF3B5BDB),
+            activeTrackColor: const Color(0xFF43A047),
             inactiveThumbColor: Colors.grey.shade400,
             inactiveTrackColor: Colors.grey.shade200,
             onChanged: onChanged,
@@ -769,7 +782,7 @@ class _JoursSemaineSheetState extends State<_JoursSemaineSheet> {
               child: FilledButton(
                 onPressed: () => Navigator.pop(context, _selection),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B5BDB),
+                  backgroundColor: const Color(0xFF43A047),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
@@ -797,7 +810,7 @@ class _JoursSemaineSheetState extends State<_JoursSemaineSheet> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFEEF1F8) : const Color(0xFFF5F5F5),
+          color: selected ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(30),
         ),
         child: Center(
@@ -805,7 +818,7 @@ class _JoursSemaineSheetState extends State<_JoursSemaineSheet> {
             jour.label,
             style: TextStyle(
               fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
-              color: selected ? const Color(0xFF3B5BDB) : Colors.black87,
+              color: selected ? const Color(0xFF43A047) : Colors.black87,
               fontSize: 15,
             ),
           ),
@@ -829,7 +842,7 @@ class _JoursSemaineSheetState extends State<_JoursSemaineSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
           color:
-              allSelected ? const Color(0xFFEEF1F8) : const Color(0xFFF5F5F5),
+              allSelected ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(30),
         ),
         child: Center(
@@ -837,7 +850,7 @@ class _JoursSemaineSheetState extends State<_JoursSemaineSheet> {
             'Tous les jours',
             style: TextStyle(
               fontWeight: allSelected ? FontWeight.w700 : FontWeight.normal,
-              color: allSelected ? const Color(0xFF3B5BDB) : Colors.black87,
+              color: allSelected ? const Color(0xFF43A047) : Colors.black87,
               fontSize: 15,
             ),
           ),
@@ -967,7 +980,7 @@ class _ChauffeurSelectionSheetState
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF4F7FF),
+                            color: const Color(0xFFE8F5E9),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
@@ -978,7 +991,7 @@ class _ChauffeurSelectionSheetState
                                 child: Text(
                                   _initials(chauffeur.fullName),
                                   style: const TextStyle(
-                                    color: Color(0xFF3B5BDB),
+                                    color: Color(0xFF43A047),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -1012,7 +1025,7 @@ class _ChauffeurSelectionSheetState
                                   chauffeur.type?.label ?? 'Principal',
                                   style: const TextStyle(
                                     fontSize: 12,
-                                    color: Color(0xFF3B5BDB),
+                                    color: Color(0xFF43A047),
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -1064,7 +1077,7 @@ class _ConfirmChauffeurSheet extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF4F7FF),
+                color: const Color(0xFFE8F5E9),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -1075,7 +1088,7 @@ class _ConfirmChauffeurSheet extends StatelessWidget {
                     child: Text(
                       _initials(chauffeur.fullName),
                       style: const TextStyle(
-                        color: Color(0xFF3B5BDB),
+                        color: Color(0xFF43A047),
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
                       ),
@@ -1108,7 +1121,7 @@ class _ConfirmChauffeurSheet extends StatelessWidget {
                       chauffeur.type?.label ?? 'Principal',
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF3B5BDB),
+                        color: Color(0xFF43A047),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1122,7 +1135,7 @@ class _ConfirmChauffeurSheet extends StatelessWidget {
               child: FilledButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B5BDB),
+                  backgroundColor: const Color(0xFF43A047),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),

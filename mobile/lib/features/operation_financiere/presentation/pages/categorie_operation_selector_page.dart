@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/app_header.dart';
-import '../../domain/entities/categorie_operation.dart';
 import '../../domain/enums/type_operation.dart';
 import '../providers/categorie_operation_provider.dart';
 

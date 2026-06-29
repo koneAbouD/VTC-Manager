@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/error/exception.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import 'condition_travail_models.dart';
 
@@ -57,7 +58,7 @@ final _sanctionTypesProvider =
 
 // ── Constantes de design ──────────────────────────────────────────────────────
 
-const _kBlue = Color(0xFF1565C0);
+const _kPrimary = Color(0xFF43A047);
 const _kBg = Color(0xFFF4F6FB);
 const _kDark = Color(0xFF1A1A2E);
 
@@ -113,6 +114,7 @@ class _ConditionTravailWizardPageState
   String _selectedPenaliteType = 'RECETTE_NON_VERSEE';
 
   bool _loading = false;
+  String? _submitError;
 
   // ── Onglets ───────────────────────────────────────────────────────────────
 
@@ -150,6 +152,17 @@ class _ConditionTravailWizardPageState
     _frequenceVersement = c.frequenceVersement ?? 'JOURNALIER';
     _jourVersement = c.jourVersement ?? 'DIMANCHE';
     _heureVersement = _parseTime(c.heureVersement);
+    // Restaurer les jours de travail dans le bon sélecteur selon la config.
+    // (Le backend ne stocke que l'union ; le détail par chauffeur en manuel
+    //  n'est pas conservé : on remet l'union sur le chauffeur 1.)
+    final jours = c.joursTravail.toSet();
+    if (c.nbChauffeurs == 1) {
+      _joursSlot1 = jours;
+    } else if (_modeAlternance == 'AUTOMATIQUE') {
+      _joursPartages = jours;
+    } else {
+      _joursSlot1 = jours;
+    }
     _cotisations = List.of(c.cotisations);
     _penaliteGroups = PenaliteGroupLocal.fromFlat(c.penalites).isEmpty
         ? [
@@ -195,7 +208,18 @@ class _ConditionTravailWizardPageState
 
   // ── Soumission ────────────────────────────────────────────────────────────
 
+  /// Jours de travail du véhicule selon la configuration :
+  /// - 1 chauffeur : ses jours ;
+  /// - 2 chauffeurs automatique : les jours communs ;
+  /// - 2 chauffeurs manuelle : l'union des jours des deux chauffeurs.
+  Set<String> _joursTravail() {
+    if (_nbChauffeurs == 1) return _joursSlot1;
+    if (_modeAlternance == 'AUTOMATIQUE') return _joursPartages;
+    return {..._joursSlot1, ..._joursSlot2};
+  }
+
   Future<void> _submit() async {
+    setState(() => _submitError = null);
     if (_nomCtrl.text.trim().isEmpty) {
       _tabCtrl.animateTo(0);
       _showError('Veuillez saisir un nom pour la condition de travail.');
@@ -208,6 +232,14 @@ class _ConditionTravailWizardPageState
         _showError("L'objectif de recette est obligatoire pour un montant fixe.");
         return;
       }
+    }
+
+    // Modification d'une condition existante : prévenir de l'impact
+    // (s'applique à tous les véhicules liés ; certaines indispos peuvent être
+    // clôturées/annulées).
+    final editId = widget.initialCondition?.id;
+    if (editId != null && !await _confirmerImpact(editId)) {
+      return;
     }
 
     setState(() => _loading = true);
@@ -229,6 +261,7 @@ class _ConditionTravailWizardPageState
                 ? _dateDebutAlternance.toIso8601String().substring(0, 10)
                 : null,
         'jourSalaire': _jourSalaireActif ? _jourSalaire : null,
+        'joursTravail': _joursTravail().toList(),
         'modeEncaissement': _modeEncaissement,
         'typeRecette': _typeRecette,
         'objectifRecette': double.tryParse(_objectifCtrl.text) ?? 0,
@@ -261,8 +294,59 @@ class _ConditionTravailWizardPageState
     }
   }
 
-  void _showError(String msg) =>
-      _appToast(context, msg, type: _ToastType.error);
+  /// Prévient de l'impact d'une modification de condition (multi-véhicules +
+  /// indisponibilités potentiellement clôturées/annulées). Renvoie false si
+  /// l'utilisateur annule.
+  Future<bool> _confirmerImpact(int conditionId) async {
+    int vehicules = 0;
+    int indispos = 0;
+    try {
+      final client = ref.read(_wizApiClientProvider);
+      final data = await client.get('/conditions-travail/$conditionId/impact');
+      if (data is Map) {
+        vehicules = (data['vehicules'] as num?)?.toInt() ?? 0;
+        indispos = (data['indisponibilites'] as num?)?.toInt() ?? 0;
+      }
+    } catch (_) {
+      return true; // aperçu indisponible → on laisse passer (backend gère)
+    }
+    // Pas d'impact notable : un seul véhicule, aucune indispo active.
+    if (vehicules <= 1 && indispos == 0) return true;
+    if (!mounted) return false;
+
+    final lignes = <String>[];
+    if (vehicules > 1) {
+      lignes.add('Cette condition est utilisée par $vehicules véhicules : '
+          'la modification s\'appliquera à tous.');
+    }
+    if (indispos > 0) {
+      lignes.add('$indispos indisponibilité(s) en cours/planifiée(s) '
+          'pourraient être clôturées ou annulées.');
+    }
+    lignes.add('Continuer ?');
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Impact de la modification'),
+        content: Text(lignes.join('\n\n')),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Continuer')),
+        ],
+      ),
+    );
+    return ok ?? false;
+  }
+
+  void _showError(String msg) {
+    setState(() => _submitError = msg);
+    _appToast(context, msg, type: _ToastType.error);
+  }
 
   // ── Build ─────────────────────────────────────────────────────────────────
 
@@ -278,6 +362,14 @@ class _ConditionTravailWizardPageState
               title: isEdit ? 'Modifier la condition' : 'Nouvelle condition',
             ),
             _buildTabBar(),
+            if (_submitError != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: AppErrorBanner(
+                  message: _submitError!,
+                  onClose: () => setState(() => _submitError = null),
+                ),
+              ),
             Expanded(
               child: TabBarView(
                 controller: _tabCtrl,
@@ -323,7 +415,7 @@ class _ConditionTravailWizardPageState
                             horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: selected
-                              ? _kBlue
+                              ? _kPrimary
                               : const Color(0xFFF0F2F8),
                           borderRadius: BorderRadius.circular(22),
                         ),
@@ -366,49 +458,76 @@ class _ConditionTravailWizardPageState
 
   // ── Barre de soumission ───────────────────────────────────────────────────
 
+  void _goToNextTab() {
+    if (_tabCtrl.index < _tabData.length - 1) {
+      _tabCtrl.animateTo(_tabCtrl.index + 1);
+    }
+  }
+
   Widget _buildSubmitBar(bool isEdit) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFF0F2F8))),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-      child: SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _kBlue,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+    return AnimatedBuilder(
+      animation: _tabCtrl,
+      builder: (context, _) {
+        final isLast = _tabCtrl.index == _tabData.length - 1;
+        final IconData icon = isLast
+            ? (isEdit ? Icons.check_rounded : Icons.add_rounded)
+            : Icons.arrow_forward_rounded;
+        final String label = isLast
+            ? (isEdit ? 'Enregistrer les modifications' : 'Créer la condition')
+            : 'Suivant';
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: Color(0xFFF0F2F8))),
           ),
-          onPressed: _loading ? null : _submit,
-          child: _loading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: Colors.white),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(isEdit ? Icons.check_rounded : Icons.add_rounded,
-                        size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      isEdit
-                          ? 'Enregistrer les modifications'
-                          : 'Créer la condition',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kPrimary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed:
+                  _loading ? null : (isLast ? _submit : _goToNextTab),
+              child: _loading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: Colors.white),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: isLast
+                          ? [
+                              Icon(icon, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                label,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 15),
+                              ),
+                            ]
+                          : [
+                              Text(
+                                label,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 15),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(icon, size: 18),
+                            ],
                     ),
-                  ],
-                ),
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -537,39 +656,6 @@ class _ConditionTravailWizardPageState
           ],
         ]),
 
-        const SizedBox(height: 14),
-
-        // ── Jour de salaire ───────────────────────────────────────────────
-        _FormCard(children: [
-          _CardSectionTitle('Jour de salaire', Icons.event_rounded),
-          const SizedBox(height: 6),
-          Text(
-            'Jour où les chauffeurs travaillent à leur propre compte.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-          ),
-          const SizedBox(height: 14),
-          _PillSelector(
-            options: const {
-              'true': 'Activé',
-              'false': 'Désactivé',
-            },
-            selected: _jourSalaireActif.toString(),
-            onSelected: (v) =>
-                setState(() => _jourSalaireActif = v == 'true'),
-          ),
-          if (_jourSalaireActif) ...[
-            const SizedBox(height: 16),
-            _FieldLabel('Jour concerné'),
-            const SizedBox(height: 10),
-            _InlineDaySelector(
-              selected: {_jourSalaire},
-              singleSelect: true,
-              onChanged: (s) {
-                if (s.isNotEmpty) setState(() => _jourSalaire = s.first);
-              },
-            ),
-          ],
-        ]),
       ],
     );
   }
@@ -657,6 +743,38 @@ class _ConditionTravailWizardPageState
             ),
           ]),
         ],
+        const SizedBox(height: 14),
+        // ── Jour de salaire ───────────────────────────────────────────────
+        _FormCard(children: [
+          _CardSectionTitle('Jour de salaire', Icons.event_rounded),
+          const SizedBox(height: 6),
+          Text(
+            'Jour où les chauffeurs travaillent à leur propre compte.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
+          const SizedBox(height: 14),
+          _PillSelector(
+            options: const {
+              'true': 'Activé',
+              'false': 'Désactivé',
+            },
+            selected: _jourSalaireActif.toString(),
+            onSelected: (v) =>
+                setState(() => _jourSalaireActif = v == 'true'),
+          ),
+          if (_jourSalaireActif) ...[
+            const SizedBox(height: 16),
+            _FieldLabel('Jour concerné'),
+            const SizedBox(height: 10),
+            _InlineDaySelector(
+              selected: {_jourSalaire},
+              singleSelect: true,
+              onChanged: (s) {
+                if (s.isNotEmpty) setState(() => _jourSalaire = s.first);
+              },
+            ),
+          ],
+        ]),
         // Rappel config si pas encore rempli
         if (_nbChauffeurs == 1 && _joursSlot1.isEmpty)
           _HintBanner('Sélectionnez au moins un jour de travail.'),
@@ -830,7 +948,7 @@ class _ConditionTravailWizardPageState
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.savings_rounded,
-                        color: Color(0xFF2E7D32), size: 20),
+                        color: Color(0xFF43A047), size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -875,20 +993,20 @@ class _ConditionTravailWizardPageState
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
                 border: Border.all(
-                    color: _kBlue.withValues(alpha: 0.35),
+                    color: _kPrimary.withValues(alpha: 0.35),
                     width: 1.5,
                     style: BorderStyle.solid),
                 borderRadius: BorderRadius.circular(14),
-                color: const Color(0xFFECF3FF),
+                color: const Color(0xFFE8F5E9),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_circle_rounded, color: _kBlue, size: 20),
+                  Icon(Icons.add_circle_rounded, color: _kPrimary, size: 20),
                   SizedBox(width: 8),
                   Text('Ajouter une cotisation',
                       style: TextStyle(
-                          color: _kBlue,
+                          color: _kPrimary,
                           fontWeight: FontWeight.w600,
                           fontSize: 14)),
                 ],
@@ -958,7 +1076,8 @@ class _ConditionTravailWizardPageState
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom +
+              MediaQuery.of(ctx).padding.bottom + 16,
           left: 20,
           right: 20,
           top: 24,
@@ -1001,7 +1120,7 @@ class _ConditionTravailWizardPageState
               Expanded(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _kBlue,
+                    backgroundColor: _kPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(
@@ -1038,7 +1157,8 @@ class _ConditionTravailWizardPageState
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom +
+              MediaQuery.of(ctx).padding.bottom + 16,
           left: 20,
           right: 20,
           top: 24,
@@ -1077,7 +1197,7 @@ class _ConditionTravailWizardPageState
               Expanded(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _kBlue,
+                    backgroundColor: _kPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -1193,10 +1313,10 @@ class _CardSectionTitle extends StatelessWidget {
           width: 30,
           height: 30,
           decoration: BoxDecoration(
-            color: _kBlue.withValues(alpha: 0.1),
+            color: _kPrimary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, size: 16, color: _kBlue),
+          child: Icon(icon, size: 16, color: _kPrimary),
         ),
         const SizedBox(width: 10),
         Text(title,
@@ -1257,7 +1377,7 @@ class _PillSelector extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? _kBlue : const Color(0xFFF0F2F8),
+          color: isSelected ? _kPrimary : const Color(0xFFF0F2F8),
           borderRadius: BorderRadius.circular(22),
           border: isSelected
               ? null
@@ -1350,12 +1470,18 @@ class _InlineDaySelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: _ordre.map((j) {
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Diamètre adaptatif : 7 pastilles + 6 espaces tiennent toujours
+            // dans la largeur disponible (plafonné à 38 px).
+            final diameter =
+                ((constraints.maxWidth - 6 * 6) / 7).clamp(28.0, 38.0);
+            return Row(
+              children: _ordre.map((j) {
             final isSelected = selected.contains(j);
             final isDisabled = disabledDays.contains(j);
-            return GestureDetector(
+            return Expanded(
+              child: GestureDetector(
               onTap: isDisabled
                   ? null
                   : () {
@@ -1371,13 +1497,13 @@ class _InlineDaySelector extends StatelessWidget {
                 children: [
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    width: 38,
-                    height: 38,
+                    width: diameter,
+                    height: diameter,
                     decoration: BoxDecoration(
                       color: isDisabled
                           ? const Color(0xFFF0F0F0)
                           : isSelected
-                              ? _kBlue
+                              ? _kPrimary
                               : const Color(0xFFF0F2F8),
                       shape: BoxShape.circle,
                       border: isSelected && !isDisabled
@@ -1385,7 +1511,7 @@ class _InlineDaySelector extends StatelessWidget {
                           : Border.all(
                               color: isDisabled
                                   ? Colors.transparent
-                                  : const Color(0xFFDDE3F5),
+                                  : const Color(0xFFC8E6C9),
                             ),
                     ),
                     child: Center(
@@ -1411,15 +1537,18 @@ class _InlineDaySelector extends StatelessWidget {
                       color: isDisabled
                           ? Colors.grey.shade300
                           : isSelected
-                              ? _kBlue
+                              ? _kPrimary
                               : Colors.grey.shade400,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
                     ),
                   ),
                 ],
               ),
+              ),
             );
-          }).toList(),
+              }).toList(),
+            );
+          },
         ),
         if (!singleSelect) ...[
         const SizedBox(height: 12),
@@ -1439,7 +1568,7 @@ class _InlineDaySelector extends StatelessWidget {
                     ? Icons.check_box_rounded
                     : Icons.check_box_outline_blank_rounded,
                 size: 18,
-                color: _kBlue,
+                color: _kPrimary,
               ),
               const SizedBox(width: 6),
               Text(
@@ -1491,7 +1620,7 @@ class _PenaliteDropdown extends StatelessWidget {
             value: selected,
             isExpanded: true,
             borderRadius: BorderRadius.circular(12),
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kBlue),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kPrimary),
             onChanged: (v) { if (v != null) onSelected(v); },
             selectedItemBuilder: (context) => groups.map((g) {
               final ico = _icons[g.typePenalite] ?? Icons.warning_rounded;
@@ -1499,7 +1628,7 @@ class _PenaliteDropdown extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
                 child: Row(children: [
-                  Icon(ico, size: 18, color: _kBlue),
+                  Icon(ico, size: 18, color: _kPrimary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(g.label,
@@ -1513,14 +1642,14 @@ class _PenaliteDropdown extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _kBlue.withValues(alpha: 0.12),
+                        color: _kPrimary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text('$nb',
                           style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: _kBlue)),
+                              color: _kPrimary)),
                     ),
                 ]),
               );
@@ -1533,7 +1662,7 @@ class _PenaliteDropdown extends StatelessWidget {
                 value: g.typePenalite,
                 child: Row(children: [
                   Icon(ico, size: 18,
-                      color: isSel ? _kBlue : Colors.grey.shade500),
+                      color: isSel ? _kPrimary : Colors.grey.shade500),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(g.label,
@@ -1549,14 +1678,14 @@ class _PenaliteDropdown extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _kBlue.withValues(alpha: 0.12),
+                        color: _kPrimary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text('$nb',
                           style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: _kBlue)),
+                              color: _kPrimary)),
                     ),
                 ]),
               );
@@ -1605,10 +1734,10 @@ class _TimeCard extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: _kBlue.withValues(alpha: 0.12),
+                color: _kPrimary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(7),
               ),
-              child: Icon(icon, size: 15, color: _kBlue),
+              child: Icon(icon, size: 15, color: _kPrimary),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -1646,8 +1775,8 @@ class _HintBanner extends StatelessWidget {
 
   const _HintBanner(
     this.message, {
-    this.color = const Color(0xFFECF3FF),
-    this.iconColor = _kBlue,
+    this.color = const Color(0xFFE8F5E9),
+    this.iconColor = _kPrimary,
     this.icon = Icons.info_outline_rounded,
   });
 
@@ -1718,7 +1847,7 @@ class _CotisationTile extends StatelessWidget {
                 style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
-                    color: Color(0xFF2E7D32)),
+                    color: Color(0xFF43A047)),
               ),
             ),
           ),
@@ -1840,7 +1969,8 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom + 24,
       ),
       child: asyncTypes.when(
         loading: () => const SizedBox(
@@ -1879,11 +2009,11 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
                   Container(
                     width: 44, height: 44,
                     decoration: BoxDecoration(
-                      color: _kBlue.withValues(alpha: 0.1),
+                      color: _kPrimary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.gavel_rounded,
-                        color: _kBlue, size: 22),
+                        color: _kPrimary, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1942,7 +2072,7 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _kBlue,
+                        backgroundColor: _kPrimary,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor:
                             const Color(0xFFB0BEC5),
@@ -2082,14 +2212,14 @@ class _SanctionTypeDropdown extends StatelessWidget {
                   style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
             ]),
             borderRadius: BorderRadius.circular(12),
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kBlue),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kPrimary),
             onChanged: (v) { if (v != null) onSelected(v); },
             selectedItemBuilder: (context) => types.map((t) {
               final icon = _kSanctionIcons[t.code] ?? Icons.warning_rounded;
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
                 child: Row(children: [
-                  Icon(icon, size: 18, color: _kBlue),
+                  Icon(icon, size: 18, color: _kPrimary),
                   const SizedBox(width: 10),
                   Text(t.label,
                       style: const TextStyle(
@@ -2110,12 +2240,12 @@ class _SanctionTypeDropdown extends StatelessWidget {
                     width: 36, height: 36,
                     decoration: BoxDecoration(
                       color: isSel
-                          ? _kBlue.withValues(alpha: 0.12)
+                          ? _kPrimary.withValues(alpha: 0.12)
                           : const Color(0xFFF0F2F8),
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Icon(icon, size: 18,
-                        color: isSel ? _kBlue : Colors.grey.shade500),
+                        color: isSel ? _kPrimary : Colors.grey.shade500),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -2139,7 +2269,7 @@ class _SanctionTypeDropdown extends StatelessWidget {
                     ),
                   ),
                   if (isSel)
-                    const Icon(Icons.check_rounded, size: 18, color: _kBlue),
+                    const Icon(Icons.check_rounded, size: 18, color: _kPrimary),
                 ]),
               );
             }).toList(),
@@ -2201,7 +2331,7 @@ class _ParamSection extends StatelessWidget {
               borderSide: BorderSide.none),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _kBlue, width: 1.5)),
+              borderSide: const BorderSide(color: _kPrimary, width: 1.5)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
@@ -2238,7 +2368,7 @@ class _DureeMinutesSection extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? _kBlue : const Color(0xFFF4F6FB),
+                color: isSelected ? _kPrimary : const Color(0xFFF4F6FB),
                 borderRadius: BorderRadius.circular(22),
                 border: isSelected
                     ? null
@@ -2352,14 +2482,14 @@ class _WizGroupCard extends StatelessWidget {
                     width: 22,
                     height: 22,
                     decoration: const BoxDecoration(
-                        color: _kBlue, shape: BoxShape.circle),
+                        color: _kPrimary, shape: BoxShape.circle),
                     child:
                         const Icon(Icons.add, color: Colors.white, size: 14),
                   ),
                   const SizedBox(width: 10),
                   const Text('Ajouter une sanction',
                       style: TextStyle(
-                          color: _kBlue,
+                          color: _kPrimary,
                           fontWeight: FontWeight.w600,
                           fontSize: 14)),
                 ],
@@ -2393,10 +2523,10 @@ class _WizGroupHeader extends StatelessWidget {
         Container(
           width: 36, height: 36,
           decoration: BoxDecoration(
-            color: _kBlue.withValues(alpha: 0.08),
+            color: _kPrimary.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(9),
           ),
-          child: Icon(icon, size: 18, color: _kBlue),
+          child: Icon(icon, size: 18, color: _kPrimary),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -2502,7 +2632,7 @@ class _WizSanctionRow extends StatelessWidget {
               ),
               IconButton(
                 onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined, color: _kBlue, size: 18),
+                icon: const Icon(Icons.edit_outlined, color: _kPrimary, size: 18),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -2563,7 +2693,7 @@ class _Field extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kBlue, width: 1.5),
+          borderSide: const BorderSide(color: _kPrimary, width: 1.5),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

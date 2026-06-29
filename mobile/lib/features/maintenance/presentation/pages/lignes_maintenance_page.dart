@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -275,14 +276,13 @@ class _LignesMaintenancePageState
     final filtered = _filtrer(all);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── En-tête ────────────────────────────────────────────────
             Container(
-              color: Colors.white,
+              color: AppColors.header,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Row(children: [
                 GestureDetector(

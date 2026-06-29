@@ -8,6 +8,7 @@ import 'package:vtc_manager/features/penalite/presentation/pages/lignes_penalite
 import '../../features/condition_travail/presentation/pages/condition_travail_liste_page.dart';
 import '../../features/operation_financiere/domain/entities/operation_financiere.dart';
 import '../../features/operation_financiere/domain/enums/type_operation.dart';
+import '../../features/operation_financiere/presentation/pages/operation_financiere_detail_page.dart';
 import '../../features/operation_financiere/presentation/pages/operation_financiere_form_page.dart';
 import '../../features/operation_financiere/presentation/pages/operations_financieres_page.dart';
 import 'widgets/encaissement_rapide_dialog.dart';
@@ -15,8 +16,7 @@ import '../../features/operation_financiere/presentation/providers/operation_fin
 import '../../features/operation_financiere/presentation/providers/operation_financiere_state.dart';
 import '../../features/recette/presentation/pages/lignes_recette_page.dart';
 import '../fleet/fleet_action_selector_page.dart';
-import 'configurer_page.dart';
-import 'indisponibilite_page.dart';
+import '../../features/indisponibilite/presentation/pages/indisponibilites_page.dart';
 import '../../core/widgets/date_filter_dialogs.dart';
 
 class AccueilScreen extends ConsumerWidget {
@@ -54,91 +54,46 @@ class AccueilScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // ── Accès rapides ────────────────────────────────────────────────
-          GridView.count(
-            crossAxisCount: 4,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 4,
-            crossAxisSpacing: 0,
-            childAspectRatio: 0.75,
-            children: [
-              _ShortcutItem(
-                icon: Icons.directions_car_outlined,
-                label: 'Veh/Chauf',
-                onTap: () => _push(context, const FleetActionSelectorPage()),
-              ),
-              _ShortcutItem(
-                icon: Icons.badge_outlined,
-                label: 'Penalites',
-                onTap: () => _push(context, const LignesPenalitePage()),
-              ),
-              _ShortcutItem(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'Recettes',
-                onTap: () => _push(context, const LignesRecettePage()),
-              ),
-              _ShortcutItem(
-                icon: Icons.build_circle_outlined,
-                label: 'Maintenance',
-                onTap: () => _push(context, const LignesMaintenancePage()),
-              ),
-              _ShortcutItem(
-                icon: Icons.analytics_outlined,
-                label: 'Cotisations',
-                onTap: () => _push(context, const LignesCotisationPage()),
-              ),
-              _ShortcutItem(
-                icon: Icons.assignment_outlined,
-                label: 'Contrats',
-                onTap: () => _push(context, const ConditionTravailListePage()),
-              ),
-              _ShortcutItem(
-                icon: Icons.event_busy_outlined,
-                label: 'Indisponibilités',
-                onTap: () => _push(context, const IndisponibilitePage()),
-              ),
-              _ShortcutItem(
-                icon: Icons.add_card_outlined,
-                label: 'Opération',
-                onTap: () =>
-                    _push(context, const OperationFinanciereFormPage()),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Divider(color: Colors.grey.shade300, thickness: 3, height: 3),
-          const SizedBox(height: 10),
+          const _AccesRapides(),
+          const SizedBox(height: 18),
 
           // ── Dernières opérations ────────────────────────────────────────
           if (dernieres.isNotEmpty) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const _SectionTitle(title: 'Dernières opérations'),
-                TextButton(
-                  onPressed: () =>
-                      _push(context, const OperationsFinancieresPage()),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.grey.shade600,
-                    textStyle: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w500),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
+            ...dernieres.map((op) => _DerniereOpTile(
+                  op: op,
+                  money: money,
+                  onTap: () => _push(
+                    context,
+                    OperationFinanciereDetailPage(operation: op),
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Voir plus'),
-                      SizedBox(width: 4),
-                      Icon(Icons.arrow_forward, size: 14),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                )),
             const SizedBox(height: 8),
-            ...dernieres.map((op) => _DerniereOpTile(op: op, money: money)),
+            Center(
+              child: TextButton.icon(
+                onPressed: () async {
+                  await _push(context, const OperationsFinancieresPage());
+                  // OperationsFinancieresPage filtre la liste partagée par date ;
+                  // au retour, on restaure les opérations toutes périodes pour
+                  // l'accueil (qui affiche les 10 plus récentes).
+                  ref
+                      .read(operationFinanciereNotifierProvider.notifier)
+                      .loadAll();
+                },
+                icon: const Icon(Icons.unfold_more_rounded, size: 16),
+                label: const Text("Plus d'opérations"),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF2E7D32),
+                  backgroundColor: const Color(0xFFE8F5E9),
+                  textStyle: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ),
           ] else if (opState is OperationFinanciereLoading) ...[
             const Center(child: CircularProgressIndicator()),
           ],
@@ -300,7 +255,7 @@ class _SoldeCardState extends State<_SoldeCard> {
                                     : Icons.radio_button_off_outlined,
                                 size: 18,
                                 color: sel
-                                    ? const Color(0xFF1A5276)
+                                    ? const Color(0xFF43A047)
                                     : Colors.grey.shade400,
                               ),
                               const SizedBox(width: 10),
@@ -312,7 +267,7 @@ class _SoldeCardState extends State<_SoldeCard> {
                                       ? FontWeight.w600
                                       : FontWeight.w400,
                                   color: sel
-                                      ? const Color(0xFF1A5276)
+                                      ? const Color(0xFF43A047)
                                       : const Color(0xFF1A1A1A),
                                 ),
                               ),
@@ -387,19 +342,19 @@ class _SoldeCardState extends State<_SoldeCard> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.filter_list_rounded,
-                            size: 14, color: Color(0xFF1A5276)),
+                            size: 14, color: Color(0xFF43A047)),
                         const SizedBox(width: 5),
                         Text(
                           filtreLabel,
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF1A5276),
+                            color: Color(0xFF43A047),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(width: 3),
                         const Icon(Icons.keyboard_arrow_down_rounded,
-                            size: 14, color: Color(0xFF1A5276)),
+                            size: 14, color: Color(0xFF43A047)),
                       ],
                     ),
                   ),
@@ -597,8 +552,8 @@ class _CardStat extends StatelessWidget {
 
 // ── Navigation helper ─────────────────────────────────────────────────────
 
-void _push(BuildContext context, Widget page) {
-  Navigator.of(context).push(
+Future<T?> _push<T>(BuildContext context, Widget page) {
+  return Navigator.of(context).push<T>(
     PageRouteBuilder(
       pageBuilder: (_, a, __) => page,
       transitionsBuilder: (_, a, __, child) => SlideTransition(
@@ -613,39 +568,129 @@ void _push(BuildContext context, Widget page) {
   );
 }
 
+// ── Grille des accès rapides (responsive) ─────────────────────────────────
+
+class _AccesRapides extends StatelessWidget {
+  const _AccesRapides();
+
+  @override
+  Widget build(BuildContext context) {
+    final shortcuts = <({IconData icon, String label, VoidCallback onTap})>[
+      (
+        icon: Icons.directions_car_outlined,
+        label: 'Veh/Chauf',
+        onTap: () => _push(context, const FleetActionSelectorPage()),
+      ),
+      (
+        icon: Icons.badge_outlined,
+        label: 'Penalites',
+        onTap: () => _push(context, const LignesPenalitePage()),
+      ),
+      (
+        icon: Icons.account_balance_wallet_outlined,
+        label: 'Recettes',
+        onTap: () => _push(context, const LignesRecettePage()),
+      ),
+      (
+        icon: Icons.build_circle_outlined,
+        label: 'Maintenance',
+        onTap: () => _push(context, const LignesMaintenancePage()),
+      ),
+      (
+        icon: Icons.analytics_outlined,
+        label: 'Cotisations',
+        onTap: () => _push(context, const LignesCotisationPage()),
+      ),
+      (
+        icon: Icons.assignment_outlined,
+        label: 'Contrats',
+        onTap: () => _push(context, const ConditionTravailListePage()),
+      ),
+      (
+        icon: Icons.event_busy_outlined,
+        label: 'Indisponibilités',
+        onTap: () => _push(context, const IndisponibilitesPage()),
+      ),
+      (
+        icon: Icons.add_card_outlined,
+        label: 'Opération',
+        onTap: () => _push(context, const OperationFinanciereFormPage()),
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        // Téléphone : 4 colonnes (2 rangées) · Tablette : tout sur une rangée.
+        final cols = w >= 600 ? shortcuts.length : 4;
+        final bool isTablet = w >= 600;
+        final double circle = isTablet ? 56 : 48;
+        final double iconSize = isTablet ? 28 : 24;
+        // Hauteur fixe d'une cellule = pastille + libellé + espacements.
+        final double extent = circle + 32;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: shortcuts.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            mainAxisExtent: extent,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 8,
+          ),
+          itemBuilder: (_, i) {
+            final s = shortcuts[i];
+            return _ShortcutItem(
+              icon: s.icon,
+              label: s.label,
+              onTap: s.onTap,
+              circleSize: circle,
+              iconSize: iconSize,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
 // ── Raccourci icône ───────────────────────────────────────────────────────
 
 class _ShortcutItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final double circleSize;
+  final double iconSize;
   const _ShortcutItem({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.circleSize = 48,
+    this.iconSize = 24,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF0F0F0),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: const Color(0xFF2E7D32), size: 22),
+      borderRadius: BorderRadius.circular(14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: circleSize,
+            height: circleSize,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF0F0F0),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(height: 5),
-            Text(
+            child: Icon(icon, color: const Color(0xFF2E7D32), size: iconSize),
+          ),
+          const SizedBox(height: 6),
+          Flexible(
+            child: Text(
               label,
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -656,24 +701,9 @@ class _ShortcutItem extends StatelessWidget {
                 color: Color(0xFF1A1A1A),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-// ── Section title ──────────────────────────────────────────────────────────
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
     );
   }
 }
@@ -683,7 +713,9 @@ class _SectionTitle extends StatelessWidget {
 class _DerniereOpTile extends StatelessWidget {
   final OperationFinanciere op;
   final NumberFormat money;
-  const _DerniereOpTile({required this.op, required this.money});
+  final VoidCallback onTap;
+  const _DerniereOpTile(
+      {required this.op, required this.money, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -691,7 +723,20 @@ class _DerniereOpTile extends StatelessWidget {
     final color = isRevenu ? Colors.green : Colors.red;
     final sign = isRevenu ? '+' : '-';
 
-    return Container(
+    // Ligne 1 : « [Catégorie opération] du [date] »
+    final categorie = op.categorieLibelle ?? op.typeOperation.libelle;
+    final titre =
+        '$categorie du ${DateFormat('dd/MM/yyyy', 'fr_FR').format(op.dateOperation)}';
+
+    // Ligne 2 : « [imat véhicule - Nom chauffeur] »
+    final vehiculeChauffeur = [
+      if (op.vehiculeNom != null) op.vehiculeNom!,
+      if (op.chauffeurNom != null) op.chauffeurNom!,
+    ].join(' - ');
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -726,46 +771,55 @@ class _DerniereOpTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  op.categorieLibelle ?? op.typeOperation.libelle,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                // ── Ligne 1 : catégorie + date · montant ──────────────────
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        titre,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$sign${money.format(op.montant)}',
+                      style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13),
+                    ),
+                  ],
                 ),
-                if (op.chauffeurNom != null || op.sousCategorieLibelle != null)
-                  Text(
-                    [
-                      if (op.sousCategorieLibelle != null)
-                        op.sousCategorieLibelle!,
-                      if (op.chauffeurNom != null) op.chauffeurNom!,
-                    ].join(' · '),
-                    style:
-                        TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                const SizedBox(height: 3),
+                // ── Ligne 2 : véhicule - chauffeur · date ─────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        vehiculeChauffeur,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      DateFormat('dd/MM', 'fr_FR').format(op.dateOperation),
+                      style: TextStyle(
+                          fontSize: 10, color: Colors.grey.shade400),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$sign${money.format(op.montant)}',
-                style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13),
-              ),
-              Text(
-                DateFormat('dd/MM', 'fr_FR').format(op.dateOperation),
-                style:
-                    TextStyle(fontSize: 10, color: Colors.grey.shade400),
-              ),
-            ],
-          ),
         ],
+      ),
       ),
     );
   }

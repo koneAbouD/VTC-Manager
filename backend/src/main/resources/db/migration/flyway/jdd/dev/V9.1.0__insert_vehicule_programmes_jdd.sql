@@ -1,26 +1,3 @@
--- =============================================================================
--- V9.1.0__insert_vehicule_programmes_jdd.sql
--- Jeux de données programmes de travail — Environnement DEV
---
--- 11 programmes (tous les véhicules actifs, hors EN_MAINTENANCE) :
---
---   Solo avec chauffeur assigné (5 véhicules) :
---     AA-760-QL-01 → DIALLO Mamadou         (Premium 08h-20h)
---     AA-991-SJ-01 → KONÉ Ibrahim            (Premium 08h-20h)
---     AA-247-YC-01 → GARCIA Carlos           (Standard 06h-22h, salaire vendredi)
---     2025-50373-WWW-01 → DUPONT Thomas           (Standard 06h-22h)
---     KL-761-NV → KONÉ Ibrahim (2e véhicule en attente d'affectation)
---
---   Alternance AUTOMATIQUE avec 2 chauffeurs assignés (2 véhicules) :
---     AA-837-TP-01 → MARTIN Julien + BENALI Rachid   (Standard 06h-22h, 7j)
---     AA-314-TH-01 → sans chauffeur initialement      (Standard 05h-23h, 7j)
---
---   Solo sans chauffeur assigné — véhicules récents (4 véhicules) :
---     AB-688-AX, AA-728-ZT-01, LM-762-NV, MN-763-NV
---
--- Dépendances : vehicules (V8.0.0), chauffeurs (V9.0.0)
--- =============================================================================
-
 -- ─────────────────────────────────────────────────────────────────────────────
 -- PROGRAMMES SOLO — chauffeur assigné
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -91,7 +68,7 @@ VALUES (
     1, '2026-05-31', NOW(), NOW()
 );
 
--- 2025-50373-WWW-01 : Renault Talisman · Premium VTC · 06h–22h · DUPONT Thomas
+-- AB-929-FE-01 : Suzuki S-Presso · Premium VTC · 06h–22h · DUPONT Thomas
 INSERT INTO vehicule_programmes (
     vehicule_id, nombre_chauffeurs_autorises, type_programme,
     heure_debut_service, heure_fin_service,
@@ -99,7 +76,7 @@ INSERT INTO vehicule_programmes (
     jour_salaire_actif, jour_salaire,
     created_at, updated_at
 ) VALUES (
-    (SELECT id FROM vehicules WHERE immatriculation = '2025-50373-WWW-01'),
+    (SELECT id FROM vehicules WHERE immatriculation = 'AB-929-FE-01'),
     1, 'JOURNALIER', '06:00:00', '22:00:00',
     'MANUELLE', NULL, NULL,
     FALSE, NULL,
@@ -108,7 +85,7 @@ INSERT INTO vehicule_programmes (
 
 INSERT INTO vehicule_programme_chauffeurs (programme_id, chauffeur_id, ordre_alternance, date_service, created_at, updated_at)
 VALUES (
-    (SELECT vp.id FROM vehicule_programmes vp JOIN vehicules v ON vp.vehicule_id = v.id WHERE v.immatriculation = '2025-50373-WWW-01'),
+    (SELECT vp.id FROM vehicule_programmes vp JOIN vehicules v ON vp.vehicule_id = v.id WHERE v.immatriculation = 'AB-929-FE-01'),
     (SELECT id FROM chauffeurs WHERE nom = 'DUPONT' AND prenom = 'Thomas'),
     1, '2026-05-31', NOW(), NOW()
 );
@@ -186,21 +163,15 @@ INSERT INTO vehicule_programmes (
         1, 'JOURNALIER', '06:00:00', '22:00:00',
         'MANUELLE', NULL, NULL, FALSE, NULL, NOW(), NOW()
     ),
-    -- KL-761-NV : Tesla Model 3 · Premium VTC · 08h–20h
+    -- AB-192-EJ-01 : Suzuki S-Presso · Standard · 08h–20h (en maintenance)
     (
-        (SELECT id FROM vehicules WHERE immatriculation = 'KL-761-NV'),
+        (SELECT id FROM vehicules WHERE immatriculation = 'AB-192-EJ-01'),
         1, 'JOURNALIER', '08:00:00', '20:00:00',
         'MANUELLE', NULL, NULL, FALSE, NULL, NOW(), NOW()
     ),
-    -- LM-762-NV : Hyundai Sonata · Standard TAXI · 06h–22h
+    -- AB-187-EJ-01 : Suzuki S-Presso · Standard · 06h–22h (en maintenance)
     (
-        (SELECT id FROM vehicules WHERE immatriculation = 'LM-762-NV'),
+        (SELECT id FROM vehicules WHERE immatriculation = 'AB-187-EJ-01'),
         1, 'JOURNALIER', '06:00:00', '22:00:00',
-        'MANUELLE', NULL, NULL, FALSE, NULL, NOW(), NOW()
-    ),
-    -- MN-763-NV : Peugeot 3008 · Premium VTC · 08h–20h
-    (
-        (SELECT id FROM vehicules WHERE immatriculation = 'MN-763-NV'),
-        1, 'JOURNALIER', '08:00:00', '20:00:00',
         'MANUELLE', NULL, NULL, FALSE, NULL, NOW(), NOW()
     );

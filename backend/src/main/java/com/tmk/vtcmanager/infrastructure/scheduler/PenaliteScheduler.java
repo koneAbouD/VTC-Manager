@@ -15,7 +15,9 @@ public class PenaliteScheduler {
 
     private final GenererLignesPenaliteUseCase genererLignesPenaliteUseCase;
 
-    @Scheduled(cron = "0 0 2 * * *")
+    // Après la génération des recettes (6h00) et cotisations (6h05) du jour J
+    // pour la veille (J-1) : on évalue ensuite les recettes non versées de J-1.
+    @Scheduled(cron = "0 10 6 * * *")
     public void genererPenalitesRecettesNonVersees() {
         LocalDate hier = LocalDate.now().minusDays(1);
         log.info("Génération des pénalités RECETTE_NON_VERSEE pour le {}", hier);

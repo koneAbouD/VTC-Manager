@@ -17,9 +17,10 @@ public class CotisationScheduler {
 
     @Scheduled(cron = "0 5 6 * * *")
     public void genererLignesCotisationQuotidiennes() {
-        LocalDate today = LocalDate.now();
-        log.info("Génération des lignes de cotisation pour le {}", today);
-        var lignes = genererLignesCotisationUseCase.executer(today);
-        log.info("{} ligne(s) de cotisation générée(s) pour le {}", lignes.size(), today);
+        // Principe : la génération du jour J concerne la veille (J-1).
+        LocalDate hier = LocalDate.now().minusDays(1);
+        log.info("Génération des lignes de cotisation pour le {}", hier);
+        var lignes = genererLignesCotisationUseCase.executer(hier);
+        log.info("{} ligne(s) de cotisation générée(s) pour le {}", lignes.size(), hier);
     }
 }

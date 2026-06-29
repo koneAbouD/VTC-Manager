@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../core/widgets/responsive_field_row.dart';
 import '../../../../features/chauffeur/domain/entities/chauffeur.dart';
 import '../../../../features/chauffeur/presentation/pages/chauffeur_selector_page.dart';
 import '../../../../features/vehicule/domain/entities/vehicule.dart';
@@ -19,7 +21,7 @@ import 'elements_maintenance_page.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const _kPrimary   = Color(0xFF3B5BDB);
+const _kPrimary   = Color(0xFF43A047);
 const _kFieldFill = Color(0xFFF2F3F5);
 const _kHint      = Color(0xFF9AA0AE);
 const _kLabel     = Color(0xFF6B7280);
@@ -79,6 +81,7 @@ class OperationFinanciereFormPage extends ConsumerStatefulWidget {
 class _FormState extends ConsumerState<OperationFinanciereFormPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
+  String? _submitError;
 
   late TypeOperation _type;
   CategorieOperation? _categorie;
@@ -168,6 +171,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _submitError = null);
     if (_categorie == null) {
       _showToast(context, 'Veuillez sélectionner une catégorie', error: true);
       return;
@@ -223,6 +227,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
 
     if (mounted) {
       if (error != null) {
+        setState(() => _submitError = error);
         _showToast(context, error, error: true);
       } else {
         _showToast(
@@ -652,6 +657,13 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
         child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
+                    if (_submitError != null) ...[
+                      AppErrorBanner(
+                        message: _submitError!,
+                        onClose: () => setState(() => _submitError = null),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     // ── Carte principale (tout sauf maintenance) ───────
                     _FormCard(
                       icon: Icons.receipt_long_outlined,
@@ -666,39 +678,31 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                           _kCardDivider,
 
                           // — Chauffeur & Véhicule ───────────────────
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: _LabeledField(
-                                  label: 'Chauffeur',
-                                  child: _buildSelectorField(
-                                    hint: 'Choisir',
-                                    value: _chauffeurNom,
-                                    onTap: _openChauffeurSelector,
-                                    onClear: () => setState(() {
-                                      _chauffeurId  = null;
-                                      _chauffeurNom = null;
-                                    }),
-                                  ),
-                                ),
+                          ResponsiveFieldRow(
+                            left: _LabeledField(
+                              label: 'Chauffeur',
+                              child: _buildSelectorField(
+                                hint: 'Choisir',
+                                value: _chauffeurNom,
+                                onTap: _openChauffeurSelector,
+                                onClear: () => setState(() {
+                                  _chauffeurId  = null;
+                                  _chauffeurNom = null;
+                                }),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: _LabeledField(
-                                  label: 'Véhicule',
-                                  child: _buildSelectorField(
-                                    hint: 'Choisir',
-                                    value: _vehiculeNom,
-                                    onTap: _openVehiculeSelector,
-                                    onClear: () => setState(() {
-                                      _vehiculeId  = null;
-                                      _vehiculeNom = null;
-                                    }),
-                                  ),
-                                ),
+                            ),
+                            right: _LabeledField(
+                              label: 'Véhicule',
+                              child: _buildSelectorField(
+                                hint: 'Choisir',
+                                value: _vehiculeNom,
+                                onTap: _openVehiculeSelector,
+                                onClear: () => setState(() {
+                                  _vehiculeId  = null;
+                                  _vehiculeNom = null;
+                                }),
                               ),
-                            ],
+                            ),
                           ),
                           const SizedBox(height: 12),
 
@@ -808,12 +812,9 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                           _kCardDivider,
 
                           // — Montant & paiement ─────────────────────
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: _isMaintenance ? 2 : 1,
-                                child: _LabeledField(
+                          ResponsiveFieldRow(
+                            leftFlex: _isMaintenance ? 2 : 1,
+                            left: _LabeledField(
                                   label: 'Montant (XOF)',
                                   isRequired: true,
                                   child: TextFormField(
@@ -855,11 +856,8 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                                     },
                                   ),
                                 ),
-                              ),
-                              if (_isMaintenance) ...[
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: _LabeledField(
+                            right: _isMaintenance
+                                ? _LabeledField(
                                     label: 'Durée (h)',
                                     child: TextFormField(
                                       controller: _dureeCtrl,
@@ -868,10 +866,8 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                                           fontSize: 15, color: _kDark),
                                       decoration: _fieldDeco('ex : 2'),
                                     ),
-                                  ),
-                                ),
-                              ],
-                            ],
+                                  )
+                                : null,
                           ),
                           const SizedBox(height: 12),
                           _LabeledField(

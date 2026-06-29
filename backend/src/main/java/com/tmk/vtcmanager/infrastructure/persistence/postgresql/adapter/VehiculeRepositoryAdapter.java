@@ -84,6 +84,12 @@ public class VehiculeRepositoryAdapter implements VehiculeRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Vehicule> findByConditionTravailId(Long conditionTravailId) {
+        return mapper.toDomainList(jpaRepository.findByConditionTravailId(conditionTravailId));
+    }
+
+    @Override
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
     }

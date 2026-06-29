@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -271,5 +272,68 @@ public class ProgrammeTravail {
         for (ProgrammeChauffeur pc : sorted) {
             pc.setOrdreJourSalaire(index++);
         }
+    }
+
+    // ── Planning par date ────────────────────────────────────────────────────
+
+    /** Vrai si le véhicule travaille à la date donnée (selon les jours de travail). */
+    public boolean travailleCeJour(LocalDate date) {
+        if (joursTravailSemaine == null || joursTravailSemaine.isEmpty()) {
+            return true; // aucune restriction → tous les jours
+        }
+        return joursTravailSemaine.contains(JourSemaine.from(date.getDayOfWeek()));
+    }
+
+    /**
+     * Identifiants des chauffeurs réellement actifs (devant conduire) à la date
+     * donnée, en tenant compte du nombre autorisé, des jours partagés et de
+     * l'alternance automatique.
+     */
+    public List<Long> chauffeursActifs(LocalDate date) {
+        if (chauffeurs == null) {
+            return List.of();
+        }
+        List<Long> tous = chauffeurs.stream()
+                .filter(pc -> pc.getChauffeurId() != null)
+                .map(ProgrammeChauffeur::getChauffeurId)
+                .toList();
+
+        if (nombreChauffeursAutorises == null || nombreChauffeursAutorises == 1) {
+            return tous;
+        }
+
+        // 2 chauffeurs : jour de travail commun → les deux conduisent.
+        if (joursAlternanceSemaine != null && !joursAlternanceSemaine.isEmpty()
+                && joursAlternanceSemaine.contains(JourSemaine.from(date.getDayOfWeek()))) {
+            return tous;
+        }
+
+        if (modeAlternance == ModeAlternance.AUTOMATIQUE
+                && dateDebutAlternance != null && joursAlternance != null) {
+            Long c = chauffeurAlternanceAuto(date);
+            return c != null ? List.of(c) : List.of();
+        }
+
+        // Mode MANUELLE : tous les chauffeurs assignés.
+        return tous;
+    }
+
+    private Long chauffeurAlternanceAuto(LocalDate date) {
+        long joursEcoules = ChronoUnit.DAYS.between(dateDebutAlternance, date);
+        long periode = joursEcoules / joursAlternance;
+        boolean chauffeurUn = (periode % 2) == 0;
+
+        return chauffeurs.stream()
+                .filter(pc -> pc.getChauffeurId() != null)
+                .filter(pc -> chauffeurUn
+                        ? pc.getOrdreAlternance() != null && pc.getOrdreAlternance() == 1
+                        : pc.getOrdreAlternance() != null && pc.getOrdreAlternance() == 2)
+                .map(ProgrammeChauffeur::getChauffeurId)
+                .findFirst()
+                .orElseGet(() -> chauffeurs.stream()
+                        .filter(pc -> pc.getChauffeurId() != null)
+                        .map(ProgrammeChauffeur::getChauffeurId)
+                        .findFirst()
+                        .orElse(null));
     }
 }

@@ -8,7 +8,7 @@ import 'condition_travail_liste_page.dart' show conditionsTravailListeProvider;
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const _kBlue = Color(0xFF1565C0);
+const _kPrimary = Color(0xFF43A047);
 const _kDark = Color(0xFF1A1A2E);
 const _kBg = Color(0xFFF4F6FB);
 
@@ -178,7 +178,7 @@ class _ProgrammeBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isJournalier = condition.typeProgramme == 'JOURNALIER';
-    final accent = isJournalier ? _kBlue : const Color(0xFF00695C);
+    final accent = isJournalier ? _kPrimary : const Color(0xFF00695C);
     final bg = isJournalier
         ? const Color(0xFFE3F0FF)
         : const Color(0xFFE0F2F1);
@@ -271,10 +271,10 @@ class _SectionCard extends StatelessWidget {
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: _kBlue.withValues(alpha: 0.1),
+                    color: _kPrimary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(icon, size: 16, color: _kBlue),
+                  child: Icon(icon, size: 16, color: _kPrimary),
                 ),
                 const SizedBox(width: 10),
                 Text(
@@ -378,7 +378,7 @@ class _CotisationsSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.savings_rounded,
-                      size: 16, color: Color(0xFF2E7D32)),
+                      size: 16, color: Color(0xFF43A047)),
                 ),
                 const SizedBox(width: 10),
                 const Expanded(
@@ -403,7 +403,7 @@ class _CotisationsSection extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF2E7D32),
+                      color: Color(0xFF43A047),
                     ),
                   ),
                 ),
@@ -431,7 +431,7 @@ class _CotisationsSection extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF2E7D32),
+                        color: Color(0xFF43A047),
                         shape: BoxShape.circle,
                       ),
                     ),

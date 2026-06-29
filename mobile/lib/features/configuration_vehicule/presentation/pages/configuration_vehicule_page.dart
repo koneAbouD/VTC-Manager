@@ -4,12 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../chauffeur/domain/entities/chauffeur.dart';
 import '../../../condition_travail/presentation/pages/condition_travail_selector_page.dart';
 import '../../../condition_travail/presentation/providers/condition_travail_by_vehicule_provider.dart';
 import '../../../condition_travail/presentation/providers/programme_travail_provider.dart';
 import '../../../chauffeur/presentation/pages/chauffeur_selector_page.dart';
+import '../../../indisponibilite/presentation/providers/indisponibilite_provider.dart';
 
 // ── Toast helpers ──────────────────────────────────────────────────────────────
 enum _ToastType { success, error, warning, info }
@@ -17,10 +20,10 @@ enum _ToastType { success, error, warning, info }
 void _appToast(BuildContext context, String message,
     {_ToastType type = _ToastType.success, Duration? duration}) {
   final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.success => (AppColors.success, Icons.check_circle_outline_rounded),
+    _ToastType.error   => (AppColors.error, Icons.error_outline_rounded),
+    _ToastType.warning => (AppColors.warning, Icons.warning_amber_rounded),
+    _ToastType.info    => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -150,12 +153,13 @@ class _ConfigurationVehiculePageState
 
   Future<void> _pickDate(
       DateTime? initial, ValueChanged<DateTime> onPicked) async {
-    final picked = await showDatePicker(
+    final picked = await showDialog<DateTime>(
       context: context,
-      initialDate: initial ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(DateTime.now().year + 5),
-      locale: const Locale('fr'),
+      builder: (_) => SingleDatePickerDialog(
+        initialDate: initial ?? DateTime.now(),
+        firstDate: DateTime(2020),
+        lastDate: DateTime(DateTime.now().year + 5),
+      ),
     );
     if (picked != null) onPicked(picked);
   }
@@ -286,7 +290,7 @@ class _ConfigurationVehiculePageState
         actions: [
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF1565C0)),
+                backgroundColor: AppColors.primary),
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Compris'),
           ),
@@ -295,12 +299,73 @@ class _ConfigurationVehiculePageState
     );
   }
 
+  /// Demande confirmation si des chauffeurs retirés du programme par cette
+  /// reconfiguration ont des indisponibilités en cours/planifiées (elles seront
+  /// clôturées ou annulées côté serveur). Renvoie false si l'utilisateur annule.
+  Future<bool> _confirmerImpactIndisponibilites() async {
+    try {
+      final ancien = ref
+          .read(programmeTravailByVehiculeIdProvider(widget.vehiculeId))
+          .valueOrNull;
+      if (ancien == null) return true;
+
+      final nouveauxIds = <int>{
+        if (_chauffeur1?.id != null) _chauffeur1!.id!,
+        if (_deuxChauffeurs && _chauffeur2?.id != null) _chauffeur2!.id!,
+      };
+      final retires = ancien.chauffeurs
+          .map((c) => c.chauffeurId)
+          .where((id) => !nouveauxIds.contains(id))
+          .toSet();
+      if (retires.isEmpty) return true;
+
+      final indispos = await ref.read(toutesIndisponibilitesProvider.future);
+      final concernees = indispos
+          .where((i) =>
+              retires.contains(i.chauffeurId) &&
+              (i.statut == 'EN_COURS' || i.statut == 'PLANIFIEE'))
+          .toList();
+      if (concernees.isEmpty) return true;
+
+      if (!mounted) return false;
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Indisponibilités impactées'),
+          content: Text(
+            '${concernees.length} indisponibilité(s) de chauffeur(s) retiré(s) de '
+            'ce véhicule seront clôturées (en cours) ou annulées (planifiées). '
+            'Continuer ?',
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Annuler')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Continuer'),
+            ),
+          ],
+        ),
+      );
+      return ok ?? false;
+    } catch (_) {
+      // En cas d'échec d'analyse, on laisse passer (le backend gère le nettoyage).
+      return true;
+    }
+  }
+
   Future<void> _submit() async {
     final validationError = _validate();
     if (validationError != null) {
       _showError(validationError);
       return;
     }
+
+    // Avertir si la reconfiguration retire des chauffeurs ayant des
+    // indisponibilités en cours/planifiées (qui seront clôturées/annulées).
+    if (!await _confirmerImpactIndisponibilites()) return;
 
     setState(() => _loading = true);
     try {
@@ -414,7 +479,7 @@ class _ConfigurationVehiculePageState
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       appBar: const AppHeader(title: 'Configuration du véhicule'),
       body: SafeArea(
         child: Column(
@@ -536,9 +601,9 @@ class _ConfigurationVehiculePageState
                             label: const Text(
                                 'Inverser le programme des chauffeurs'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF1565C0),
+                              foregroundColor: AppColors.primary,
                               side: const BorderSide(
-                                  color: Color(0xFF1565C0)),
+                                  color: AppColors.primary),
                               padding: const EdgeInsets.symmetric(
                                   vertical: 13),
                               shape: RoundedRectangleBorder(
@@ -577,7 +642,7 @@ class _ConfigurationVehiculePageState
                     flex: 2,
                     child: FilledButton(
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF1565C0),
+                        backgroundColor: AppColors.primary,
                         padding:
                             const EdgeInsets.symmetric(vertical: 15),
                         shape: RoundedRectangleBorder(
@@ -676,8 +741,8 @@ class _ConditionTravailCard extends StatelessWidget {
     }
 
     final isFixe = condition!.typeRecette == 'MONTANT_FIXE';
-    final accent = isFixe ? const Color(0xFF1565C0) : const Color(0xFFE07B00);
-    final bg = isFixe ? const Color(0xFFE8F0FE) : const Color(0xFFFFF3E0);
+    final accent = isFixe ? AppColors.primary : const Color(0xFFE07B00);
+    final bg = isFixe ? AppColors.primaryTint : const Color(0xFFFFF3E0);
     final programmeBadge =
         condition!.typeProgramme == 'JOURNALIER' ? 'Journalier' : 'Hebdomadaire';
 
@@ -876,12 +941,12 @@ class _ChauffeurTile extends StatelessWidget {
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: selected
-                ? const Color(0xFF1565C0).withValues(alpha: 0.06)
+                ? AppColors.primary.withValues(alpha: 0.06)
                 : Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected
-                  ? const Color(0xFF1565C0).withValues(alpha: 0.35)
+                  ? AppColors.primary.withValues(alpha: 0.35)
                   : const Color(0xFFE4E7EC),
             ),
           ),
@@ -891,7 +956,7 @@ class _ChauffeurTile extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: selected
-                      ? const Color(0xFF1565C0).withValues(alpha: 0.12)
+                      ? AppColors.primary.withValues(alpha: 0.12)
                       : Colors.grey.shade100,
                   shape: BoxShape.circle,
                 ),
@@ -899,7 +964,7 @@ class _ChauffeurTile extends StatelessWidget {
                   Icons.person_outline,
                   size: 18,
                   color: selected
-                      ? const Color(0xFF1565C0)
+                      ? AppColors.primary
                       : Colors.grey.shade500,
                 ),
               ),
@@ -914,7 +979,7 @@ class _ChauffeurTile extends StatelessWidget {
                     fontWeight:
                         selected ? FontWeight.w600 : FontWeight.normal,
                     color: selected
-                        ? const Color(0xFF1565C0)
+                        ? AppColors.primary
                         : Colors.grey.shade400,
                   ),
                 ),
@@ -933,7 +998,7 @@ class _ChauffeurTile extends StatelessWidget {
                   selected ? Icons.check_circle : Icons.chevron_right,
                   size: 20,
                   color: selected
-                      ? const Color(0xFF1565C0)
+                      ? AppColors.primary
                       : Colors.grey.shade400,
                 ),
             ],
@@ -983,7 +1048,7 @@ class _DateTile extends StatelessWidget {
                 Icons.calendar_today_outlined,
                 size: 18,
                 color: selected
-                    ? const Color(0xFF1565C0)
+                    ? AppColors.primary
                     : Colors.grey.shade400,
               ),
               const SizedBox(width: 12),

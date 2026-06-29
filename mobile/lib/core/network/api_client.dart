@@ -10,6 +10,7 @@ import '../error/exception.dart';
 import '../storage/secure_storage.dart';
 import '_bytes_io.dart' if (dart.library.html) '_bytes_web.dart';
 import 'api_config.dart';
+import 'session_manager.dart';
 
 /// Client HTTP partagé par tous les datasources.
 /// - Injecte automatiquement le Bearer token.
@@ -24,11 +25,9 @@ class ApiClient {
   ApiClient(this._storage, [http.Client? client])
       : _http = client ?? http.Client();
 
-  static const _timeout = Duration(seconds: 15);
-
-  /// Verrou pour mutualiser un refresh en cours entre plusieurs requêtes
-  /// simultanées qui recevraient toutes un 401.
-  Completer<bool>? _refreshing;
+  // 25s : marge confortable pour un VPS distant via réseau mobile
+  // (le localhost répondait en <1s, mais la 4G/3G ajoute de la latence).
+  static const _timeout = Duration(seconds: 25);
 
   // ── Méthodes publiques ──────────────────────────────────────────────────
 
@@ -464,61 +463,9 @@ class ApiClient {
     }
   }
 
-  /// Rejoue l'endpoint /auth/refresh avec le refresh token stocké.
-  /// Les appels concurrents partagent le même [Future] via [_refreshing].
-  /// Retourne `true` si les tokens ont été renouvelés.
-  Future<bool> _tryRefresh() async {
-    // Un refresh est déjà en cours → on attend son résultat
-    if (_refreshing != null) return _refreshing!.future;
-
-    final completer = Completer<bool>();
-    _refreshing = completer;
-    try {
-      final refreshToken = await _storage.getRefreshToken();
-      if (refreshToken == null || refreshToken.isEmpty) {
-        completer.complete(false);
-        return false;
-      }
-
-      final uri = _buildUri('/auth/refresh', null);
-      final request = http.Request('POST', uri)
-        ..headers.addAll({
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        })
-        ..body = jsonEncode({'refreshToken': refreshToken});
-
-      final streamed = await _http.send(request).timeout(_timeout);
-      final response = await http.Response.fromStream(streamed);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        if (data is Map<String, dynamic>) {
-          final newAccess = data['accessToken'] as String?;
-          final newRefresh = data['refreshToken'] as String?;
-          if (newAccess != null && newAccess.isNotEmpty) {
-            await _storage.saveTokens(
-              accessToken: newAccess,
-              refreshToken: newRefresh,
-            );
-            completer.complete(true);
-            return true;
-          }
-        }
-      }
-
-      // Refresh HS → on purge la session pour forcer une reconnexion.
-      await _storage.clearTokens();
-      completer.complete(false);
-      return false;
-    } catch (_) {
-      await _storage.clearTokens();
-      if (!completer.isCompleted) completer.complete(false);
-      return false;
-    } finally {
-      _refreshing = null;
-    }
-  }
+  /// Délègue le refresh au [SessionManager] centralisé (verrou partagé entre
+  /// toutes les instances d'ApiClient, persistance et signal d'expiration).
+  Future<bool> _tryRefresh() => SessionManager.instance.refresh();
 
   /// On n'essaie pas de refresh pour les endpoints d'auth eux-mêmes
   /// (sinon boucle infinie sur /auth/refresh ou 401 trompeurs sur /auth/login).

@@ -42,8 +42,11 @@ class OperationFinanciereModel extends OperationFinanciere {
     final nom = chauffeur?['nom'] as String? ?? '';
     final chauffeurNom = '$prenom $nom'.trim();
 
-    // VehiculeResponse : utiliser 'libelle' (ex: "Mercedes Classe E Premium")
-    final vehiculeNom = vehicule?['libelle'] as String?;
+    // VehiculeResponse expose l'immatriculation (ex: "AA-123-BB"), pas de
+    // champ 'libelle' → on lit 'immatriculation', avec repli sur 'libelle'
+    // au cas où un autre endpoint le fournirait.
+    final vehiculeNom = (vehicule?['immatriculation'] as String?) ??
+        (vehicule?['libelle'] as String?);
 
     final mpStr = json['modePaiement'] as String?;
     final statutStr = json['statut'] as String? ?? 'BROUILLON';

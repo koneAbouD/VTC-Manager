@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
@@ -72,7 +73,7 @@ class _ConditionTravailSelectorPageState
 
   Widget _buildHeader(AsyncValue<List<ConditionTravailLocal>> async) {
     return Container(
-      color: Colors.white,
+      color: AppColors.header,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -167,7 +168,7 @@ class _ConditionTravailSelectorPageState
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF3B5BDB), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFF43A047), width: 1.5),
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -220,8 +221,8 @@ class _ConditionTravailSelectorPageState
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text('Réessayer'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF3B5BDB),
-                side: const BorderSide(color: Color(0xFF3B5BDB)),
+                foregroundColor: const Color(0xFF43A047),
+                side: const BorderSide(color: Color(0xFF43A047)),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 padding:
@@ -268,14 +269,14 @@ class _ConditionTravailSelectorPageState
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF4FF),
+                color: const Color(0xFFE8F5E9),
                 borderRadius: BorderRadius.circular(36),
               ),
               child: Icon(
                 noData
                     ? Icons.work_outline_rounded
                     : Icons.search_off_rounded,
-                color: const Color(0xFF3B5BDB),
+                color: const Color(0xFF43A047),
                 size: 36,
               ),
             ),
@@ -301,7 +302,7 @@ class _ConditionTravailSelectorPageState
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('Créer une condition'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B5BDB),
+                  backgroundColor: const Color(0xFF43A047),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(
@@ -335,7 +336,7 @@ class _ConditionCard extends StatelessWidget {
   const _ConditionCard({required this.condition, required this.onTap});
 
   static const _programmeColors = {
-    'JOURNALIER': Color(0xFF3B5BDB),
+    'JOURNALIER': Color(0xFF43A047),
     'HEBDOMADAIRE': Color(0xFF7950F2),
   };
 
@@ -350,7 +351,7 @@ class _ConditionCard extends StatelessWidget {
   };
 
   Color get _programmeColor =>
-      _programmeColors[condition.typeProgramme] ?? const Color(0xFF3B5BDB);
+      _programmeColors[condition.typeProgramme] ?? const Color(0xFF43A047);
 
   @override
   Widget build(BuildContext context) {
@@ -479,7 +480,7 @@ class _ConditionCard extends StatelessWidget {
                               icon: Icons.savings_outlined,
                               count: condition.cotisations.length,
                               label: 'cotisation${condition.cotisations.length > 1 ? 's' : ''}',
-                              color: const Color(0xFF2E7D32),
+                              color: const Color(0xFF43A047),
                             ),
                             if (condition.penalites.isNotEmpty)
                               const SizedBox(width: 12),

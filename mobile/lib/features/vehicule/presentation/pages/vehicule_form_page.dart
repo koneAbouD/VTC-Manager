@@ -7,12 +7,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
 
+import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/utils/image_source_bottom_sheet.dart';
+import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/network_photo_viewer.dart';
+import '../../../../core/widgets/responsive_field_row.dart';
 import '../../data/datasources/referentiel_datasource.dart';
 import '../../domain/entities/vehicule.dart';
 import '../providers/documents_by_vehicule_provider.dart';
@@ -22,8 +25,10 @@ import '../providers/vehicule_provider.dart'
     show vehiculeNotifierProvider, vehiculeDatasourceProvider;
 import '../../../configuration_vehicule/presentation/pages/configuration_vehicule_page.dart';
 import '../../../groupe/presentation/pages/groupe_selector_page.dart';
+import '../vehicule_couleurs.dart';
+import '../../../../core/theme/app_colors.dart';
 
-const _kPrimary = Color(0xFF3B5BDB);
+const _kPrimary = AppColors.primary;
 const _kFieldFill = Color(0xFFF2F3F5);
 const _kHint = Color(0xFF9AA0AE);
 const _kLabel = Color(0xFF6B7280);
@@ -174,6 +179,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   DateTime? _dateMiseEnCirculation;
   DateTime? _dateEntreeFlotte;
   bool _loading = false;
+  String? _submitError;
   final List<XFile> _photos = [];
   List<VehiculePhoto> _existingPhotos = [];
   static const _maxPhotos = 4;
@@ -218,68 +224,6 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       _dateEntreeFlotte != _initDateFlotte ||
       _photos.isNotEmpty ||
       _existingPhotos.length != _initExistingPhotosCount;
-
-  static const _couleurs = [
-    'Blanc',
-    'Blanc nacré',
-    'Ivoire',
-    'Noir',
-    'Noir mat',
-    'Gris',
-    'Gris anthracite',
-    'Gris argent',
-    'Argent',
-    'Champagne',
-    'Bleu',
-    'Bleu marine',
-    'Bleu ciel',
-    'Bleu nuit',
-    'Rouge',
-    'Rouge bordeaux',
-    'Rouge cerise',
-    'Vert',
-    'Vert kaki',
-    'Vert olive',
-    'Orange',
-    'Jaune',
-    'Or',
-    'Marron',
-    'Beige',
-    'Sable',
-    'Violet',
-    'Rose',
-  ];
-
-  static const _couleurMap = {
-    'Blanc': Color(0xFFFFFFFF),
-    'Blanc nacré': Color(0xFFF5F0E8),
-    'Ivoire': Color(0xFFFFF8DC),
-    'Noir': Color(0xFF1A1A1A),
-    'Noir mat': Color(0xFF2D2D2D),
-    'Gris': Color(0xFF9E9E9E),
-    'Gris anthracite': Color(0xFF3D3D3D),
-    'Gris argent': Color(0xFFBDBDBD),
-    'Argent': Color(0xFFCED4DA),
-    'Champagne': Color(0xFFF7E7CE),
-    'Bleu': Color(0xFF3B5BDB),
-    'Bleu marine': Color(0xFF1B2A6B),
-    'Bleu ciel': Color(0xFF74C0FC),
-    'Bleu nuit': Color(0xFF0D1B4B),
-    'Rouge': Color(0xFFE03131),
-    'Rouge bordeaux': Color(0xFF7B1C1C),
-    'Rouge cerise': Color(0xFFC0392B),
-    'Vert': Color(0xFF2F9E44),
-    'Vert kaki': Color(0xFF5C6B2A),
-    'Vert olive': Color(0xFF6B7C3A),
-    'Orange': Color(0xFFE8590C),
-    'Jaune': Color(0xFFFFD43B),
-    'Or': Color(0xFFD4A017),
-    'Marron': Color(0xFF795548),
-    'Beige': Color(0xFFD4A373),
-    'Sable': Color(0xFFC2B280),
-    'Violet': Color(0xFF7950F2),
-    'Rose': Color(0xFFE64980),
-  };
 
   @override
   void initState() {
@@ -517,7 +461,10 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       return;
     }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _submitError = null;
+    });
 
     final initial = widget.initial;
     final vehicule = Vehicule(
@@ -570,10 +517,15 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
         _tabCtrl.animateTo(0);
         _formKey.currentState?.validate();
       }
+      // Bandeau d'erreur persistant en haut du formulaire (en plus du toast).
+      setState(() => _submitError = error);
       _appToast(context, error, type: _ToastType.error);
       return;
     }
-    setState(() => _immatError = null);
+    setState(() {
+      _immatError = null;
+      _submitError = null;
+    });
 
     // En mode édition, on connaît déjà l'ID ; on ne dépend pas de la réponse PUT.
     final int? effectiveId =
@@ -593,6 +545,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       // Upload des documents en attente (mode création, ou docs échoués en édition)
       if (_pendingDocuments.isNotEmpty) {
         final failedDocs = <String>[];
+        String? docUploadError;
         for (final doc in _pendingDocuments) {
           try {
             await ds.uploadDocument(
@@ -607,17 +560,22 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                   ? _isoDate(doc.dateExpiration!)
                   : null,
             );
-          } catch (_) {
+          } catch (e) {
             failedDocs.add(doc.typeNom);
+            // On retient le premier message explicite du backend
+            // (ex. document trop volumineux).
+            docUploadError ??= messageFromError(e, fallback: '');
           }
         }
 
         if (failedDocs.isNotEmpty && mounted) {
           _appToast(
             context,
-            failedDocs.length == 1
-                ? 'Document "${failedDocs.first}" non envoyé.'
-                : '${failedDocs.length} documents non envoyés.',
+            docUploadError != null && docUploadError.isNotEmpty
+                ? docUploadError
+                : (failedDocs.length == 1
+                    ? 'Document "${failedDocs.first}" non envoyé.'
+                    : '${failedDocs.length} documents non envoyés.'),
             type: _ToastType.warning,
             duration: const Duration(seconds: 5),
           );
@@ -934,8 +892,11 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
         ref.invalidate(documentsByVehiculeIdProvider(vehiculeId));
         _appToast(context, 'Document ajouté avec succès.');
       }
-    } catch (_) {
-      if (mounted) _showError('Impossible d\'ajouter ce document, réessayez.');
+    } catch (e) {
+      if (mounted) {
+        _showError(messageFromError(e,
+            fallback: "Impossible d'ajouter ce document, réessayez."));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -1007,8 +968,11 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
           ref.invalidate(documentsByVehiculeIdProvider(widget.initial!.id!));
           _appToast(context, 'Document mis à jour.');
         }
-      } catch (_) {
-        if (mounted) _showError('Impossible de mettre à jour ce document.');
+      } catch (e) {
+        if (mounted) {
+          _showError(messageFromError(e,
+              fallback: 'Impossible de mettre à jour ce document.'));
+        }
       } finally {
         if (mounted) setState(() => _loading = false);
       }
@@ -1258,8 +1222,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
           menuMaxHeight: 320,
           icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: _kHint),
           onChanged: (v) => setState(() => _couleur = v),
-          selectedItemBuilder: (context) => _couleurs.map((c) {
-            final color = _couleurMap[c] ?? Colors.grey;
+          selectedItemBuilder: (context) => kVehiculeCouleurs.map((c) {
+            final color = kVehiculeCouleurMap[c] ?? Colors.grey;
             final isLight = color.computeLuminance() > 0.85;
             return Row(children: [
               Container(
@@ -1276,8 +1240,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                   style: const TextStyle(fontSize: 15, color: Colors.black87))),
             ]);
           }).toList(),
-          items: _couleurs.map((c) {
-            final color = _couleurMap[c] ?? Colors.grey;
+          items: kVehiculeCouleurs.map((c) {
+            final color = kVehiculeCouleurMap[c] ?? Colors.grey;
             final isLight = color.computeLuminance() > 0.85;
             return DropdownMenuItem<String?>(
               value: c,
@@ -1309,7 +1273,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
           // ── Section 1 : Identité du véhicule ───────────────────────────
           _FormSectionCard(
             icon: Icons.directions_car_rounded,
-            accent: const Color(0xFF3B5BDB),
+            accent: AppColors.primary,
             title: 'Identité du véhicule',
             isRequired: true,
             isExpanded: _expandedSections.contains(0),
@@ -1317,17 +1281,16 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
             onToggle: () => _toggleSection(0),
             child: Column(children: [
               // Type activité / Type véhicule
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: _LabeledField(
+              ResponsiveFieldRow(
+                left: _LabeledField(
                   label: "Type d'activité", isRequired: true,
                   child: _DropdownField(
                     value: _typeActivite, hint: 'Activité',
                     asyncValue: typesActivitesAsync,
                     onChanged: (v) => setState(() => _typeActivite = v),
                   ),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: _LabeledField(
+                ),
+                right: _LabeledField(
                   label: 'Type de véhicule', isRequired: true,
                   child: _DropdownField(
                     value: _typeVehicule, hint: 'Type',
@@ -1337,12 +1300,12 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                       _typeVehicule = v; _marque = null; _modele = null;
                     }),
                   ),
-                )),
-              ]),
+                ),
+              ),
               const SizedBox(height: 12),
               // Marque / Modèle
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: _LabeledField(
+              ResponsiveFieldRow(
+                left: _LabeledField(
                   label: 'Marque', isRequired: true,
                   child: _DropdownField(
                     value: _marque, hint: 'Marque',
@@ -1350,9 +1313,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                     disabled: _isEditing || _typeVehicule == null,
                     onChanged: (v) => setState(() { _marque = v; _modele = null; }),
                   ),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: _LabeledField(
+                ),
+                right: _LabeledField(
                   label: 'Modèle', isRequired: true,
                   child: _DropdownField(
                     value: _modele, hint: 'Modèle',
@@ -1360,12 +1322,12 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                     disabled: _isEditing || _typeVehicule == null || _marque == null,
                     onChanged: (v) => setState(() => _modele = v),
                   ),
-                )),
-              ]),
+                ),
+              ),
               const SizedBox(height: 12),
               // Immatriculation / Couleur
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: _LabeledField(
+              ResponsiveFieldRow(
+                left: _LabeledField(
                   label: 'Immatriculation', isRequired: true,
                   child: _PlainField(
                     controller: _immatCtrl,
@@ -1380,34 +1342,32 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                       return null;
                     },
                   ),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: _LabeledField(
+                ),
+                right: _LabeledField(
                   label: 'Couleur', isRequired: true,
                   child: couleurWidget,
-                )),
-              ]),
+                ),
+              ),
               const SizedBox(height: 12),
               // N° châssis / Tél. véhicule
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: _LabeledField(
+              ResponsiveFieldRow(
+                left: _LabeledField(
                   label: 'N° châssis',
                   child: _PlainField(
                     controller: _chassisCtrl,
                     hint: 'VF1AA000123456789',
                     textCapitalization: TextCapitalization.characters,
                   ),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: _LabeledField(
+                ),
+                right: _LabeledField(
                   label: 'Tél. véhicule',
                   child: _PlainField(
                     controller: _telVehiculeCtrl,
                     hint: '06 12 34 56 78',
                     keyboardType: TextInputType.phone,
                   ),
-                )),
-              ]),
+                ),
+              ),
             ]),
           ),
           const SizedBox(height: 10),
@@ -1423,8 +1383,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
             onToggle: () => _toggleSection(1),
             child: Column(children: [
               // Dates
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: _LabeledField(
+              ResponsiveFieldRow(
+                left: _LabeledField(
                   label: 'Mise en circulation', isRequired: true,
                   child: _DateField(
                     label: 'JJ/MM/AAAA',
@@ -1436,9 +1396,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                       onPicked: (d) => setState(() => _dateMiseEnCirculation = d),
                     ),
                   ),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: _LabeledField(
+                ),
+                right: _LabeledField(
                   label: "Entrée dans la flotte", isRequired: true,
                   child: _DateField(
                     label: 'JJ/MM/AAAA',
@@ -1451,28 +1410,27 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                       onPicked: (d) => setState(() => _dateEntreeFlotte = d),
                     ),
                   ),
-                )),
-              ]),
+                ),
+              ),
               const SizedBox(height: 12),
               // Tél. balise / ID balise
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: _LabeledField(
+              ResponsiveFieldRow(
+                left: _LabeledField(
                   label: 'Tél. balise',
                   child: _PlainField(
                     controller: _telBaliseCtrl,
                     hint: '06 12 34 56 78',
                     keyboardType: TextInputType.phone,
                   ),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: _LabeledField(
+                ),
+                right: _LabeledField(
                   label: 'ID balise GPS',
                   child: _PlainField(
                     controller: _idBaliseCtrl,
                     hint: 'BAL-00123',
                   ),
-                )),
-              ]),
+                ),
+              ),
               const SizedBox(height: 12),
               // Groupe
               _LabeledField(
@@ -1619,6 +1577,14 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
         child: Column(
           children: [
             _buildTabBar(),
+            if (_submitError != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: AppErrorBanner(
+                  message: _submitError!,
+                  onClose: () => setState(() => _submitError = null),
+                ),
+              ),
             Expanded(
               child: TabBarView(
                 controller: _tabCtrl,
@@ -2175,7 +2141,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
           Expanded(
             child: ListView(
               controller: ctrl,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              padding: EdgeInsets.fromLTRB(
+                  20, 0, 20, 24 + MediaQuery.viewPaddingOf(context).bottom),
               children: [
                 // ── Banner d'erreur/succès inline ──────────────────
                 AnimatedSwitcher(
@@ -2260,27 +2227,22 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 const SizedBox(height: 4),
 
                 // Dates
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _LabeledField(
-                        label: "Date d'émission",
-                        child: _DateField(
-                          label: 'JJ/MM/AAAA',
-                          value: _dateEmission,
-                          formatter: _fmt,
-                          onTap: () => _pickDate(
-                            _dateEmission,
-                            (d) => setState(() => _dateEmission = d),
-                          ),
-                        ),
+                ResponsiveFieldRow(
+                  left: _LabeledField(
+                    label: "Date d'émission",
+                    child: _DateField(
+                      label: 'JJ/MM/AAAA',
+                      value: _dateEmission,
+                      formatter: _fmt,
+                      onTap: () => _pickDate(
+                        _dateEmission,
+                        (d) => setState(() => _dateEmission = d),
                       ),
                     ),
-                    if (!_permanent) ...[
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _LabeledField(
+                  ),
+                  right: _permanent
+                      ? null
+                      : _LabeledField(
                           label: "Date d'expiration",
                           child: _DateField(
                             label: 'JJ/MM/AAAA',
@@ -2292,9 +2254,6 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ],
                 ),
                 const SizedBox(height: 12),
 

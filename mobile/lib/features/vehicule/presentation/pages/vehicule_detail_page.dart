@@ -8,15 +8,21 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../condition_travail/domain/entities/programme_chauffeur.dart';
 import '../../../condition_travail/domain/entities/programme_travail.dart';
+import '../../../indisponibilite/presentation/indisponibilite_overlay.dart';
+import '../../../indisponibilite/presentation/providers/indisponibilite_provider.dart';
 import '../../../condition_travail/domain/enums/mode_alternance.dart';
 import '../../../condition_travail/presentation/pages/condition_travail_models.dart';
 import '../../../condition_travail/presentation/providers/condition_travail_by_vehicule_provider.dart';
 import '../../../condition_travail/presentation/providers/programme_travail_provider.dart';
+import '../../domain/entities/statut_vehicule.dart';
 import '../../domain/entities/vehicule.dart';
+import '../vehicule_couleurs.dart';
 import '../providers/documents_by_vehicule_provider.dart';
+import '../providers/referentiel_provider.dart';
 import '../providers/vehicule_provider.dart';
 import 'vehicule_form_page.dart';
 import '../../../configuration_vehicule/presentation/pages/configuration_vehicule_page.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/network_photo_viewer.dart';
 import '../../../chauffeur/presentation/pages/chauffeur_detail_page.dart';
@@ -76,6 +82,13 @@ class _VehiculeDetailPageState extends ConsumerState<VehiculeDetailPage>
   void initState() {
     super.initState();
     _tab = TabController(length: 6, vsync: this, initialIndex: widget.initialTabIndex);
+    // Le programme du véhicule est mis en cache (provider non autoDispose) :
+    // on le rafraîchit à chaque ouverture pour refléter les réassignations dues
+    // aux indisponibilités (remplacement du titulaire) sans cache périmé.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.invalidate(programmeTravailByVehiculeIdProvider(widget.vehiculeId));
+    });
   }
 
   @override
@@ -114,7 +127,6 @@ class _VehiculeDetailPageState extends ConsumerState<VehiculeDetailPage>
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
       appBar: AppHeader(
         title: '',
         action: asyncVehicule.valueOrNull == null
@@ -308,13 +320,13 @@ class _CotisationsTab extends ConsumerWidget {
               child: Row(
                 children: [
                   const Icon(Icons.calculate_outlined,
-                      color: Color(0xFF3B5BDB), size: 18),
+                      color: AppColors.primary, size: 18),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Total : ${_formatAmount(condition.totalCotisations)} XOF / versement',
                       style: const TextStyle(
-                        color: Color(0xFF3B5BDB),
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
@@ -528,11 +540,11 @@ class _ConditionTravailBanner extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: const Color(0xFF3B5BDB).withValues(alpha: 0.15),
+              color: AppColors.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(9),
             ),
             child: const Icon(Icons.work_outline,
-                color: Color(0xFF3B5BDB), size: 16),
+                color: AppColors.primary, size: 16),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -543,7 +555,7 @@ class _ConditionTravailBanner extends StatelessWidget {
                   'Condition appliquée',
                   style: TextStyle(
                       fontSize: 11,
-                      color: const Color(0xFF3B5BDB).withValues(alpha: 0.8),
+                      color: AppColors.primary.withValues(alpha: 0.8),
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.2),
                 ),
@@ -638,7 +650,7 @@ class _DocumentCard extends StatelessWidget {
   bool get _isPdf => _docIsPdf(document);
 
   Color get _accentColor {
-    if (_isImage) return const Color(0xFF3B5BDB);
+    if (_isImage) return AppColors.primary;
     if (_isPdf) return const Color(0xFFD32F2F);
     return const Color(0xFF546E7A);
   }
@@ -1162,7 +1174,7 @@ class _NoConditionView extends StatelessWidget {
                 color: const Color(0xFFEFF4FF),
                 borderRadius: BorderRadius.circular(42),
               ),
-              child: Icon(icon, size: 38, color: const Color(0xFF3B5BDB)),
+              child: Icon(icon, size: 38, color: AppColors.primary),
             ),
             const SizedBox(height: 18),
             Text(
@@ -1207,8 +1219,8 @@ class _NoConditionView extends StatelessWidget {
                 icon: const Icon(Icons.refresh, size: 18),
                 label: const Text('Recharger'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF3B5BDB),
-                  side: const BorderSide(color: Color(0xFF3B5BDB)),
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   shape: RoundedRectangleBorder(
@@ -1321,7 +1333,7 @@ class _InfoGeneralesTab extends StatelessWidget {
                   const Text(
                     "Voir l'historique de kilométrage",
                     style: TextStyle(
-                      color: Color(0xFF3B5BDB),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w500,
                       fontSize: 13,
                     ),
@@ -1443,6 +1455,9 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
   late DateTime _focusedMonth;
   DateTime? _selectedDate;
 
+  /// Overlay des indisponibilités (recalculé à chaque build depuis le provider).
+  IndisponibiliteOverlay _overlay = const IndisponibiliteOverlay([]);
+
   Vehicule get vehicule => widget.vehicule;
 
   @override
@@ -1463,6 +1478,8 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
     }
 
     final asyncProgramme = ref.watch(programmeTravailByVehiculeIdProvider(vehiculeId));
+    _overlay = IndisponibiliteOverlay(
+        ref.watch(toutesIndisponibilitesProvider).valueOrNull ?? const []);
 
     return asyncProgramme.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -1487,6 +1504,8 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           children: [
+            // ── Bandeau remplacement actif (indisponibilité en cours) ──
+            _buildRemplacementBanner(programme),
             // ── Calendrier ──
             Container(
               padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
@@ -1595,6 +1614,62 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
     );
   }
 
+  /// Bandeau signalant les remplacements en cours sur le programme : un
+  /// chauffeur du programme est en réalité le remplaçant d'un titulaire
+  /// actuellement indisponible.
+  Widget _buildRemplacementBanner(ProgrammeTravail programme) {
+    final actives =
+        ref.watch(indisponibilitesActivesProvider).valueOrNull ?? const [];
+    final idsProgramme =
+        programme.chauffeurs.map((c) => c.chauffeurId).toSet();
+    final pertinentes = actives
+        .where((i) =>
+            i.chauffeurRemplacantId != null &&
+            idsProgramme.contains(i.chauffeurRemplacantId))
+        .toList();
+    if (pertinentes.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E0),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE65100).withValues(alpha: 0.30)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.swap_horiz_rounded, size: 18, color: Color(0xFFE65100)),
+              SizedBox(width: 8),
+              Text('Remplacement en cours',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFE65100),
+                      fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ...pertinentes.map((i) {
+            final fin = i.dateFin != null
+                ? " jusqu'au ${DateFormat('dd/MM/yyyy').format(i.dateFin!)}"
+                : '';
+            return Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                '${i.chauffeurRemplacantNom ?? "Remplaçant"} remplace '
+                '${i.chauffeurNom ?? "le titulaire"}$fin',
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF8A4B00)),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCell(_ProgrammeCalendarCell day) {
     final schedule = day.schedule;
     final inMonth = day.inMonth;
@@ -1625,13 +1700,16 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
                 ? const Color(0xFF304160)
                 : const Color(0xFF4A5468);
 
+    final estRemplace = isServiceDay && schedule.remplacantNom != null;
     final initials = (isServiceDay && !isSelected)
-        ? _initials(schedule.serviceDriver.nomComplet)
+        ? _initials(schedule.conducteurEffectifNom)
         : null;
 
-    final initialsColor = isSalaryDay
-        ? const Color(0xFF2E7D32)
-        : const Color(0xFF3158B6);
+    final initialsColor = estRemplace
+        ? const Color(0xFFE65100) // remplacement → orange
+        : isSalaryDay
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF3158B6);
 
     return Material(
       color: background,
@@ -1716,11 +1794,13 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
           const SizedBox(height: 12),
           _DayDetailRow(
             icon: Icons.directions_car_outlined,
-            label: 'Au travail',
-            name: schedule.serviceDriver.nomComplet,
+            label: schedule.remplacantNom != null ? 'Au travail (remplacement)' : 'Au travail',
+            name: schedule.remplacantNom != null
+                ? '${schedule.remplacantNom} (remplace ${schedule.serviceDriver.nomComplet})'
+                : schedule.serviceDriver.nomComplet,
             detail: _timeRange(programme),
-            color: rowColor,
-            bg: rowBg,
+            color: schedule.remplacantNom != null ? const Color(0xFFE65100) : rowColor,
+            bg: schedule.remplacantNom != null ? const Color(0xFFFFF3E0) : rowBg,
             onTap: schedule.serviceDriver.chauffeurId > 0
                 ? () {
                     if (widget.canPopToChauffeur) {
@@ -1796,10 +1876,16 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
     final serviceDriver = _serviceDriverForDate(programme, chauffeurs, current);
     if (serviceDriver == null) return null;
 
+    // Overlay : si le conducteur de service est indisponible ce jour-là, on
+    // affiche le remplaçant (uniquement sur la période de l'indisponibilité).
+    final remplacement =
+        _overlay.remplacementDuTitulaire(serviceDriver.chauffeurId, current);
+
     return _ProgrammeDaySchedule(
       date: current,
       serviceDriver: serviceDriver,
       salaryDriver: _salaryDriverForDate(programme, salaryDrivers, current),
+      remplacantNom: remplacement?.chauffeurRemplacantNom,
     );
   }
 
@@ -2085,7 +2171,7 @@ class _EmptyProgrammeView extends StatelessWidget {
               GestureDetector(
                 onTap: onConfigure,
                 child: const Icon(Icons.edit_outlined,
-                    color: Color(0xFF3B5BDB), size: 20),
+                    color: AppColors.primary, size: 20),
               ),
             ],
           ),
@@ -2115,7 +2201,7 @@ class _EmptyProgrammeView extends StatelessWidget {
           child: FilledButton(
             onPressed: onConfigure,
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF3B5BDB),
+              backgroundColor: AppColors.primary,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -2142,21 +2228,13 @@ class _StatusVisual {
   final String label;
   const _StatusVisual(this.color, this.background, this.icon, this.label);
 
-  static _StatusVisual of(String? statut) => switch (statut) {
-        'DISPONIBLE' => const _StatusVisual(Color(0xFF2E7D32),
-            Color(0xFFE8F5E9), Icons.check_circle, 'Disponible'),
-        'EN_SERVICE' => const _StatusVisual(Color(0xFF1565C0),
-            Color(0xFFE3F2FD), Icons.directions_car, 'En service'),
-        'EN_MAINTENANCE' => const _StatusVisual(Color(0xFFE65100),
-            Color(0xFFFFF3E0), Icons.build_circle, 'En maintenance'),
-        'HORS_SERVICE' => const _StatusVisual(
-            Color(0xFFC62828), Color(0xFFFFEBEE), Icons.cancel, 'Hors service'),
-        _ => const _StatusVisual(
-            Colors.grey, Color(0xFFEFEFEF), Icons.help_outline, '—'),
-      };
+  static _StatusVisual of(String? statut, [List<StatutVehicule>? statuts]) {
+    final s = StatutVehicule.resolve(statut, statuts);
+    return _StatusVisual(s.couleur, s.background, s.icon, s.libelle);
+  }
 }
 
-class _VehiculeHeroCard extends StatelessWidget {
+class _VehiculeHeroCard extends ConsumerWidget {
   final Vehicule vehicule;
   final List<ProgrammeChauffeur> chauffeurs;
   final VoidCallback onConfigure;
@@ -2177,8 +2255,9 @@ class _VehiculeHeroCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final status = _StatusVisual.of(vehicule.statut);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status =
+        _StatusVisual.of(vehicule.statut, ref.watch(statutsVehiculeResolvedProvider));
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -2193,7 +2272,7 @@ class _VehiculeHeroCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE4E9F5)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B5BDB).withValues(alpha: 0.05),
+            color: AppColors.primary.withValues(alpha: 0.05),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -2204,20 +2283,29 @@ class _VehiculeHeroCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF3B5BDB), Color(0xFF6B8DE3)],
+              Builder(builder: (_) {
+                final couleur = couleurVehicule(vehicule.couleur);
+                final estClaire = couleurVehiculeEstClaire(couleur);
+                return Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: couleur.withValues(alpha: estClaire ? 1 : 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: estClaire
+                          ? const Color(0xFFDDE1EA)
+                          : couleur.withValues(alpha: 0.35),
+                      width: 1,
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.directions_car_rounded,
-                    color: Colors.white, size: 34),
-              ),
+                  child: Icon(
+                    Icons.directions_car_rounded,
+                    color: estClaire ? const Color(0xFF6B7280) : couleur,
+                    size: 34,
+                  ),
+                );
+              }),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -2256,7 +2344,7 @@ class _VehiculeHeroCard extends StatelessWidget {
                 child: _StatChip(
                   icon: Icons.person_outline,
                   label: _chauffeursLabel,
-                  accent: chauffeurs.isNotEmpty ? const Color(0xFF3B5BDB) : null,
+                  accent: chauffeurs.isNotEmpty ? AppColors.primary : null,
                 ),
               ),
               const SizedBox(width: 10),
@@ -2361,12 +2449,12 @@ class _ConfigureButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF3B5BDB), Color(0xFF6B8DE3)],
+              colors: [AppColors.primary, AppColors.primaryDark],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF3B5BDB).withValues(alpha: 0.25),
+                color: AppColors.primary.withValues(alpha: 0.25),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -2426,7 +2514,7 @@ class _PillTabBar extends StatelessWidget {
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
-          color: const Color(0xFF3B5BDB),
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(10),
         ),
         labelColor: Colors.white,
@@ -2470,7 +2558,7 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = accent ?? const Color(0xFF3B5BDB);
+    final color = accent ?? AppColors.primary;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2591,9 +2679,17 @@ class _ProgrammeDaySchedule {
   final ProgrammeChauffeur serviceDriver;
   final ProgrammeChauffeur? salaryDriver;
 
+  /// Nom du remplaçant lorsque le conducteur de service est indisponible ce
+  /// jour-là (overlay indisponibilité). Null s'il n'y a pas de remplacement.
+  final String? remplacantNom;
+
   const _ProgrammeDaySchedule({
     required this.date,
     required this.serviceDriver,
     required this.salaryDriver,
+    this.remplacantNom,
   });
+
+  /// Nom effectivement au volant ce jour-là (remplaçant si indisponibilité).
+  String get conducteurEffectifNom => remplacantNom ?? serviceDriver.nomComplet;
 }

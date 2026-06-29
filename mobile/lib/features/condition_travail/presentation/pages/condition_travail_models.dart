@@ -145,6 +145,7 @@ class ConditionTravailLocal {
   final String? frequenceVersement;
   final String? jourVersement;
   final String heureVersement;
+  final List<String> joursTravail;
   final List<CotisationLocal> cotisations;
   final List<PenaliteLocal> penalites;
 
@@ -165,6 +166,7 @@ class ConditionTravailLocal {
     this.frequenceVersement,
     this.jourVersement,
     required this.heureVersement,
+    this.joursTravail = const [],
     required this.cotisations,
     required this.penalites,
   });
@@ -191,6 +193,10 @@ class ConditionTravailLocal {
         frequenceVersement: json['frequenceVersement'] as String?,
         jourVersement: json['jourVersement'] as String?,
         heureVersement: json['heureVersement'] as String? ?? '18:30',
+        joursTravail: (json['joursTravail'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const [],
         cotisations: (json['cotisations'] as List<dynamic>?)
                 ?.map((e) =>
                     CotisationLocal.fromJson(e as Map<String, dynamic>))
@@ -225,6 +231,7 @@ class ConditionTravailLocal {
           'frequenceVersement': frequenceVersement,
         if (jourVersement != null) 'jourVersement': jourVersement,
         'heureVersement': heureVersement,
+        'joursTravail': joursTravail,
         'cotisations': cotisations.map((c) => c.toJson()).toList(),
         'penalites': penalites.map((p) => p.toJson()).toList(),
       };

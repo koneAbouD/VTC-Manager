@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
@@ -321,7 +322,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
 
   Widget _buildHeader(AsyncValue<List<GroupeLocal>> async) {
     return Container(
-      color: Colors.white,
+      color: AppColors.header,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -421,7 +422,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide:
-                const BorderSide(color: Color(0xFF3B5BDB), width: 1.5),
+                const BorderSide(color: AppColors.primary, width: 1.5),
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -477,8 +478,8 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text('Réessayer'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF3B5BDB),
-                side: const BorderSide(color: Color(0xFF3B5BDB)),
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(
@@ -532,7 +533,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
                 noData
                     ? Icons.group_work_outlined
                     : Icons.search_off_rounded,
-                color: const Color(0xFF3B5BDB),
+                color: AppColors.primary,
                 size: 34,
               ),
             ),
@@ -558,7 +559,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('Créer un groupe'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B5BDB),
+                  backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(

@@ -10,6 +10,7 @@ import '../../domain/entities/cotisation_recette.dart';
 import '../../domain/enums/type_recette_configuration.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
 import '../providers/configuration_recette_provider.dart';
+import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 
 // ── Toast helpers ──────────────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ class CotisationsFormPage extends ConsumerStatefulWidget {
 class _CotisationsFormPageState extends ConsumerState<CotisationsFormPage> {
   late List<CotisationRecette> _cotisations;
   bool _saving = false;
+  String? _submitError;
 
   @override
   void initState() {
@@ -105,6 +107,14 @@ class _CotisationsFormPageState extends ConsumerState<CotisationsFormPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_submitError != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: AppErrorBanner(
+                message: _submitError!,
+                onClose: () => setState(() => _submitError = null),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: Row(
@@ -154,7 +164,7 @@ class _CotisationsFormPageState extends ConsumerState<CotisationsFormPage> {
                           decoration: BoxDecoration(
                             color: disabled
                                 ? Colors.grey.shade300
-                                : const Color(0xFF3B5BDB),
+                                : const Color(0xFF43A047),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(Icons.add,
@@ -169,7 +179,7 @@ class _CotisationsFormPageState extends ConsumerState<CotisationsFormPage> {
                           style: TextStyle(
                             color: disabled
                                 ? Colors.grey.shade400
-                                : const Color(0xFF3B5BDB),
+                                : const Color(0xFF43A047),
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
                           ),
@@ -215,7 +225,7 @@ class _CotisationsFormPageState extends ConsumerState<CotisationsFormPage> {
             child: FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF3B5BDB),
+                backgroundColor: const Color(0xFF43A047),
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -269,7 +279,10 @@ class _CotisationsFormPageState extends ConsumerState<CotisationsFormPage> {
   Future<void> _save() async {
     if (widget.vehicule.id == null) return;
 
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _submitError = null;
+    });
 
     final updated = widget.configuration.copyWith(
       cotisations: _cotisations,
@@ -283,6 +296,7 @@ class _CotisationsFormPageState extends ConsumerState<CotisationsFormPage> {
     setState(() => _saving = false);
 
     if (error != null) {
+      setState(() => _submitError = error);
       _appToast(context, error, type: _ToastType.error);
       return;
     }
@@ -311,9 +325,9 @@ class _CotisationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF4FF),
+        color: const Color(0xFFE8F5E9),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD8E4FF)),
+        border: Border.all(color: const Color(0xFFC8E6C9)),
       ),
       child: Row(
         children: [
@@ -339,7 +353,7 @@ class _CotisationCard extends StatelessWidget {
           IconButton(
             onPressed: onEdit,
             icon: const Icon(Icons.edit_outlined,
-                color: Color(0xFF3B5BDB), size: 20),
+                color: Color(0xFF43A047), size: 20),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -408,7 +422,8 @@ class _AddCotisationSheetState extends State<_AddCotisationSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom,
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -523,7 +538,7 @@ class _AddCotisationSheetState extends State<_AddCotisationSheet> {
                   child: FilledButton(
                     onPressed: _submit,
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF3B5BDB),
+                      backgroundColor: const Color(0xFF43A047),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),

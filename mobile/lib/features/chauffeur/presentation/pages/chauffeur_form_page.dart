@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
 
+import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_config.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/utils/image_source_bottom_sheet.dart';
@@ -24,10 +25,13 @@ import '../providers/documents_by_chauffeur_provider.dart'
         documentsByChauffeurIdProvider;
 import '../providers/type_document_chauffeur_provider.dart';
 import '../../../vehicule/presentation/providers/type_document_provider.dart';
+import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../core/widgets/responsive_field_row.dart';
+import '../../../../core/theme/app_colors.dart';
 
-const _kPrimary = Color(0xFF3B5BDB);
+const _kPrimary = AppColors.primary;
 const _kFieldFill = Color(0xFFF2F3F5);
 const _kHint = Color(0xFF9AA0AE);
 const _kLabel = Color(0xFF6B7280);
@@ -128,6 +132,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
   bool _loading = false;
+  String? _submitError;
 
   // ── Controllers ────────────────────────────────────────────────────────
   late final TextEditingController _nom;
@@ -245,7 +250,12 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
 
   // ── Sauvegarde ─────────────────────────────────────────────────────────
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) {
+    // L'onglet Infos peut être démonté par le TabBarView quand on est sur
+    // l'onglet Document : currentState peut alors être null. On garde les
+    // onglets vivants (keep-alive) mais on reste défensif ici pour ne jamais
+    // planter silencieusement la validation.
+    final formState = _formKey.currentState;
+    if (formState != null && !formState.validate()) {
       _tabCtrl.animateTo(0);
       return;
     }
@@ -270,7 +280,10 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
         return;
       }
     }
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _submitError = null;
+    });
 
     final fullPhone = _telephone.text.trim().isEmpty
         ? null
@@ -329,6 +342,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     setState(() => _loading = false);
 
     if (error != null) {
+      // Bandeau d'erreur persistant en haut du formulaire (en plus du toast).
+      setState(() => _submitError = error);
       _toast(error, type: _ToastType.error);
       return;
     }
@@ -353,6 +368,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     }
 
     // ── Upload des pièces justificatives en attente (mode création) ────────
+    String? docUploadError;
     if (!_isEditing && _pendingDocuments.isNotEmpty) {
       final state = ref.read(chauffeurNotifierProvider);
       int? createdId;
@@ -383,7 +399,12 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                   doc.typesPermis.isEmpty ? null : doc.typesPermis,
               permanent: doc.permanent,
             );
-          } catch (_) {}
+          } catch (e) {
+            // On ne bloque pas la création du chauffeur, mais on remonte le
+            // premier message d'erreur (ex. document trop volumineux).
+            docUploadError ??= messageFromError(e,
+                fallback: "Un document n'a pas pu être ajouté.");
+          }
         }
       }
     }
@@ -393,6 +414,9 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
       _toast('Chauffeur modifié avec succès.');
       Navigator.pop(context);
     } else {
+      if (docUploadError != null) {
+        _toast(docUploadError, type: _ToastType.warning);
+      }
       _showChauffeurCreatedDialog();
     }
   }
@@ -531,12 +555,23 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
       body: Column(
         children: [
           _buildTabBar(),
+          if (_submitError != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: AppErrorBanner(
+                message: _submitError!,
+                onClose: () => setState(() => _submitError = null),
+              ),
+            ),
           Expanded(
               child: TabBarView(
                 controller: _tabCtrl,
                 children: [
-                  _buildStep1(),
-                  _buildDocumentsTab(existingDocsAsync: existingDocsAsync),
+                  _KeepAliveWrapper(child: _buildStep1()),
+                  _KeepAliveWrapper(
+                    child: _buildDocumentsTab(
+                        existingDocsAsync: existingDocsAsync),
+                  ),
                 ],
               ),
             ),
@@ -706,45 +741,38 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _ChauffeurLabeledField(
-                        label: 'Nom',
-                        isRequired: true,
-                        child: _PillField(
-                          controller: _nom,
-                          hint: 'Nom de famille',
-                          validator: (v) =>
-                              v == null || v.trim().isEmpty ? 'Requis' : null,
-                        ),
-                      ),
+                ResponsiveFieldRow(
+                  gap: 12,
+                  stackedGap: 14,
+                  left: _ChauffeurLabeledField(
+                    label: 'Nom',
+                    isRequired: true,
+                    child: _PillField(
+                      controller: _nom,
+                      hint: 'Nom de famille',
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Requis' : null,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ChauffeurLabeledField(
-                        label: 'Prénom',
-                        isRequired: true,
-                        child: _PillField(
-                          controller: _prenom,
-                          hint: 'Prénom',
-                          validator: (v) =>
-                              v == null || v.trim().isEmpty ? 'Requis' : null,
-                        ),
-                      ),
+                  ),
+                  right: _ChauffeurLabeledField(
+                    label: 'Prénom',
+                    isRequired: true,
+                    child: _PillField(
+                      controller: _prenom,
+                      hint: 'Prénom',
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Requis' : null,
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _ChauffeurLabeledField(
-                        label: 'Genre',
-                        isRequired: true,
-                        child: Container(
+                ResponsiveFieldRow(
+                  gap: 12,
+                  stackedGap: 14,
+                  left: _ChauffeurLabeledField(
+                    label: 'Genre',
+                    isRequired: true,
+                    child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 2),
                           decoration: BoxDecoration(
@@ -774,13 +802,10 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ChauffeurLabeledField(
-                        label: 'Type',
-                        isRequired: true,
-                        child: Container(
+                  right: _ChauffeurLabeledField(
+                    label: 'Type',
+                    isRequired: true,
+                    child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 2),
                           decoration: BoxDecoration(
@@ -812,8 +837,6 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                           ),
                         ),
                       ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -1009,9 +1032,13 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
         ref.invalidate(documentsByChauffeurIdProvider(chauffeurId));
         _toast('Document ajouté avec succès.');
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        _toast("Impossible d'ajouter ce document, réessayez.", type: _ToastType.error);
+        _toast(
+          messageFromError(e,
+              fallback: "Impossible d'ajouter ce document, réessayez."),
+          type: _ToastType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -1226,9 +1253,13 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
         ref.invalidate(documentsByChauffeurIdProvider(chauffeurId));
         _toast('Document mis à jour.');
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        _toast('Impossible de mettre à jour ce document.', type: _ToastType.error);
+        _toast(
+          messageFromError(e,
+              fallback: 'Impossible de mettre à jour ce document.'),
+          type: _ToastType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -1812,7 +1843,8 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
     final media = MediaQuery.of(context);
 
     return Padding(
-      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      padding: EdgeInsets.only(
+          bottom: media.viewInsets.bottom + media.padding.bottom),
       child: SizedBox(
         height: media.size.height * 0.78,
         child: Column(
@@ -2633,7 +2665,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
           Expanded(
             child: ListView(
               controller: ctrl,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              padding: EdgeInsets.fromLTRB(
+                  20, 0, 20, 24 + MediaQuery.viewPaddingOf(context).bottom),
               children: [
                 // ── Banner d'erreur/succès inline ──────────────────
                 AnimatedSwitcher(
@@ -2765,27 +2798,22 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 const SizedBox(height: 4),
 
                 // Dates
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _DocLabeledField(
-                        label: "Date d'émission",
-                        child: _DocDateField(
-                          label: 'JJ/MM/AAAA',
-                          value: _dateEmission,
-                          formatter: _fmt,
-                          onTap: () => _pickDate(
-                            _dateEmission,
-                            (d) => setState(() => _dateEmission = d),
-                          ),
-                        ),
+                ResponsiveFieldRow(
+                  left: _DocLabeledField(
+                    label: "Date d'émission",
+                    child: _DocDateField(
+                      label: 'JJ/MM/AAAA',
+                      value: _dateEmission,
+                      formatter: _fmt,
+                      onTap: () => _pickDate(
+                        _dateEmission,
+                        (d) => setState(() => _dateEmission = d),
                       ),
                     ),
-                    if (!_permanent) ...[
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _DocLabeledField(
+                  ),
+                  right: _permanent
+                      ? null
+                      : _DocLabeledField(
                           label: "Date d'expiration",
                           child: _DocDateField(
                             label: 'JJ/MM/AAAA',
@@ -2797,9 +2825,6 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ],
                 ),
                 const SizedBox(height: 12),
 
@@ -3161,6 +3186,30 @@ class _DocDateField extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ── Garde les onglets vivants dans le TabBarView ─────────────────────────────
+//
+// Sans cela, l'onglet non visible est démonté : le Form (onglet Infos) perd son
+// state et la validation déclenchée depuis l'onglet Document échoue.
+class _KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+  const _KeepAliveWrapper({required this.child});
+
+  @override
+  State<_KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 

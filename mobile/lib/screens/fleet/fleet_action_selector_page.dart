@@ -10,15 +10,11 @@ class FleetActionSelectorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: const AppHeader(title: 'Ajouter à la flotte'),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 24),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+          children: [
               _ActionCard(
                 icon: Icons.directions_car_outlined,
                 iconColor: Colors.blue.shade700,
@@ -60,8 +56,7 @@ class FleetActionSelectorPage extends StatelessWidget {
                 subtitle: 'Connectez votre compte Yango pour synchroniser votre flotte',
                 onTap: () {},
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );

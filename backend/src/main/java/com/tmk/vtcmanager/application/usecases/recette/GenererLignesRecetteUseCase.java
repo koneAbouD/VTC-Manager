@@ -2,22 +2,19 @@ package com.tmk.vtcmanager.application.usecases.recette;
 
 import com.tmk.vtcmanager.application.domain.configurationRecette.ConfigurationRecette;
 import com.tmk.vtcmanager.application.domain.configurationRecette.TypeRecetteConfiguration;
-import com.tmk.vtcmanager.application.domain.programmeTravail.JourSemaine;
-import com.tmk.vtcmanager.application.domain.programmeTravail.ModeAlternance;
-import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeChauffeur;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
+import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +25,7 @@ public class GenererLignesRecetteUseCase {
     private final ProgrammeTravailRepository programmeTravailRepository;
     private final ConfigurationRecetteRepository configurationRecetteRepository;
     private final LigneRecetteRepository ligneRecetteRepository;
+    private final IndisponibiliteSubstitutionService indisponibiliteSubstitutionService;
 
     @Transactional
     public List<LigneRecette> executer(LocalDate date) {
@@ -48,14 +46,17 @@ public class GenererLignesRecetteUseCase {
                 continue;
             }
 
-            if (!travailleCeJour(programme, date)) {
+            if (!programme.travailleCeJour(date)) {
                 log.debug("Véhicule {} ne travaille pas le {} — lignes ignorées",
                         programme.getVehiculeId(), date.getDayOfWeek());
                 continue;
             }
 
             BigDecimal montantAttendu = resolveMontantAttendu(config);
-            List<Long> chauffeursActifs = determinerChauffeursActifs(programme, date);
+            // Conducteurs planifiés du jour, avec substitution des titulaires
+            // indisponibles par leur remplaçant (uniquement pour cette date).
+            List<Long> chauffeursActifs = indisponibiliteSubstitutionService
+                    .appliquer(programme.chauffeursActifs(date), date);
 
             // Liste mutable : alimentée avec les lignes existantes + celles créées en cours de boucle
             List<LigneRecette> lignesExistantes = new ArrayList<>(
@@ -158,70 +159,10 @@ public class GenererLignesRecetteUseCase {
         existantes.removeAll(aSupprimer);
     }
 
-    private boolean travailleCeJour(ProgrammeTravail programme, LocalDate date) {
-        if (programme.getJoursTravailSemaine() == null || programme.getJoursTravailSemaine().isEmpty()) {
-            return true; // aucune restriction → travaille tous les jours
-        }
-        return programme.getJoursTravailSemaine().contains(JourSemaine.from(date.getDayOfWeek()));
-    }
-
     private BigDecimal resolveMontantAttendu(ConfigurationRecette config) {
         if (config.getTypeRecette() == TypeRecetteConfiguration.MONTANT_FIXE) {
             return config.getMontantObjectifParChauffeur();
         }
         return null; // MONTANT_REEL : pas de montant fixe attendu
-    }
-
-    private List<Long> determinerChauffeursActifs(ProgrammeTravail programme, LocalDate date) {
-        List<ProgrammeChauffeur> chauffeurs = programme.getChauffeurs();
-
-        if (programme.getNombreChauffeursAutorises() == null || programme.getNombreChauffeursAutorises() == 1) {
-            return chauffeurs.stream()
-                    .filter(pc -> pc.getChauffeurId() != null)
-                    .map(ProgrammeChauffeur::getChauffeurId)
-                    .toList();
-        }
-
-        // 2 chauffeurs : vérifier si c'est un jour de travail commun
-        if (programme.getJoursAlternanceSemaine() != null
-                && !programme.getJoursAlternanceSemaine().isEmpty()) {
-            if (programme.getJoursAlternanceSemaine().contains(JourSemaine.from(date.getDayOfWeek()))) {
-                return chauffeurs.stream()
-                        .filter(pc -> pc.getChauffeurId() != null)
-                        .map(ProgrammeChauffeur::getChauffeurId)
-                        .toList();
-            }
-        }
-
-        if (programme.getModeAlternance() == ModeAlternance.AUTOMATIQUE
-                && programme.getDateDebutAlternance() != null
-                && programme.getJoursAlternance() != null) {
-            return List.of(determinerChauffeurAlternanceAuto(programme, date));
-        }
-
-        // Mode MANUELLE : génère pour tous les chauffeurs assignés
-        return chauffeurs.stream()
-                .filter(pc -> pc.getChauffeurId() != null)
-                .map(ProgrammeChauffeur::getChauffeurId)
-                .toList();
-    }
-
-    private Long determinerChauffeurAlternanceAuto(ProgrammeTravail programme, LocalDate date) {
-        long joursEcoules = ChronoUnit.DAYS.between(programme.getDateDebutAlternance(), date);
-        long periode = joursEcoules / programme.getJoursAlternance();
-        boolean chauffeurUn = (periode % 2) == 0;
-
-        return programme.getChauffeurs().stream()
-                .filter(pc -> pc.getChauffeurId() != null)
-                .filter(pc -> chauffeurUn
-                        ? pc.getOrdreAlternance() != null && pc.getOrdreAlternance() == 1
-                        : pc.getOrdreAlternance() != null && pc.getOrdreAlternance() == 2)
-                .map(ProgrammeChauffeur::getChauffeurId)
-                .findFirst()
-                .orElseGet(() -> programme.getChauffeurs().stream()
-                        .filter(pc -> pc.getChauffeurId() != null)
-                        .map(ProgrammeChauffeur::getChauffeurId)
-                        .findFirst()
-                        .orElseThrow());
     }
 }

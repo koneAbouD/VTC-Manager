@@ -6,6 +6,7 @@ import '../../domain/entities/encaissement.dart';
 import '../../domain/entities/ligne_recette.dart';
 import '../providers/ligne_recette_provider.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/app_error_banner.dart';
 
 class EncaissementFormPage extends ConsumerStatefulWidget {
   final LigneRecette ligne;
@@ -25,6 +26,7 @@ class _EncaissementFormPageState extends ConsumerState<EncaissementFormPage> {
   ModeEncaissement _mode = ModeEncaissement.especes;
   DateTime _date = DateTime.now();
   bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -45,6 +47,13 @@ class _EncaissementFormPageState extends ConsumerState<EncaissementFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (_error != null) ...[
+              AppErrorBanner(
+                message: _error!,
+                onClose: () => setState(() => _error = null),
+              ),
+              const SizedBox(height: 16),
+            ],
             if (widget.ligne.montantRestant != null)
               _InfoBanner(
                 'Montant restant : ${fmt.format(widget.ligne.montantRestant!)}',
@@ -78,7 +87,10 @@ class _EncaissementFormPageState extends ConsumerState<EncaissementFormPage> {
               items: ModeEncaissement.values
                   .map((m) => DropdownMenuItem(value: m, child: Text(m.label)))
                   .toList(),
-              onChanged: (v) => setState(() => _mode = v!),
+              onChanged: (v) => setState(() {
+                _mode = v!;
+                _error = null;
+              }),
             ),
             if (_mode == ModeEncaissement.mobileMoney) ...[
               const SizedBox(height: 16),
@@ -131,7 +143,10 @@ class _EncaissementFormPageState extends ConsumerState<EncaissementFormPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     final encaissement = Encaissement(
       ligneRecetteId: widget.ligne.id!,
@@ -147,12 +162,21 @@ class _EncaissementFormPageState extends ConsumerState<EncaissementFormPage> {
         .createEncaissement(widget.ligne.id!, encaissement);
 
     if (!mounted) return;
-    setState(() => _loading = false);
+    setState(() {
+      _loading = false;
+      _error = error;
+    });
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: const Color(0xFFC62828),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
     } else {
       Navigator.pop(context, true);
     }

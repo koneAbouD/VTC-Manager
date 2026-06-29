@@ -17,9 +17,10 @@ public class RecetteScheduler {
 
     @Scheduled(cron = "0 0 6 * * *")
     public void genererLignesRecetteQuotidiennes() {
-        LocalDate today = LocalDate.now();
-        log.info("Génération des lignes de recette pour le {}", today);
-        var lignes = genererLignesRecetteUseCase.executer(today);
-        log.info("{} ligne(s) de recette générée(s) pour le {}", lignes.size(), today);
+        // Principe : la génération du jour J concerne la veille (J-1).
+        LocalDate hier = LocalDate.now().minusDays(1);
+        log.info("Génération des lignes de recette pour le {}", hier);
+        var lignes = genererLignesRecetteUseCase.executer(hier);
+        log.info("{} ligne(s) de recette générée(s) pour le {}", lignes.size(), hier);
     }
 }

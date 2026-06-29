@@ -3,44 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/auth_state.dart';
-import '../../../../core/widgets/app_header.dart';
-
-enum _ToastType { success, error, warning, info }
-
-void _appToast(
-  BuildContext context,
-  String message, {
-  _ToastType type = _ToastType.success,
-  Duration? duration,
-}) {
-  final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
-  };
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(
-      content: Row(children: [
-        Icon(icon, color: Colors.white, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(message,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
-        ),
-      ]),
-      backgroundColor: bg,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      duration: duration ??
-          (type == _ToastType.error || type == _ToastType.warning
-              ? const Duration(seconds: 4)
-              : const Duration(seconds: 2)),
-    ));
-}
+import '../widgets/auth_ui.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
@@ -91,108 +54,130 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     ref.listen(authNotifierProvider, (_, next) {
       if (!mounted) return;
       if (next is AuthError) {
-        _appToast(context, next.message, type: _ToastType.error);
+        authToast(context, next.message, type: AuthToastType.error);
       } else if (next is AuthUnauthenticated) {
-        _appToast(context, 'Compte créé ! Connectez-vous.');
+        authToast(context, 'Compte créé ! Connectez-vous.');
         Navigator.pop(context);
       }
     });
 
-    return Scaffold(
-      appBar: const AppHeader(title: 'Inscription'),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              _field(_lastName, 'Nom', Icons.badge),
-              const SizedBox(height: 12),
-              _field(_firstName, 'Prénom', Icons.badge_outlined),
-              const SizedBox(height: 12),
-              _field(_username, 'Nom d\'utilisateur *', Icons.person,
-                  validator: (v) {
-                if (v == null || v.isEmpty) return 'Requis';
-                if (v.length < 3) return 'Au moins 3 caractères';
-                return null;
-              }),
-              const SizedBox(height: 12),
-              _field(_email, 'Email *', Icons.email,
-                  type: TextInputType.emailAddress, validator: (v) {
-                if (v == null || v.isEmpty) return 'Requis';
-                if (!v.contains('@')) return 'Email invalide';
-                return null;
-              }),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _password,
-                obscureText: _obscure,
-                decoration: InputDecoration(
-                  labelText: 'Mot de passe *',
-                  prefixIcon: const Icon(Icons.lock),
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                        _obscure ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _obscure = !_obscure),
+    return AuthScaffold(
+      showBack: true,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AuthBrand(
+              icon: Icons.person_add_alt_1_rounded,
+              title: 'Créer un compte',
+              subtitle: 'Rejoignez VTC Manager en quelques secondes',
+              compact: true,
+            ),
+            const SizedBox(height: 24),
+            AuthCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _lastName,
+                    decoration: authInputDecoration(
+                        label: 'Nom', icon: Icons.badge_outlined),
                   ),
-                ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Requis';
-                  if (v.length < 8) return 'Au moins 8 caractères';
-                  return null;
-                },
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _firstName,
+                    decoration: authInputDecoration(
+                        label: 'Prénom',
+                        icon: Icons.badge_outlined),
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _username,
+                    decoration: authInputDecoration(
+                        label: "Nom d'utilisateur *",
+                        icon: Icons.person_outline_rounded),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Requis';
+                      if (v.length < 3) return 'Au moins 3 caractères';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: authInputDecoration(
+                        label: 'Email *', icon: Icons.email_outlined),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Requis';
+                      if (!v.contains('@')) return 'Email invalide';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _password,
+                    obscureText: _obscure,
+                    decoration: authInputDecoration(
+                      label: 'Mot de passe *',
+                      icon: Icons.lock_outline_rounded,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscure
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: kAuthHint,
+                          size: 20,
+                        ),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Requis';
+                      if (v.length < 8) return 'Au moins 8 caractères';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _confirmPassword,
+                    obscureText: _obscure,
+                    decoration: authInputDecoration(
+                        label: 'Confirmer le mot de passe *',
+                        icon: Icons.lock_reset_rounded),
+                    validator: (v) => v != _password.text
+                        ? 'Les mots de passe ne correspondent pas'
+                        : null,
+                  ),
+                  const SizedBox(height: 22),
+                  AuthPrimaryButton(
+                    label: "S'inscrire",
+                    loading: loading,
+                    onPressed: loading ? null : _register,
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _confirmPassword,
-                obscureText: _obscure,
-                decoration: const InputDecoration(
-                  labelText: 'Confirmer le mot de passe *',
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Déjà un compte ?',
+                    style: TextStyle(color: kAuthHint, fontSize: 14)),
+                TextButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: kAuthPrimary,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: const Text('Se connecter',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
-                validator: (v) => v != _password.text
-                    ? 'Les mots de passe ne correspondent pas'
-                    : null,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: loading ? null : _register,
-                  child: loading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('S\'inscrire'),
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _field(
-    TextEditingController ctrl,
-    String label,
-    IconData icon, {
-    TextInputType type = TextInputType.text,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: ctrl,
-      keyboardType: type,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        border: const OutlineInputBorder(),
       ),
     );
   }

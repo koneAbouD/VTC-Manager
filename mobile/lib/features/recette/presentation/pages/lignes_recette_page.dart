@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -168,7 +169,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                                     : Icons.radio_button_off_outlined,
                                 size: 18,
                                 color: sel
-                                    ? const Color(0xFF1A5276)
+                                    ? const Color(0xFF43A047)
                                     : Colors.grey.shade400,
                               ),
                               const SizedBox(width: 10),
@@ -180,7 +181,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                                       ? FontWeight.w600
                                       : FontWeight.w400,
                                   color: sel
-                                      ? const Color(0xFF1A5276)
+                                      ? const Color(0xFF43A047)
                                       : const Color(0xFF1A1A1A),
                                 ),
                               ),
@@ -299,7 +300,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lignes générées avec succès.')),
+        const SnackBar(content: Text("Lignes d'hier générées avec succès.")),
       );
       _load();
     }
@@ -320,14 +321,14 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     final filtered = _filtrer(allLignes);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
+      backgroundColor: const Color(0xFFF8F9FB),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── En-tête ────────────────────────────────────────────────
             Container(
-              color: Colors.white,
+              color: AppColors.header,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -539,19 +540,19 @@ class _FiltreBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.filter_list_rounded,
-                      size: 14, color: Color(0xFF1A5276)),
+                      size: 14, color: Color(0xFF43A047)),
                   const SizedBox(width: 5),
                   Text(
                     modeLabel,
                     style: const TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF1A5276),
+                      color: Color(0xFF43A047),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(width: 3),
                   const Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 14, color: Color(0xFF1A5276)),
+                      size: 14, color: Color(0xFF43A047)),
                 ],
               ),
             ),

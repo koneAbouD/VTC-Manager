@@ -113,7 +113,7 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                                       CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      v.displayName,
+                                      v.immatriculation,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 14,
@@ -122,7 +122,7 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      v.immatriculation,
+                                      v.displayName,
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey.shade600,

@@ -79,6 +79,8 @@ public class LigneCotisationController {
     @ResponseStatus(HttpStatus.CREATED)
     public List<LigneCotisationResponse> generer(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return mapper.toResponseList(genererUseCase.executer(date != null ? date : LocalDate.now()));
+        // Principe : sans date, la génération concerne la veille (J-1).
+        return mapper.toResponseList(genererUseCase.executer(
+                date != null ? date : LocalDate.now().minusDays(1)));
     }
 }

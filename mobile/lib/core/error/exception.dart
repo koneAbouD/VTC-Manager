@@ -18,3 +18,22 @@ class NetworkException implements Exception {
   @override
   String toString() => message;
 }
+
+/// Extrait un message lisible à présenter à l'utilisateur à partir de
+/// n'importe quelle erreur capturée.
+///
+/// Priorité au message renvoyé par le backend ([ApiException.message], ex.
+/// « Le document est trop volumineux. La taille maximale autorisée est de
+/// 1MB… »), puis au message réseau, et enfin à [fallback] en dernier recours.
+String messageFromError(
+  Object error, {
+  String fallback = "Une erreur est survenue, veuillez réessayer.",
+}) {
+  if (error is ApiException) {
+    return error.message.trim().isNotEmpty ? error.message.trim() : fallback;
+  }
+  if (error is NetworkException) {
+    return error.message.trim().isNotEmpty ? error.message.trim() : fallback;
+  }
+  return fallback;
+}

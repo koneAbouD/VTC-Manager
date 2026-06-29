@@ -4,13 +4,18 @@ import com.tmk.vtcmanager.application.ports.persistence.ConditionTravailReposito
 import com.tmk.vtcmanager.application.usecases.conditionTravail.CreateConditionTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.DeleteConditionTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionTravailByIdUseCase;
+import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionTravailImpactUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionsTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.UpdateConditionTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.dashboard.GetDashboardSummaryUseCase;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
+import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
+import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
+import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
+import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MarqueRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ModeleRepository;
@@ -29,6 +34,7 @@ import com.tmk.vtcmanager.application.usecases.configurationRecette.CreateConfig
 import com.tmk.vtcmanager.application.usecases.configurationRecette.GetConfigurationRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.configurationRecette.UpdateConfigurationRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.*;
+import com.tmk.vtcmanager.application.usecases.indisponibilite.*;
 import com.tmk.vtcmanager.application.usecases.maintenance.*;
 import com.tmk.vtcmanager.application.usecases.programmeTravail.CreateProgrammeTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.programmeTravail.GetProgrammeTravailUseCase;
@@ -76,15 +82,21 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public ConfigurationRecetteSynchronizer configurationRecetteSynchronizer(
+            ConfigurationRecetteRepository configurationRecetteRepository) {
+        return new ConfigurationRecetteSynchronizer(configurationRecetteRepository);
+    }
+
+    @Bean
     public UpdateVehiculeUseCase updateVehiculeUseCase(
             VehiculeRepository repo,
             TypeActiviteRepository typeActiviteRepository,
             GroupeVehiculeRepository groupeVehiculeRepository,
             ConditionTravailRepository conditionTravailRepository,
             ProgrammeTravailRepository programmeTravailRepository,
-            ConfigurationRecetteRepository configurationRecetteRepository) {
+            ConfigurationRecetteSynchronizer configurationRecetteSynchronizer) {
         return new UpdateVehiculeUseCase(repo, typeActiviteRepository, groupeVehiculeRepository,
-                conditionTravailRepository, programmeTravailRepository, configurationRecetteRepository);
+                conditionTravailRepository, programmeTravailRepository, configurationRecetteSynchronizer);
     }
 
     @Bean
@@ -134,16 +146,28 @@ public class UseCaseBeanConfiguration {
     public CreateProgrammeTravailUseCase createProgrammeTravailUseCase(
             ProgrammeTravailRepository programmeRepository,
             VehiculeRepository vehiculeRepository,
-            ChauffeurRepository chauffeurRepository) {
-        return new CreateProgrammeTravailUseCase(programmeRepository, vehiculeRepository, chauffeurRepository);
+            ChauffeurRepository chauffeurRepository,
+            IndisponibiliteNettoyageService indisponibiliteNettoyageService) {
+        return new CreateProgrammeTravailUseCase(programmeRepository, vehiculeRepository,
+                chauffeurRepository, indisponibiliteNettoyageService);
+    }
+
+    @Bean
+    public IndisponibiliteNettoyageService indisponibiliteNettoyageService(
+            IndisponibiliteRepository indisponibiliteRepository,
+            ProgrammeTravailRepository programmeTravailRepository) {
+        return new IndisponibiliteNettoyageService(
+                indisponibiliteRepository, programmeTravailRepository);
     }
 
     @Bean
     public UpdateProgrammeTravailUseCase updateProgrammeTravailUseCase(
             ProgrammeTravailRepository programmeRepository,
             VehiculeRepository vehiculeRepository,
-            ChauffeurRepository chauffeurRepository) {
-        return new UpdateProgrammeTravailUseCase(programmeRepository, vehiculeRepository, chauffeurRepository);
+            ChauffeurRepository chauffeurRepository,
+            IndisponibiliteNettoyageService indisponibiliteNettoyageService) {
+        return new UpdateProgrammeTravailUseCase(programmeRepository, vehiculeRepository,
+                chauffeurRepository, indisponibiliteNettoyageService);
     }
 
     @Bean
@@ -222,8 +246,10 @@ public class UseCaseBeanConfiguration {
     public UnassignVehiculeFromChauffeurUseCase unassignVehiculeFromChauffeurUseCase(
             ChauffeurRepository chauffeurRepo,
             VehiculeRepository vehiculeRepo,
-            ProgrammeTravailRepository programmeTravailRepository) {
-        return new UnassignVehiculeFromChauffeurUseCase(chauffeurRepo, vehiculeRepo, programmeTravailRepository);
+            ProgrammeTravailRepository programmeTravailRepository,
+            IndisponibiliteNettoyageService indisponibiliteNettoyageService) {
+        return new UnassignVehiculeFromChauffeurUseCase(chauffeurRepo, vehiculeRepo,
+                programmeTravailRepository, indisponibiliteNettoyageService);
     }
 
     // ----- Contravention -----
@@ -342,8 +368,26 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
-    public UpdateConditionTravailUseCase updateConditionTravailUseCase(ConditionTravailRepository conditionTravailRepository) {
-        return new UpdateConditionTravailUseCase(conditionTravailRepository);
+    public GetConditionTravailImpactUseCase getConditionTravailImpactUseCase(
+            VehiculeRepository vehiculeRepository,
+            ProgrammeTravailRepository programmeTravailRepository,
+            IndisponibiliteRepository indisponibiliteRepository) {
+        return new GetConditionTravailImpactUseCase(
+                vehiculeRepository, programmeTravailRepository, indisponibiliteRepository);
+    }
+
+    @Bean
+    public UpdateConditionTravailUseCase updateConditionTravailUseCase(
+            ConditionTravailRepository conditionTravailRepository,
+            VehiculeRepository vehiculeRepository,
+            ProgrammeTravailRepository programmeTravailRepository,
+            ChauffeurRepository chauffeurRepository,
+            ConfigurationRecetteSynchronizer configurationRecetteSynchronizer,
+            IndisponibiliteNettoyageService indisponibiliteNettoyageService) {
+        return new UpdateConditionTravailUseCase(
+                conditionTravailRepository, vehiculeRepository,
+                programmeTravailRepository, chauffeurRepository,
+                configurationRecetteSynchronizer, indisponibiliteNettoyageService);
     }
 
     @Bean
@@ -430,8 +474,10 @@ public class UseCaseBeanConfiguration {
     public GenererLignesCotisationUseCase genererLignesCotisationUseCase(
             ProgrammeTravailRepository programmeTravailRepository,
             ConfigurationRecetteRepository configurationRecetteRepository,
-            LigneCotisationRepository ligneCotisationRepository) {
-        return new GenererLignesCotisationUseCase(programmeTravailRepository, configurationRecetteRepository, ligneCotisationRepository);
+            LigneCotisationRepository ligneCotisationRepository,
+            IndisponibiliteSubstitutionService indisponibiliteSubstitutionService) {
+        return new GenererLignesCotisationUseCase(programmeTravailRepository, configurationRecetteRepository,
+                ligneCotisationRepository, indisponibiliteSubstitutionService);
     }
 
     @Bean
@@ -460,8 +506,10 @@ public class UseCaseBeanConfiguration {
     public GenererLignesRecetteUseCase genererLignesRecetteUseCase(
             ProgrammeTravailRepository programmeTravailRepository,
             ConfigurationRecetteRepository configurationRecetteRepository,
-            LigneRecetteRepository ligneRecetteRepository) {
-        return new GenererLignesRecetteUseCase(programmeTravailRepository, configurationRecetteRepository, ligneRecetteRepository);
+            LigneRecetteRepository ligneRecetteRepository,
+            IndisponibiliteSubstitutionService indisponibiliteSubstitutionService) {
+        return new GenererLignesRecetteUseCase(programmeTravailRepository, configurationRecetteRepository,
+                ligneRecetteRepository, indisponibiliteSubstitutionService);
     }
 
     @Bean
@@ -663,5 +711,52 @@ public class UseCaseBeanConfiguration {
     @Bean
     public RemoveRoleUseCase removeRoleUseCase(KeycloakAdminPort adminPort) {
         return new RemoveRoleUseCase(adminPort);
+    }
+
+    // ----- Indisponibilité -----
+    @Bean
+    public IndisponibiliteSubstitutionService indisponibiliteSubstitutionService(
+            IndisponibiliteRepository repo) {
+        return new IndisponibiliteSubstitutionService(repo);
+    }
+
+    @Bean
+    public CreateIndisponibiliteUseCase createIndisponibiliteUseCase(
+            IndisponibiliteRepository repo, ProgrammeTravailRepository programmeTravailRepository) {
+        return new CreateIndisponibiliteUseCase(repo, programmeTravailRepository);
+    }
+
+    @Bean
+    public UpdateIndisponibiliteUseCase updateIndisponibiliteUseCase(
+            IndisponibiliteRepository repo, ProgrammeTravailRepository programmeTravailRepository) {
+        return new UpdateIndisponibiliteUseCase(repo, programmeTravailRepository);
+    }
+
+    @Bean
+    public DeleteIndisponibiliteUseCase deleteIndisponibiliteUseCase(
+            IndisponibiliteRepository repo) {
+        return new DeleteIndisponibiliteUseCase(repo);
+    }
+
+    @Bean
+    public GetIndisponibiliteByIdUseCase getIndisponibiliteByIdUseCase(IndisponibiliteRepository repo) {
+        return new GetIndisponibiliteByIdUseCase(repo);
+    }
+
+    @Bean
+    public GetAllIndisponibilitesUseCase getAllIndisponibilitesUseCase(IndisponibiliteRepository repo) {
+        return new GetAllIndisponibilitesUseCase(repo);
+    }
+
+    @Bean
+    public TerminerIndisponibiliteUseCase terminerIndisponibiliteUseCase(
+            IndisponibiliteRepository repo) {
+        return new TerminerIndisponibiliteUseCase(repo);
+    }
+
+    @Bean
+    public SynchroniserIndisponibilitesUseCase synchroniserIndisponibilitesUseCase(
+            IndisponibiliteRepository repo) {
+        return new SynchroniserIndisponibilitesUseCase(repo);
     }
 }

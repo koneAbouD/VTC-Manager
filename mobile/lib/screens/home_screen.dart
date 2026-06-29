@@ -7,6 +7,7 @@ import '../features/chauffeur/presentation/providers/chauffeur_state.dart';
 import '../features/contravention/presentation/providers/contravention_provider.dart';
 import '../features/maintenance/presentation/providers/maintenance_provider.dart';
 import '../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
+import '../features/vehicule/domain/entities/statut_vehicule.dart';
 import '../features/vehicule/domain/entities/vehicule.dart';
 import '../features/vehicule/presentation/providers/vehicule_provider.dart';
 import '../features/vehicule/presentation/providers/vehicule_state.dart';
@@ -51,26 +52,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final fleetTab = ref.watch(fleetActiveTabProvider);
-    final onFleetExportable =
-        _currentIndex == 1 && (fleetTab == 1 || fleetTab == 2);
+    // Tous les sous-onglets de la Flotte (État du parc, Véhicules, Chauffeurs)
+    // proposent un export CSV.
+    final onFleetExportable = _currentIndex == 1;
+
+    // Action de l'en-tête :
+    //  • Flotte (État du parc / Véhicules / Chauffeurs) → export CSV
+    //  • Accueil → accès aux paramètres
+    //  • Localisation / Finances → aucune action
+    final AppHeaderAction? headerAction;
+    if (onFleetExportable) {
+      headerAction = AppHeaderAction(
+        icon: Icons.file_download_outlined,
+        onTap: () => _exportCsv(fleetTab),
+      );
+    } else if (_currentIndex == 0) {
+      headerAction = AppHeaderAction(
+        icon: Icons.settings_outlined,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+        ),
+      );
+    } else {
+      headerAction = null;
+    }
 
     return Scaffold(
       appBar: AppHeader(
         title: '',
         showBack: false,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        action: AppHeaderAction(
-          icon: onFleetExportable
-              ? Icons.file_download_outlined
-              : Icons.settings_outlined,
-          onTap: onFleetExportable
-              ? () => _exportCsv(fleetTab)
-              : () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const SettingsScreen()),
-                  ),
-        ),
+        action: headerAction,
       ),
       body: IndexedStack(
         index: _currentIndex,
@@ -86,7 +99,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ── Export CSV ──────────────────────────────────────────────────────────
 
   Future<void> _exportCsv(int fleetTab) async {
-    if (fleetTab == 1) {
+    if (fleetTab == 0) {
+      // État du parc : résumé des effectifs par statut.
+      final all = switch (ref.read(vehiculeNotifierProvider)) {
+        VehiculeLoaded(:final vehicules) => vehicules,
+        VehiculeActionSuccess(:final vehicules) => vehicules,
+        _ => <Vehicule>[],
+      };
+      final path = await downloadCsvFile(
+          _etatParcToCsv(all), 'etat_du_parc.csv');
+      _showExportSnack('État du parc exporté', path: path);
+    } else if (fleetTab == 1) {
       final all = switch (ref.read(vehiculeNotifierProvider)) {
         VehiculeLoaded(:final vehicules) => vehicules,
         VehiculeActionSuccess(:final vehicules) => vehicules,
@@ -142,6 +165,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  static String _etatParcToCsv(List<Vehicule> vehicules) {
+    int count(String s) => vehicules.where((v) => v.statut == s).length;
+    final buf = StringBuffer()..writeln('Statut;Nombre');
+    for (final s in StatutVehicule.fallback) {
+      buf.writeln('${s.libelle};${count(s.code)}');
+    }
+    buf.writeln('Total;${vehicules.length}');
+    return buf.toString();
+  }
+
   static String _vehiculesToCsv(List<Vehicule> vehicules) {
     final buf = StringBuffer()
       ..writeln(
@@ -187,13 +220,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return buf.toString();
   }
 
-  static String _statutVehiculeLabel(String? s) => switch (s) {
-        'DISPONIBLE' => 'Disponible',
-        'EN_SERVICE' => 'En service',
-        'EN_MAINTENANCE' => 'En maintenance',
-        'HORS_SERVICE' => 'Hors service',
-        _ => s ?? '',
-      };
+  static String _statutVehiculeLabel(String? s) {
+    final st = StatutVehicule.resolve(s);
+    return st.code.isEmpty ? (s ?? '') : st.libelle;
+  }
 
   static String _fmtDate(DateTime? d) {
     if (d == null) return '';
@@ -264,7 +294,7 @@ class _FloatingNavBar extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
                   decoration: BoxDecoration(
                     color: selected
-                        ? Colors.indigo.withValues(alpha: 0.12)
+                        ? Color(0xFF43A047).withValues(alpha: 0.12)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -274,7 +304,7 @@ class _FloatingNavBar extends StatelessWidget {
                       Icon(
                         selected ? item.selectedIcon : item.icon,
                         size: 22,
-                        color: selected ? Colors.indigo : Colors.grey.shade500,
+                        color: selected ? Color(0xFF43A047) : Colors.grey.shade500,
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -282,7 +312,7 @@ class _FloatingNavBar extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          color: selected ? Colors.indigo : Colors.grey.shade500,
+                          color: selected ? Color(0xFF43A047) : Colors.grey.shade500,
                         ),
                       ),
                     ],

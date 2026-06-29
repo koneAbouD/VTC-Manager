@@ -1,28 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/statut_vehicule.dart';
 import '../../domain/entities/vehicule.dart';
+import '../providers/referentiel_provider.dart';
 import '../providers/vehicule_provider.dart';
 import '../providers/vehicule_state.dart';
 import 'vehicule_form_page.dart';
-
-// ── Couleurs par statut ──────────────────────────────────────────────────────
-
-Color _statutColor(String? s) => switch (s) {
-      'DISPONIBLE' => const Color(0xFF2E7D32),
-      'EN_SERVICE' => const Color(0xFF1565C0),
-      'EN_MAINTENANCE' => const Color(0xFFE65100),
-      'HORS_SERVICE' => const Color(0xFFC62828),
-      _ => Colors.grey,
-    };
-
-String _statutLabel(String? s) => switch (s) {
-      'DISPONIBLE' => 'Disponible',
-      'EN_SERVICE' => 'En service',
-      'EN_MAINTENANCE' => 'Maintenance',
-      'HORS_SERVICE' => 'Hors service',
-      _ => 'Inconnu',
-    };
 
 // ── Page principale ──────────────────────────────────────────────────────────
 
@@ -87,7 +71,6 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
     final state = ref.watch(vehiculeNotifierProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -189,16 +172,10 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
                   fontWeight: FontWeight.w600,
                   color: hasFilter ? primary : Colors.grey.shade700,
                 ),
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('Tous')),
-                  DropdownMenuItem(
-                      value: 'DISPONIBLE', child: Text('Disponible')),
-                  DropdownMenuItem(
-                      value: 'EN_SERVICE', child: Text('En service')),
-                  DropdownMenuItem(
-                      value: 'EN_MAINTENANCE', child: Text('Maintenance')),
-                  DropdownMenuItem(
-                      value: 'HORS_SERVICE', child: Text('Hors service')),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Tous')),
+                  for (final s in ref.watch(statutsVehiculeResolvedProvider))
+                    DropdownMenuItem(value: s.code, child: Text(s.libelle)),
                 ],
                 onChanged: (v) => setState(() => _statutFilter = v),
               ),
@@ -283,14 +260,16 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
 
 // ── Carte véhicule ───────────────────────────────────────────────────────────
 
-class _VehiculeCard extends StatelessWidget {
+class _VehiculeCard extends ConsumerWidget {
   final Vehicule vehicule;
   const _VehiculeCard({required this.vehicule});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDisponible = vehicule.statut == 'DISPONIBLE';
-    final statutColor = _statutColor(vehicule.statut);
+    final statut = StatutVehicule.resolve(
+        vehicule.statut, ref.watch(statutsVehiculeResolvedProvider));
+    final statutColor = statut.couleur;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -334,7 +313,7 @@ class _VehiculeCard extends StatelessWidget {
                           if (!isDisponible) ...[
                             const SizedBox(width: 8),
                             _StatusChip(
-                              label: _statutLabel(vehicule.statut),
+                              label: statut.libelle,
                               color: statutColor,
                             ),
                           ],

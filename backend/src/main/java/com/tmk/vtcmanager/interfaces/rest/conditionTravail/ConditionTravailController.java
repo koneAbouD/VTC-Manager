@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.interfaces.rest.conditionTravail;
 import com.tmk.vtcmanager.application.domain.conditionTravail.ConditionTravail;
 import com.tmk.vtcmanager.application.domain.conditionTravail.TypeSanction;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.CreateConditionTravailUseCase;
+import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionTravailImpactUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.DeleteConditionTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionTravailByIdUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionsTravailUseCase;
@@ -36,7 +37,17 @@ public class ConditionTravailController {
     private final CreateConditionTravailUseCase createConditionTravailUseCase;
     private final UpdateConditionTravailUseCase updateConditionTravailUseCase;
     private final DeleteConditionTravailUseCase deleteConditionTravailUseCase;
+    private final GetConditionTravailImpactUseCase getConditionTravailImpactUseCase;
     private final ConditionTravailRestMapper mapper;
+
+    /** Impact d'une modification : véhicules concernés + indisponibilités actives. */
+    public record ImpactResponse(int vehicules, int indisponibilites) {}
+
+    @GetMapping("/{id}/impact")
+    public ImpactResponse impact(@PathVariable Long id) {
+        var impact = getConditionTravailImpactUseCase.execute(id);
+        return new ImpactResponse(impact.vehicules(), impact.indisponibilites());
+    }
 
     @GetMapping("/sanctions/types")
     public List<SanctionTypeResponse> getSanctionTypes() {

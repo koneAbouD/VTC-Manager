@@ -19,5 +19,7 @@ public interface VehiculeJpaRepository extends JpaRepository<VehiculeEntity, Lon
 
     List<VehiculeEntity> findByDateProchaineMaintenanceLessThanEqual(LocalDate date);
 
+    List<VehiculeEntity> findByConditionTravailId(Long conditionTravailId);
+
     long countByGroupeId(Long groupeId);
 }

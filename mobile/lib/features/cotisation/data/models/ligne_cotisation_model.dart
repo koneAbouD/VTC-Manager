@@ -1,4 +1,3 @@
-import '../../domain/entities/encaissement_cotisation.dart';
 import '../../domain/entities/ligne_cotisation.dart';
 import 'encaissement_cotisation_model.dart';
 

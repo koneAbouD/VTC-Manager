@@ -17,7 +17,10 @@ class AuthAuthenticated extends AuthState {
 }
 
 class AuthUnauthenticated extends AuthState {
-  const AuthUnauthenticated();
+  /// Message optionnel à présenter (ex. « Session expirée… ») lors d'une
+  /// déconnexion subie plutôt que volontaire.
+  final String? message;
+  const AuthUnauthenticated([this.message]);
 }
 
 class AuthError extends AuthState {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 /// En-tête standard de toutes les pages.
 ///
 /// Implémente [PreferredSizeWidget] → s'utilise directement en `appBar:`
@@ -59,11 +61,11 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               width: 56,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F2F8),
+                color: AppColors.headerButton,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Icon(Icons.arrow_back_rounded,
-                  size: 18, color: Color(0xFF1A1A2E)),
+                  size: 18, color: AppColors.dark),
             ),
           )
         : null;
@@ -83,7 +85,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF1A1A2E),
+              color: AppColors.dark,
               letterSpacing: -0.3,
             ),
           ),
@@ -93,7 +95,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFE3F0FF),
+              color: AppColors.primaryTint,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -101,7 +103,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF1565C0),
+                color: AppColors.primary,
               ),
             ),
           ),
@@ -185,7 +187,7 @@ class AppHeaderAction extends StatelessWidget {
           height: 16,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: Color(0xFF1A1A2E),
+            color: AppColors.dark,
           ),
         ),
       );
@@ -195,11 +197,11 @@ class AppHeaderAction extends StatelessWidget {
         style: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF1A1A2E),
+          color: AppColors.dark,
         ),
       );
     } else {
-      child = Icon(icon, size: iconSize, color: const Color(0xFF1A1A2E));
+      child = Icon(icon, size: iconSize, color: AppColors.dark);
     }
 
     return GestureDetector(
@@ -212,7 +214,7 @@ class AppHeaderAction extends StatelessWidget {
             ? const EdgeInsets.symmetric(horizontal: 14)
             : null,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F2F8),
+          color: AppColors.headerButton,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Center(child: child),

@@ -58,6 +58,24 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   build_runner: ^2.4.11
   json_serializable: ^6.8.0
+  # Génération des icônes de lancement (remplace le logo Flutter par défaut)
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/images/
+
+# ── Icône de lancement de l'app (TMK) ────────────────────────────────────────
+# Génère les icônes Android/iOS à partir du logo :
+#   flutter pub run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  # ⚠️ Doit être une image CARRÉE (ex. 1024×1024, fond blanc).
+  image_path: "assets/images/logo_tmk_icon.png"
+  # Icône adaptative Android (le logo a un fond blanc)
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo_tmk_icon.png"

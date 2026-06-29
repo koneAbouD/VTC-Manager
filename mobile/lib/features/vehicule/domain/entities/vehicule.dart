@@ -30,7 +30,7 @@ class Vehicule {
   final String? identifiantBalise;
   final String? couleur;
   final int? kilometrage;
-  final String? statut; // DISPONIBLE, EN_SERVICE, EN_MAINTENANCE, HORS_SERVICE
+  final String? statut; // EN_SERVICE, DISPONIBLE, EN_MAINTENANCE, IMMOBILISE, HORS_PARC
   final DateTime? dateAchat;
   final DateTime? dateProchaineMaintenance;
   final DateTime? dateMiseEnCirculation;
@@ -124,5 +124,6 @@ class Vehicule {
   bool get isDisponible => statut == 'DISPONIBLE';
   bool get isEnService => statut == 'EN_SERVICE';
   bool get isEnMaintenance => statut == 'EN_MAINTENANCE';
-  bool get isHorsService => statut == 'HORS_SERVICE';
+  bool get isImmobilise => statut == 'IMMOBILISE';
+  bool get isHorsParc => statut == 'HORS_PARC';
 }

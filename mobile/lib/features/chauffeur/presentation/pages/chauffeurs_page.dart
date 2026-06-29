@@ -58,21 +58,6 @@ Color _statutColor(ChauffeurStatus? s) => switch (s) {
       null => Colors.grey,
     };
 
-const _avatarPalette = [
-  Color(0xFF1565C0),
-  Color(0xFF2E7D32),
-  Color(0xFF6A1B9A),
-  Color(0xFFAD1457),
-  Color(0xFF00695C),
-  Color(0xFFE65100),
-  Color(0xFF37474F),
-  Color(0xFF4527A0),
-];
-
-Color _avatarColor(String name) =>
-    _avatarPalette[name.codeUnits.fold(0, (a, b) => a + b) %
-        _avatarPalette.length];
-
 // ── Page principale ──────────────────────────────────────────────────────────
 
 class ChauffeursPage extends ConsumerStatefulWidget {
@@ -164,7 +149,6 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
     final state = ref.watch(chauffeurNotifierProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -404,7 +388,6 @@ class _ChauffeurCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final statusColor = _statutColor(chauffeur.statut);
-    final avatarColor = _avatarColor(chauffeur.displayName);
     final initials =
         '${chauffeur.prenom.isNotEmpty ? chauffeur.prenom[0] : ''}'
                 '${chauffeur.nom.isNotEmpty ? chauffeur.nom[0] : ''}'
@@ -445,7 +428,6 @@ class _ChauffeurCard extends StatelessWidget {
                             initials: initials,
                             hasPhoto: chauffeur.photoUrl != null &&
                                 chauffeur.photoUrl!.isNotEmpty,
-                            color: avatarColor,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -549,42 +531,22 @@ class _Avatar extends ConsumerWidget {
   final int? chauffeurId;
   final String initials;
   final bool hasPhoto;
-  final Color color;
 
   const _Avatar({
     required this.chauffeurId,
     required this.initials,
     required this.hasPhoto,
-    required this.color,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (hasPhoto && chauffeurId != null) {
-      return ChauffeurAvatar(
-        chauffeurId: chauffeurId,
-        initials: initials,
-        hasPhoto: hasPhoto,
-        size: 52,
-      );
-    }
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Center(
-        child: Text(
-          initials,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-      ),
+    // Même rendu que ChauffeurDetailPage : fallback initiales « lite »
+    // (fond clair + texte couleur primaire) géré par ChauffeurAvatar.
+    return ChauffeurAvatar(
+      chauffeurId: chauffeurId,
+      initials: initials,
+      hasPhoto: hasPhoto,
+      size: 52,
     );
   }
 }

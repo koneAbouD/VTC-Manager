@@ -2,35 +2,40 @@ import 'package:flutter/foundation.dart';
 
 /// Configuration réseau centralisée.
 ///
+/// Résolution de l'URL de base, par ordre de priorité :
+///   1. --dart-define=API_BASE_URL=...   (URL complète, écrase tout)
+///   2. --dart-define=DEV_HOST=192.168.x.x  (host seul, port 8081)
+///   3. Build RELEASE  → VPS de production (_prodBaseUrl)
+///   4. Build DEBUG    → localhost (développement local)
+///
 /// ┌─────────────────────────────────────────────────────────────────────────┐
-/// │  LANCEMENT SUR VRAI TÉLÉPHONE (USB ou wireless ADB)                     │
+/// │  PRODUCTION                                                              │
+/// │    flutter build apk --release                                          │
+/// │    → cible automatiquement le VPS (_prodBaseUrl)                        │
 /// │                                                                         │
-/// │  Prérequis unique (une fois par session ADB) :                          │
-/// │    adb reverse tcp:8081 tcp:8081                                        │
-/// │  → localhost:8081 sur le téléphone = port 8081 du Mac (tunnel ADB)     │
-/// │  → Fonctionne sans connaître l'IP, depuis Android Studio ou VS Code.   │
+/// │  DÉVELOPPEMENT (vrai téléphone via tunnel ADB)                          │
+/// │    adb reverse tcp:8081 tcp:8081   (une fois par session)               │
+/// │    flutter run                                                          │
+/// │    → localhost:8081 = backend local sur le Mac                          │
 /// │                                                                         │
-/// │  Option A — Script auto (recommandé, fait adb reverse automatiquement) │
-/// │    ./run_device.sh                                                      │
-/// │                                                                         │
-/// │  Option B — Android Studio / autre IDE :                                │
-/// │    1. adb reverse tcp:8081 tcp:8081   (terminal, une fois)             │
-/// │    2. Lancer l'app normalement                                          │
-/// │                                                                         │
-/// │  Option C — IP fixe (si adb reverse impossible) :                      │
-/// │    flutter run --dart-define=DEV_HOST=172.20.10.3                      │
+/// │  CAS PARTICULIERS                                                       │
+/// │    flutter run --dart-define=DEV_HOST=172.20.10.3   (IP du Mac sur LAN) │
+/// │    flutter run --dart-define=API_BASE_URL=http://155.133.27.101:5001/api│
 /// └─────────────────────────────────────────────────────────────────────────┘
 class ApiConfig {
   static const _port = 8081;
 
+  /// URL de l'API en production (VPS, servie via nginx → /api).
+  static const String _prodBaseUrl = 'http://155.133.27.101:5001/api';
+
   /// URL complète (priorité absolue)
-  static const String _urlOverride  = String.fromEnvironment('API_BASE_URL');
+  static const String _urlOverride = String.fromEnvironment('API_BASE_URL');
 
   /// Host seul — IP (192.168.x.x)
   static const String _hostOverride = String.fromEnvironment('DEV_HOST');
 
   static String get baseUrl {
-    // 1. URL complète explicite
+    // 1. URL complète explicite (override de build)
     if (_urlOverride.isNotEmpty) return _strip(_urlOverride);
 
     // 2. Host seul → on construit l'URL
@@ -38,16 +43,11 @@ class ApiConfig {
       return 'http://${_hostOverride.trim()}:$_port/api';
     }
 
-    // 3. Android (émulateur ou vrai téléphone)
-    //    Sur émulateur        : localhost:port est redirigé par adb reverse OU
-    //                           on peut aussi utiliser 10.0.2.2 (loopback hôte émulateur).
-    //    Sur vrai téléphone   : nécessite `adb reverse tcp:8081 tcp:8081` au préalable,
-    //                           ce qui fait de localhost:8081 un tunnel vers le Mac.
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://localhost:$_port/api';
-    }
+    // 3. Build release → VPS de production
+    if (kReleaseMode) return _prodBaseUrl;
 
-    // 4. iOS Simulator / macOS
+    // 4. Build debug → backend local
+    //    (sur vrai téléphone, nécessite `adb reverse tcp:8081 tcp:8081`)
     return 'http://localhost:$_port/api';
   }
 

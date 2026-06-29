@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import 'groupe_models.dart';
 
@@ -240,7 +241,7 @@ class _GestionnaireFormPageState
                 height: 52,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1565C0),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),

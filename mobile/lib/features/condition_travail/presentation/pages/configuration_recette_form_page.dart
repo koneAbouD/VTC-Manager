@@ -9,6 +9,7 @@ import '../../domain/enums/mode_encaissement.dart';
 import '../../domain/enums/type_recette_configuration.dart';
 import '../providers/configuration_recette_provider.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
+import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 
 // ── Toast helpers ──────────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ class _ConfigurationRecetteFormPageState
   late TextEditingController _jourSalaireController;
   late ConfigurationRecette _baseConfiguration;
   bool _saving = false;
+  String? _submitError;
 
   @override
   void initState() {
@@ -109,6 +111,14 @@ class _ConfigurationRecetteFormPageState
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
         children: [
+          if (_submitError != null) ...[
+            const SizedBox(height: 12),
+            AppErrorBanner(
+              message: _submitError!,
+              onClose: () => setState(() => _submitError = null),
+            ),
+            const SizedBox(height: 8),
+          ],
           const Text(
             'Configurer les\nrecettes',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30),
@@ -131,7 +141,7 @@ class _ConfigurationRecetteFormPageState
                       Radio<ModeEncaissement>(
                         value: mode,
                         groupValue: _modeEncaissement,
-                        activeColor: const Color(0xFF1565C0),
+                        activeColor: const Color(0xFF43A047),
                         visualDensity: VisualDensity.compact,
                         onChanged: _saving
                             ? null
@@ -147,7 +157,7 @@ class _ConfigurationRecetteFormPageState
                                 ? FontWeight.w600
                                 : FontWeight.normal,
                             color: selected
-                                ? const Color(0xFF1565C0)
+                                ? const Color(0xFF43A047)
                                 : Colors.black87,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -253,7 +263,7 @@ class _ConfigurationRecetteFormPageState
             child: FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF3B5BDB),
+                backgroundColor: const Color(0xFF43A047),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -418,6 +428,7 @@ class _ConfigurationRecetteFormPageState
   }
 
   Future<void> _save() async {
+    setState(() => _submitError = null);
     if (widget.vehicule.id == null) {
       _showError(
           'Le véhicule doit être enregistré avant de configurer les recettes.');
@@ -499,6 +510,8 @@ class _ConfigurationRecetteFormPageState
     return rounded.toString();
   }
 
-  void _showError(String message) =>
-      _appToast(context, message, type: _ToastType.error);
+  void _showError(String message) {
+    setState(() => _submitError = message);
+    _appToast(context, message, type: _ToastType.error);
+  }
 }

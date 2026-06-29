@@ -8,10 +8,11 @@ import '../../../operation_financiere/domain/entities/element_maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import '../../../operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'maintenance_form_page.dart';
+import '../../../../core/theme/app_colors.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const _kPrimary = Color(0xFF3B5BDB);
+const _kPrimary = AppColors.primary;
 const _kAccent  = Color(0xFFE65100);
 const _kDark    = Color(0xFF1A1A2E);
 const _kBorder  = Color(0xFFE3E6EE);

@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/statut_vehicule.dart';
 import '../../domain/entities/vehicule.dart';
+import '../providers/referentiel_provider.dart';
 
-class VehiculeCard extends StatelessWidget {
+class VehiculeCard extends ConsumerWidget {
   final Vehicule vehicule;
 
   const VehiculeCard({super.key, required this.vehicule});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDisponible = vehicule.statut == 'DISPONIBLE';
-    final (statusLabel, statusColor) = _resolveStatus(vehicule.statut);
+    final s = StatutVehicule.resolve(
+        vehicule.statut, ref.watch(statutsVehiculeResolvedProvider));
+    final statusLabel = s.libelle;
+    final statusColor = s.couleur;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
@@ -156,11 +162,3 @@ class _StatusPill extends StatelessWidget {
     );
   }
 }
-
-(String, Color) _resolveStatus(String? statut) => switch (statut) {
-      'DISPONIBLE' => ('Disponible', const Color(0xFF2E7D32)),
-      'EN_SERVICE' => ('En service', const Color(0xFF1565C0)),
-      'EN_MAINTENANCE' => ('Maintenance', const Color(0xFFE65100)),
-      'HORS_SERVICE' => ('Hors service', const Color(0xFFC62828)),
-      _ => ('Inconnu', Colors.grey),
-    };

@@ -91,6 +91,8 @@ public class LigneRecetteController {
     @ResponseStatus(HttpStatus.CREATED)
     public List<LigneRecetteResponse> generer(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return mapper.toResponseList(genererLignesRecetteUseCase.executer(date != null ? date : LocalDate.now()));
+        // Principe : sans date, la génération concerne la veille (J-1).
+        return mapper.toResponseList(genererLignesRecetteUseCase.executer(
+                date != null ? date : LocalDate.now().minusDays(1)));
     }
 }

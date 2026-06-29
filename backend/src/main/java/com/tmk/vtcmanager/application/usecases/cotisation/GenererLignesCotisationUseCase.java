@@ -4,20 +4,17 @@ import com.tmk.vtcmanager.application.domain.configurationRecette.ConfigurationR
 import com.tmk.vtcmanager.application.domain.configurationRecette.CotisationRecette;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
-import com.tmk.vtcmanager.application.domain.programmeTravail.JourSemaine;
-import com.tmk.vtcmanager.application.domain.programmeTravail.ModeAlternance;
-import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeChauffeur;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
+import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -30,6 +27,7 @@ public class GenererLignesCotisationUseCase {
     private final ProgrammeTravailRepository programmeTravailRepository;
     private final ConfigurationRecetteRepository configurationRecetteRepository;
     private final LigneCotisationRepository ligneCotisationRepository;
+    private final IndisponibiliteSubstitutionService indisponibiliteSubstitutionService;
 
     @Transactional
     public List<LigneCotisation> executer(LocalDate date) {
@@ -38,14 +36,16 @@ public class GenererLignesCotisationUseCase {
 
         for (ProgrammeTravail programme : programmes) {
             if (programme.getChauffeurs() == null || programme.getChauffeurs().isEmpty()) continue;
-            if (!travailleCeJour(programme, date)) continue;
+            if (!programme.travailleCeJour(date)) continue;
 
             ConfigurationRecette config = configurationRecetteRepository
                     .findByVehiculeId(programme.getVehiculeId())
                     .orElse(null);
             if (config == null || config.getCotisations() == null || config.getCotisations().isEmpty()) continue;
 
-            List<Long> chauffeursActifs = determinerChauffeursActifs(programme, date);
+            // Conducteurs du jour avec substitution des titulaires indisponibles.
+            List<Long> chauffeursActifs = indisponibiliteSubstitutionService
+                    .appliquer(programme.chauffeursActifs(date), date);
 
             for (Long chauffeurId : chauffeursActifs) {
                 List<LigneCotisation> existantes = new ArrayList<>(
@@ -118,48 +118,4 @@ public class GenererLignesCotisationUseCase {
         return existante;
     }
 
-    private boolean travailleCeJour(ProgrammeTravail programme, LocalDate date) {
-        if (programme.getJoursTravailSemaine() == null || programme.getJoursTravailSemaine().isEmpty()) {
-            return true;
-        }
-        return programme.getJoursTravailSemaine().contains(JourSemaine.from(date.getDayOfWeek()));
-    }
-
-    private List<Long> determinerChauffeursActifs(ProgrammeTravail programme, LocalDate date) {
-        List<ProgrammeChauffeur> chauffeurs = programme.getChauffeurs();
-
-        if (programme.getNombreChauffeursAutorises() == null || programme.getNombreChauffeursAutorises() == 1) {
-            return chauffeurs.stream().filter(pc -> pc.getChauffeurId() != null)
-                    .map(ProgrammeChauffeur::getChauffeurId).toList();
-        }
-
-        if (programme.getJoursAlternanceSemaine() != null && !programme.getJoursAlternanceSemaine().isEmpty()) {
-            if (programme.getJoursAlternanceSemaine().contains(JourSemaine.from(date.getDayOfWeek()))) {
-                return chauffeurs.stream().filter(pc -> pc.getChauffeurId() != null)
-                        .map(ProgrammeChauffeur::getChauffeurId).toList();
-            }
-        }
-
-        if (programme.getModeAlternance() == ModeAlternance.AUTOMATIQUE
-                && programme.getDateDebutAlternance() != null
-                && programme.getJoursAlternance() != null) {
-            long joursEcoules = ChronoUnit.DAYS.between(programme.getDateDebutAlternance(), date);
-            long periode = joursEcoules / programme.getJoursAlternance();
-            boolean chauffeurUn = (periode % 2) == 0;
-            return List.of(chauffeurs.stream()
-                    .filter(pc -> pc.getChauffeurId() != null)
-                    .filter(pc -> chauffeurUn
-                            ? pc.getOrdreAlternance() != null && pc.getOrdreAlternance() == 1
-                            : pc.getOrdreAlternance() != null && pc.getOrdreAlternance() == 2)
-                    .map(ProgrammeChauffeur::getChauffeurId)
-                    .findFirst()
-                    .orElseGet(() -> chauffeurs.stream()
-                            .filter(pc -> pc.getChauffeurId() != null)
-                            .map(ProgrammeChauffeur::getChauffeurId)
-                            .findFirst().orElseThrow()));
-        }
-
-        return chauffeurs.stream().filter(pc -> pc.getChauffeurId() != null)
-                .map(ProgrammeChauffeur::getChauffeurId).toList();
-    }
 }

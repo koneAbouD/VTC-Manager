@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
@@ -26,7 +27,7 @@ final conditionsTravailListeProvider =
 
 // ── Constantes de design ──────────────────────────────────────────────────────
 
-const _kBlue = Color(0xFF1565C0);
+const _kPrimary = Color(0xFF43A047);
 const _kDark = Color(0xFF1A1A2E);
 
 class _ProgrammeStyle {
@@ -47,9 +48,9 @@ class _ProgrammeStyle {
 
 const _programmeStyles = <String, _ProgrammeStyle>{
   'JOURNALIER': _ProgrammeStyle(
-    accent: Color(0xFF1565C0),
+    accent: Color(0xFF43A047),
     bg: Color(0xFFE3F0FF),
-    text: Color(0xFF1565C0),
+    text: Color(0xFF43A047),
     icon: Icons.wb_sunny_rounded,
     label: 'Journalier',
   ),
@@ -65,9 +66,9 @@ const _programmeStyles = <String, _ProgrammeStyle>{
 _ProgrammeStyle _styleOf(String prog) =>
     _programmeStyles[prog] ??
     const _ProgrammeStyle(
-      accent: _kBlue,
+      accent: _kPrimary,
       bg: Color(0xFFE3F0FF),
-      text: _kBlue,
+      text: _kPrimary,
       icon: Icons.settings_rounded,
       label: 'Autre',
     );
@@ -139,7 +140,6 @@ class _ConditionTravailListePageState
     final async = ref.watch(conditionsTravailListeProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +169,7 @@ class _ConditionTravailListePageState
 
   Widget _buildHeader(AsyncValue<List<ConditionTravailLocal>> async) {
     return Container(
-      color: Colors.white,
+      color: AppColors.header,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -256,7 +256,7 @@ class _ConditionTravailListePageState
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _kBlue, width: 1.5),
+            borderSide: const BorderSide(color: _kPrimary, width: 1.5),
           ),
         ),
       ),
@@ -281,7 +281,7 @@ class _ConditionTravailListePageState
           return const _NoResultState();
         }
         return RefreshIndicator(
-          color: _kBlue,
+          color: _kPrimary,
           onRefresh: () async =>
               ref.invalidate(conditionsTravailListeProvider),
           child: ListView.builder(
@@ -490,7 +490,7 @@ class _ObjectifBand extends StatelessWidget {
     final isReel = typeRecette == 'MONTANT_REEL';
 
     final bg = isReel ? const Color(0xFFFFF8E1) : const Color(0xFFE8F5E9);
-    final color = isReel ? const Color(0xFFE65100) : const Color(0xFF2E7D32);
+    final color = isReel ? const Color(0xFFE65100) : const Color(0xFF43A047);
     final icon = isReel ? Icons.show_chart_rounded : Icons.trending_up_rounded;
     final label = isReel
         ? 'Recette réelle'
@@ -574,7 +574,7 @@ class _CardFooter extends StatelessWidget {
             icon: Icons.payments_outlined,
             label:
                 '$nbCotisations cotisation${nbCotisations > 1 ? 's' : ''} · ${totalCotis.toStringAsFixed(0)} XOF',
-            color: const Color(0xFF2E7D32),
+            color: const Color(0xFF43A047),
             bg: const Color(0xFFE8F5E9),
           ),
         if (nbPenalites > 0)
@@ -762,7 +762,7 @@ class _EmptyState extends StatelessWidget {
               decoration: const BoxDecoration(
                   color: Color(0xFFE3F0FF), shape: BoxShape.circle),
               child: const Icon(Icons.shield_rounded,
-                  size: 40, color: _kBlue),
+                  size: 40, color: _kPrimary),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -782,7 +782,7 @@ class _EmptyState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onAdd,
               style: FilledButton.styleFrom(
-                backgroundColor: _kBlue,
+                backgroundColor: _kPrimary,
                 padding: const EdgeInsets.symmetric(
                     horizontal: 24, vertical: 13),
                 shape: RoundedRectangleBorder(
@@ -861,7 +861,7 @@ class _ErrorState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onRetry,
               style: FilledButton.styleFrom(
-                backgroundColor: _kBlue,
+                backgroundColor: _kPrimary,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),

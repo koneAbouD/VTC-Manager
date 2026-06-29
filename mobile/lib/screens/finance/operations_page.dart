@@ -420,7 +420,8 @@ class _OperationsPageState extends ConsumerState<OperationsPage> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom +
+                MediaQuery.of(ctx).padding.bottom + 16,
             left: 16,
             right: 16,
             top: 8),
@@ -502,7 +503,8 @@ class _OperationsPageState extends ConsumerState<OperationsPage> {
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: EdgeInsets.fromLTRB(
+            0, 16, 0, 16 + MediaQuery.viewPaddingOf(ctx).bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

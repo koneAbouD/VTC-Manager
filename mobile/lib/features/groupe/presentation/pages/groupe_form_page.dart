@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import 'gestionnaire_form_page.dart';
 import 'groupe_models.dart';
@@ -214,7 +215,7 @@ class _GroupeFormPageState extends ConsumerState<GroupeFormPage> {
                           label: const Text('Nouveau',
                               style: TextStyle(fontSize: 13)),
                           style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF1565C0),
+                            foregroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
                           ),
@@ -262,7 +263,7 @@ class _GroupeFormPageState extends ConsumerState<GroupeFormPage> {
                 height: 52,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1565C0),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
@@ -367,12 +368,12 @@ class _TypeActivitePicker extends StatelessWidget {
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF1565C0).withValues(alpha: 0.1)
+                  ? AppColors.primary.withValues(alpha: 0.1)
                   : const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF1565C0)
+                    ? AppColors.primary
                     : Colors.transparent,
                 width: 1.5,
               ),
@@ -382,7 +383,7 @@ class _TypeActivitePicker extends StatelessWidget {
               children: [
                 if (isSelected) ...[
                   const Icon(Icons.check,
-                      size: 14, color: Color(0xFF1565C0)),
+                      size: 14, color: AppColors.primary),
                   const SizedBox(width: 6),
                 ],
                 Text(
@@ -393,7 +394,7 @@ class _TypeActivitePicker extends StatelessWidget {
                         ? FontWeight.w600
                         : FontWeight.normal,
                     color: isSelected
-                        ? const Color(0xFF1565C0)
+                        ? AppColors.primary
                         : Colors.black87,
                   ),
                 ),
@@ -457,12 +458,12 @@ class _GestionnaireTile extends StatelessWidget {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF1565C0).withValues(alpha: 0.06)
+                  ? AppColors.primary.withValues(alpha: 0.06)
                   : const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(14),
               border: isSelected
                   ? Border.all(
-                      color: const Color(0xFF1565C0)
+                      color: AppColors.primary
                           .withValues(alpha: 0.4))
                   : null,
             ),
@@ -471,7 +472,7 @@ class _GestionnaireTile extends StatelessWidget {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: isSelected
-                      ? const Color(0xFF1565C0).withValues(alpha: 0.15)
+                      ? AppColors.primary.withValues(alpha: 0.15)
                       : Colors.grey.shade200,
                   child: Text(
                     gestionnaire.displayName.isNotEmpty
@@ -480,7 +481,7 @@ class _GestionnaireTile extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: isSelected
-                          ? const Color(0xFF1565C0)
+                          ? AppColors.primary
                           : Colors.grey.shade600,
                     ),
                   ),
@@ -496,7 +497,7 @@ class _GestionnaireTile extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
                           color: isSelected
-                              ? const Color(0xFF1565C0)
+                              ? AppColors.primary
                               : Colors.black87,
                         ),
                       ),
@@ -512,7 +513,7 @@ class _GestionnaireTile extends StatelessWidget {
                 ),
                 if (isSelected)
                   const Icon(Icons.check_circle,
-                      color: Color(0xFF1565C0), size: 20),
+                      color: AppColors.primary, size: 20),
               ],
             ),
           ),

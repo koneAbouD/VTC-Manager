@@ -10,7 +10,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
       appBar: const AppHeader(title: 'Paramètres'),
       body: ListView(
         padding: const EdgeInsets.all(16),

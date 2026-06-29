@@ -85,7 +85,7 @@ INSERT INTO vehicules (
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
 (SELECT id FROM types_activite WHERE nom = 'VTC'),
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Standard'),
-'Orange', 31200, 'DISPONIBLE', '2021-08-30', '2024-07-30', '2021-07-20', '2021-09-05', NOW(), NOW());
+'Orange', 31200, 'DISPONIBLE', '2021-08-30', '2024-07-30', '2021-07-20', '2021-09-05', NOW(), NOW()),
 
 -- Véhicules en maintenance
 ('AB-192-EJ-01',
@@ -102,29 +102,4 @@ INSERT INTO vehicules (
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
 (SELECT id FROM types_activite WHERE nom = 'VTC'),
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Standard'),
-'Orange', 26800, 'EN_MAINTENANCE', '2021-10-20', '2024-06-20', '2021-09-15', '2021-11-01', NOW(), NOW()),
-
--- Nouveaux véhicules récemment acquis
-('KL-761-NV',
-(SELECT id FROM marques WHERE nom = 'Tesla' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture')),
-(SELECT id FROM modeles WHERE nom = 'Model 3' AND marque_id = (SELECT id FROM marques WHERE nom = 'Tesla' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture'))),
-(SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
-(SELECT id FROM types_activite WHERE nom = 'VTC'),
-(SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Premium'),
-'Blanc', 1500, 'DISPONIBLE', '2024-01-05', '2025-01-05', '2023-12-01', '2024-01-10', NOW(), NOW()),
-
-('LM-762-NV',
-(SELECT id FROM marques WHERE nom = 'Hyundai' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture')),
-(SELECT id FROM modeles WHERE nom = 'Sonata' AND marque_id = (SELECT id FROM marques WHERE nom = 'Hyundai' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture'))),
-(SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
-(SELECT id FROM types_activite WHERE nom = 'TAXI'),
-(SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Standard'),
-'Noir', 1200, 'DISPONIBLE', '2024-02-10', '2025-02-10', '2024-01-15', '2024-02-15', NOW(), NOW()),
-
-('MN-763-NV',
-(SELECT id FROM marques WHERE nom = 'Peugeot' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture')),
-(SELECT id FROM modeles WHERE nom = '3008' AND marque_id = (SELECT id FROM marques WHERE nom = 'Peugeot' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture'))),
-(SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
-(SELECT id FROM types_activite WHERE nom = 'VTC'),
-(SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Premium'),
-'Gris', 800, 'DISPONIBLE', '2024-03-15', '2025-03-15', '2024-02-20', '2024-03-20', NOW(), NOW());
+'Orange', 26800, 'EN_MAINTENANCE', '2021-10-20', '2024-06-20', '2021-09-15', '2021-11-01', NOW(), NOW());

@@ -10,7 +10,10 @@ import '../../features/chauffeur/presentation/providers/chauffeur_provider.dart'
 import '../../features/chauffeur/presentation/providers/chauffeur_state.dart';
 import '../../features/chauffeur/presentation/pages/chauffeur_detail_page.dart';
 import '../../features/chauffeur/presentation/pages/chauffeur_form_page.dart';
+import '../../features/vehicule/domain/entities/statut_vehicule.dart';
 import '../../features/vehicule/domain/entities/vehicule.dart';
+import '../../features/vehicule/presentation/vehicule_couleurs.dart';
+import '../../features/vehicule/presentation/providers/referentiel_provider.dart';
 import '../../features/vehicule/presentation/providers/vehicule_provider.dart';
 import '../../features/vehicule/presentation/providers/vehicule_state.dart';
 import '../../features/vehicule/presentation/pages/vehicule_form_page.dart';
@@ -18,22 +21,6 @@ import '../../features/vehicule/presentation/pages/vehicule_detail_page.dart';
 import 'fleet_filter_provider.dart';
 
 // ── Helpers couleur statut ───────────────────────────────────────────────────
-
-Color _vStatutColor(String? s) => switch (s) {
-      'DISPONIBLE' => const Color(0xFF2E7D32),
-      'EN_SERVICE' => const Color(0xFF1565C0),
-      'EN_MAINTENANCE' => const Color(0xFFE65100),
-      'HORS_SERVICE' => const Color(0xFFC62828),
-      _ => Colors.grey,
-    };
-
-String _vStatutLabel(String? s) => switch (s) {
-      'DISPONIBLE' => 'Disponible',
-      'EN_SERVICE' => 'En service',
-      'EN_MAINTENANCE' => 'Maintenance',
-      'HORS_SERVICE' => 'Hors service',
-      _ => 'Inconnu',
-    };
 
 Color _cStatutColor(ChauffeurStatus? s) => switch (s) {
       ChauffeurStatus.actif => const Color(0xFF2E7D32),
@@ -118,7 +105,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen>
             ),
             indicatorSize: TabBarIndicatorSize.tab,
             dividerColor: Colors.transparent,
-            labelColor: Colors.indigo,
+            labelColor: Color(0xFF43A047),
             unselectedLabelColor: Colors.grey.shade600,
             labelStyle:
                 const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
@@ -225,8 +212,6 @@ class _EtatParcTab extends ConsumerStatefulWidget {
 class _EtatParcTabState extends ConsumerState<_EtatParcTab>
     with SingleTickerProviderStateMixin {
   late final TabController _subTab;
-  // Onboarding : null = pas encore montré, sinon index de l'étape courante
-  int? _onboardingStep = 0;
 
   @override
   void initState() {
@@ -241,24 +226,6 @@ class _EtatParcTabState extends ConsumerState<_EtatParcTab>
     super.dispose();
   }
 
-  void _nextOnboarding() {
-    if (_onboardingStep == null) return;
-    if (_onboardingStep! < _subTabs.length - 1) {
-      _subTab.animateTo(_onboardingStep! + 1);
-      setState(() => _onboardingStep = _onboardingStep! + 1);
-    } else {
-      setState(() => _onboardingStep = null);
-    }
-  }
-
-  void _prevOnboarding() {
-    if (_onboardingStep == null || _onboardingStep! <= 0) return;
-    _subTab.animateTo(_onboardingStep! - 1);
-    setState(() => _onboardingStep = _onboardingStep! - 1);
-  }
-
-  void _dismissOnboarding() => setState(() => _onboardingStep = null);
-
   @override
   Widget build(BuildContext context) {
     final vehiculeState = ref.watch(vehiculeNotifierProvider);
@@ -267,49 +234,26 @@ class _EtatParcTabState extends ConsumerState<_EtatParcTab>
       VehiculeActionSuccess(:final vehicules) => vehicules,
       _ => [],
     };
+    final statuts = ref.watch(statutsVehiculeResolvedProvider);
 
-    return Stack(
+    return Column(
       children: [
-        Column(
-          children: [
-            // ── Résumé statuts ──────────────────────────────────────────
-            Padding(
+        // ── Résumé statuts ──────────────────────────────────────────
+        Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               child: Row(
                 children: [
-                  _MiniStat(
-                    label: 'Disponibles',
-                    count:
-                        vehicules.where((v) => v.statut == 'DISPONIBLE').length,
-                    color: const Color(0xFF2E7D32),
-                    icon: Icons.check_circle_outline,
-                  ),
-                  const SizedBox(width: 8),
-                  _MiniStat(
-                    label: 'En service',
-                    count:
-                        vehicules.where((v) => v.statut == 'EN_SERVICE').length,
-                    color: const Color(0xFF1565C0),
-                    icon: Icons.directions_car_rounded,
-                  ),
-                  const SizedBox(width: 8),
-                  _MiniStat(
-                    label: 'Maintenance',
-                    count: vehicules
-                        .where((v) => v.statut == 'EN_MAINTENANCE')
-                        .length,
-                    color: const Color(0xFFE65100),
-                    icon: Icons.build_outlined,
-                  ),
-                  const SizedBox(width: 8),
-                  _MiniStat(
-                    label: 'Hors service',
-                    count: vehicules
-                        .where((v) => v.statut == 'HORS_SERVICE')
-                        .length,
-                    color: const Color(0xFFC62828),
-                    icon: Icons.block_outlined,
-                  ),
+                  for (var i = 0; i < statuts.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    _MiniStat(
+                      label: statuts[i].libelle,
+                      count: vehicules
+                          .where((v) => v.statut == statuts[i].code)
+                          .length,
+                      color: statuts[i].couleur,
+                      icon: statuts[i].icon,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -333,24 +277,12 @@ class _EtatParcTabState extends ConsumerState<_EtatParcTab>
               ),
             ),
             // ── Contenu ─────────────────────────────────────────────────
-            Expanded(
-              child: TabBarView(
-                controller: _subTab,
-                children: _subTabs.map((t) => _SubTabContent(tab: t)).toList(),
-              ),
-            ),
-          ],
-        ),
-        // ── Overlay onboarding ──────────────────────────────────────────
-        if (_onboardingStep != null)
-          _OnboardingOverlay(
-            step: _onboardingStep!,
-            total: _subTabs.length,
-            tab: _subTabs[_onboardingStep!],
-            onNext: _nextOnboarding,
-            onPrev: _prevOnboarding,
-            onDismiss: _dismissOnboarding,
+        Expanded(
+          child: TabBarView(
+            controller: _subTab,
+            children: _subTabs.map((t) => _SubTabContent(tab: t)).toList(),
           ),
+        ),
       ],
     );
   }
@@ -542,171 +474,6 @@ class _SubTabContent extends StatelessWidget {
   }
 }
 
-// ── Overlay onboarding ───────────────────────────────────────────────────────
-
-class _OnboardingOverlay extends StatelessWidget {
-  final int step;
-  final int total;
-  final _SubTab tab;
-  final VoidCallback onNext;
-  final VoidCallback onPrev;
-  final VoidCallback onDismiss;
-
-  const _OnboardingOverlay({
-    required this.step,
-    required this.total,
-    required this.tab,
-    required this.onNext,
-    required this.onPrev,
-    required this.onDismiss,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isFirst = step == 0;
-    final isLast = step == total - 1;
-
-    return GestureDetector(
-      onTap: onDismiss,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.45),
-        child: SafeArea(
-          child: Align(
-            alignment: Alignment.center,
-            child: GestureDetector(
-              onTap: () {}, // absorb taps inside card
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Titre + Ignorer
-                      Row(
-                        children: [
-                          Icon(tab.icon, color: tab.color, size: 22),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              tab.label,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                                color: Color(0xFF1A1A2E),
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: onDismiss,
-                            style: TextButton.styleFrom(
-                              foregroundColor: tab.color,
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Ignorer',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      // Description
-                      Text(
-                        tab.description,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade700,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      // Indicateur de progression
-                      Row(
-                        children: List.generate(total, (i) {
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            margin: const EdgeInsets.only(right: 5),
-                            width: i == step ? 18 : 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: i == step
-                                  ? tab.color
-                                  : Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          );
-                        }),
-                      ),
-                      const SizedBox(height: 20),
-                      // Boutons navigation
-                      Row(
-                        children: [
-                          if (!isFirst) ...[
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: onPrev,
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  side: BorderSide(
-                                      color: Colors.grey.shade300),
-                                  foregroundColor: Colors.grey.shade800,
-                                ),
-                                child: const Text('Précédent',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600)),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                          ],
-                          Expanded(
-                            flex: isFirst ? 1 : 1,
-                            child: ElevatedButton(
-                              onPressed: onNext,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: tab.color,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: Text(
-                                isLast ? "C'est noté" : 'Suivant',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // ── Tab Véhicules ────────────────────────────────────────────────────────────
 
 class _VehiculeTab extends ConsumerStatefulWidget {
@@ -884,18 +651,10 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
                     color:
                         hasFilter ? primary : Colors.grey.shade600,
                   ),
-                  items: const [
-                    DropdownMenuItem(value: null, child: Text('Tous')),
-                    DropdownMenuItem(
-                        value: 'DISPONIBLE', child: Text('Disponible')),
-                    DropdownMenuItem(
-                        value: 'EN_SERVICE', child: Text('En service')),
-                    DropdownMenuItem(
-                        value: 'EN_MAINTENANCE',
-                        child: Text('Maintenance')),
-                    DropdownMenuItem(
-                        value: 'HORS_SERVICE',
-                        child: Text('Hors service')),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Tous')),
+                    for (final s in ref.watch(statutsVehiculeResolvedProvider))
+                      DropdownMenuItem(value: s.code, child: Text(s.libelle)),
                   ],
                   onChanged: (v) {
                     setState(() => _statutFilter = v);
@@ -975,7 +734,7 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
 
 // ── Carte véhicule ───────────────────────────────────────────────────────────
 
-class _VehiculeCard extends StatelessWidget {
+class _VehiculeCard extends ConsumerWidget {
   final Vehicule vehicule;
   final VoidCallback onTap;
 
@@ -985,9 +744,11 @@ class _VehiculeCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDisponible = vehicule.statut == 'DISPONIBLE';
-    final sc = _vStatutColor(vehicule.statut);
+    final statut = StatutVehicule.resolve(
+        vehicule.statut, ref.watch(statutsVehiculeResolvedProvider));
+    final sc = statut.couleur;
 
     return GestureDetector(
       onTap: onTap,
@@ -1010,6 +771,11 @@ class _VehiculeCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Pastille icône voiture, teintée de la couleur du véhicule
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(13, 13, 0, 13),
+                  child: _VehiculeCouleurIcon(couleur: vehicule.couleur),
+                ),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(13),
@@ -1033,7 +799,7 @@ class _VehiculeCard extends StatelessWidget {
                             if (!isDisponible) ...[
                               const SizedBox(width: 8),
                               _StatusChip(
-                                label: _vStatutLabel(vehicule.statut),
+                                label: statut.libelle,
                                 color: sc,
                               ),
                             ],
@@ -1061,7 +827,36 @@ class _VehiculeCard extends StatelessWidget {
       ),
     );
   }
+}
 
+// ── Pastille icône voiture colorée ────────────────────────────────────────────
+
+class _VehiculeCouleurIcon extends StatelessWidget {
+  final String? couleur;
+  const _VehiculeCouleurIcon({required this.couleur});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = couleurVehicule(couleur);
+    final estClaire = couleurVehiculeEstClaire(color);
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: estClaire ? 1 : 0.12),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: estClaire ? const Color(0xFFDDE1EA) : color.withValues(alpha: 0.35),
+          width: 1,
+        ),
+      ),
+      child: Icon(
+        Icons.directions_car_rounded,
+        size: 22,
+        color: estClaire ? const Color(0xFF6B7280) : color,
+      ),
+    );
+  }
 }
 
 // ── Tab Chauffeurs ───────────────────────────────────────────────────────────

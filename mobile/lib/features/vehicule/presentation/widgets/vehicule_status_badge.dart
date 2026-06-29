@@ -1,37 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class VehiculeStatusBadge extends StatelessWidget {
+import '../../domain/entities/statut_vehicule.dart';
+import '../providers/referentiel_provider.dart';
+
+class VehiculeStatusBadge extends ConsumerWidget {
   final String? statut;
   const VehiculeStatusBadge({super.key, this.statut});
 
   @override
-  Widget build(BuildContext context) {
-    final (label, color) = _resolve(statut);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statuts = ref.watch(statutsVehiculeResolvedProvider);
+    final s = StatutVehicule.resolve(statut, statuts);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: s.couleur.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: s.couleur.withValues(alpha: 0.4)),
       ),
       child: Text(
-        label,
+        s.libelle,
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: color,
+          color: s.couleur,
         ),
       ),
     );
-  }
-
-  static (String, Color) _resolve(String? statut) {
-    return switch (statut) {
-      'DISPONIBLE' => ('Disponible', const Color(0xFF2E7D32)),
-      'EN_SERVICE' => ('En service', const Color(0xFF1565C0)),
-      'EN_MAINTENANCE' => ('Maintenance', const Color(0xFFE65100)),
-      'HORS_SERVICE' => ('Hors service', const Color(0xFFC62828)),
-      _ => ('Inconnu', Colors.grey),
-    };
   }
 }

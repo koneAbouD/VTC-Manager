@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/session_manager.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories_impl/auth_repository_impl.dart';
@@ -63,6 +66,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final ForgotPasswordUseCase _forgotPassword;
   final AuthRepository _repository;
 
+  /// Abonnement au signal d'expiration centralisé du [SessionManager].
+  StreamSubscription<void>? _expirySub;
+
   AuthNotifier({
     required LoginUseCase login,
     required RegisterUseCase register,
@@ -76,7 +82,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _refresh = refresh,
         _forgotPassword = forgotPassword,
         _repository = repository,
-        super(const AuthInitial());
+        super(const AuthInitial()) {
+    // Le SessionManager émet quand la session est perdue (refresh impossible
+    // ou inactivité) : on déconnecte alors l'utilisateur avec le message fourni
+    // (les tokens ont déjà été purgés).
+    _expirySub = SessionManager.instance.onSessionExpired.listen((message) {
+      SessionManager.instance.stop();
+      state = AuthUnauthenticated(message);
+    });
+  }
+
+  @override
+  void dispose() {
+    _expirySub?.cancel();
+    super.dispose();
+  }
 
   /// Vérifié au démarrage de l'app.
   Future<void> bootstrap() async {
@@ -89,7 +109,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final result = await _refresh.call();
     result.fold(
       (_) => state = const AuthUnauthenticated(),
-      (_) => state = const AuthAuthenticated(''),
+      (_) {
+        SessionManager.instance.start();
+        state = const AuthAuthenticated('');
+      },
     );
   }
 
@@ -98,7 +121,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final result = await _login.call(username, password);
     result.fold(
       (failure) => state = AuthError(failure.message),
-      (_) => state = AuthAuthenticated(username),
+      (_) {
+        SessionManager.instance.start();
+        state = AuthAuthenticated(username);
+      },
     );
   }
 
@@ -124,6 +150,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    SessionManager.instance.stop();
     await _logout.call();
     state = const AuthUnauthenticated();
   }

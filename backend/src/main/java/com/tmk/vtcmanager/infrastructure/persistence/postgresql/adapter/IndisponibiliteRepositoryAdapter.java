@@ -1,0 +1,51 @@
+package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
+
+import com.tmk.vtcmanager.application.domain.indisponibilite.Indisponibilite;
+import com.tmk.vtcmanager.application.domain.indisponibilite.IndisponibiliteStatut;
+import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.IndisponibiliteJpaRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.IndisponibilitePersistenceMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+public class IndisponibiliteRepositoryAdapter implements IndisponibiliteRepository {
+
+    private final IndisponibiliteJpaRepository jpaRepository;
+    private final IndisponibilitePersistenceMapper mapper;
+
+    @Override
+    public Indisponibilite save(Indisponibilite indisponibilite) {
+        return mapper.toDomain(jpaRepository.save(mapper.toEntity(indisponibilite)));
+    }
+
+    @Override
+    public Optional<Indisponibilite> findById(Long id) {
+        return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<Indisponibilite> findAll() {
+        return mapper.toDomainList(jpaRepository.findAll(Sort.by(Sort.Direction.DESC, "dateDebut")));
+    }
+
+    @Override
+    public List<Indisponibilite> findByChauffeurId(Long chauffeurId) {
+        return mapper.toDomainList(jpaRepository.findByChauffeurIdOrderByDateDebutDesc(chauffeurId));
+    }
+
+    @Override
+    public List<Indisponibilite> findByStatut(IndisponibiliteStatut statut) {
+        return mapper.toDomainList(jpaRepository.findByStatut(statut));
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        jpaRepository.deleteById(id);
+    }
+}

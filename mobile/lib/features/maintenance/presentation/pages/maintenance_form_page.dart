@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../features/vehicule/domain/entities/vehicule.dart';
@@ -13,10 +14,11 @@ import '../../../operation_financiere/domain/entities/categorie_operation.dart';
 import '../../domain/entities/maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import '../providers/type_maintenance_provider.dart';
+import '../../../../core/theme/app_colors.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const _kPrimary   = Color(0xFF3B5BDB);
+const _kPrimary   = AppColors.primary;
 const _kAccent    = Color(0xFFE65100);
 const _kFieldFill = Color(0xFFF2F3F5);
 const _kHint      = Color(0xFF9AA0AE);
@@ -66,12 +68,12 @@ class MaintenanceFormPage extends ConsumerStatefulWidget {
 class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
+  String? _submitError;
 
   CategorieOperation? _categorieType;
   DateTime? _datePrevue;
   final _dureeCtrl       = TextEditingController();
   final _descriptionCtrl = TextEditingController();
-  final _kmCtrl          = TextEditingController();
   final _prestataireCtrl = TextEditingController();
 
   int?    _vehiculeId;
@@ -90,7 +92,6 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       _datePrevue           = m.datePrevue;
       _dureeCtrl.text       = m.dureeHeures?.toString() ?? '';
       _descriptionCtrl.text = m.description ?? '';
-      _kmCtrl.text          = m.kilometrageAuMoment?.toString() ?? '';
       _prestataireCtrl.text = m.prestataire ?? '';
       _vehiculeId           = m.vehiculeId;
       _vehiculeNom          = m.vehiculeNom;
@@ -106,7 +107,6 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   void dispose() {
     _dureeCtrl.dispose();
     _descriptionCtrl.dispose();
-    _kmCtrl.dispose();
     _prestataireCtrl.dispose();
     super.dispose();
   }
@@ -133,7 +133,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     if (result != null && mounted) {
       setState(() {
         _vehiculeId  = result.id;
-        _vehiculeNom = result.displayName;
+        _vehiculeNom = result.immatriculation;
       });
     }
   }
@@ -151,6 +151,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _submitError = null);
     if (_datePrevue == null) {
       _showToast(context, 'Veuillez sélectionner une date prévue', error: true);
       return;
@@ -172,7 +173,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       dureeHeures:          int.tryParse(_dureeCtrl.text),
       description:          _descriptionCtrl.text.trim().isEmpty
                                 ? null : _descriptionCtrl.text.trim(),
-      kilometrageAuMoment:  int.tryParse(_kmCtrl.text),
+      // Champ kilométrage retiré du formulaire : on conserve la valeur
+      // existante en édition pour ne pas l'écraser.
+      kilometrageAuMoment:  widget.initial?.kilometrageAuMoment,
       prestataire:          _prestataireCtrl.text.trim().isEmpty
                                 ? null : _prestataireCtrl.text.trim(),
       vehiculeId:           _vehiculeId,
@@ -192,6 +195,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     setState(() => _loading = false);
 
     if (error != null) {
+      setState(() => _submitError = error);
       _showToast(context, error, error: true);
     } else {
       _showToast(context,
@@ -219,6 +223,13 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
+                    if (_submitError != null) ...[
+                      AppErrorBanner(
+                        message: _submitError!,
+                        onClose: () => setState(() => _submitError = null),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     // ── Planification ────────────────────────────────────
                     _FormCard(
@@ -380,6 +391,17 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _LabeledField(
+                            label: 'Prestataire',
+                            child: TextFormField(
+                              controller: _prestataireCtrl,
+                              style: const TextStyle(
+                                  fontSize: 15, color: _kDark),
+                              decoration:
+                                  _fieldDeco('Garage, atelier…'),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _LabeledField(
                             label: 'Description',
                             child: TextFormField(
                               controller: _descriptionCtrl,
@@ -389,39 +411,6 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                               decoration:
                                   _fieldDeco('Travaux prévus…'),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: _LabeledField(
-                                  label: 'Kilométrage',
-                                  child: TextFormField(
-                                    controller: _kmCtrl,
-                                    keyboardType:
-                                        TextInputType.number,
-                                    style: const TextStyle(
-                                        fontSize: 15, color: _kDark),
-                                    decoration: _fieldDeco('km'),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: _LabeledField(
-                                  label: 'Prestataire',
-                                  child: TextFormField(
-                                    controller: _prestataireCtrl,
-                                    style: const TextStyle(
-                                        fontSize: 15, color: _kDark),
-                                    decoration:
-                                        _fieldDeco('Garage, atelier…'),
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                         ],
                       ),

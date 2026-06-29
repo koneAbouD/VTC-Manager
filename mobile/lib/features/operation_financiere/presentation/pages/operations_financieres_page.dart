@@ -11,6 +11,7 @@ import '../../domain/enums/statut_operation.dart';
 import '../../domain/enums/type_operation.dart';
 import '../providers/operation_financiere_provider.dart';
 import '../providers/operation_financiere_state.dart';
+import 'operation_financiere_detail_page.dart';
 import 'operation_financiere_form_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 
@@ -173,7 +174,7 @@ class _OperationsFinancieresPageState
                                     : Icons.radio_button_off_outlined,
                                 size: 18,
                                 color: sel
-                                    ? const Color(0xFF1A5276)
+                                    ? const Color(0xFF43A047)
                                     : Colors.grey.shade400,
                               ),
                               const SizedBox(width: 10),
@@ -185,7 +186,7 @@ class _OperationsFinancieresPageState
                                       ? FontWeight.w600
                                       : FontWeight.w400,
                                   color: sel
-                                      ? const Color(0xFF1A5276)
+                                      ? const Color(0xFF43A047)
                                       : const Color(0xFF1A1A1A),
                                 ),
                               ),
@@ -329,7 +330,7 @@ class _OperationsFinancieresPageState
     final filtered = _filtrer(allOps);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
+      backgroundColor: const Color(0xFFF8F9FB),
       appBar: AppHeader(
         title: 'Opérations',
         action: AppHeaderAction(
@@ -410,10 +411,8 @@ class _OperationsFinancieresPageState
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) =>
-                                            OperationFinanciereFormPage(
-                                          initialType:
-                                              filtered[i].typeOperation,
-                                          initial: filtered[i],
+                                            OperationFinanciereDetailPage(
+                                          operation: filtered[i],
                                         ),
                                       ),
                                     ),
@@ -518,19 +517,19 @@ class _FiltreBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.filter_list_rounded,
-                      size: 14, color: Color(0xFF1A5276)),
+                      size: 14, color: Color(0xFF43A047)),
                   const SizedBox(width: 5),
                   Text(
                     modeLabel,
                     style: const TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF1A5276),
+                      color: Color(0xFF43A047),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(width: 3),
                   const Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 14, color: Color(0xFF1A5276)),
+                      size: 14, color: Color(0xFF43A047)),
                 ],
               ),
             ),
@@ -671,6 +670,17 @@ class _OpCard extends StatelessWidget {
         isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
     final sign = isRevenu ? '+' : '-';
 
+    // Ligne 1 : « [Catégorie opération] du [date] »
+    final categorie = op.categorieLibelle ?? op.typeOperation.libelle;
+    final titre =
+        '$categorie du ${DateFormat('dd/MM/yyyy', 'fr_FR').format(op.dateOperation)}';
+
+    // Ligne 2 : « [imat véhicule - Nom chauffeur] »
+    final vehiculeChauffeur = [
+      if (op.vehiculeNom != null) op.vehiculeNom!,
+      if (op.chauffeurNom != null) op.chauffeurNom!,
+    ].join(' - ');
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -688,80 +698,81 @@ class _OpCard extends StatelessWidget {
           ],
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Infos
+            // ── Icône (revenu / dépense), à l'image de l'accueil ──────────
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: amountColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isRevenu
+                    ? Icons.trending_up_rounded
+                    : Icons.trending_down_rounded,
+                color: amountColor,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Ligne 1 : catégorie + date · (badge) · montant ──────
                   Row(
                     children: [
                       Expanded(
                         child: Text(
-                          (op.categorieCode == 'ENCAISSEMENT_COTISATIONS' &&
-                                  op.commentaire?.isNotEmpty == true)
-                              ? op.commentaire!
-                              : (op.categorieLibelle ??
-                                  op.typeOperation.libelle),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (op.statut == StatutOperation.ANNULEE)
-                        _StatusBadge(
-                            label: 'Echec', color: Colors.red.shade400),
-                      if (op.statut == StatutOperation.BROUILLON)
-                        _StatusBadge(
-                            label: 'Brouillon',
-                            color: Colors.orange.shade500),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  if (op.chauffeurNom != null)
-                    Text(
-                      'Chauffeur: ${op.chauffeurNom}',
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                          titre,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: Color(0xFF1A1A1A),
                     ),
-                  if (op.sousCategorieLibelle != null ||
-                      op.vehiculeNom != null)
-                    Text(
-                      [
-                        if (op.sousCategorieLibelle != null)
-                          op.sousCategorieLibelle!,
-                        if (op.vehiculeNom != null) op.vehiculeNom!,
-                      ].join(' · '),
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade400),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Enrg. date: ${DateFormat('dd/MM/yyyy', 'fr_FR').format(op.dateOperation)}',
-                    style: TextStyle(
-                        fontSize: 10, color: Colors.grey.shade400),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
+                ),
+                if (op.statut == StatutOperation.ANNULEE)
+                  _StatusBadge(label: 'Echec', color: Colors.red.shade400),
+                if (op.statut == StatutOperation.BROUILLON)
+                  _StatusBadge(
+                      label: 'Brouillon', color: Colors.orange.shade500),
+                const SizedBox(width: 8),
+                Text(
+                  '$sign${NumberFormat('#,##0', 'fr_FR').format(op.montant)} XOF',
+                  style: TextStyle(
+                    color: amountColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-
-            // Montant
-            Text(
-              '$sign${NumberFormat('#,##0', 'fr_FR').format(op.montant)} XOF',
-              style: TextStyle(
-                color: amountColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
+            const SizedBox(height: 3),
+            // ── Ligne 2 : véhicule - chauffeur · date ─────────────────────
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    vehiculeChauffeur,
+                    style: TextStyle(
+                        fontSize: 11, color: Colors.grey.shade500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormat('dd/MM', 'fr_FR').format(op.dateOperation),
+                  style: TextStyle(
+                      fontSize: 10, color: Colors.grey.shade400),
+                ),
+              ],
+            ),
+                ],
               ),
             ),
           ],

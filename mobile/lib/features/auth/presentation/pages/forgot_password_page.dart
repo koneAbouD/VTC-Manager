@@ -2,44 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
-import '../../../../core/widgets/app_header.dart';
-
-enum _ToastType { success, error, warning, info }
-
-void _appToast(
-  BuildContext context,
-  String message, {
-  _ToastType type = _ToastType.success,
-  Duration? duration,
-}) {
-  final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
-  };
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(
-      content: Row(children: [
-        Icon(icon, color: Colors.white, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(message,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
-        ),
-      ]),
-      backgroundColor: bg,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      duration: duration ??
-          (type == _ToastType.error || type == _ToastType.warning
-              ? const Duration(seconds: 4)
-              : const Duration(seconds: 2)),
-    ));
-}
+import '../widgets/auth_ui.dart';
 
 class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -72,82 +35,104 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
       _sent = error == null;
     });
     if (mounted) {
-      _appToast(
+      authToast(
         context,
         error ?? 'Email de réinitialisation envoyé !',
-        type: error != null ? _ToastType.error : _ToastType.success,
+        type: error != null ? AuthToastType.error : AuthToastType.success,
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const AppHeader(title: 'Mot de passe oublié'),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: _sent ? _successView() : _formView(),
+    return AuthScaffold(
+      showBack: true,
+      child: _sent ? _successView() : _formView(),
+    );
+  }
+
+  Widget _formView() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const AuthBrand(
+            icon: Icons.lock_reset_rounded,
+            title: 'Mot de passe oublié',
+            subtitle:
+                'Saisissez votre email pour recevoir un lien de réinitialisation.',
+          ),
+          const SizedBox(height: 32),
+          AuthCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: authInputDecoration(
+                    label: 'Email',
+                    icon: Icons.email_outlined,
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Requis';
+                    if (!v.contains('@')) return 'Email invalide';
+                    return null;
+                  },
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _submit(),
+                ),
+                const SizedBox(height: 20),
+                AuthPrimaryButton(
+                  label: 'Envoyer le lien',
+                  icon: Icons.send_rounded,
+                  loading: _loading,
+                  onPressed: _loading ? null : _submit,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _formView() => Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 32),
-            const Icon(Icons.lock_reset, size: 64, color: Colors.indigo),
-            const SizedBox(height: 16),
-            const Text(
-              'Entrez votre email pour recevoir un lien de réinitialisation.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            TextFormField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
-                border: OutlineInputBorder(),
-              ),
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Requis';
-                if (!v.contains('@')) return 'Email invalide';
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text('Envoyer le lien'),
-            ),
-          ],
+  Widget _successView() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 92,
+          height: 92,
+          decoration: const BoxDecoration(
+            color: Color(0xFFE8F5E9),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.mark_email_read_rounded,
+              size: 46, color: kAuthPrimary),
         ),
-      );
-
-  Widget _successView() => Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.mark_email_read, size: 80, color: Colors.green),
-          const SizedBox(height: 16),
-          Text(
-            'Un email a été envoyé à ${_email.text}',
-            textAlign: TextAlign.center,
+        const SizedBox(height: 24),
+        const Text(
+          'Email envoyé',
+          style: TextStyle(
+              fontSize: 22, fontWeight: FontWeight.w800, color: kAuthDark),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Un lien de réinitialisation a été envoyé à\n${_email.text}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: kAuthHint, fontSize: 14, height: 1.5),
+        ),
+        const SizedBox(height: 28),
+        SizedBox(
+          width: double.infinity,
+          child: AuthPrimaryButton(
+            label: 'Retour à la connexion',
+            onPressed: () => Navigator.of(context).maybePop(),
           ),
-          const SizedBox(height: 24),
-          OutlinedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Retour à la connexion'),
-          ),
-        ],
-      );
+        ),
+      ],
+    );
+  }
 }

@@ -21,6 +21,8 @@ public interface VehiculeRepository {
 
     List<Vehicule> findByDateProchaineMaintenanceLessThanEqual(LocalDate date);
 
+    List<Vehicule> findByConditionTravailId(Long conditionTravailId);
+
     void deleteById(Long id);
 
     long countByGroupeId(Long groupeId);

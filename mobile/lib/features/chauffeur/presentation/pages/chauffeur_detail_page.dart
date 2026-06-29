@@ -17,7 +17,11 @@ import '../../domain/enums/chauffeur_status.dart';
 import '../providers/chauffeur_provider.dart';
 import '../providers/chauffeur_state.dart';
 import '../providers/documents_by_chauffeur_provider.dart';
+import '../../../indisponibilite/domain/entities/indisponibilite.dart';
+import '../../../indisponibilite/presentation/indisponibilite_overlay.dart';
+import '../../../indisponibilite/presentation/providers/indisponibilite_provider.dart';
 import 'chauffeur_form_page.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../vehicule/presentation/pages/vehicule_detail_page.dart';
 
@@ -66,7 +70,6 @@ class _ChauffeurDetailPageState extends ConsumerState<ChauffeurDetailPage>
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
       appBar: AppHeader(
         title: '',
         action: asyncChauffeur.valueOrNull == null
@@ -157,7 +160,7 @@ class _HeaderCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE4E9F5)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B5BDB).withValues(alpha: 0.05),
+            color: AppColors.primary.withValues(alpha: 0.05),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -230,7 +233,7 @@ class _HeaderCard extends StatelessWidget {
             icon: Icons.directions_car_outlined,
             label: chauffeur.vehiculeMatricule ?? 'Aucun véhicule',
             accent: chauffeur.vehiculeMatricule != null
-                ? const Color(0xFF3B5BDB)
+                ? AppColors.primary
                 : null,
           ),
         ],
@@ -385,7 +388,7 @@ class _PillTabBar extends StatelessWidget {
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
-          color: const Color(0xFF3B5BDB),
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(10),
         ),
         labelColor: Colors.white,
@@ -522,16 +525,18 @@ class _InfoGeneralesTab extends StatelessWidget {
 
 // ── Onglet Documents ─────────────────────────────────────────────────────────
 
-class _ProgrammesTab extends StatefulWidget {
+class _ProgrammesTab extends ConsumerStatefulWidget {
   final Chauffeur chauffeur;
   final bool canPopToVehicule;
   const _ProgrammesTab({required this.chauffeur, this.canPopToVehicule = false});
 
   @override
-  State<_ProgrammesTab> createState() => _ProgrammesTabState();
+  ConsumerState<_ProgrammesTab> createState() => _ProgrammesTabState();
 }
 
-class _ProgrammesTabState extends State<_ProgrammesTab> {
+class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
+  /// Overlay des indisponibilités (recalculé à chaque build).
+  IndisponibiliteOverlay _overlay = const IndisponibiliteOverlay([]);
   static const _weekdayLabels = [
     'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim',
   ];
@@ -551,7 +556,7 @@ class _ProgrammesTabState extends State<_ProgrammesTab> {
     final pc = _findPc(programme);
     if (programme != null && pc != null) {
       _selectedDate =
-          _ChauffeurProgrammeCalculator.scheduleForDate(programme, pc, now) != null
+          ChauffeurProgrammeCalculator.scheduleForDate(programme, pc, now) != null
               ? now
               : null;
     }
@@ -570,6 +575,8 @@ class _ProgrammesTabState extends State<_ProgrammesTab> {
   @override
   Widget build(BuildContext context) {
     final programme = chauffeur.programmeTravail;
+    _overlay = IndisponibiliteOverlay(
+        ref.watch(toutesIndisponibilitesProvider).valueOrNull ?? const []);
 
     if (programme == null || programme.id == null || programme.chauffeurs.isEmpty) {
       return _ProgrammeEmptyState(
@@ -595,9 +602,28 @@ class _ProgrammesTabState extends State<_ProgrammesTab> {
       );
     }
 
-    final calendarDays = _buildCalendarDays(programme, pc, _focusedMonth);
-    final selectedSchedule = _selectedDate != null
-        ? _ChauffeurProgrammeCalculator.scheduleForDate(
+    // (b) Programmes des titulaires que ce chauffeur remplace, pour afficher le
+    // véhicule emprunté sur son calendrier.
+    final indisposCommeRemplacant =
+        (ref.watch(toutesIndisponibilitesProvider).valueOrNull ?? const [])
+            .where((i) => i.chauffeurRemplacantId == chauffeur.id)
+            .toList();
+    final Map<int, Chauffeur> titulaires = {};
+    for (final i in indisposCommeRemplacant) {
+      final tit = ref.watch(chauffeurByIdProvider(i.chauffeurId)).valueOrNull;
+      if (tit != null) titulaires[i.chauffeurId] = tit;
+    }
+
+    final calendarDays = _buildCalendarDays(
+        programme, pc, _focusedMonth, indisposCommeRemplacant, titulaires);
+    final selectedIndispo = (_selectedDate != null && chauffeur.id != null)
+        ? _overlay.remplacementDuTitulaire(chauffeur.id!, _selectedDate!)
+        : null;
+    final selectedBorrow = _selectedDate != null
+        ? _borrowForDate(_selectedDate!, indisposCommeRemplacant, titulaires)
+        : null;
+    final selectedSchedule = (_selectedDate != null && selectedIndispo == null)
+        ? ChauffeurProgrammeCalculator.scheduleForDate(
             programme, pc, _selectedDate!)
         : null;
     return ListView(
@@ -686,7 +712,9 @@ class _ProgrammesTabState extends State<_ProgrammesTab> {
         ),
         const SizedBox(height: 14),
         // ── Card véhicule ──
-        _buildVehiculeCard(programme, selectedSchedule),
+        _buildVehiculeCard(programme, selectedSchedule,
+            remplacePar: selectedIndispo?.chauffeurRemplacantNom,
+            borrow: selectedBorrow),
       ],
     );
   }
@@ -697,26 +725,37 @@ class _ProgrammesTabState extends State<_ProgrammesTab> {
     final isSelected =
         _selectedDate != null && _isSameDate(_selectedDate!, day.date);
     final isToday = _isSameDate(day.date, DateTime.now());
-    final isEnabled = schedule != null && inMonth;
+    final indispo = day.indisponible && inMonth;
+    final remplacant = day.estRemplacant && inMonth;
+    // Indisponibilité et remplacement restent sélectionnables pour voir le détail.
+    final isEnabled = (schedule != null || indispo || remplacant) && inMonth;
 
     // Les jours hors du mois sont toujours grisés
     final background = isSelected
         ? const Color(0xFF325DBB)
         : !inMonth
             ? const Color(0xFFF0F0F0)
-            : schedule == null
-                ? Colors.white
-                : schedule.isSalaryDay
-                    ? const Color(0xFFCDEDD8)
-                    : const Color(0xFFD9E5FF);
+            : indispo
+                ? const Color(0xFFFFE0E0) // indisponible → rouge clair
+                : remplacant
+                    ? const Color(0xFFFFE9D1) // remplacement → orange clair
+                    : schedule == null
+                        ? Colors.white
+                        : schedule.isSalaryDay
+                            ? const Color(0xFFCDEDD8)
+                            : const Color(0xFFD9E5FF);
 
     final textColor = isSelected
         ? Colors.white
         : !inMonth
             ? const Color(0xFFBDBDBD)
-            : schedule == null
-                ? const Color(0xFF4A5468)
-                : const Color(0xFF304160);
+            : indispo
+                ? const Color(0xFFC62828)
+                : remplacant
+                    ? const Color(0xFFE65100)
+                    : schedule == null
+                        ? const Color(0xFF4A5468)
+                        : const Color(0xFF304160);
 
     return Material(
       color: background,
@@ -734,27 +773,63 @@ class _ProgrammesTabState extends State<_ProgrammesTab> {
             ),
           ),
           alignment: Alignment.center,
-          child: Text(
-            '${day.date.day}',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight:
-                  isSelected || isToday ? FontWeight.w800 : FontWeight.w500,
-              color: textColor,
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${day.date.day}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight:
+                      isSelected || isToday ? FontWeight.w800 : FontWeight.w500,
+                  color: textColor,
+                ),
+              ),
+              if (indispo && !isSelected)
+                const Text(
+                  'indispo',
+                  style: TextStyle(
+                    fontSize: 6,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFC62828),
+                    height: 1.0,
+                  ),
+                ),
+              if (remplacant && !isSelected)
+                const Text(
+                  'remp.',
+                  style: TextStyle(
+                    fontSize: 6,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFE65100),
+                    height: 1.0,
+                  ),
+                ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildVehiculeCard(ProgrammeTravail programme, _ChauffeurProgrammeDay? day) {
-    final matricule = chauffeur.vehiculeMatricule ?? chauffeur.vehiculeNom ?? '—';
-    final timeRange = _ChauffeurProgrammeCalculator.timeRange(programme);
+  Widget _buildVehiculeCard(ProgrammeTravail programme, ChauffeurProgrammeDay? day,
+      {String? remplacePar, ({String vehicule, String titulaireNom})? borrow}) {
+    final timeRange = ChauffeurProgrammeCalculator.timeRange(programme);
     final isSalaryDay = day?.isSalaryDay ?? false;
+    final estIndisponible = remplacePar != null;
+    final estRemplacant = borrow != null;
+
+    final matricule = estRemplacant
+        ? borrow.vehicule
+        : (chauffeur.vehiculeMatricule ?? chauffeur.vehiculeNom ?? '—');
 
     final String vehiculeStatut;
-    if (_selectedDate == null) {
+    if (estIndisponible) {
+      vehiculeStatut = 'Indisponible · remplacé par $remplacePar';
+    } else if (estRemplacant) {
+      vehiculeStatut = 'Remplacement · remplace ${borrow.titulaireNom}';
+    } else if (_selectedDate == null) {
       vehiculeStatut = 'Véhicule assigné';
     } else if (day != null && day.isServiceDay) {
       vehiculeStatut = 'En service';
@@ -762,9 +837,21 @@ class _ProgrammesTabState extends State<_ProgrammesTab> {
       vehiculeStatut = 'Hors service';
     }
 
-    final rowColor = isSalaryDay ? const Color(0xFF2E7D32) : const Color(0xFF3158B6);
-    final rowBg   = isSalaryDay ? const Color(0xFFE8F5E9) : const Color(0xFFEAF1FF);
-    final borderColor = isSalaryDay ? const Color(0xFFC8E6C9) : const Color(0xFFE4E9F5);
+    final rowColor = estIndisponible
+        ? const Color(0xFFC62828)
+        : estRemplacant
+            ? const Color(0xFFE65100)
+            : isSalaryDay ? const Color(0xFF2E7D32) : const Color(0xFF3158B6);
+    final rowBg = estIndisponible
+        ? const Color(0xFFFFE0E0)
+        : estRemplacant
+            ? const Color(0xFFFFF3E0)
+            : isSalaryDay ? const Color(0xFFE8F5E9) : const Color(0xFFEAF1FF);
+    final borderColor = estIndisponible
+        ? const Color(0xFFF5C2C2)
+        : estRemplacant
+            ? const Color(0xFFF5D6B0)
+            : isSalaryDay ? const Color(0xFFC8E6C9) : const Color(0xFFE4E9F5);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -798,10 +885,14 @@ class _ProgrammesTabState extends State<_ProgrammesTab> {
             icon: Icons.directions_car_outlined,
             label: vehiculeStatut,
             name: matricule,
-            detail: day != null && day.isServiceDay ? timeRange : '',
+            detail: estRemplacant || (day != null && day.isServiceDay)
+                ? timeRange
+                : '',
             color: rowColor,
             bg: rowBg,
-            onTap: chauffeur.vehiculeId != null
+            // Pour un jour de remplacement, le véhicule appartient au titulaire
+            // (pas de navigation directe ici).
+            onTap: (!estRemplacant && chauffeur.vehiculeId != null)
                 ? () {
                     if (widget.canPopToVehicule) {
                       Navigator.of(context).pop();
@@ -885,19 +976,68 @@ class _ProgrammesTabState extends State<_ProgrammesTab> {
     ProgrammeTravail programme,
     ProgrammeChauffeur pc,
     DateTime focusedMonth,
+    List<Indisponibilite> indisposCommeRemplacant,
+    Map<int, Chauffeur> titulaires,
   ) {
     final monthStart = DateTime(focusedMonth.year, focusedMonth.month);
     final gridStart =
         monthStart.subtract(Duration(days: monthStart.weekday - 1));
     return List.generate(42, (index) {
       final date = _dateOnly(gridStart.add(Duration(days: index)));
+      final indispo = chauffeur.id != null
+          ? _overlay.remplacementDuTitulaire(chauffeur.id!, date)
+          : null;
+      final borrow = indispo != null
+          ? null
+          : _borrowForDate(date, indisposCommeRemplacant, titulaires);
       return _ChauffeurCalendarCell(
         date: date,
         inMonth: date.month == focusedMonth.month,
-        schedule: _ChauffeurProgrammeCalculator.scheduleForDate(
-            programme, pc, date),
+        // (a) Pendant son indisponibilité, le titulaire ne travaille pas.
+        schedule: indispo != null
+            ? null
+            : ChauffeurProgrammeCalculator.scheduleForDate(
+                programme, pc, date),
+        indisponible: indispo != null,
+        remplacantNom: indispo?.chauffeurRemplacantNom,
+        remplaceVehicule: borrow?.vehicule,
+        remplaceTitulaireNom: borrow?.titulaireNom,
       );
     });
+  }
+
+  /// (b) Si ce chauffeur remplace un titulaire qui conduit ce jour-là, renvoie
+  /// le véhicule emprunté et le nom du titulaire.
+  ({String vehicule, String titulaireNom})? _borrowForDate(
+    DateTime date,
+    List<Indisponibilite> indisposCommeRemplacant,
+    Map<int, Chauffeur> titulaires,
+  ) {
+    for (final i in indisposCommeRemplacant) {
+      if (!IndisponibiliteOverlay.couvre(i, date)) continue;
+      final tit = titulaires[i.chauffeurId];
+      final titProgramme = tit?.programmeTravail;
+      if (tit == null || titProgramme == null) continue;
+
+      ProgrammeChauffeur? titPc;
+      for (final p in titProgramme.chauffeurs) {
+        if (p.chauffeurId == i.chauffeurId) {
+          titPc = p;
+          break;
+        }
+      }
+      if (titPc == null) continue;
+
+      final sched = ChauffeurProgrammeCalculator.scheduleForDate(
+          titProgramme, titPc, date);
+      if (sched != null && sched.isServiceDay) {
+        return (
+          vehicule: tit.vehiculeMatricule ?? tit.vehiculeNom ?? 'Véhicule',
+          titulaireNom: i.chauffeurNom ?? 'titulaire',
+        );
+      }
+    }
+    return null;
   }
 
   Widget _monthArrow(IconData icon, VoidCallback onTap) {
@@ -1092,13 +1232,13 @@ class _ChauffeurProgrammeCalendarSheetState
   @override
   void initState() {
     super.initState();
-    final initialDate = _ChauffeurProgrammeCalculator.initialSelectedDate(
+    final initialDate = ChauffeurProgrammeCalculator.initialSelectedDate(
           programme,
           programmeChauffeur,
         ) ??
         _dateOnly(DateTime.now());
     _focusedMonth = DateTime(initialDate.year, initialDate.month);
-    _selectedDate = _ChauffeurProgrammeCalculator.scheduleForDate(
+    _selectedDate = ChauffeurProgrammeCalculator.scheduleForDate(
               programme,
               programmeChauffeur,
               initialDate,
@@ -1114,7 +1254,7 @@ class _ChauffeurProgrammeCalendarSheetState
     final calendarDays = _buildCalendarDays(_focusedMonth);
     final selectedSchedule = _selectedDate == null
         ? null
-        : _ChauffeurProgrammeCalculator.scheduleForDate(
+        : ChauffeurProgrammeCalculator.scheduleForDate(
             programme,
             programmeChauffeur,
             _selectedDate!,
@@ -1273,7 +1413,7 @@ class _ChauffeurProgrammeCalendarSheetState
       return _ChauffeurCalendarCell(
         date: date,
         inMonth: date.month == focusedMonth.month,
-        schedule: _ChauffeurProgrammeCalculator.scheduleForDate(
+        schedule: ChauffeurProgrammeCalculator.scheduleForDate(
           programme,
           programmeChauffeur,
           date,
@@ -1373,7 +1513,7 @@ class _ChauffeurProgrammeCalendarSheetState
     );
   }
 
-  Widget _selectedDayCard(_ChauffeurProgrammeDay day) {
+  Widget _selectedDayCard(ChauffeurProgrammeDay day) {
     final title = switch ((day.isServiceDay, day.isSalaryDay)) {
       (true, true) => 'Jour de travail et de salaire',
       (true, false) => 'Jour de travail',
@@ -1467,7 +1607,7 @@ class _ChauffeurProgrammeCalendarSheetState
                   ),
                 if (day.isServiceDay)
                   _MiniBadge(
-                    label: _ChauffeurProgrammeCalculator.timeRange(programme),
+                    label: ChauffeurProgrammeCalculator.timeRange(programme),
                     color: const Color(0xFF2C3650),
                     background: const Color(0xFFF1F4FA),
                     icon: Icons.schedule_rounded,
@@ -1507,7 +1647,7 @@ class _ChauffeurProgrammeCalendarSheetState
       first.day == second.day;
 }
 
-class _ChauffeurProgrammeCalculator {
+class ChauffeurProgrammeCalculator {
   static String timeRange(ProgrammeTravail programme) {
     String formatTime(TimeOfDay value) {
       final hh = value.hour.toString().padLeft(2, '0');
@@ -1517,6 +1657,15 @@ class _ChauffeurProgrammeCalculator {
 
     return '${formatTime(programme.heureDebutService)} - ${formatTime(programme.heureFinService)}';
   }
+
+  /// Vrai si [chauffeur] conduit (service) à [date] selon le programme.
+  /// Réutilisé par la validation du formulaire d'indisponibilité.
+  static bool travaille(
+    ProgrammeTravail programme,
+    ProgrammeChauffeur chauffeur,
+    DateTime date,
+  ) =>
+      scheduleForDate(programme, chauffeur, date) != null;
 
   static DateTime? initialSelectedDate(
     ProgrammeTravail programme,
@@ -1544,7 +1693,7 @@ class _ChauffeurProgrammeCalculator {
     return null;
   }
 
-  static _ChauffeurProgrammeDay? scheduleForDate(
+  static ChauffeurProgrammeDay? scheduleForDate(
     ProgrammeTravail programme,
     ProgrammeChauffeur chauffeur,
     DateTime date,
@@ -1563,7 +1712,7 @@ class _ChauffeurProgrammeCalculator {
       return null;
     }
 
-    return _ChauffeurProgrammeDay(
+    return ChauffeurProgrammeDay(
       date: _dateOnly(date),
       isServiceDay: isServiceDay,
       isSalaryDay: isSalaryDay,
@@ -1704,21 +1853,38 @@ class _ChauffeurProgrammeCalculator {
 class _ChauffeurCalendarCell {
   final DateTime date;
   final bool inMonth;
-  final _ChauffeurProgrammeDay? schedule;
+  final ChauffeurProgrammeDay? schedule;
+
+  /// (a) Le chauffeur (titulaire) est indisponible ce jour-là : il ne travaille
+  /// pas, il est remplacé. [remplacantNom] = qui le remplace.
+  final bool indisponible;
+  final String? remplacantNom;
+
+  /// (b) Ce jour-là, le chauffeur remplace un titulaire indisponible et conduit
+  /// son véhicule. [remplaceVehicule] = véhicule emprunté ; [remplaceTitulaireNom]
+  /// = titulaire remplacé.
+  final String? remplaceVehicule;
+  final String? remplaceTitulaireNom;
 
   const _ChauffeurCalendarCell({
     required this.date,
     required this.inMonth,
     required this.schedule,
+    this.indisponible = false,
+    this.remplacantNom,
+    this.remplaceVehicule,
+    this.remplaceTitulaireNom,
   });
+
+  bool get estRemplacant => remplaceVehicule != null;
 }
 
-class _ChauffeurProgrammeDay {
+class ChauffeurProgrammeDay {
   final DateTime date;
   final bool isServiceDay;
   final bool isSalaryDay;
 
-  const _ChauffeurProgrammeDay({
+  const ChauffeurProgrammeDay({
     required this.date,
     required this.isServiceDay,
     required this.isSalaryDay,
@@ -1844,7 +2010,7 @@ class _RegularDocCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isExpired = doc.statut == 'EXPIRE';
     final accentColor =
-        isExpired ? const Color(0xFFC62828) : const Color(0xFF3B5BDB);
+        isExpired ? const Color(0xFFC62828) : AppColors.primary;
 
     return Container(
       decoration: BoxDecoration(
@@ -2258,7 +2424,7 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const color = Color(0xFF3B5BDB);
+    const color = AppColors.primary;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2416,7 +2582,7 @@ class _ChauffeurAvatarState extends ConsumerState<ChauffeurAvatar> {
             style: TextStyle(
               fontSize: widget.size * 0.35,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF3B5BDB),
+              color: AppColors.primary,
             ),
           ),
         );

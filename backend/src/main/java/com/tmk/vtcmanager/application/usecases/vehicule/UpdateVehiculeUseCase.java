@@ -1,23 +1,14 @@
 package com.tmk.vtcmanager.application.usecases.vehicule;
 
-import com.tmk.vtcmanager.application.domain.configurationRecette.ConfigurationRecette;
-import com.tmk.vtcmanager.application.domain.configurationRecette.FrequenceVersement;
-import com.tmk.vtcmanager.application.domain.configurationRecette.ModeEncaissement;
-import com.tmk.vtcmanager.application.domain.configurationRecette.TypeRecetteConfiguration;
 import com.tmk.vtcmanager.application.domain.conditionTravail.ConditionTravail;
-import com.tmk.vtcmanager.application.domain.conditionTravail.CotisationTemplate;
-import com.tmk.vtcmanager.application.domain.configurationRecette.CotisationRecette;
 import com.tmk.vtcmanager.application.domain.vehicule.*;
 import com.tmk.vtcmanager.application.exception.ResourceAlreadyExistsException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.*;
+import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @RequiredArgsConstructor
 public class UpdateVehiculeUseCase {
@@ -27,7 +18,7 @@ public class UpdateVehiculeUseCase {
     private final GroupeVehiculeRepository groupeVehiculeRepository;
     private final ConditionTravailRepository conditionTravailRepository;
     private final ProgrammeTravailRepository programmeTravailRepository;
-    private final ConfigurationRecetteRepository configurationRecetteRepository;
+    private final ConfigurationRecetteSynchronizer configurationRecetteSynchronizer;
 
     @Transactional
     public Vehicule execute(Long id, UpdateVehiculeCommand cmd) {
@@ -88,71 +79,9 @@ public class UpdateVehiculeUseCase {
                 programmeTravailRepository.save(programme);
             });
 
-            synchroniserConfigurationRecette(id, condition);
+            configurationRecetteSynchronizer.synchroniser(id, condition);
         }
 
         return saved;
-    }
-
-    private void synchroniserConfigurationRecette(Long vehiculeId, ConditionTravail condition) {
-        ConfigurationRecette config = configurationRecetteRepository
-                .findByVehiculeId(vehiculeId)
-                .orElseGet(() -> ConfigurationRecette.builder()
-                        .vehiculeId(vehiculeId)
-                        .cotisations(new ArrayList<>())
-                        .build());
-
-        config.setVehiculeId(vehiculeId);
-        config.setTypeRecette(resolveTypeRecette(condition.getTypeRecette()));
-        config.setModeEncaissement(resolveModeEncaissement(condition.getModeEncaissement()));
-        config.setFrequenceVersement(resolveFrequenceVersement(condition.getFrequenceVersement()));
-        config.setHeureLimiteVersement(resolveHeure(condition.getHeureVersement()));
-        config.setMontantObjectifParChauffeur(condition.getObjectifRecette());
-        config.setMontantJourSalaire(condition.getMontantJourSalaire());
-
-        // Synchroniser les cotisations
-        List<CotisationRecette> cotisations = new ArrayList<>();
-        if (condition.getCotisations() != null) {
-            int ordre = 1;
-            for (CotisationTemplate template : condition.getCotisations()) {
-                cotisations.add(CotisationRecette.builder()
-                        .nom(template.getNom())
-                        .montant(template.getMontant())
-                        .ordre(ordre++)
-                        .build());
-            }
-        }
-        config.setCotisations(cotisations);
-
-        configurationRecetteRepository.save(config);
-    }
-
-    private TypeRecetteConfiguration resolveTypeRecette(String value) {
-        if ("MONTANT_FIXE".equals(value)) return TypeRecetteConfiguration.MONTANT_FIXE;
-        return TypeRecetteConfiguration.MONTANT_REEL;
-    }
-
-    private ModeEncaissement resolveModeEncaissement(String value) {
-        if (value == null) return ModeEncaissement.LES_DEUX;
-        return switch (value.toUpperCase()) {
-            case "ESPECES", "ESPECE" -> ModeEncaissement.ESPECES;
-            case "MOBILE_MONEY" -> ModeEncaissement.MOBILE_MONEY;
-            default -> ModeEncaissement.LES_DEUX;
-        };
-    }
-
-    private FrequenceVersement resolveFrequenceVersement(String value) {
-        if ("HEBDOMADAIRE".equals(value)) return FrequenceVersement.HEBDOMADAIRE;
-        if ("MENSUEL".equals(value)) return FrequenceVersement.MENSUEL;
-        return FrequenceVersement.JOURNALIER;
-    }
-
-    private LocalTime resolveHeure(String heureVersement) {
-        if (heureVersement == null || heureVersement.isBlank()) return LocalTime.of(18, 0);
-        try {
-            return LocalTime.parse(heureVersement);
-        } catch (Exception e) {
-            return LocalTime.of(18, 0);
-        }
     }
 }

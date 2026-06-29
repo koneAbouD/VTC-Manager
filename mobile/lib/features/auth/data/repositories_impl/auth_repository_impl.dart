@@ -24,6 +24,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _storage.saveTokens(
         accessToken: model.accessToken,
         refreshToken: model.refreshToken,
+        expiresInSeconds: model.expiresIn,
       );
       return Right(model);
     } on ApiException catch (e) {
@@ -75,6 +76,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _storage.saveTokens(
         accessToken: model.accessToken,
         refreshToken: model.refreshToken ?? refresh,
+        expiresInSeconds: model.expiresIn,
       );
       return Right(model);
     } on ApiException catch (e) {

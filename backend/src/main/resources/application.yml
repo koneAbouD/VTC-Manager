@@ -45,6 +45,7 @@ server:
 app:
   scheduler:
     maintenance-reminder-cron: "0 0 8 * * *" # tous les jours à 8h
+    indisponibilite-cron: "0 5 0 * * *"      # tous les jours à 00h05 (active/clôture)
   cors:
     allowed-origins: "*"
 

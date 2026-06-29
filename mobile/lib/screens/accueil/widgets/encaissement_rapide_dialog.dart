@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../features/chauffeur/domain/entities/chauffeur.dart';
-import '../../../features/chauffeur/domain/enums/chauffeur_status.dart';
-import '../../../features/chauffeur/presentation/providers/chauffeur_provider.dart';
-import '../../../features/chauffeur/presentation/providers/chauffeur_state.dart';
+import '../../../features/vehicule/domain/entities/vehicule.dart';
+import '../../../features/vehicule/presentation/providers/vehicule_provider.dart';
+import '../../../features/vehicule/presentation/providers/vehicule_state.dart';
 import '../../../features/cotisation/domain/entities/encaissement_cotisation.dart';
 import '../../../features/cotisation/domain/entities/ligne_cotisation.dart';
 import '../../../features/cotisation/domain/entities/ligne_cotisation_filtres.dart';
@@ -92,8 +91,8 @@ class _EncaissementRapideSheet extends ConsumerStatefulWidget {
 
 class _EncaissementRapideSheetState
     extends ConsumerState<_EncaissementRapideSheet> {
-  // ── Chauffeur ──────────────────────────────────────────────────────────────
-  Chauffeur? _chauffeur;
+  // ── Véhicule ───────────────────────────────────────────────────────────────
+  Vehicule? _vehicule;
 
   // ── Lignes actives chargées après sélection ────────────────────────────────
   _LignesStatus _lignesStatus = _LignesStatus.idle;
@@ -106,11 +105,15 @@ class _EncaissementRapideSheetState
   final _commentCtrl  = TextEditingController();
   final _formKey      = GlobalKey<FormState>();
   bool  _submitting   = false;
+  String? _submitError;
 
   @override
   void initState() {
     super.initState();
     _montantCtrl.addListener(() => setState(() {}));
+    // S'assurer que la liste des véhicules est disponible pour la sélection.
+    Future.microtask(
+        () => ref.read(vehiculeNotifierProvider.notifier).loadVehicules());
   }
 
   @override
@@ -120,16 +123,15 @@ class _EncaissementRapideSheetState
     super.dispose();
   }
 
-  // ── Chauffeurs actifs ──────────────────────────────────────────────────────
+  // ── Véhicules ──────────────────────────────────────────────────────────────
 
-  List<Chauffeur> get _chauffeurs {
-    final s = ref.watch(chauffeurNotifierProvider);
-    final all = switch (s) {
-      ChauffeurLoaded(:final chauffeurs)       => chauffeurs,
-      ChauffeurActionSuccess(:final chauffeurs) => chauffeurs,
-      _ => <Chauffeur>[],
+  List<Vehicule> get _vehicules {
+    final s = ref.watch(vehiculeNotifierProvider);
+    return switch (s) {
+      VehiculeLoaded(:final vehicules)       => vehicules,
+      VehiculeActionSuccess(:final vehicules) => vehicules,
+      _ => <Vehicule>[],
     };
-    return all.where((c) => c.statut == ChauffeurStatus.actif).toList();
   }
 
   // ── Montants restants ──────────────────────────────────────────────────────
@@ -156,11 +158,11 @@ class _EncaissementRapideSheetState
     return (recette: recettePart, cotisation: cotisationPart);
   }
 
-  // ── Chargement des lignes après sélection du chauffeur ────────────────────
+  // ── Chargement des lignes après sélection du véhicule ─────────────────────
 
-  Future<void> _chargerLignes(Chauffeur c) async {
+  Future<void> _chargerLignes(Vehicule v) async {
     setState(() {
-      _chauffeur    = c;
+      _vehicule     = v;
       _lignesStatus = _LignesStatus.loading;
       _ligneRecette = null;
       _ligneCotisation = null;
@@ -171,9 +173,9 @@ class _EncaissementRapideSheetState
     final recetteRepo    = ref.read(ligneRecetteRepositoryProvider);
     final cotisationRepo = ref.read(ligneCotisationRepositoryProvider);
 
-    final recetteResult    = await recetteRepo.getLignes(chauffeurId: c.id!);
+    final recetteResult    = await recetteRepo.getLignes(vehiculeId: v.id!);
     final cotisationResult = await cotisationRepo
-        .getLignes(LigneCotisationFiltres(chauffeurId: c.id!));
+        .getLignes(LigneCotisationFiltres(vehiculeId: v.id!));
 
     if (!mounted) return;
 
@@ -200,7 +202,7 @@ class _EncaissementRapideSheetState
     }
 
     if (err == null && ligneR == null && ligneC == null) {
-      err = 'Aucune ligne active (recette ou cotisation) pour ce chauffeur';
+      err = 'Aucune ligne active (recette ou cotisation) pour ce véhicule';
     }
 
     setState(() {
@@ -216,7 +218,10 @@ class _EncaissementRapideSheetState
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
 
     final dist       = _distribution;
     final commentaire = _commentCtrl.text.trim().isEmpty
@@ -235,12 +240,15 @@ class _EncaissementRapideSheetState
     }
 
     if (!mounted) return;
-    setState(() => _submitting = false);
+    setState(() {
+      _submitting = false;
+      // L'erreur est affichée dans la feuille (bandeau inline) plutôt qu'en
+      // SnackBar : la feuille reste ouverte, donc un SnackBar flottant
+      // s'afficherait masqué sous le bottom sheet.
+      _submitError = error;
+    });
 
-    if (error != null) {
-      _showToast(context, error, error: true);
-      return;
-    }
+    if (error != null) return;
 
     ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
     Navigator.pop(context, true);
@@ -282,6 +290,10 @@ class _EncaissementRapideSheetState
     final fmt  = NumberFormat.currency(
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
     final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
+    // useSafeArea applique SafeArea(bottom: false) : la barre de navigation
+    // système d'Android n'est pas protégée. On ajoute donc son inset au bas
+    // pour que le bouton « Encaisser » ne passe pas sous la barre latérale.
+    final bottomSafe     = MediaQuery.paddingOf(context).bottom;
     final dist           = _distribution;
 
     final lignesOk       = _lignesStatus == _LignesStatus.loaded;
@@ -298,7 +310,7 @@ class _EncaissementRapideSheetState
         : (recetteMax ?? cotisMax);
 
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + keyboardHeight),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + keyboardHeight + bottomSafe),
       child: Form(
         key: _formKey,
         child: Column(
@@ -333,22 +345,22 @@ class _EncaissementRapideSheetState
               ),
             ),
 
-            // ── Section : Chauffeur ───────────────────────────────────────
+            // ── Section : Véhicule ────────────────────────────────────────
             _FormCard(
-              icon:   Icons.person_pin_circle_outlined,
+              icon:   Icons.directions_car_outlined,
               accent: _kPrimary,
-              title:  'Chauffeur',
+              title:  'Véhicule',
               child: _LabeledField(
-                label:      'Chauffeur',
+                label:      'Véhicule',
                 isRequired: true,
-                child: Autocomplete<Chauffeur>(
-                  displayStringForOption: (c) => c.displayName,
-                  optionsBuilder: (v) {
-                    final q = v.text.toLowerCase();
-                    if (q.isEmpty) return _chauffeurs;
-                    return _chauffeurs.where((c) =>
-                        c.displayName.toLowerCase().contains(q) ||
-                        (c.telephone ?? '').contains(q));
+                child: Autocomplete<Vehicule>(
+                  displayStringForOption: (v) => v.immatriculation,
+                  optionsBuilder: (value) {
+                    final q = value.text.toLowerCase();
+                    if (q.isEmpty) return _vehicules;
+                    return _vehicules.where((v) =>
+                        v.immatriculation.toLowerCase().contains(q) ||
+                        v.displayName.toLowerCase().contains(q));
                   },
                   onSelected: _chargerLignes,
                   fieldViewBuilder: (ctx, ctrl, focus, onSubmit) =>
@@ -357,7 +369,7 @@ class _EncaissementRapideSheetState
                     focusNode:  focus,
                     onFieldSubmitted: (_) => onSubmit(),
                     style: const TextStyle(fontSize: 15, color: _kDark),
-                    decoration: _fieldDeco('Rechercher un chauffeur…').copyWith(
+                    decoration: _fieldDeco('Rechercher un véhicule…').copyWith(
                       prefixIcon: const Icon(Icons.search,
                           size: 18, color: _kHint),
                       suffixIcon: lignesLoading
@@ -370,13 +382,13 @@ class _EncaissementRapideSheetState
                                     strokeWidth: 2, color: _kPrimary),
                               ),
                             )
-                          : _chauffeur != null && lignesOk
+                          : _vehicule != null && lignesOk
                               ? const Icon(Icons.check_circle_outline_rounded,
                                   size: 18, color: _kGreen)
                               : null,
                     ),
-                    validator: (_) => _chauffeur == null
-                        ? 'Veuillez sélectionner un chauffeur'
+                    validator: (_) => _vehicule == null
+                        ? 'Veuillez sélectionner un véhicule'
                         : null,
                   ),
                   optionsViewBuilder: (ctx, onSelected, options) => Align(
@@ -394,34 +406,27 @@ class _EncaissementRapideSheetState
                           separatorBuilder: (_, __) =>
                               Divider(height: 1, color: Colors.grey.shade100),
                           itemBuilder: (_, i) {
-                            final c = options.elementAt(i);
+                            final v = options.elementAt(i);
                             return ListTile(
                               dense: true,
                               leading: CircleAvatar(
                                 radius: 17,
                                 backgroundColor:
                                     _kPrimary.withValues(alpha: 0.10),
-                                child: Text(
-                                  c.prenom.isNotEmpty
-                                      ? c.prenom[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(
-                                      color: _kPrimary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13),
-                                ),
+                                child: const Icon(
+                                    Icons.directions_car_outlined,
+                                    color: _kPrimary,
+                                    size: 17),
                               ),
-                              title: Text(c.displayName,
+                              title: Text(v.immatriculation,
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                       color: _kDark)),
-                              subtitle: c.telephone != null
-                                  ? Text(c.telephone!,
-                                      style: const TextStyle(
-                                          fontSize: 11, color: _kHint))
-                                  : null,
-                              onTap: () => onSelected(c),
+                              subtitle: Text(v.displayName,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: _kHint)),
+                              onTap: () => onSelected(v),
                             );
                           },
                         ),
@@ -514,6 +519,12 @@ class _EncaissementRapideSheetState
             ],
 
             const SizedBox(height: 4),
+
+            // ── Erreur de soumission (ex. mode de paiement non autorisé) ──
+            if (_submitError != null) ...[
+              _InlineAlert(message: _submitError!, isError: true),
+              const SizedBox(height: 8),
+            ],
 
             // ── Bouton ────────────────────────────────────────────────────
             SizedBox(

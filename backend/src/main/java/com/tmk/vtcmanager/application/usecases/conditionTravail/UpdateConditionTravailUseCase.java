@@ -4,10 +4,23 @@ import com.tmk.vtcmanager.application.domain.conditionTravail.ConditionTravail;
 import com.tmk.vtcmanager.application.domain.conditionTravail.PenaliteTemplate;
 import com.tmk.vtcmanager.application.domain.conditionTravail.TypePenalite;
 import com.tmk.vtcmanager.application.domain.conditionTravail.TypeSanction;
+import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeChauffeur;
+import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
+import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
+import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConditionTravailRepository;
+import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
+import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
+import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
+import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,6 +28,11 @@ import java.util.stream.Collectors;
 public class UpdateConditionTravailUseCase {
 
     private final ConditionTravailRepository conditionTravailRepository;
+    private final VehiculeRepository vehiculeRepository;
+    private final ProgrammeTravailRepository programmeTravailRepository;
+    private final ChauffeurRepository chauffeurRepository;
+    private final ConfigurationRecetteSynchronizer configurationRecetteSynchronizer;
+    private final IndisponibiliteNettoyageService indisponibiliteNettoyageService;
 
     private static final Set<String> TYPES_PENALITE_VALIDES = Arrays.stream(TypePenalite.values())
             .map(Enum::name)
@@ -24,13 +42,71 @@ public class UpdateConditionTravailUseCase {
             .map(Enum::name)
             .collect(Collectors.toSet());
 
+    @Transactional
     public ConditionTravail execute(Long id, ConditionTravail conditionTravail) {
         conditionTravailRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Condition de travail introuvable : " + id));
         conditionTravail.setId(id);
         validate(conditionTravail);
         sanitize(conditionTravail);
-        return conditionTravailRepository.save(conditionTravail);
+        ConditionTravail saved = conditionTravailRepository.save(conditionTravail);
+
+        // Propager les changements à chaque véhicule rattaché à cette condition.
+        // - Recette + cotisations : ConfigurationRecette (lue par le contrôle du
+        //   mode de paiement à l'encaissement).
+        // - Programme de travail + chauffeurs : réaligné sur la condition tout en
+        //   conservant l'assignation des chauffeurs.
+        // - Pénalités : portées par la condition elle-même (déjà sauvegardée),
+        //   donc répercutées automatiquement (rien à faire ici).
+        List<Vehicule> vehicules = vehiculeRepository.findByConditionTravailId(id);
+        for (Vehicule vehicule : vehicules) {
+            Long vehiculeId = vehicule.getId();
+            configurationRecetteSynchronizer.synchroniser(vehiculeId, saved);
+            programmeTravailRepository.findByVehiculeId(vehiculeId).ifPresent(programme -> {
+                programme.synchronizeWithCondition(saved);
+                programme.normalize();
+                // (2) Réduction du nombre de chauffeurs : retirer les chauffeurs
+                // en trop, les dé-affecter et nettoyer leurs indispos orphelines.
+                reduireChauffeursSiNecessaire(programme);
+                programmeTravailRepository.save(programme);
+                // (3) Nettoyer les indispos rendues inertes par le nouveau planning.
+                indisponibiliteNettoyageService.nettoyerInertes(programme);
+            });
+        }
+
+        return saved;
+    }
+
+    /**
+     * Si le programme contient plus de chauffeurs que le nombre désormais
+     * autorisé, retire les chauffeurs excédentaires (ordre d'alternance le plus
+     * élevé), les dé-affecte du véhicule et nettoie leurs indisponibilités
+     * devenues orphelines.
+     */
+    private void reduireChauffeursSiNecessaire(ProgrammeTravail programme) {
+        final Integer max = programme.getNombreChauffeursAutorises();
+        if (max == null || programme.getChauffeurs() == null
+                || programme.getChauffeurs().size() <= max) {
+            return;
+        }
+        final List<ProgrammeChauffeur> tries = new ArrayList<>(programme.getChauffeurs());
+        tries.sort(Comparator.comparing(
+                pc -> pc.getOrdreAlternance() == null ? Integer.MAX_VALUE : pc.getOrdreAlternance()));
+        final List<Long> retiresIds = tries.subList(max, tries.size()).stream()
+                .map(ProgrammeChauffeur::getChauffeurId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        programme.getChauffeurs().removeIf(pc -> retiresIds.contains(pc.getChauffeurId()));
+        programme.normalize();
+
+        for (Long chauffeurId : retiresIds) {
+            chauffeurRepository.findById(chauffeurId).ifPresent(c -> {
+                c.unassignVehicule();
+                chauffeurRepository.save(c);
+            });
+            indisponibiliteNettoyageService.nettoyerSiOrphelin(chauffeurId);
+        }
     }
 
     private void validate(ConditionTravail ct) {

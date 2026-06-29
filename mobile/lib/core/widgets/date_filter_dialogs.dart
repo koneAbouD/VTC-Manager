@@ -46,7 +46,8 @@ class _WeekPickerDialogState extends State<WeekPickerDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding:
           const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
         const SizedBox(height: 16),
         _CalendarHeader(
           monthLabel: monthLabel,
@@ -174,7 +175,7 @@ class _WeekPickerDialogState extends State<WeekPickerDialog> {
           onCancel: () => Navigator.pop(context),
           onOk:     () => Navigator.pop(context, _weekStart),
         ),
-      ]),
+      ])),
     );
   }
 }
@@ -322,7 +323,8 @@ class _SingleDatePickerDialogState
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding:
           const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
         const SizedBox(height: 16),
         _CalendarHeader(
           monthLabel: monthLabel,
@@ -362,7 +364,7 @@ class _SingleDatePickerDialogState
           onCancel: () => Navigator.pop(context),
           onOk:     () => Navigator.pop(context, _selected),
         ),
-      ]),
+      ])),
     );
   }
 }
@@ -372,8 +374,15 @@ class _SingleDatePickerDialogState
 class PeriodePickerDialog extends StatefulWidget {
   final DateTime initialStart;
   final DateTime initialEnd;
+
+  /// Si défini, les jours antérieurs à cette date sont désactivés.
+  final DateTime? firstDate;
+
   const PeriodePickerDialog(
-      {super.key, required this.initialStart, required this.initialEnd});
+      {super.key,
+      required this.initialStart,
+      required this.initialEnd,
+      this.firstDate});
 
   @override
   State<PeriodePickerDialog> createState() =>
@@ -413,6 +422,7 @@ class _DateRangePickerDialogState extends State<PeriodePickerDialog>
   }
 
   void _onDayTap(DateTime date) {
+    if (widget.firstDate != null && date.isBefore(widget.firstDate!)) return;
     setState(() {
       if (_tabController.index == 0) {
         _start = date;
@@ -439,7 +449,8 @@ class _DateRangePickerDialogState extends State<PeriodePickerDialog>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding:
           const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
         TabBar(
           controller: _tabController,
           tabs: const [Tab(text: 'Date de début'), Tab(text: 'Date de fin')],
@@ -476,6 +487,9 @@ class _DateRangePickerDialogState extends State<PeriodePickerDialog>
               d.year == selectedDate.year &&
               d.month == selectedDate.month &&
               d.day == selectedDate.day,
+          isDisabled: widget.firstDate != null
+              ? (d) => d.isBefore(widget.firstDate!)
+              : null,
           onDayTap: _onDayTap,
         ),
         const SizedBox(height: 16),
@@ -487,7 +501,7 @@ class _DateRangePickerDialogState extends State<PeriodePickerDialog>
             Navigator.pop(context, DateTimeRange(start: s, end: e));
           },
         ),
-      ]),
+      ])),
     );
   }
 }
@@ -694,7 +708,9 @@ void showMonthYearPicker(
     shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setLocal) => SizedBox(
+      builder: (ctx, setLocal) => SafeArea(
+        top: false,
+        child: SizedBox(
         height: 380,
         child: Column(children: [
           const Padding(
@@ -775,6 +791,7 @@ void showMonthYearPicker(
             ),
           ),
         ]),
+      ),
       ),
     ),
   );

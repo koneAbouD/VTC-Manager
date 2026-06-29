@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
+import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class CreateProgrammeTravailUseCase {
     private final ProgrammeTravailRepository programmeRepository;
     private final VehiculeRepository vehiculeRepository;
     private final ChauffeurRepository chauffeurRepository;
+    private final IndisponibiliteNettoyageService indisponibiliteNettoyageService;
 
     @Transactional
     public ProgrammeTravail execute(Long vehiculeId, ProgrammeTravail programme) {
@@ -73,6 +75,8 @@ public class CreateProgrammeTravailUseCase {
                     c.unassignVehicule();
                     chauffeurRepository.save(c);
                 });
+                // Indisponibilités du chauffeur retiré devenues sans effet.
+                indisponibiliteNettoyageService.nettoyerSiOrphelin(ancienId);
             }
         }
 

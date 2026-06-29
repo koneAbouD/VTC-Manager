@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
 import 'condition_travail_models.dart';
@@ -81,6 +83,7 @@ class _PenalitesFormPageState extends ConsumerState<PenalitesFormPage> {
   late List<PenaliteGroupLocal> _groups;
   String _selectedType = 'RECETTE_NON_VERSEE';
   bool _saving = false;
+  String? _submitError;
 
   @override
   void initState() {
@@ -109,6 +112,14 @@ class _PenalitesFormPageState extends ConsumerState<PenalitesFormPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_submitError != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: AppErrorBanner(
+                message: _submitError!,
+                onClose: () => setState(() => _submitError = null),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: Row(
@@ -173,7 +184,7 @@ class _PenalitesFormPageState extends ConsumerState<PenalitesFormPage> {
             child: FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF3B5BDB),
+                backgroundColor: const Color(0xFF43A047),
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -240,7 +251,10 @@ class _PenalitesFormPageState extends ConsumerState<PenalitesFormPage> {
 
   Future<void> _save() async {
     if (widget.vehicule.id == null) return;
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _submitError = null;
+    });
     try {
       final client = ref.read(_penFormApiClient);
       final flat = _groups.expand((g) => g.toFlat()).toList();
@@ -250,7 +264,11 @@ class _PenalitesFormPageState extends ConsumerState<PenalitesFormPage> {
       _appToast(context, 'Pénalités mises à jour.');
       Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) _appToast(context, 'Erreur : $e', type: _ToastType.error);
+      if (mounted) {
+        final msg = messageFromError(e);
+        setState(() => _submitError = msg);
+        _appToast(context, msg, type: _ToastType.error);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -327,7 +345,7 @@ class _GroupCard extends StatelessWidget {
                     width: 22,
                     height: 22,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF3B5BDB),
+                      color: Color(0xFF43A047),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.add, color: Colors.white, size: 14),
@@ -336,7 +354,7 @@ class _GroupCard extends StatelessWidget {
                   const Text(
                     'Ajouter une sanction',
                     style: TextStyle(
-                      color: Color(0xFF3B5BDB),
+                      color: Color(0xFF43A047),
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
@@ -403,7 +421,7 @@ class _SanctionRow extends StatelessWidget {
               IconButton(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined,
-                    color: Color(0xFF3B5BDB), size: 18),
+                    color: Color(0xFF43A047), size: 18),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -530,7 +548,8 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom + 16,
         left: 20,
         right: 20,
         top: 24,
@@ -602,7 +621,7 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1565C0),
+                          backgroundColor: const Color(0xFF43A047),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
@@ -892,12 +911,12 @@ class _SanctionTypeSelector extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
                               color: selected == t.code
-                                  ? const Color(0xFF1565C0)
+                                  ? const Color(0xFF43A047)
                                   : Colors.grey.shade400,
                               width: 2,
                             ),
                             color: selected == t.code
-                                ? const Color(0xFF1565C0)
+                                ? const Color(0xFF43A047)
                                 : Colors.transparent,
                           ),
                           child: selected == t.code

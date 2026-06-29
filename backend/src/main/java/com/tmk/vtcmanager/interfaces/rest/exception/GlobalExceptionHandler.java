@@ -16,6 +16,7 @@ import com.tmk.vtcmanager.application.exception.LigneCotisationDejaSoldeeExcepti
 import com.tmk.vtcmanager.application.exception.LigneCotisationNotFoundException;
 import com.tmk.vtcmanager.application.exception.LigneRecetteDejaSoldeeException;
 import com.tmk.vtcmanager.application.exception.LigneRecetteNotFoundException;
+import com.tmk.vtcmanager.application.exception.ChauffeurNeTravaillePasCeJourException;
 import com.tmk.vtcmanager.application.exception.ModePaiementNonAutoriseException;
 import com.tmk.vtcmanager.application.exception.ResourceAlreadyExistsException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
@@ -203,6 +204,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ModePaiementNonAutoriseException.class)
     public ResponseEntity<ApiError> handleModePaiementNonAutorise(ModePaiementNonAutoriseException ex, HttpServletRequest request) {
         return respond(HttpStatus.UNPROCESSABLE_ENTITY, "MODE_PAIEMENT_NON_AUTORISE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(ChauffeurNeTravaillePasCeJourException.class)
+    public ResponseEntity<ApiError> handleChauffeurNeTravaillePasCeJour(
+            ChauffeurNeTravaillePasCeJourException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "CHAUFFEUR_NE_TRAVAILLE_PAS_CE_JOUR",
+                ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)

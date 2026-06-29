@@ -1,4 +1,5 @@
 import '../../../../core/network/api_client.dart';
+import '../../domain/entities/statut_vehicule.dart';
 
 class ReferentielItem {
   final int id;
@@ -59,6 +60,13 @@ class ReferentielDatasource {
     final data = await _api.get('/v1/groupes') as List;
     return data
         .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<StatutVehicule>> getStatutsVehicule() async {
+    final data = await _api.get('/v1/statuts-vehicule') as List;
+    return data
+        .map((e) => StatutVehicule.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 }

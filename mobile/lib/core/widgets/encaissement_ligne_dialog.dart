@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'app_error_banner.dart';
+
 // ── Palette (cohérente avec MaintenanceFormPage) ──────────────────────────────
 
 const _kPrimary   = Color(0xFF3B5BDB);
@@ -152,6 +154,7 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
   final _commentCtrl = TextEditingController();
   final _formKey     = GlobalKey<FormState>();
   bool  _submitting  = false;
+  String? _submitError;
 
   @override
   void dispose() {
@@ -163,7 +166,10 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
 
     final montant = double.parse(_montantCtrl.text.replaceAll(',', '.'));
     final commentaire = _commentCtrl.text.trim().isEmpty
@@ -173,11 +179,14 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
     final error = await widget.onEncaisser(montant, commentaire);
 
     if (!mounted) return;
-    setState(() => _submitting = false);
+    setState(() {
+      _submitting = false;
+      // L'erreur s'affiche dans la feuille (bandeau inline) : un SnackBar
+      // resterait masqué sous le bottom sheet tant qu'il est ouvert.
+      _submitError = error;
+    });
 
-    if (error != null) {
-      _showToast(context, error, error: true);
-    } else {
+    if (error == null) {
       Navigator.pop(context, true);
       _showToast(context, 'Encaissement effectué avec succès');
     }
@@ -188,9 +197,12 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
     final fmt = NumberFormat.currency(
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
     final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
+    // useSafeArea applique SafeArea(bottom: false) : on ajoute l'inset de la
+    // barre de navigation Android pour que le bouton ne passe pas dessous.
+    final bottomSafe     = MediaQuery.paddingOf(context).bottom;
 
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + keyboardHeight),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + keyboardHeight + bottomSafe),
       child: Form(
         key: _formKey,
         child: Column(
@@ -293,6 +305,15 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
             ),
 
             const SizedBox(height: 4),
+
+            // ── Erreur de soumission (ex. mode de paiement non autorisé) ──
+            if (_submitError != null) ...[
+              AppErrorBanner(
+                message: _submitError!,
+                onClose: () => setState(() => _submitError = null),
+              ),
+              const SizedBox(height: 10),
+            ],
 
             // ── Bouton ────────────────────────────────────────────────
             SizedBox(

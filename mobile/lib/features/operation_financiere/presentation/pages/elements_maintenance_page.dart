@@ -5,10 +5,11 @@ import '../../../../core/widgets/app_header.dart';
 import '../../domain/entities/catalogue_element_maintenance.dart';
 import '../../domain/entities/element_maintenance.dart';
 import '../providers/catalogue_element_maintenance_provider.dart';
+import '../../../../core/theme/app_colors.dart';
 
 // ── Palette (reprend la même que le formulaire) ───────────────────────────────
 
-const _kPrimary   = Color(0xFF3B5BDB);
+const _kPrimary   = AppColors.primary;
 const _kHint      = Color(0xFF9AA0AE);
 const _kDark      = Color(0xFF1A1A2E);
 const _kBorder    = Color(0xFFE3E6EE);
