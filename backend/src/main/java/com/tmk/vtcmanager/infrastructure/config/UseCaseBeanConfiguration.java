@@ -595,8 +595,10 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
-    public DeleteOperationFinanciereUseCase deleteOperationFinanciereUseCase(OperationFinanciereRepository repo) {
-        return new DeleteOperationFinanciereUseCase(repo);
+    public DeleteOperationFinanciereUseCase deleteOperationFinanciereUseCase(
+            OperationFinanciereRepository repo,
+            AnnulationEncaissementService annulationEncaissementService) {
+        return new DeleteOperationFinanciereUseCase(repo, annulationEncaissementService);
     }
 
     @Bean

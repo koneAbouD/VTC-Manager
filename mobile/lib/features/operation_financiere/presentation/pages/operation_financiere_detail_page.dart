@@ -153,7 +153,7 @@ class _DetailBody extends ConsumerWidget {
           style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
           onPressed: () => _supprimer(context, ref),
           icon: const Icon(Icons.delete_outline),
-          label: const Text('Supprimer'),
+          label: const Text('Annuler'),
         ),
       ],
     );
@@ -166,7 +166,7 @@ class _DetailBody extends ConsumerWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Supprimer l\'opération ?'),
+        title: const Text('Annuler l\'opération ?'),
         content: const Text('Cette action est irréversible.'),
         actions: [
           TextButton(
@@ -175,7 +175,7 @@ class _DetailBody extends ConsumerWidget {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Oui, supprimer'),
+            child: const Text('Oui, Annuler'),
           ),
         ],
       ),
@@ -194,7 +194,7 @@ class _DetailBody extends ConsumerWidget {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Opération supprimée')),
+        const SnackBar(content: Text('Opération annulée')),
       );
       Navigator.pop(context);
     }
