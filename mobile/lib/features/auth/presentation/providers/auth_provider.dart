@@ -151,8 +151,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     SessionManager.instance.stop();
-    await _logout.call();
+    // Redirection immédiate : on bascule l'état AVANT l'appel réseau de
+    // révocation (qui peut être lent), puis on révoque en arrière-plan.
     state = const AuthUnauthenticated();
+    unawaited(_logout.call());
   }
 
   Future<String?> forgotPassword(String email) async {

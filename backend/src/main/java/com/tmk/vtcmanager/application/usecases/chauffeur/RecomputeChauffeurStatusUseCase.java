@@ -29,8 +29,12 @@ public class RecomputeChauffeurStatusUseCase {
         Chauffeur chauffeur = chauffeurRepository.findById(chauffeurId)
                 .orElseThrow(() -> new ChauffeurNotFoundException(chauffeurId));
 
-        boolean enConge = indisponibiliteRepository.isEnCongeAt(chauffeurId, LocalDate.now());
-        boolean affecte = chauffeur.getVehicule() != null;
+        LocalDate aujourdhui = LocalDate.now();
+        boolean enConge = indisponibiliteRepository.isEnCongeAt(chauffeurId, aujourdhui);
+        // « En service » si affecté à un véhicule OU remplaçant actif aujourd'hui
+        // (substitution d'un titulaire indisponible via le modèle overlay).
+        boolean affecte = chauffeur.getVehicule() != null
+                || indisponibiliteRepository.isRemplacantActifAt(chauffeurId, aujourdhui);
 
         ChauffeurStatus avant = chauffeur.getStatut();
         chauffeur.appliquerStatutCalcule(enConge, affecte);

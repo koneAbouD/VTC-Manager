@@ -24,9 +24,11 @@ public class UpdateIndisponibiliteUseCase {
     public Indisponibilite execute(Long id, Indisponibilite data) {
         Indisponibilite existing = indisponibiliteRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Indisponibilité", id));
-        // Titulaire d'origine (peut changer) : il faudra recalculer son statut aussi.
+        // Titulaire et remplaçant d'origine (peuvent changer) : recalcul nécessaire.
         final Long ancienTitulaireId = existing.getChauffeur() != null
                 ? existing.getChauffeur().getId() : null;
+        final Long ancienRemplacantId = existing.getChauffeurRemplacant() != null
+                ? existing.getChauffeurRemplacant().getId() : null;
         if (existing.getStatut() == IndisponibiliteStatut.TERMINEE
                 || existing.getStatut() == IndisponibiliteStatut.ANNULEE) {
             throw new IllegalArgumentException(
@@ -77,12 +79,18 @@ public class UpdateIndisponibiliteUseCase {
         // période / à la fin de l'indisponibilité.
         Indisponibilite saved = indisponibiliteRepository.save(existing);
 
-        // Recalcul du statut pour l'ancien et le nouveau titulaire (la période ou
-        // le titulaire ont pu changer).
+        // Recalcul du statut pour l'ancien et le nouveau titulaire + remplaçant
+        // (la période, le titulaire ou le remplaçant ont pu changer).
         chauffeurStatutEventPublisher.publishStatutDirty(ancienTitulaireId);
+        chauffeurStatutEventPublisher.publishStatutDirty(ancienRemplacantId);
         Long nouveauTitulaireId = saved.getChauffeur() != null ? saved.getChauffeur().getId() : null;
         if (nouveauTitulaireId != null && !nouveauTitulaireId.equals(ancienTitulaireId)) {
             chauffeurStatutEventPublisher.publishStatutDirty(nouveauTitulaireId);
+        }
+        Long nouveauRemplacantId = saved.getChauffeurRemplacant() != null
+                ? saved.getChauffeurRemplacant().getId() : null;
+        if (nouveauRemplacantId != null && !nouveauRemplacantId.equals(ancienRemplacantId)) {
+            chauffeurStatutEventPublisher.publishStatutDirty(nouveauRemplacantId);
         }
         return saved;
     }

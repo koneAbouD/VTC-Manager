@@ -28,4 +28,16 @@ public interface IndisponibiliteJpaRepository extends JpaRepository<Indisponibil
     boolean isEnCongeAt(@Param("chauffeurId") Long chauffeurId,
                         @Param("date") LocalDate date,
                         @Param("statuts") List<IndisponibiliteStatut> statuts);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(i) > 0 THEN true ELSE false END
+            FROM IndisponibiliteEntity i
+            WHERE i.chauffeurRemplacant.id = :chauffeurId
+              AND i.statut IN :statuts
+              AND i.dateDebut <= :date
+              AND (i.dateFin IS NULL OR i.dateFin >= :date)
+            """)
+    boolean isRemplacantActifAt(@Param("chauffeurId") Long chauffeurId,
+                                @Param("date") LocalDate date,
+                                @Param("statuts") List<IndisponibiliteStatut> statuts);
 }

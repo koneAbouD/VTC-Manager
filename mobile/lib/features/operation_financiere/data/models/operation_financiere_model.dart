@@ -22,6 +22,7 @@ class OperationFinanciereModel extends OperationFinanciere {
     required super.montant,
     super.modePaiement,
     required super.dateOperation,
+    super.dateReference,
     super.commentaire,
     super.statut,
     super.detailMaintenance,
@@ -70,6 +71,9 @@ class OperationFinanciereModel extends OperationFinanciere {
       modePaiement:
           mpStr != null ? ModePaiementExt.fromString(mpStr) : null,
       dateOperation: DateTime.parse(json['dateOperation'] as String),
+      dateReference: json['dateReference'] != null
+          ? DateTime.tryParse(json['dateReference'] as String)
+          : null,
       commentaire: json['commentaire'] as String?,
       statut: StatutOperationExt.fromString(statutStr),
       detailMaintenance:

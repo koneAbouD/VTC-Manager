@@ -80,6 +80,7 @@ public class CreateEncaissementPenaliteUseCase {
                 .montant(encaissement.getMontant())
                 .modePaiement(encaissement.getModeEncaissement())
                 .dateOperation(encaissement.getDateEncaissement())
+                .dateReference(ligne.getDateFaute())
                 .commentaire(encaissement.getCommentaire())
                 .reference(genererReference())
                 .statut(StatutOperation.VALIDEE)

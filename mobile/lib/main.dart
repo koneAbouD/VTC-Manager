@@ -20,6 +20,11 @@ void main() async {
 /// dépendre d'un contexte de page particulier.
 final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
+/// Clé du navigateur racine : permet, lors d'une déconnexion (volontaire ou
+/// subie), de vider la pile de navigation pour revenir instantanément à la
+/// page de connexion, quelle que soit la profondeur où se trouve l'utilisateur.
+final _navigatorKey = GlobalKey<NavigatorState>();
+
 class VtcManagerApp extends ConsumerWidget {
   const VtcManagerApp({super.key});
 
@@ -27,16 +32,24 @@ class VtcManagerApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
 
-    // Affiche un message lorsqu'une session expire (déconnexion subie).
+    // Déconnexion (volontaire ou subie) : revenir à la racine en vidant la pile
+    // de navigation, et afficher le message d'expiration le cas échéant.
     ref.listen<AuthState>(authNotifierProvider, (prev, next) {
-      if (next is AuthUnauthenticated && next.message != null) {
-        _scaffoldMessengerKey.currentState
-          ?..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(
-            content: Text(next.message!),
-            backgroundColor: const Color(0xFFB71C1C),
-            behavior: SnackBarBehavior.floating,
-          ));
+      if (next is AuthUnauthenticated) {
+        // Après le frame courant (le home est déjà devenu LoginPage) : on retire
+        // tous les écrans empilés pour révéler la page de connexion aussitôt.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+        });
+        if (next.message != null) {
+          _scaffoldMessengerKey.currentState
+            ?..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(
+              content: Text(next.message!),
+              backgroundColor: const Color(0xFFB71C1C),
+              behavior: SnackBarBehavior.floating,
+            ));
+        }
       }
     });
 
@@ -49,6 +62,7 @@ class VtcManagerApp extends ConsumerWidget {
       onPointerDown: (_) => SessionManager.instance.recordActivity(),
       child: MaterialApp(
         title: 'VTC Manager',
+        navigatorKey: _navigatorKey,
         scaffoldMessengerKey: _scaffoldMessengerKey,
         debugShowCheckedModeBanner: false,
       localizationsDelegates: const [

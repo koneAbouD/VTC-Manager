@@ -26,6 +26,13 @@ public class OperationFinanciere {
     private BigDecimal montant;
     private ModePaiement modePaiement;
     private LocalDate dateOperation;
+    /**
+     * Date "métier" de référence : pour un encaissement de période, c'est la date
+     * de la période concernée (recette/cotisation/faute) et non la date de la
+     * transaction. Sert à l'affichage des lignes d'opération. Null = utiliser
+     * {@link #dateOperation}.
+     */
+    private LocalDate dateReference;
     private String commentaire;
     private StatutOperation statut;
     private DetailMaintenance detailMaintenance;

@@ -43,7 +43,7 @@ INSERT INTO vehicules (
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
 (SELECT id FROM types_activite WHERE nom = 'VTC'),
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Standard'),
-'Blanc', 7800, 'EN_SERVICE', '2023-03-10', '2024-09-10', '2023-02-15', '2023-03-15', NOW(), NOW()),
+'Blanc', 7800, 'DISPONIBLE', '2023-03-10', '2024-09-10', '2023-02-15', '2023-03-15', NOW(), NOW()),
 
 -- Véhicules standard pour services réguliers
 ('AA-314-TH-01',
@@ -52,7 +52,7 @@ INSERT INTO vehicules (
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
 (SELECT id FROM types_activite WHERE nom = 'VTC'),
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Premium'),
-'Gris', 16200, 'EN_SERVICE', '2022-05-12', '2024-11-12', '2022-04-01', '2022-05-20', NOW(), NOW()),
+'Gris', 16200, 'DISPONIBLE', '2022-05-12', '2024-11-12', '2022-04-01', '2022-05-20', NOW(), NOW()),
 
 ('AB-929-FE-01',
 (SELECT id FROM marques WHERE nom = 'Suzuki' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture')),
@@ -60,7 +60,7 @@ INSERT INTO vehicules (
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
 (SELECT id FROM types_activite WHERE nom = 'VTC'),
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Premium'),
-'Orange', 19800, 'EN_SERVICE', '2022-06-18', '2024-12-18', '2022-05-10', '2022-06-25', NOW(), NOW()),
+'Orange', 19800, 'DISPONIBLE', '2022-06-18', '2024-12-18', '2022-05-10', '2022-06-25', NOW(), NOW()),
 
 ('AA-247-YC-01',
 (SELECT id FROM marques WHERE nom = 'Suzuki' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture')),
@@ -68,7 +68,7 @@ INSERT INTO vehicules (
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
 (SELECT id FROM types_activite WHERE nom = 'VTC'),
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Standard'),
-'Orange', 18500, 'EN_SERVICE', '2022-04-05', '2024-10-05', '2022-03-01', '2022-04-10', NOW(), NOW()),
+'Orange', 18500, 'DISPONIBLE', '2022-04-05', '2024-10-05', '2022-03-01', '2022-04-10', NOW(), NOW()),
 
 -- Véhicules économiques pour services budget
 ('AB-688-AX',
@@ -94,7 +94,7 @@ INSERT INTO vehicules (
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
 (SELECT id FROM types_activite WHERE nom = 'VTC'),
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Standard'),
-'Orange', 22000, 'EN_MAINTENANCE', '2022-09-15', '2024-05-15', '2022-08-10', '2022-09-22', NOW(), NOW()),
+'Orange', 22000, 'DISPONIBLE', '2022-09-15', '2024-05-15', '2022-08-10', '2022-09-22', NOW(), NOW()),
 
 ('AB-187-EJ-01',
 (SELECT id FROM marques WHERE nom = 'Suzuki' AND type_id = (SELECT id FROM types_vehicule WHERE nom = 'Voiture')),
@@ -102,4 +102,4 @@ INSERT INTO vehicules (
 (SELECT id FROM types_vehicule WHERE nom = 'Voiture'),
 (SELECT id FROM types_activite WHERE nom = 'VTC'),
 (SELECT id FROM groupes_vehicule WHERE nom = 'Flotte Standard'),
-'Orange', 26800, 'EN_MAINTENANCE', '2021-10-20', '2024-06-20', '2021-09-15', '2021-11-01', NOW(), NOW());
+'Orange', 26800, 'DISPONIBLE', '2021-10-20', '2024-06-20', '2021-09-15', '2021-11-01', NOW(), NOW());

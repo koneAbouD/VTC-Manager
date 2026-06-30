@@ -217,6 +217,9 @@ class _FormState extends ConsumerState<IndisponibiliteFormPage> {
     if (err != null) {
       _toast(err, error: true);
     } else {
+      // Le statut des chauffeurs (titulaire → En congé, remplaçant → En service)
+      // est recalculé côté backend : recharger la liste pour le refléter aussitôt.
+      ref.read(chauffeurNotifierProvider.notifier).loadChauffeurs();
       _toast(_isEdit ? 'Indisponibilité modifiée.' : 'Indisponibilité créée.');
       Navigator.pop(context);
     }

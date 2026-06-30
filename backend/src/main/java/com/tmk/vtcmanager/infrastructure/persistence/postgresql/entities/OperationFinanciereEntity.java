@@ -57,6 +57,9 @@ public class OperationFinanciereEntity extends AbstractAuditEntity {
     @Column(name = "date_operation", nullable = false)
     private LocalDate dateOperation;
 
+    @Column(name = "date_reference")
+    private LocalDate dateReference;
+
     @Column(columnDefinition = "TEXT")
     private String commentaire;
 

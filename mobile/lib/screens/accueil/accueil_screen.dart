@@ -723,10 +723,11 @@ class _DerniereOpTile extends StatelessWidget {
     final color = isRevenu ? Colors.green : Colors.red;
     final sign = isRevenu ? '+' : '-';
 
-    // Ligne 1 : « [Catégorie opération] du [date] »
+    // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
+    // Libellé relatif sur la date métier (recette/cotisation/faute), recalculé
+    // à l'affichage — pas de tâche planifiée.
     final categorie = op.categorieLibelle ?? op.typeOperation.libelle;
-    final titre =
-        '$categorie du ${DateFormat('dd/MM/yyyy', 'fr_FR').format(op.dateOperation)}';
+    final titre = '$categorie ${op.libelleDateRelative}';
 
     // Ligne 2 : « [imat véhicule - Nom chauffeur] »
     final vehiculeChauffeur = [

@@ -20,6 +20,7 @@ public record OperationFinanciereResponse(
         BigDecimal montant,
         ModePaiement modePaiement,
         LocalDate dateOperation,
+        LocalDate dateReference,
         String commentaire,
         StatutOperation statut,
         DetailMaintenanceResponse detailMaintenance

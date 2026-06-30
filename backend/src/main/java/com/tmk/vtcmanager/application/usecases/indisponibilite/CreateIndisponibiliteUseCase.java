@@ -36,6 +36,10 @@ public class CreateIndisponibiliteUseCase {
         if (saved.getChauffeur() != null) {
             chauffeurStatutEventPublisher.publishStatutDirty(saved.getChauffeur().getId());
         }
+        // Le remplaçant peut devenir EN_SERVICE (substitution active aujourd'hui).
+        if (saved.getChauffeurRemplacant() != null) {
+            chauffeurStatutEventPublisher.publishStatutDirty(saved.getChauffeurRemplacant().getId());
+        }
         return saved;
     }
 

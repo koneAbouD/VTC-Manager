@@ -20,6 +20,11 @@ class OperationFinanciere {
   final double montant;
   final ModePaiement? modePaiement;
   final DateTime dateOperation;
+
+  /// Date "métier" de référence (date de la période concernée pour un
+  /// encaissement : recette / cotisation / faute). Null pour les autres
+  /// opérations → on retombe sur [dateOperation].
+  final DateTime? dateReference;
   final String? commentaire;
   final StatutOperation statut;
   final DetailMaintenance? detailMaintenance;
@@ -41,10 +46,37 @@ class OperationFinanciere {
     required this.montant,
     this.modePaiement,
     required this.dateOperation,
+    this.dateReference,
     this.commentaire,
     this.statut = StatutOperation.BROUILLON,
     this.detailMaintenance,
   });
+
+  /// Date à afficher sur les lignes d'opération : la date métier si présente
+  /// (encaissement de période), sinon la date de l'opération.
+  DateTime get dateAffichee => dateReference ?? dateOperation;
+
+  /// Connecteur de date relatif, recalculé à CHAQUE affichage (donc « hier »
+  /// devient « avant-hier » le lendemain, etc.) — aucune tâche planifiée requise :
+  ///   aujourd'hui   → "d'aujourd'hui"
+  ///   hier          → "d'hier"
+  ///   avant-hier    → "d'avant-hier"
+  ///   au-delà       → "du JJ/MM/AAAA"
+  /// Destiné à suffixer un libellé, ex. « Encaissement recettes d'hier ».
+  String get libelleDateRelative {
+    final d = dateAffichee;
+    final jour = DateTime(d.year, d.month, d.day);
+    final maintenant = DateTime.now();
+    final aujourdhui = DateTime(maintenant.year, maintenant.month, maintenant.day);
+    final ecartJours = aujourdhui.difference(jour).inDays;
+    String deux(int n) => n.toString().padLeft(2, '0');
+    return switch (ecartJours) {
+      0 => "d'aujourd'hui",
+      1 => "d'hier",
+      2 => "d'avant-hier",
+      _ => 'du ${deux(d.day)}/${deux(d.month)}/${d.year}',
+    };
+  }
 
   /// Vrai si l'opération appartient au groupe "Maintenances"
   /// (déterminé par le libellé de la sous-catégorie côté backend,

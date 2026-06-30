@@ -26,5 +26,12 @@ public interface IndisponibiliteRepository {
      */
     boolean isEnCongeAt(Long chauffeurId, LocalDate date);
 
+    /**
+     * Indique si le chauffeur est <b>remplaçant actif</b> à la date donnée :
+     * il substitue un titulaire indisponible couvrant cette date (signal du
+     * statut EN_SERVICE pour le remplaçant). Calculé sur les dates.
+     */
+    boolean isRemplacantActifAt(Long chauffeurId, LocalDate date);
+
     void deleteById(Long id);
 }

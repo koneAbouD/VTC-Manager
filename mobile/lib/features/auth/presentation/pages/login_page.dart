@@ -42,6 +42,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.listen(authNotifierProvider, (_, next) {
       if (next is AuthError && mounted) {
         authToast(context, next.message, type: AuthToastType.error);
+        // Réinitialiser les champs après chaque échec d'authentification.
+        _username.clear();
+        _password.clear();
       }
     });
 

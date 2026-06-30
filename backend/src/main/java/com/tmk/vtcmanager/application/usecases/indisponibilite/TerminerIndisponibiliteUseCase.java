@@ -22,9 +22,13 @@ public class TerminerIndisponibiliteUseCase {
         existing.terminer();
         Indisponibilite saved = indisponibiliteRepository.save(existing);
 
-        // Recalcul du statut du titulaire (sortie d'EN_CONGE à l'échéance).
+        // Recalcul des statuts : titulaire (sortie d'EN_CONGE) et remplaçant
+        // (fin de substitution → sortie d'EN_SERVICE).
         if (saved.getChauffeur() != null) {
             chauffeurStatutEventPublisher.publishStatutDirty(saved.getChauffeur().getId());
+        }
+        if (saved.getChauffeurRemplacant() != null) {
+            chauffeurStatutEventPublisher.publishStatutDirty(saved.getChauffeurRemplacant().getId());
         }
         return saved;
     }

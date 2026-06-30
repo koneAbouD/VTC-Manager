@@ -52,6 +52,12 @@ public class IndisponibiliteRepositoryAdapter implements IndisponibiliteReposito
     }
 
     @Override
+    public boolean isRemplacantActifAt(Long chauffeurId, LocalDate date) {
+        return jpaRepository.isRemplacantActifAt(chauffeurId, date,
+                List.of(IndisponibiliteStatut.PLANIFIEE, IndisponibiliteStatut.EN_COURS));
+    }
+
+    @Override
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
     }

@@ -670,10 +670,11 @@ class _OpCard extends StatelessWidget {
         isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
     final sign = isRevenu ? '+' : '-';
 
-    // Ligne 1 : « [Catégorie opération] du [date] »
+    // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
+    // Libellé relatif sur la date métier (recette/cotisation/faute), recalculé
+    // à l'affichage — pas de tâche planifiée.
     final categorie = op.categorieLibelle ?? op.typeOperation.libelle;
-    final titre =
-        '$categorie du ${DateFormat('dd/MM/yyyy', 'fr_FR').format(op.dateOperation)}';
+    final titre = '$categorie ${op.libelleDateRelative}';
 
     // Ligne 2 : « [imat véhicule - Nom chauffeur] »
     final vehiculeChauffeur = [
@@ -766,7 +767,7 @@ class _OpCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  DateFormat('dd/MM', 'fr_FR').format(op.dateOperation),
+                  DateFormat('dd/MM', 'fr_FR').format(op.dateAffichee),
                   style: TextStyle(
                       fontSize: 10, color: Colors.grey.shade400),
                 ),

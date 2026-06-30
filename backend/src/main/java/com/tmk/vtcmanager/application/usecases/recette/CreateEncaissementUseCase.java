@@ -104,6 +104,7 @@ public class CreateEncaissementUseCase {
                 .montant(encaissement.getMontant())
                 .modePaiement(encaissement.getModeEncaissement())
                 .dateOperation(encaissement.getDateEncaissement())
+                .dateReference(ligne.getDateRecette())
                 .commentaire(encaissement.getCommentaire())
                 .reference(genererReference())
                 .statut(StatutOperation.VALIDEE)

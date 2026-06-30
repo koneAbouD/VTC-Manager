@@ -58,10 +58,16 @@ public class SynchroniserIndisponibilitesUseCase {
         return modifiees;
     }
 
-    /** Recalcul du statut du titulaire (entrée/sortie d'EN_CONGE au fil des dates). */
+    /**
+     * Recalcul des statuts du titulaire (entrée/sortie d'EN_CONGE) et du
+     * remplaçant (entrée/sortie d'EN_SERVICE) au fil des dates.
+     */
     private void publierRecalculTitulaire(Indisponibilite indispo) {
         if (indispo.getChauffeur() != null) {
             chauffeurStatutEventPublisher.publishStatutDirty(indispo.getChauffeur().getId());
+        }
+        if (indispo.getChauffeurRemplacant() != null) {
+            chauffeurStatutEventPublisher.publishStatutDirty(indispo.getChauffeurRemplacant().getId());
         }
     }
 }

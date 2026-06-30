@@ -18,12 +18,16 @@ public class DeleteIndisponibiliteUseCase {
         Indisponibilite existing = indisponibiliteRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Indisponibilité", id));
         Long titulaireId = existing.getChauffeur() != null ? existing.getChauffeur().getId() : null;
+        Long remplacantId = existing.getChauffeurRemplacant() != null
+                ? existing.getChauffeurRemplacant().getId() : null;
 
         // Modèle overlay : rien à rétablir, la substitution n'est plus calculée
         // dès que l'indisponibilité disparaît.
         indisponibiliteRepository.deleteById(id);
 
-        // La suppression peut faire sortir le titulaire d'EN_CONGE.
+        // La suppression peut faire sortir le titulaire d'EN_CONGE et le
+        // remplaçant d'EN_SERVICE.
         chauffeurStatutEventPublisher.publishStatutDirty(titulaireId);
+        chauffeurStatutEventPublisher.publishStatutDirty(remplacantId);
     }
 }

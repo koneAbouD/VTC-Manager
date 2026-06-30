@@ -79,6 +79,7 @@ public class CreateEncaissementCotisationUseCase {
                 .montant(encaissement.getMontant())
                 .modePaiement(encaissement.getModeEncaissement())
                 .dateOperation(encaissement.getDateEncaissement())
+                .dateReference(ligne.getDateCotisation())
                 .commentaire(encaissement.getCommentaire() != null && !encaissement.getCommentaire().isBlank()
                         ? encaissement.getCommentaire()
                         : ligne.getNomCotisation())
