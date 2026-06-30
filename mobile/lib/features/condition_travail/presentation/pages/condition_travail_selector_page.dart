@@ -17,8 +17,11 @@ final _ctSecureStorageProvider =
 final _ctApiClientProvider = Provider<ApiClient>(
     (ref) => ApiClient(ref.watch(_ctSecureStorageProvider)));
 
+// autoDispose : la liste est rechargée à chaque ouverture du sélecteur, donc
+// toujours à jour après une création/modification faite ailleurs (liste, fiche
+// détail…), sans cache périmé inter-écrans.
 final _conditionsTravailProvider =
-    FutureProvider<List<ConditionTravailLocal>>((ref) async {
+    FutureProvider.autoDispose<List<ConditionTravailLocal>>((ref) async {
   final client = ref.watch(_ctApiClientProvider);
   final response = await client.get('/conditions-travail');
   return (response as List)

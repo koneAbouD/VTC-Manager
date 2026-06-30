@@ -137,12 +137,26 @@ public class GlobalExceptionHandler {
                     message, request, details, ex);
         }
 
-        // Violation UNIQUE (23505) ou CHECK (23514) → 409
-        String message = "Opération refusée : une valeur unique est déjà utilisée.";
         String raw = ex.getMessage() != null ? ex.getMessage() : "";
         Matcher m = CONSTRAINT_PATTERN.matcher(raw);
-        if (m.find()) {
-            String constraintName = m.group(1);
+        String constraintName = m.find() ? m.group(1) : null;
+
+        if ("23514".equals(sqlState)) {
+            // Violation CHECK : une valeur fournie n'est pas autorisée pour une
+            // colonne (≠ doublon). Message distinct pour ne pas induire en erreur.
+            String message = constraintName != null
+                    ? CONSTRAINT_MESSAGES.getOrDefault(constraintName,
+                            "Valeur non autorisée (contrainte « " + constraintName + " »).")
+                    : "Une valeur fournie n'est pas autorisée.";
+            List<String> details = constraintName != null
+                    ? List.of("contrainte:" + constraintName) : null;
+            return respond(HttpStatus.UNPROCESSABLE_ENTITY, "VALEUR_NON_AUTORISEE",
+                    message, request, details, ex);
+        }
+
+        // Violation UNIQUE (23505) → 409
+        String message = "Opération refusée : une valeur unique est déjà utilisée.";
+        if (constraintName != null) {
             message = CONSTRAINT_MESSAGES.getOrDefault(constraintName, message);
         }
         return respond(HttpStatus.CONFLICT, HttpStatus.CONFLICT.getReasonPhrase(), message, request, ex);
