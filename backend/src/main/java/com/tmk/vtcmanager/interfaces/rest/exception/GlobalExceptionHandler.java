@@ -70,6 +70,11 @@ public class GlobalExceptionHandler {
     private static final Pattern CONSTRAINT_PATTERN =
             Pattern.compile("constraint [\"\\[]([\\w]+)[\"\\]]", Pattern.CASE_INSENSITIVE);
 
+    // Nom de colonne dans un message NOT NULL PostgreSQL :
+    //   null value in column "montant" of relation "operations_financieres" ...
+    private static final Pattern NOT_NULL_COLUMN_PATTERN =
+            Pattern.compile("column [\"\\[]([\\w]+)[\"\\]]", Pattern.CASE_INSENSITIVE);
+
     // ── Fabrique de réponse + journalisation centralisée ───────────────────
     //
     // Tout passe par cette méthode : un seul point pour des logs cohérents.
@@ -119,9 +124,17 @@ public class GlobalExceptionHandler {
         }
 
         if ("23502".equals(sqlState)) {
-            // Violation NOT NULL : erreur de données côté client → 400
+            // Violation NOT NULL : erreur de données côté client → 400.
+            // On extrait le nom de la colonne manquante pour un message exploitable.
+            String raw23502 = ex.getMessage() != null ? ex.getMessage() : "";
+            Matcher col = NOT_NULL_COLUMN_PATTERN.matcher(raw23502);
+            String colonne = col.find() ? col.group(1) : null;
+            String message = colonne != null
+                    ? "Champ obligatoire manquant : « " + colonne + " »."
+                    : "Données incomplètes : un champ obligatoire est manquant.";
+            List<String> details = colonne != null ? List.of("colonne:" + colonne) : null;
             return respond(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                    "Données incomplètes : un champ obligatoire est manquant.", request, ex);
+                    message, request, details, ex);
         }
 
         // Violation UNIQUE (23505) ou CHECK (23514) → 409
