@@ -78,9 +78,10 @@ public class CreateOperationFinanciereUseCase {
         // Génération de la référence
         operation.setReference(generateReference(operation.getTypeOperation()));
 
-        // Statut par défaut
+        // Statut par défaut : une opération manuelle est directement "terminée"
+        // (ENCAISSE pour un revenu, PAYE pour une dépense) — pas d'étape brouillon.
         if (operation.getStatut() == null) {
-            operation.setStatut(StatutOperation.BROUILLON);
+            operation.setStatut(StatutOperation.termineePour(operation.getTypeOperation()));
         }
 
         return operationRepository.save(operation);

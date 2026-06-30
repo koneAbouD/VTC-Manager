@@ -50,4 +50,15 @@ public class EncaissementCotisationRepositoryAdapter implements EncaissementCoti
     public List<EncaissementCotisation> findByLigneCotisationId(Long ligneCotisationId) {
         return mapper.toDomainList(jpaRepository.findByLigneCotisationId(ligneCotisationId));
     }
+
+    @Override
+    public Optional<EncaissementCotisation> findByOperationFinanciereId(Long operationFinanciereId) {
+        return jpaRepository.findByOperationFinanciereId(operationFinanciereId).map(mapper::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public void deleteById(Long id) {
+        jpaRepository.deleteById(id);
+    }
 }

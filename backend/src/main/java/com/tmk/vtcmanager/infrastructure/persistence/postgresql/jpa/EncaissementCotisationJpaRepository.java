@@ -15,4 +15,6 @@ public interface EncaissementCotisationJpaRepository extends JpaRepository<Encai
     Optional<EncaissementCotisationEntity> findById(Long id);
 
     List<EncaissementCotisationEntity> findByLigneCotisationId(Long ligneCotisationId);
+
+    Optional<EncaissementCotisationEntity> findByOperationFinanciereId(Long operationFinanciereId);
 }

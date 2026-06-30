@@ -49,9 +49,6 @@ class OperationFinanciereRemoteDatasource {
   Future<void> delete(int id) =>
       _client.delete('/operations-financieres/$id');
 
-  Future<void> valider(int id) =>
-      _client.patch('/operations-financieres/$id/valider');
-
   Future<void> annuler(int id) =>
       _client.patch('/operations-financieres/$id/annuler');
 }

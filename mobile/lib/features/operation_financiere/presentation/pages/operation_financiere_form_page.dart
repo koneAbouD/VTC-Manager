@@ -241,8 +241,12 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
     final result = await Navigator.push<CategorieOperation>(
       context,
       MaterialPageRoute(
-          builder: (_) =>
-              CategorieOperationSelectorPage(typeOperation: _type)),
+          builder: (_) => CategorieOperationSelectorPage(
+                typeOperation: _type,
+                // Opération manuelle : on masque les catégories gérées
+                // automatiquement (encaissements et maintenances).
+                exclureSousCategories: const {'Encaissement', 'Maintenances'},
+              )),
     );
     if (result != null && mounted) {
       setState(() {

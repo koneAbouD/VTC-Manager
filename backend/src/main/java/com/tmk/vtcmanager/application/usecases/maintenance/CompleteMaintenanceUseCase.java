@@ -66,7 +66,7 @@ public class CompleteMaintenanceUseCase {
                     .montant(saved.getCout())
                     .commentaire(commentaire)
                     .vehicule(saved.getVehicule())
-                    .statut(StatutOperation.VALIDEE)
+                    .statut(StatutOperation.PAYE)
                     .modePaiement(modePaiement != null ? modePaiement : ModePaiement.ESPECES)
                     .categorie(categorie)
                     .sousCategorie(sousCategorie)

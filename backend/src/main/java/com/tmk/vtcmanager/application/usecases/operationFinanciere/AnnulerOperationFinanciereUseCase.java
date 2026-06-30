@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AnnulerOperationFinanciereUseCase {
 
     private final OperationFinanciereRepository operationRepository;
+    private final AnnulationEncaissementService annulationEncaissementService;
 
     @Transactional
     public OperationFinanciere execute(Long id) {
@@ -22,6 +24,12 @@ public class AnnulerOperationFinanciereUseCase {
         }
 
         operation.setStatut(StatutOperation.ANNULEE);
-        return operationRepository.save(operation);
+        OperationFinanciere saved = operationRepository.save(operation);
+
+        // Si l'opération est un encaissement (recette/cotisation/pénalité), on
+        // supprime l'encaissement sous-jacent et on recalcule la ligne.
+        annulationEncaissementService.annulerEncaissementLie(saved);
+
+        return saved;
     }
 }

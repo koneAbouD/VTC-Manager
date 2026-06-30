@@ -51,4 +51,16 @@ public class EncaissementPenaliteRepositoryAdapter implements EncaissementPenali
         return jpaRepository.findByLignePenaliteId(lignePenaliteId)
                 .stream().map(mapper::toEncaissementDomain).toList();
     }
+
+    @Override
+    public Optional<EncaissementPenalite> findByOperationFinanciereId(Long operationFinanciereId) {
+        return jpaRepository.findByOperationFinanciereId(operationFinanciereId)
+                .map(mapper::toEncaissementDomain);
+    }
+
+    @Override
+    @Transactional
+    public void deleteById(Long id) {
+        jpaRepository.deleteById(id);
+    }
 }

@@ -83,7 +83,7 @@ public class CreateEncaissementPenaliteUseCase {
                 .dateReference(ligne.getDateFaute())
                 .commentaire(encaissement.getCommentaire())
                 .reference(genererReference())
-                .statut(StatutOperation.VALIDEE)
+                .statut(StatutOperation.ENCAISSE)
                 .build();
 
         return operationFinanciereRepository.save(op);

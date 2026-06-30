@@ -13,6 +13,7 @@ import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
+import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
 import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
@@ -609,13 +610,23 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
-    public ValiderOperationFinanciereUseCase validerOperationFinanciereUseCase(OperationFinanciereRepository repo) {
-        return new ValiderOperationFinanciereUseCase(repo);
+    public AnnulationEncaissementService annulationEncaissementService(
+            EncaissementRepository encaissementRepository,
+            EncaissementCotisationRepository encaissementCotisationRepository,
+            EncaissementPenaliteRepository encaissementPenaliteRepository,
+            LigneRecetteRepository ligneRecetteRepository,
+            LigneCotisationRepository ligneCotisationRepository,
+            LignePenaliteRepository lignePenaliteRepository) {
+        return new AnnulationEncaissementService(
+                encaissementRepository, encaissementCotisationRepository, encaissementPenaliteRepository,
+                ligneRecetteRepository, ligneCotisationRepository, lignePenaliteRepository);
     }
 
     @Bean
-    public AnnulerOperationFinanciereUseCase annulerOperationFinanciereUseCase(OperationFinanciereRepository repo) {
-        return new AnnulerOperationFinanciereUseCase(repo);
+    public AnnulerOperationFinanciereUseCase annulerOperationFinanciereUseCase(
+            OperationFinanciereRepository repo,
+            AnnulationEncaissementService annulationEncaissementService) {
+        return new AnnulerOperationFinanciereUseCase(repo, annulationEncaissementService);
     }
 
     // ----- Penalite -----

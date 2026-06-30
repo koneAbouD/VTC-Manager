@@ -107,7 +107,7 @@ public class CreateEncaissementUseCase {
                 .dateReference(ligne.getDateRecette())
                 .commentaire(encaissement.getCommentaire())
                 .reference(genererReference())
-                .statut(StatutOperation.VALIDEE)
+                .statut(StatutOperation.ENCAISSE)
                 .build();
 
         return operationFinanciereRepository.save(operation);

@@ -50,7 +50,7 @@ class OperationFinanciereModel extends OperationFinanciere {
         (vehicule?['libelle'] as String?);
 
     final mpStr = json['modePaiement'] as String?;
-    final statutStr = json['statut'] as String? ?? 'BROUILLON';
+    final statutStr = json['statut'] as String? ?? 'ENCAISSE';
 
     return OperationFinanciereModel(
       id: (json['id'] as num?)?.toInt(),

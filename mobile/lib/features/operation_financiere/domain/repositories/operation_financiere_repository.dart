@@ -21,7 +21,5 @@ abstract class OperationFinanciereRepository {
 
   Future<Either<Failure, void>> delete(int id);
 
-  Future<Either<Failure, void>> valider(int id);
-
   Future<Either<Failure, void>> annuler(int id);
 }

@@ -11,7 +11,6 @@ import '../../domain/usecases/create_operation_financiere_usecase.dart';
 import '../../domain/usecases/delete_operation_financiere_usecase.dart';
 import '../../domain/usecases/get_operations_financieres_usecase.dart';
 import '../../domain/usecases/update_operation_financiere_usecase.dart';
-import '../../domain/usecases/valider_operation_financiere_usecase.dart';
 import 'operation_financiere_state.dart';
 
 // ── Infrastructure ─────────────────────────────────────────────────────────
@@ -50,10 +49,6 @@ final _deleteOpUCProvider = Provider((ref) =>
     DeleteOperationFinanciereUseCase(
         ref.watch(operationFinanciereRepositoryProvider)));
 
-final _validerOpUCProvider = Provider((ref) =>
-    ValiderOperationFinanciereUseCase(
-        ref.watch(operationFinanciereRepositoryProvider)));
-
 final _annulerOpUCProvider = Provider((ref) =>
     AnnulerOperationFinanciereUseCase(
         ref.watch(operationFinanciereRepositoryProvider)));
@@ -66,7 +61,6 @@ class OperationFinanciereNotifier
   final CreateOperationFinanciereUseCase _create;
   final UpdateOperationFinanciereUseCase _update;
   final DeleteOperationFinanciereUseCase _delete;
-  final ValiderOperationFinanciereUseCase _valider;
   final AnnulerOperationFinanciereUseCase _annuler;
 
   OperationFinanciereNotifier({
@@ -74,13 +68,11 @@ class OperationFinanciereNotifier
     required CreateOperationFinanciereUseCase create,
     required UpdateOperationFinanciereUseCase update,
     required DeleteOperationFinanciereUseCase delete,
-    required ValiderOperationFinanciereUseCase valider,
     required AnnulerOperationFinanciereUseCase annuler,
   })  : _getAll = getAll,
         _create = create,
         _update = update,
         _delete = delete,
-        _valider = valider,
         _annuler = annuler,
         super(const OperationFinanciereInitial());
 
@@ -148,17 +140,6 @@ class OperationFinanciereNotifier
     );
   }
 
-  Future<String?> valider(int id) async {
-    final result = await _valider(id);
-    return result.fold(
-      (f) => f.message,
-      (_) {
-        loadAll();
-        return null;
-      },
-    );
-  }
-
   Future<String?> annuler(int id) async {
     final result = await _annuler(id);
     return result.fold(
@@ -179,7 +160,6 @@ final operationFinanciereNotifierProvider =
     create: ref.watch(_createOpUCProvider),
     update: ref.watch(_updateOpUCProvider),
     delete: ref.watch(_deleteOpUCProvider),
-    valider: ref.watch(_validerOpUCProvider),
     annuler: ref.watch(_annulerOpUCProvider),
   );
 });

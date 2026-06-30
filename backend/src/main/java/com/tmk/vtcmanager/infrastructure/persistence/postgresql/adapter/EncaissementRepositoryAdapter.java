@@ -56,4 +56,14 @@ public class EncaissementRepositoryAdapter implements EncaissementRepository {
     public List<Encaissement> findByLigneRecetteId(Long ligneRecetteId) {
         return mapper.toDomainList(jpaRepository.findByLigneRecetteId(ligneRecetteId));
     }
+
+    @Override
+    public Optional<Encaissement> findByOperationFinanciereId(Long operationFinanciereId) {
+        return jpaRepository.findByOperationFinanciereId(operationFinanciereId).map(mapper::toDomain);
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        jpaRepository.deleteById(id);
+    }
 }

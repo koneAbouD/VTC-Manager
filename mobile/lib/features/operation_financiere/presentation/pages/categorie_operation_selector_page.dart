@@ -8,9 +8,15 @@ import '../providers/categorie_operation_provider.dart';
 class CategorieOperationSelectorPage extends ConsumerStatefulWidget {
   final TypeOperation typeOperation;
 
+  /// Libellés de sous-catégories à masquer (comparaison insensible à la casse).
+  /// Ex. {'Encaissement', 'Maintenances'} pour une opération manuelle, afin de
+  /// ne pas proposer les catégories gérées automatiquement.
+  final Set<String> exclureSousCategories;
+
   const CategorieOperationSelectorPage({
     super.key,
     required this.typeOperation,
+    this.exclureSousCategories = const {},
   });
 
   @override
@@ -37,9 +43,20 @@ class _CategorieOperationSelectorPageState
               style: const TextStyle(color: Colors.red)),
         ),
         data: (categories) {
-          final filtered = _query.isEmpty
+          // Exclure les catégories dont la sous-catégorie est masquée
+          // (ex. Encaissement, Maintenances), puis appliquer la recherche.
+          final exclus = widget.exclureSousCategories
+              .map((s) => s.toLowerCase())
+              .toSet();
+          final base = exclus.isEmpty
               ? categories
               : categories
+                  .where((c) => !exclus.contains(
+                      (c.sousCategorie?.libelle ?? '').toLowerCase()))
+                  .toList();
+          final filtered = _query.isEmpty
+              ? base
+              : base
                   .where((c) => c.libelle
                       .toLowerCase()
                       .contains(_query.toLowerCase()))

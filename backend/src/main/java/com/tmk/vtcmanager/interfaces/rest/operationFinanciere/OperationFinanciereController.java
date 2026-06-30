@@ -27,7 +27,6 @@ public class OperationFinanciereController {
     private final DeleteOperationFinanciereUseCase deleteUseCase;
     private final GetOperationFinanciereByIdUseCase getByIdUseCase;
     private final GetAllOperationsFinancieresUseCase getAllUseCase;
-    private final ValiderOperationFinanciereUseCase validerUseCase;
     private final AnnulerOperationFinanciereUseCase annulerUseCase;
     private final OperationFinanciereRestMapper mapper;
 
@@ -58,11 +57,6 @@ public class OperationFinanciereController {
     public OperationFinanciereResponse update(@PathVariable Long id,
                                                @Valid @RequestBody OperationFinanciereRequest request) {
         return mapper.toResponse(updateUseCase.execute(id, mapper.toDomain(request)));
-    }
-
-    @PatchMapping("/{id}/valider")
-    public OperationFinanciereResponse valider(@PathVariable Long id) {
-        return mapper.toResponse(validerUseCase.execute(id));
     }
 
     @PatchMapping("/{id}/annuler")

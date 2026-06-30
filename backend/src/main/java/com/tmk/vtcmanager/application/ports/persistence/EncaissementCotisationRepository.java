@@ -12,4 +12,9 @@ public interface EncaissementCotisationRepository {
     Optional<EncaissementCotisation> findById(Long id);
 
     List<EncaissementCotisation> findByLigneCotisationId(Long ligneCotisationId);
+
+    /** Encaissement rattaché à une opération financière (lien 1-1). */
+    Optional<EncaissementCotisation> findByOperationFinanciereId(Long operationFinanciereId);
+
+    void deleteById(Long id);
 }

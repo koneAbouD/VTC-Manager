@@ -91,19 +91,6 @@ class OperationFinanciereRepositoryImpl
     }
   }
 
-  @override
-  Future<Either<Failure, void>> valider(int id) async {
-    try {
-      await _datasource.valider(id);
-      return const Right(null);
-    } on ApiException catch (e) {
-      return Left(_map(e));
-    } on NetworkException catch (e) {
-      return Left(NetworkFailure(e.message));
-    } catch (e) {
-      return Left(UnknownFailure(e.toString()));
-    }
-  }
 
   @override
   Future<Either<Failure, void>> annuler(int id) async {

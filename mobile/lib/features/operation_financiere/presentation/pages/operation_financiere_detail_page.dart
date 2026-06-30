@@ -210,8 +210,8 @@ class _StatutBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (statut) {
-      StatutOperation.VALIDEE => Colors.green.shade600,
-      StatutOperation.BROUILLON => Colors.orange.shade600,
+      StatutOperation.ENCAISSE => Colors.green.shade600,
+      StatutOperation.PAYE => Colors.green.shade600,
       StatutOperation.ANNULEE => Colors.red.shade400,
     };
     return Container(

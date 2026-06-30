@@ -738,9 +738,6 @@ class _OpCard extends StatelessWidget {
                 ),
                 if (op.statut == StatutOperation.ANNULEE)
                   _StatusBadge(label: 'Echec', color: Colors.red.shade400),
-                if (op.statut == StatutOperation.BROUILLON)
-                  _StatusBadge(
-                      label: 'Brouillon', color: Colors.orange.shade500),
                 const SizedBox(width: 8),
                 Text(
                   '$sign${NumberFormat('#,##0', 'fr_FR').format(op.montant)} XOF',

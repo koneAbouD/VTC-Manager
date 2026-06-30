@@ -9,7 +9,6 @@ class OperationFinanciereCard extends StatelessWidget {
   final OperationFinanciere operation;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final VoidCallback? onValider;
   final VoidCallback? onAnnuler;
 
   const OperationFinanciereCard({
@@ -17,7 +16,6 @@ class OperationFinanciereCard extends StatelessWidget {
     required this.operation,
     required this.onEdit,
     required this.onDelete,
-    this.onValider,
     this.onAnnuler,
   });
 
@@ -144,7 +142,6 @@ class OperationFinanciereCard extends StatelessWidget {
                     color: Colors.grey.shade400, size: 20),
                 onSelected: (v) {
                   if (v == 'edit') onEdit();
-                  if (v == 'valider') onValider?.call();
                   if (v == 'annuler') onAnnuler?.call();
                   if (v == 'delete') onDelete();
                 },
@@ -156,17 +153,7 @@ class OperationFinanciereCard extends StatelessWidget {
                           title: Text('Modifier'),
                           contentPadding: EdgeInsets.zero,
                           dense: true)),
-                  if (operation.statut == StatutOperation.BROUILLON &&
-                      onValider != null)
-                    const PopupMenuItem(
-                        value: 'valider',
-                        child: ListTile(
-                            leading: Icon(Icons.check_circle_outline,
-                                color: Colors.green),
-                            title: Text('Valider'),
-                            contentPadding: EdgeInsets.zero,
-                            dense: true)),
-                  if (operation.statut == StatutOperation.VALIDEE &&
+                  if (operation.statut.estTerminee &&
                       onAnnuler != null)
                     const PopupMenuItem(
                         value: 'annuler',
@@ -203,8 +190,8 @@ class _StatutBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (Color color, IconData icon) = switch (statut) {
-      StatutOperation.BROUILLON => (Colors.orange, Icons.edit_outlined),
-      StatutOperation.VALIDEE => (Colors.green, Icons.check_circle_outline),
+      StatutOperation.ENCAISSE => (Colors.green, Icons.check_circle_outline),
+      StatutOperation.PAYE => (Colors.green, Icons.check_circle_outline),
       StatutOperation.ANNULEE => (Colors.grey, Icons.cancel_outlined),
     };
     return Container(

@@ -48,7 +48,7 @@ class OperationFinanciere {
     required this.dateOperation,
     this.dateReference,
     this.commentaire,
-    this.statut = StatutOperation.BROUILLON,
+    this.statut = StatutOperation.ENCAISSE,
     this.detailMaintenance,
   });
 

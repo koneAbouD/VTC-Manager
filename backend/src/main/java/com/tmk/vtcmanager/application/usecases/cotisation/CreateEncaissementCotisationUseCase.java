@@ -84,7 +84,7 @@ public class CreateEncaissementCotisationUseCase {
                         ? encaissement.getCommentaire()
                         : ligne.getNomCotisation())
                 .reference(genererReference())
-                .statut(StatutOperation.VALIDEE)
+                .statut(StatutOperation.ENCAISSE)
                 .build();
 
         return operationFinanciereRepository.save(op);

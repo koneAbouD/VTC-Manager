@@ -12,4 +12,9 @@ public interface EncaissementPenaliteRepository {
     Optional<EncaissementPenalite> findById(Long id);
 
     List<EncaissementPenalite> findByLignePenaliteId(Long lignePenaliteId);
+
+    /** Encaissement rattaché à une opération financière (lien 1-1). */
+    Optional<EncaissementPenalite> findByOperationFinanciereId(Long operationFinanciereId);
+
+    void deleteById(Long id);
 }
