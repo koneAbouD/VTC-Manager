@@ -52,12 +52,20 @@ public class AnnulationEncaissementService {
         var enc = encaissementRepository.findByOperationFinanciereId(opId).orElse(null);
         if (enc == null) return;
         Long ligneId = enc.getLigneRecetteId();
+
+        // Encaissements restants = tous ceux de la ligne SAUF celui annulé,
+        // calculés explicitement (et non par un rechargement post-delete) : la
+        // suppression n'est pas garantie flushée avant la relecture, ce qui
+        // laisserait l'encaissement annulé dans le recalcul (ligne non restaurée).
+        var restants = encaissementRepository.findByLigneRecetteId(ligneId).stream()
+                .filter(e -> !e.getId().equals(enc.getId()))
+                .toList();
+
         encaissementRepository.deleteById(enc.getId());
 
         LigneRecette ligne = ligneRecetteRepository.findById(ligneId).orElse(null);
         if (ligne == null || ligne.getStatut() == StatutLigneRecette.ANNULEE) return;
-        // Rechargement FRAIS des encaissements restants (post-suppression).
-        ligne.setEncaissements(encaissementRepository.findByLigneRecetteId(ligneId));
+        ligne.setEncaissements(restants);
         ligne.recalculerStatutEtMontant();
         ligneRecetteRepository.updateStatutAndMontantEncaisse(
                 ligneId, ligne.getStatut(), ligne.getMontantEncaisse());
@@ -67,11 +75,16 @@ public class AnnulationEncaissementService {
         var enc = encaissementCotisationRepository.findByOperationFinanciereId(opId).orElse(null);
         if (enc == null) return;
         Long ligneId = enc.getLigneCotisationId();
+
+        var restants = encaissementCotisationRepository.findByLigneCotisationId(ligneId).stream()
+                .filter(e -> !e.getId().equals(enc.getId()))
+                .toList();
+
         encaissementCotisationRepository.deleteById(enc.getId());
 
         LigneCotisation ligne = ligneCotisationRepository.findById(ligneId).orElse(null);
         if (ligne == null || ligne.getStatut() == StatutLigneCotisation.ANNULEE) return;
-        ligne.setEncaissements(encaissementCotisationRepository.findByLigneCotisationId(ligneId));
+        ligne.setEncaissements(restants);
         ligne.recalculerStatutEtMontant();
         ligneCotisationRepository.updateStatutAndMontantEncaisse(
                 ligneId, ligne.getStatut(), ligne.getMontantEncaisse());
@@ -81,11 +94,16 @@ public class AnnulationEncaissementService {
         var enc = encaissementPenaliteRepository.findByOperationFinanciereId(opId).orElse(null);
         if (enc == null) return;
         Long ligneId = enc.getLignePenaliteId();
+
+        var restants = encaissementPenaliteRepository.findByLignePenaliteId(ligneId).stream()
+                .filter(e -> !e.getId().equals(enc.getId()))
+                .toList();
+
         encaissementPenaliteRepository.deleteById(enc.getId());
 
         LignePenalite ligne = lignePenaliteRepository.findById(ligneId).orElse(null);
         if (ligne == null || ligne.getStatut() == StatutLignePenalite.ANNULEE) return;
-        ligne.setEncaissements(encaissementPenaliteRepository.findByLignePenaliteId(ligneId));
+        ligne.setEncaissements(restants);
         ligne.recalculerStatutAmende();
         lignePenaliteRepository.updateStatutAndMontantEncaisse(
                 ligneId, ligne.getStatut(), ligne.getMontantEncaisse());
