@@ -76,7 +76,9 @@ public class OperationFinanciereController {
         return PageResponse.from(result);
     }
 
-    @GetMapping("/{id}")
+    // {id} contraint aux chiffres : évite qu'un sous-chemin littéral (ex. /page)
+    // soit capturé par cette route et provoque une conversion "page" -> Long.
+    @GetMapping("/{id:\\d+}")
     public OperationFinanciereResponse findById(@PathVariable Long id) {
         return mapper.toResponse(getByIdUseCase.execute(id));
     }
