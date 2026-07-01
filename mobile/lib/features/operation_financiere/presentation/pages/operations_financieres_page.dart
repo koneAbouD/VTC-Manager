@@ -688,6 +688,7 @@ class _OpCard extends StatelessWidget {
     final amountColor =
         isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
     final sign = isRevenu ? '+' : '-';
+    final isAnnulee = op.statut == StatutOperation.ANNULEE;
 
     // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
     // La date relative (recalculée à l'affichage) n'est ajoutée que pour les
@@ -745,24 +746,30 @@ class _OpCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           titre,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: Color(0xFF1A1A1A),
+                      color: isAnnulee ? Colors.red : const Color(0xFF1A1A1A),
+                      decoration:
+                          isAnnulee ? TextDecoration.lineThrough : null,
+                      decorationColor: Colors.red,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (op.statut == StatutOperation.ANNULEE)
-                  _StatusBadge(label: 'Echec', color: Colors.red.shade400),
+                if (isAnnulee)
+                  _StatusBadge(label: 'Annulée', color: Colors.red.shade400),
                 const SizedBox(width: 8),
                 Text(
                   '$sign${NumberFormat('#,##0', 'fr_FR').format(op.montant)} XOF',
                   style: TextStyle(
-                    color: amountColor,
+                    color: isAnnulee ? Colors.red : amountColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
+                    decoration:
+                        isAnnulee ? TextDecoration.lineThrough : null,
+                    decorationColor: Colors.red,
                   ),
                 ),
               ],

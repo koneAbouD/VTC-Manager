@@ -36,4 +36,11 @@ public class OperationFinanciere {
     private String commentaire;
     private StatutOperation statut;
     private DetailMaintenance detailMaintenance;
+
+    /**
+     * Maintenance à l'origine de cette opération (dépense générée par la
+     * complétion d'une maintenance). Null pour les autres opérations. Sert à
+     * rouvrir la maintenance lorsqu'on annule l'opération.
+     */
+    private Long maintenanceId;
 }

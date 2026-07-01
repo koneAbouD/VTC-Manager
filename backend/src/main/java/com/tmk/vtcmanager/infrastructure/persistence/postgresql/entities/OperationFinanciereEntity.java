@@ -70,4 +70,8 @@ public class OperationFinanciereEntity extends AbstractAuditEntity {
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "detail_maintenance_id")
     private DetailMaintenanceEntity detailMaintenance;
+
+    /** Maintenance d'origine (dépense issue d'une complétion de maintenance). */
+    @Column(name = "maintenance_id")
+    private Long maintenanceId;
 }

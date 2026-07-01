@@ -71,6 +71,7 @@ public class CompleteMaintenanceUseCase {
                     .categorie(categorie)
                     .sousCategorie(sousCategorie)
                     .detailMaintenance(operationDetail)
+                    .maintenanceId(saved.getId())
                     .build();
 
             operationRepository.save(operation);

@@ -7,6 +7,7 @@ import 'package:vtc_manager/features/penalite/presentation/pages/lignes_penalite
 
 import '../../features/condition_travail/presentation/pages/condition_travail_liste_page.dart';
 import '../../features/operation_financiere/domain/entities/operation_financiere.dart';
+import '../../features/operation_financiere/domain/enums/statut_operation.dart';
 import '../../features/operation_financiere/domain/enums/type_operation.dart';
 import '../../features/operation_financiere/presentation/pages/operation_financiere_detail_page.dart';
 import '../../features/operation_financiere/presentation/pages/operation_financiere_form_page.dart';
@@ -140,13 +141,16 @@ class _SoldeCardState extends State<_SoldeCard> {
   // ── Calcul des totaux selon le filtre actif ────────────────────────────────
 
   Iterable<OperationFinanciere> _filtreOps() {
+    // Les opérations annulées ne comptent plus dans le solde.
+    final ops =
+        widget.allOps.where((o) => o.statut != StatutOperation.ANNULEE);
     if (_filtre == _CardFiltre.mois) {
-      return widget.allOps.where((o) =>
+      return ops.where((o) =>
           o.dateOperation.year == _anneeSelectionnee &&
           o.dateOperation.month == _moisSelectionne);
     }
     final weekEnd = _semaineDebut.add(const Duration(days: 6));
-    return widget.allOps.where((o) {
+    return ops.where((o) {
       final d = DateTime(
           o.dateOperation.year, o.dateOperation.month, o.dateOperation.day);
       return !d.isBefore(_semaineDebut) && !d.isAfter(weekEnd);
@@ -722,6 +726,7 @@ class _DerniereOpTile extends StatelessWidget {
     final isRevenu = op.typeOperation == TypeOperation.REVENU;
     final color = isRevenu ? Colors.green : Colors.red;
     final sign = isRevenu ? '+' : '-';
+    final isAnnulee = op.statut == StatutOperation.ANNULEE;
 
     // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
     // La date relative (recalculée à l'affichage) n'est ajoutée que pour les
@@ -778,8 +783,14 @@ class _DerniereOpTile extends StatelessWidget {
                     Expanded(
                       child: Text(
                         titre,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 13),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: isAnnulee ? Colors.red : null,
+                            decoration: isAnnulee
+                                ? TextDecoration.lineThrough
+                                : null,
+                            decorationColor: Colors.red),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -788,9 +799,12 @@ class _DerniereOpTile extends StatelessWidget {
                     Text(
                       '$sign${money.format(op.montant)}',
                       style: TextStyle(
-                          color: color,
+                          color: isAnnulee ? Colors.red : color,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13),
+                          fontSize: 13,
+                          decoration:
+                              isAnnulee ? TextDecoration.lineThrough : null,
+                          decorationColor: Colors.red),
                     ),
                   ],
                 ),

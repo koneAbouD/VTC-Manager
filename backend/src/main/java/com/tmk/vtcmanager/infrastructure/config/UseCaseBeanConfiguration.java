@@ -14,6 +14,7 @@ import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepositor
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
+import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
 import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
 import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
@@ -625,10 +626,19 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public AnnulationMaintenanceService annulationMaintenanceService(
+            MaintenanceRepository maintenanceRepository,
+            VehiculeStatutEventPublisher statutEventPublisher) {
+        return new AnnulationMaintenanceService(maintenanceRepository, statutEventPublisher);
+    }
+
+    @Bean
     public AnnulerOperationFinanciereUseCase annulerOperationFinanciereUseCase(
             OperationFinanciereRepository repo,
-            AnnulationEncaissementService annulationEncaissementService) {
-        return new AnnulerOperationFinanciereUseCase(repo, annulationEncaissementService);
+            AnnulationEncaissementService annulationEncaissementService,
+            AnnulationMaintenanceService annulationMaintenanceService) {
+        return new AnnulerOperationFinanciereUseCase(
+                repo, annulationEncaissementService, annulationMaintenanceService);
     }
 
     // ----- Penalite -----

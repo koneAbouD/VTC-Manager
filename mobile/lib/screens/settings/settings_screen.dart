@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
+import '../../features/vehicule/presentation/providers/referentiel_provider.dart';
+import '../../features/vehicule/presentation/providers/vehicule_provider.dart';
+import '../../features/chauffeur/presentation/providers/chauffeur_provider.dart';
+import '../../features/maintenance/presentation/providers/maintenance_provider.dart';
+import '../../features/recette/presentation/providers/ligne_recette_provider.dart';
+import '../../features/cotisation/presentation/providers/ligne_cotisation_provider.dart';
+import '../../features/penalite/presentation/providers/penalite_provider.dart';
 import '../../core/widgets/app_header.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -47,9 +55,7 @@ class SettingsScreen extends ConsumerWidget {
               _MenuItem(
                 icon: Icons.refresh,
                 label: 'Rafraîchir les données',
-                onTap: () {
-                  Navigator.pop(context);
-                },
+                onTap: () => _refreshData(context, ref),
               ),
               _MenuItem(
                 icon: Icons.info_outline,
@@ -96,6 +102,36 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Recharge les données de l'application depuis le serveur :
+  /// - Accueil (opérations / solde) ;
+  /// - listes métier : véhicules, chauffeurs, maintenances, recettes,
+  ///   cotisations, pénalités (rechargement des notifiers partagés) ;
+  /// - référentiels en cache (types véhicule/activité, groupes, statuts).
+  void _refreshData(BuildContext context, WidgetRef ref) {
+    // Accueil
+    ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+
+    // Listes métier (notifiers partagés → rechargement sûr, pas d'écran blanc).
+    ref.read(vehiculeNotifierProvider.notifier).loadVehicules();
+    ref.read(chauffeurNotifierProvider.notifier).loadChauffeurs();
+    ref.read(maintenanceNotifierProvider.notifier).loadMaintenances();
+    ref.read(ligneRecetteNotifierProvider.notifier).load();
+    ref.read(ligneCotisationNotifierProvider.notifier).load();
+    ref.read(lignePenaliteNotifierProvider.notifier).load();
+
+    // Référentiels (FutureProviders en cache → invalidation = refetch).
+    ref.invalidate(typesVehiculesProvider);
+    ref.invalidate(typesActivitesProvider);
+    ref.invalidate(groupesProvider);
+    ref.invalidate(statutsVehiculeProvider);
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Données rafraîchies')),
+      );
   }
 
   void _showAboutDialog(BuildContext context) {

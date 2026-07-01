@@ -48,6 +48,17 @@ public class Maintenance {
         this.statut = MaintenanceStatus.ANNULEE;
     }
 
+    /**
+     * Rouvre une maintenance terminée (retour à l'état antérieur à la
+     * complétion) : repasse EN_COURS et efface la date d'exécution et le coût
+     * enregistrés lors de la complétion.
+     */
+    public void reouvrir() {
+        this.statut = MaintenanceStatus.EN_COURS;
+        this.dateEffectuee = null;
+        this.cout = null;
+    }
+
     public boolean isPlanifiee() {
         return this.statut == MaintenanceStatus.PLANIFIEE;
     }

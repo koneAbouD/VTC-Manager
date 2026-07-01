@@ -132,29 +132,31 @@ class _DetailBody extends ConsumerWidget {
 
         const SizedBox(height: 24),
 
-        // ── Actions ───────────────────────────────────────────────────────
-        FilledButton.icon(
-          style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2E7D32)),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => OperationFinanciereFormPage(
-                initialType: op.typeOperation,
-                initial: op,
+        // ── Actions (masquées si l'opération est déjà annulée) ────────────
+        if (op.statut != StatutOperation.ANNULEE) ...[
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32)),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OperationFinanciereFormPage(
+                  initialType: op.typeOperation,
+                  initial: op,
+                ),
               ),
             ),
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Modifier'),
           ),
-          icon: const Icon(Icons.edit_outlined),
-          label: const Text('Modifier'),
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-          onPressed: () => _supprimer(context, ref),
-          icon: const Icon(Icons.delete_outline),
-          label: const Text('Annuler'),
-        ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => _supprimer(context, ref),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Annuler'),
+          ),
+        ],
       ],
     );
   }
