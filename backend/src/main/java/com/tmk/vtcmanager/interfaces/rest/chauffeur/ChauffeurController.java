@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.interfaces.rest.chauffeur;
 
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
+import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import com.tmk.vtcmanager.application.usecases.chauffeur.AssignVehiculeToChauffeurUseCase;
 import com.tmk.vtcmanager.application.usecases.chauffeur.CreateChauffeurUseCase;
@@ -14,6 +15,7 @@ import com.tmk.vtcmanager.interfaces.rest.chauffeur.dto.request.ChauffeurRequest
 import com.tmk.vtcmanager.interfaces.rest.chauffeur.dto.response.ChauffeurDetailResponse;
 import com.tmk.vtcmanager.interfaces.rest.chauffeur.dto.response.ChauffeurResponse;
 import com.tmk.vtcmanager.interfaces.rest.chauffeur.mapper.ChauffeurRestMapper;
+import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.document.mapper.DocumentRestMapper;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.mapper.ProgrammeTravailRestMapper;
 import jakarta.validation.Valid;
@@ -71,7 +73,17 @@ public class ChauffeurController {
         return mapper.toResponseList(getAllChauffeursUseCase.execute());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/page")
+    public PageResponse<ChauffeurResponse> findPage(
+            @RequestParam(required = false) ChauffeurStatus statut,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var result = getAllChauffeursUseCase.executePage(statut, page, size)
+                .map(mapper::toResponse);
+        return PageResponse.from(result);
+    }
+
+    @GetMapping("/{id:\\d+}")
     public ChauffeurDetailResponse findById(@PathVariable Long id) {
         var result = getChauffeurByIdUseCase.execute(id);
         var chauffeur = mapper.toResponse(result.chauffeur());

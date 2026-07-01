@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.application.usecases.contravention.GetContraventionByI
 import com.tmk.vtcmanager.application.usecases.contravention.PayContraventionUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.ReverseContraventionUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.UpdateContraventionUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ContraventionRequest;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.PaymentRequest;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ContraventionResponse;
@@ -48,7 +49,19 @@ public class ContraventionController {
         return mapper.toResponseList(getAllContraventionsUseCase.execute(chauffeurId, vehiculeId));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/page")
+    public PageResponse<ContraventionResponse> findPage(
+            @RequestParam(required = false) Long chauffeurId,
+            @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var result = getAllContraventionsUseCase
+                .executePage(chauffeurId, vehiculeId, page, size)
+                .map(mapper::toResponse);
+        return PageResponse.from(result);
+    }
+
+    @GetMapping("/{id:\\d+}")
     public ContraventionResponse findById(@PathVariable Long id) {
         return mapper.toResponse(getContraventionByIdUseCase.execute(id));
     }

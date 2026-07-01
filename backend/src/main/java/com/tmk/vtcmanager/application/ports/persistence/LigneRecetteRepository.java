@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecetteFiltres;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
@@ -15,6 +16,8 @@ public interface LigneRecetteRepository {
     Optional<LigneRecette> findById(Long id);
 
     List<LigneRecette> findByCriteres(LigneRecetteFiltres filtres);
+
+    PageResult<LigneRecette> findPageByCriteres(LigneRecetteFiltres filtres, int page, int size);
 
     boolean existsByVehiculeIdAndChauffeurIdAndDateRecette(Long vehiculeId, Long chauffeurId, LocalDate date);
 

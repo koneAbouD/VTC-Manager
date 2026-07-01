@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/page_result.dart';
 import '../models/chauffeur_model.dart';
 import '../models/chauffeur_request_model.dart';
 
@@ -15,6 +16,24 @@ class ChauffeurRemoteDatasource {
     return data
         .map((e) => ChauffeurModel.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Liste paginée (scroll infini) via `GET /chauffeurs/page`.
+  Future<PageResult<ChauffeurModel>> getChauffeursPage({
+    int page = 0,
+    int size = 20,
+    String? statut,
+  }) async {
+    final query = <String, String>{
+      'page': '$page',
+      'size': '$size',
+      if (statut != null) 'statut': statut,
+    };
+    final data = await _client.get('/chauffeurs/page', query: query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return PageResult.fromJson(data, (e) => ChauffeurModel.fromJson(e));
   }
 
   Future<ChauffeurModel> getChauffeurById(int id) async {

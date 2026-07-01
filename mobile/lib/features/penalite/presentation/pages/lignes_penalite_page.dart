@@ -5,8 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../domain/entities/ligne_penalite.dart';
 import '../../domain/entities/ligne_penalite_filtres.dart';
-import '../providers/ligne_penalite_state.dart';
 import '../providers/penalite_provider.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
@@ -53,20 +53,31 @@ class _LignesPenaliteListPageState
   Chauffeur? _chauffeurFiltre;
 
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   OverlayEntry? _overlayEntry;
   final _filtreButtonKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     Future.microtask(_load);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _overlayEntry?.remove();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      ref.read(lignesPenaliteListeProvider.notifier).loadMore();
+    }
   }
 
   Future<void> _showFiltreAvance() async {
@@ -81,6 +92,7 @@ class _LignesPenaliteListPageState
         _vehiculeFiltre  = result.vehicule;
         _chauffeurFiltre = result.chauffeur;
       });
+      _load();
     }
   }
 
@@ -99,39 +111,41 @@ class _LignesPenaliteListPageState
         _FiltreMode.periode => (_periodeDebut, _periodeFin),
       };
 
+  // Filtres serveur (date + statut + véhicule + chauffeur), page par page.
+  // Le scope éventuel (widget.vehiculeId/chauffeurId) est combiné au filtre avancé.
   void _load() {
     final (debut, fin) = _plageActive();
-    ref.read(lignePenaliteNotifierProvider.notifier).load(
-          LignePenaliteFiltres(
-            vehiculeId: widget.vehiculeId,
-            chauffeurId: widget.chauffeurId,
-            dateDebut: debut,
-            dateFin: fin,
+    final repo = ref.read(penaliteRepositoryProvider);
+    ref.read(lignesPenaliteListeProvider.notifier).load(
+          (page, size) => repo.getLignesPage(
+            LignePenaliteFiltres(
+              vehiculeId: _vehiculeFiltre?.id ?? widget.vehiculeId,
+              chauffeurId: _chauffeurFiltre?.id ?? widget.chauffeurId,
+              statut: _statut,
+              dateDebut: debut,
+              dateFin: fin,
+            ),
+            page: page,
+            size: size,
           ),
         );
   }
 
-  // ── Filtrage client ─────────────────────────────────────────────────────
-
-  List<LignePenalite> _filtrer(List<LignePenalite> all) {
-    final query = _recherche.toLowerCase();
+  // Recherche texte : filtre client sur les éléments déjà chargés (le backend
+  // pénalité n'expose pas de recherche libre). Autres filtres = serveur.
+  List<LignePenalite> _filtrerRecherche(List<LignePenalite> all) {
+    final query = _recherche.trim().toLowerCase();
+    if (query.isEmpty) return all;
     return all.where((l) {
-      if (_vehiculeFiltre != null && l.vehiculeId != _vehiculeFiltre!.id) return false;
-      if (_chauffeurFiltre != null && _chauffeurFiltre!.id != null && l.chauffeurId != _chauffeurFiltre!.id) return false;
-      if (_statut != null && l.statut != _statut) return false;
-      if (query.isNotEmpty) {
-        final hay = [
-          l.vehiculeImmatriculation ?? '',
-          l.chauffeurNomComplet ?? '',
-          _typePenaliteLabel(l.typePenalite),
-          l.typeSanction.label,
-          l.statut.label,
-        ].join(' ').toLowerCase();
-        if (!hay.contains(query)) return false;
-      }
-      return true;
-    }).toList()
-      ..sort((a, b) => b.dateGeneration.compareTo(a.dateGeneration));
+      final hay = [
+        l.vehiculeImmatriculation ?? '',
+        l.chauffeurNomComplet ?? '',
+        _typePenaliteLabel(l.typePenalite),
+        l.typeSanction.label,
+        l.statut.label,
+      ].join(' ').toLowerCase();
+      return hay.contains(query);
+    }).toList();
   }
 
   // ── Overlay filtre mode ─────────────────────────────────────────────────
@@ -278,8 +292,9 @@ class _LignesPenaliteListPageState
   }
 
   Future<void> _generer() async {
-    final error =
-        await ref.read(lignePenaliteNotifierProvider.notifier).generer();
+    final result =
+        await ref.read(penaliteRepositoryProvider).generer();
+    final error = result.fold((f) => f.message, (_) => null);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(error ?? "Pénalités d'hier générées avec succès."),
@@ -293,14 +308,8 @@ class _LignesPenaliteListPageState
   @override
   Widget build(BuildContext context) {
     final money = NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
-    final state = ref.watch(lignePenaliteNotifierProvider);
-
-    final allLignes = switch (state) {
-      LignePenaliteLoaded(:final lignes)        => lignes,
-      LignePenaliteActionSuccess(:final lignes) => lignes,
-      _                                         => <LignePenalite>[],
-    };
-    final filtered = _filtrer(allLignes);
+    final state = ref.watch(lignesPenaliteListeProvider);
+    final filtered = _filtrerRecherche(state.items);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
@@ -352,19 +361,22 @@ class _LignesPenaliteListPageState
 
             // ── Corps ──────────────────────────────────────────────────
             Expanded(
-              child: state is LignePenaliteLoading
+              child: state.initialLoading && state.items.isEmpty
                   ? const Center(child: CircularProgressIndicator())
-                  : state is LignePenaliteError
+                  : (state.error != null && state.items.isEmpty)
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(24),
-                            child: Text(state.message,
+                            child: Text(state.error!,
                                 style: const TextStyle(color: Colors.red),
                                 textAlign: TextAlign.center),
                           ))
                       : RefreshIndicator(
-                          onRefresh: () async => _load(),
+                          onRefresh: () => ref
+                              .read(lignesPenaliteListeProvider.notifier)
+                              .refresh(),
                           child: CustomScrollView(
+                            controller: _scrollController,
                             slivers: [
                               // ── Filtre date ──────────────────────────
                               SliverToBoxAdapter(
@@ -392,14 +404,16 @@ class _LignesPenaliteListPageState
                                   onSearchChanged: (v) =>
                                       setState(() => _recherche = v),
                                   statutSelectionne: _statut,
-                                  onStatutChanged: (s) =>
-                                      setState(() => _statut = s),
+                                  onStatutChanged: (s) {
+                                    setState(() => _statut = s);
+                                    _load();
+                                  },
                                   onTunePressed:   _showFiltreAvance,
                                   hasActiveFilter: _vehiculeFiltre != null || _chauffeurFiltre != null,
                                 ),
                               ),
 
-                              // ── Liste ou état vide ───────────────────
+                              // ── Liste / vide / loader bas de page ────
                               if (filtered.isEmpty)
                                 const SliverFillRemaining(
                                     child: _EmptyState())
@@ -408,22 +422,29 @@ class _LignesPenaliteListPageState
                                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
                                   sliver: SliverList(
                                     delegate: SliverChildBuilderDelegate(
-                                      (_, i) => _LignePenaliteCard(
-                                        ligne: filtered[i],
-                                        money: money,
-                                        onTap: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                LignePenaliteDetailPage(
-                                                    ligneId: filtered[i].id!),
-                                          ),
-                                        ).then((_) => _load()),
-                                        onEncaisser: filtered[i].isEncaissable
-                                            ? () => _openEncaisserDialog(filtered[i])
-                                            : null,
-                                      ),
-                                      childCount: filtered.length,
+                                      (_, i) {
+                                        if (i >= filtered.length) {
+                                          return const PagedListLoadMoreTile();
+                                        }
+                                        final ligne = filtered[i];
+                                        return _LignePenaliteCard(
+                                          ligne: ligne,
+                                          money: money,
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  LignePenaliteDetailPage(
+                                                      ligneId: ligne.id!),
+                                            ),
+                                          ).then((_) => _load()),
+                                          onEncaisser: ligne.isEncaissable
+                                              ? () => _openEncaisserDialog(ligne)
+                                              : null,
+                                        );
+                                      },
+                                      childCount: filtered.length +
+                                          (state.hasMore ? 1 : 0),
                                     ),
                                   ),
                                 ),

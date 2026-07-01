@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
@@ -16,6 +17,8 @@ public interface LigneCotisationRepository {
     Optional<LigneCotisation> findById(Long id);
 
     List<LigneCotisation> findByCriteres(LigneCotisationFiltres filtres);
+
+    PageResult<LigneCotisation> findPageByCriteres(LigneCotisationFiltres filtres, int page, int size);
 
     List<LigneCotisation> findByVehiculeIdAndDateCotisation(Long vehiculeId, LocalDate date);
 

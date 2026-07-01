@@ -6,9 +6,9 @@
 INSERT INTO categories_operation (code, libelle, type_operation, actif) VALUES
 
     -- ── REVENUS ──────────────────────────────────────────────────────────────
-    ('ENCAISSEMENT_RECETTES',       'Encaissement recettes',                     'REVENU',  TRUE),
-    ('ENCAISSEMENT_COTISATIONS',    'Encaissement cotisations',                  'REVENU',  TRUE),
-    ('ENCAISSEMENT_PENALITES',      'Encaissement pénalités',                    'REVENU',  TRUE),
+    ('ENCAISSEMENT_RECETTES',       'Recettes',                     'REVENU',  TRUE),
+    ('ENCAISSEMENT_COTISATIONS',    'Cotisations',                  'REVENU',  TRUE),
+    ('ENCAISSEMENT_PENALITES',      'Pénalités',                    'REVENU',  TRUE),
     ('REVENTE_PIECES_SERVICES',     'Revente pièces ou services annexes',        'REVENU',  TRUE),
     ('COMMISSIONS_COURSES',         'Commissions sur courses',                   'REVENU',  TRUE),
     ('FRAIS_ABO_CHAUFFEURS',        'Frais abonnement (chauffeurs/partenaires)', 'REVENU',  TRUE),

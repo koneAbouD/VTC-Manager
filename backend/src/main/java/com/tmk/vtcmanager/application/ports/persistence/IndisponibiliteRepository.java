@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.indisponibilite.Indisponibilite;
 import com.tmk.vtcmanager.application.domain.indisponibilite.IndisponibiliteStatut;
 
@@ -14,6 +15,8 @@ public interface IndisponibiliteRepository {
     Optional<Indisponibilite> findById(Long id);
 
     List<Indisponibilite> findAll();
+
+    PageResult<Indisponibilite> findPage(Long chauffeurId, int page, int size);
 
     List<Indisponibilite> findByChauffeurId(Long chauffeurId);
 

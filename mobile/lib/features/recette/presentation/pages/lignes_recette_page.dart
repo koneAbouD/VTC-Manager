@@ -5,9 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../domain/entities/encaissement.dart';
 import '../../domain/entities/ligne_recette.dart';
-import '../../domain/entities/ligne_recette_filtres.dart';
 import '../providers/ligne_recette_provider.dart';
-import '../providers/ligne_recette_state.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
@@ -43,20 +42,31 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
   Chauffeur? _chauffeurFiltre;
 
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   OverlayEntry? _overlayEntry;
   final _filtreButtonKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     Future.microtask(() => _load());
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _overlayEntry?.remove();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      ref.read(lignesRecetteListeProvider.notifier).loadMore();
+    }
   }
 
   Future<void> _showFiltreAvance() async {
@@ -71,13 +81,24 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
         _vehiculeFiltre  = result.vehicule;
         _chauffeurFiltre = result.chauffeur;
       });
+      _load();
     }
   }
 
+  // Filtres serveur (date + statut + véhicule + chauffeur), page par page.
   void _load() {
     final (dateDebut, dateFin) = _plageActive();
-    ref.read(ligneRecetteNotifierProvider.notifier).load(
-          LigneRecetteFiltres(dateDebut: dateDebut, dateFin: dateFin),
+    final repo = ref.read(ligneRecetteRepositoryProvider);
+    ref.read(lignesRecetteListeProvider.notifier).load(
+          (page, size) => repo.getLignesPage(
+            page: page,
+            size: size,
+            vehiculeId: _vehiculeFiltre?.id,
+            chauffeurId: _chauffeurFiltre?.id,
+            statut: _statutFiltre,
+            dateDebut: dateDebut,
+            dateFin: dateFin,
+          ),
         );
   }
 
@@ -96,23 +117,18 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     };
   }
 
-  List<LigneRecette> _filtrer(List<LigneRecette> all) {
-    final query = _recherche.toLowerCase();
+  // Recherche texte : filtre client sur les éléments déjà chargés (le backend
+  // recette n'expose pas de recherche libre). Les autres filtres sont serveur.
+  List<LigneRecette> _filtrerRecherche(List<LigneRecette> all) {
+    final query = _recherche.trim().toLowerCase();
+    if (query.isEmpty) return all;
     return all.where((l) {
-      if (_vehiculeFiltre != null && l.vehiculeId != _vehiculeFiltre!.id) return false;
-      if (_chauffeurFiltre != null && _chauffeurFiltre!.id != null && l.chauffeurId != _chauffeurFiltre!.id) return false;
-      if (_statutFiltre != null && l.statut != _statutFiltre) return false;
-      if (query.isNotEmpty) {
-        final hay = [
-          l.statut.label,
-          '${l.vehiculeId}',
-          '${l.chauffeurId}',
-        ].join(' ').toLowerCase();
-        if (!hay.contains(query)) return false;
-      }
-      return true;
-    }).toList()
-      ..sort((a, b) => b.dateRecette.compareTo(a.dateRecette));
+      final hay = [
+        l.vehiculeImmatriculation ?? '',
+        l.statut.label,
+      ].join(' ').toLowerCase();
+      return hay.contains(query);
+    }).toList();
   }
 
   void _showFiltreOverlay() {
@@ -290,9 +306,9 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
   }
 
   Future<void> _generer() async {
-    final error = await ref
-        .read(ligneRecetteNotifierProvider.notifier)
-        .generer();
+    final result =
+        await ref.read(ligneRecetteRepositoryProvider).generer();
+    final error = result.fold((f) => f.message, (_) => null);
     if (!mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -310,15 +326,8 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
   Widget build(BuildContext context) {
     final money =
         NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
-    final state = ref.watch(ligneRecetteNotifierProvider);
-
-    final allLignes = switch (state) {
-      LigneRecetteLoaded(:final lignes) => lignes,
-      LigneRecetteActionSuccess(:final lignes) => lignes,
-      _ => <LigneRecette>[],
-    };
-
-    final filtered = _filtrer(allLignes);
+    final state = ref.watch(lignesRecetteListeProvider);
+    final filtered = _filtrerRecherche(state.items);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
@@ -377,11 +386,13 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
 
             // ── Corps ──────────────────────────────────────────────────
             Expanded(
-              child: state is LigneRecetteLoading
+              child: state.initialLoading && state.items.isEmpty
                   ? const Center(child: CircularProgressIndicator())
                   : RefreshIndicator(
-                      onRefresh: () async => _load(),
+                      onRefresh: () =>
+                          ref.read(lignesRecetteListeProvider.notifier).refresh(),
                       child: CustomScrollView(
+                        controller: _scrollController,
                         slivers: [
                           // ── Filtre date ──────────────────────────────
                           SliverToBoxAdapter(
@@ -409,14 +420,16 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                               onSearchChanged: (v) =>
                                   setState(() => _recherche = v),
                               statutSelectionne: _statutFiltre,
-                              onStatutChanged: (s) =>
-                                  setState(() => _statutFiltre = s),
+                              onStatutChanged: (s) {
+                                setState(() => _statutFiltre = s);
+                                _load();
+                              },
                               onTunePressed:   _showFiltreAvance,
                               hasActiveFilter: _vehiculeFiltre != null || _chauffeurFiltre != null,
                             ),
                           ),
 
-                          // ── Liste ou état vide ───────────────────────
+                          // ── Liste / état vide / loader bas de page ───
                           if (filtered.isEmpty)
                             const SliverFillRemaining(child: _EmptyState())
                           else
@@ -425,22 +438,29 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                                   const EdgeInsets.fromLTRB(16, 10, 16, 24),
                               sliver: SliverList(
                                 delegate: SliverChildBuilderDelegate(
-                                  (_, i) => _LigneCard(
-                                    ligne: filtered[i],
-                                    money: money,
-                                    onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => LigneRecetteDetailPage(
-                                          ligneId: filtered[i].id!,
+                                  (_, i) {
+                                    if (i >= filtered.length) {
+                                      return const PagedListLoadMoreTile();
+                                    }
+                                    final ligne = filtered[i];
+                                    return _LigneCard(
+                                      ligne: ligne,
+                                      money: money,
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => LigneRecetteDetailPage(
+                                            ligneId: ligne.id!,
+                                          ),
                                         ),
-                                      ),
-                                    ).then((_) => _load()),
-                                    onEncaisser: filtered[i].estActive
-                                        ? () => _openEncaisserDialog(filtered[i])
-                                        : null,
-                                  ),
-                                  childCount: filtered.length,
+                                      ).then((_) => _load()),
+                                      onEncaisser: ligne.estActive
+                                          ? () => _openEncaisserDialog(ligne)
+                                          : null,
+                                    );
+                                  },
+                                  childCount:
+                                      filtered.length + (state.hasMore ? 1 : 0),
                                 ),
                               ),
                             ),

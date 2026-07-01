@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.usecases.cotisation.AnnulerLigneCotisation
 import com.tmk.vtcmanager.application.usecases.cotisation.CreateEncaissementCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GenererLignesCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GetLignesCotisationUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.request.EncaissementCotisationRequest;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.EncaissementCotisationResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.LigneCotisationResponse;
@@ -52,7 +53,25 @@ public class LigneCotisationController {
                         .build()));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/page")
+    public PageResponse<LigneCotisationResponse> getLignesPage(
+            @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(required = false) Long chauffeurId,
+            @RequestParam(required = false) StatutLigneCotisation statut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var result = getLignesCotisationUseCase.findPageByCriteres(
+                LigneCotisationFiltres.builder()
+                        .vehiculeId(vehiculeId).chauffeurId(chauffeurId)
+                        .statut(statut).dateDebut(dateDebut).dateFin(dateFin)
+                        .build(),
+                page, size).map(mapper::toResponse);
+        return PageResponse.from(result);
+    }
+
+    @GetMapping("/{id:\\d+}")
     public LigneCotisationResponse getLigneById(@PathVariable Long id) {
         return mapper.toResponse(getLignesCotisationUseCase.findById(id));
     }

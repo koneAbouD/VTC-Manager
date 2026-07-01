@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../../domain/entities/vehicule.dart';
 import '../../domain/repositories/vehicule_repository.dart';
 import '../datasources/vehicule_remote_datasource.dart';
@@ -15,6 +16,28 @@ class VehiculeRepositoryImpl implements VehiculeRepository {
   Future<Either<Failure, List<Vehicule>>> getVehicules() async {
     try {
       final result = await _datasource.getVehicules();
+      return Right(result);
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PageResult<Vehicule>>> getVehiculesPage({
+    int page = 0,
+    int size = 20,
+    String? statut,
+  }) async {
+    try {
+      final result = await _datasource.getVehiculesPage(
+        page: page,
+        size: size,
+        statut: statut,
+      );
       return Right(result);
     } on ApiException catch (e) {
       return Left(_mapApiException(e));

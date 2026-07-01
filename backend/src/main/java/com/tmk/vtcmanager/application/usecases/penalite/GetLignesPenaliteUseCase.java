@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.usecases.penalite;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.penalite.LignePenalite;
 import com.tmk.vtcmanager.application.domain.penalite.LignePenaliteFiltres;
 import com.tmk.vtcmanager.application.exception.LignePenaliteNotFoundException;
@@ -15,6 +16,10 @@ public class GetLignesPenaliteUseCase {
 
     public List<LignePenalite> findByCriteres(LignePenaliteFiltres filtres) {
         return lignePenaliteRepository.findByCriteres(filtres);
+    }
+
+    public PageResult<LignePenalite> findPageByCriteres(LignePenaliteFiltres filtres, int page, int size) {
+        return lignePenaliteRepository.findPageByCriteres(filtres, page, size);
     }
 
     public LignePenalite findById(Long id) {

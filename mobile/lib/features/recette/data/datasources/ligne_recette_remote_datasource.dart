@@ -1,11 +1,38 @@
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/page_result.dart';
 import '../models/encaissement_model.dart';
 import '../models/ligne_recette_model.dart';
 
 class LigneRecetteRemoteDatasource {
   final ApiClient _client;
   const LigneRecetteRemoteDatasource(this._client);
+
+  /// Liste paginée (scroll infini) via `GET /recettes/lignes/page`.
+  Future<PageResult<LigneRecetteModel>> getLignesPage({
+    int page = 0,
+    int size = 20,
+    int? vehiculeId,
+    int? chauffeurId,
+    String? statut,
+    String? dateDebut,
+    String? dateFin,
+  }) async {
+    final query = <String, String>{
+      'page': '$page',
+      'size': '$size',
+      if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
+      if (chauffeurId != null) 'chauffeurId': '$chauffeurId',
+      if (statut != null) 'statut': statut,
+      if (dateDebut != null) 'dateDebut': dateDebut,
+      if (dateFin != null) 'dateFin': dateFin,
+    };
+    final data = await _client.get('/recettes/lignes/page', query: query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return PageResult.fromJson(data, (e) => LigneRecetteModel.fromJson(e));
+  }
 
   Future<List<LigneRecetteModel>> getLignes({
     int? vehiculeId,

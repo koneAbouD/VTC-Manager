@@ -8,7 +8,7 @@ import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
 import '../../../../features/vehicule/domain/entities/vehicule.dart';
 import '../../domain/entities/maintenance.dart';
 import '../providers/maintenance_provider.dart';
-import '../providers/maintenance_state.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'maintenance_detail_page.dart';
 import 'maintenance_form_page.dart';
@@ -45,6 +45,7 @@ class _LignesMaintenancePageState
   Vehicule? _vehiculeFiltre;
 
   final _searchController  = TextEditingController();
+  final _scrollController  = ScrollController();
   OverlayEntry? _overlayEntry;
   final _filtreButtonKey   = GlobalKey();
 
@@ -53,14 +54,24 @@ class _LignesMaintenancePageState
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     Future.microtask(() => _load());
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _overlayEntry?.remove();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      ref.read(maintenancesListeProvider.notifier).loadMore();
+    }
   }
 
   Future<void> _showFiltreAvance() async {
@@ -73,17 +84,24 @@ class _LignesMaintenancePageState
       setState(() {
         _vehiculeFiltre = result.vehicule;
       });
+      _load();
     }
   }
 
-  // ── Chargement ────────────────────────────────────────────────────────────
+  // ── Chargement (filtres serveur : date + statut + véhicule) ────────────────
 
   void _load() {
     final (debut, fin) = _plageActive();
-    ref.read(maintenanceNotifierProvider.notifier).loadByPeriode(
-          dateDebut: DateFormat('yyyy-MM-dd').format(debut),
-          dateFin:   DateFormat('yyyy-MM-dd').format(fin),
-          statut:    _statutFiltre,
+    final repo = ref.read(maintenanceRepositoryProvider);
+    ref.read(maintenancesListeProvider.notifier).load(
+          (page, size) => repo.getMaintenancesPage(
+            page: page,
+            size: size,
+            dateDebut: DateFormat('yyyy-MM-dd').format(debut),
+            dateFin: DateFormat('yyyy-MM-dd').format(fin),
+            statut: _statutFiltre,
+            vehiculeId: _vehiculeFiltre?.id,
+          ),
         );
   }
 
@@ -100,19 +118,16 @@ class _LignesMaintenancePageState
         _FiltreMode.periode => (_periodeDebut, _periodeFin),
       };
 
-  // ── Filtrage local ────────────────────────────────────────────────────────
-
-  List<Maintenance> _filtrer(List<Maintenance> all) {
+  // Recherche texte : filtre client sur les éléments déjà chargés (le backend
+  // maintenance n'expose pas de recherche libre). Date/statut/véhicule = serveur.
+  List<Maintenance> _filtrerRecherche(List<Maintenance> all) {
+    if (_recherche.trim().isEmpty) return all;
+    final q = _recherche.toLowerCase();
     return all.where((m) {
-      if (_vehiculeFiltre != null && m.vehiculeId != _vehiculeFiltre!.id) return false;
-      if (_recherche.isNotEmpty) {
-        final q = _recherche.toLowerCase();
-        final hay = [m.type, m.vehiculeNom ?? '', m.prestataire ?? '']
-            .join(' ')
-            .toLowerCase();
-        if (!hay.contains(q)) return false;
-      }
-      return true;
+      final hay = [m.type, m.vehiculeNom ?? '', m.prestataire ?? '']
+          .join(' ')
+          .toLowerCase();
+      return hay.contains(q);
     }).toList();
   }
 
@@ -265,15 +280,8 @@ class _LignesMaintenancePageState
   Widget build(BuildContext context) {
     final money = NumberFormat.currency(
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
-    final state = ref.watch(maintenanceNotifierProvider);
-
-    final all = switch (state) {
-      MaintenanceLoaded(:final maintenances)       => maintenances,
-      MaintenanceActionSuccess(:final maintenances) => maintenances,
-      _ => <Maintenance>[],
-    };
-
-    final filtered = _filtrer(all);
+    final state = ref.watch(maintenancesListeProvider);
+    final filtered = _filtrerRecherche(state.items);
 
     return Scaffold(
       body: SafeArea(
@@ -334,11 +342,14 @@ class _LignesMaintenancePageState
 
             // ── Corps ──────────────────────────────────────────────────
             Expanded(
-              child: state is MaintenanceLoading
+              child: state.initialLoading && state.items.isEmpty
                   ? const Center(child: CircularProgressIndicator())
                   : RefreshIndicator(
-                      onRefresh: () async => _load(),
+                      onRefresh: () => ref
+                          .read(maintenancesListeProvider.notifier)
+                          .refresh(),
                       child: CustomScrollView(
+                        controller: _scrollController,
                         slivers: [
                           SliverToBoxAdapter(
                             child: _FiltreBar(
@@ -380,25 +391,32 @@ class _LignesMaintenancePageState
                                   const EdgeInsets.fromLTRB(16, 10, 16, 24),
                               sliver: SliverList(
                                 delegate: SliverChildBuilderDelegate(
-                                  (_, i) => _MaintenanceCard(
-                                    maintenance: filtered[i],
-                                    money: money,
-                                    onTap: () async {
-                                      final result = await Navigator.push<bool>(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => MaintenanceDetailPage(
-                                            maintenance: filtered[i],
+                                  (_, i) {
+                                    if (i >= filtered.length) {
+                                      return const PagedListLoadMoreTile();
+                                    }
+                                    final m = filtered[i];
+                                    return _MaintenanceCard(
+                                      maintenance: m,
+                                      money: money,
+                                      onTap: () async {
+                                        final result = await Navigator.push<bool>(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => MaintenanceDetailPage(
+                                              maintenance: m,
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                      if (result == true && mounted) {
-                                        _load();
-                                        ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
-                                      }
-                                    },
-                                  ),
-                                  childCount: filtered.length,
+                                        );
+                                        if (result == true && mounted) {
+                                          _load();
+                                          ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+                                        }
+                                      },
+                                    );
+                                  },
+                                  childCount:
+                                      filtered.length + (state.hasMore ? 1 : 0),
                                 ),
                               ),
                             ),

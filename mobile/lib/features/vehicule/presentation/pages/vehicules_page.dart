@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../domain/entities/statut_vehicule.dart';
 import '../../domain/entities/vehicule.dart';
 import '../providers/referentiel_provider.dart';
 import '../providers/vehicule_provider.dart';
-import '../providers/vehicule_state.dart';
 import 'vehicule_form_page.dart';
 
 // ── Page principale ──────────────────────────────────────────────────────────
@@ -28,9 +28,7 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => ref.read(vehiculeNotifierProvider.notifier).loadVehicules(),
-    );
+    Future.microtask(_load);
     _searchCtrl.addListener(() => setState(() => _query = _searchCtrl.text));
     _scrollCtrl.addListener(_onScroll);
   }
@@ -42,6 +40,21 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
     super.dispose();
   }
 
+  // Filtre statut envoyé au serveur (les codes du référentiel correspondent à
+  // l'enum VehiculeStatus) ; la recherche texte reste un filtre client.
+  void _load() {
+    final repo = ref.read(vehiculeRepositoryProvider);
+    ref.read(vehiculesListeProvider.notifier).load(
+          (page, size) => repo.getVehiculesPage(
+            page: page,
+            size: size,
+            statut: _statutFilter,
+          ),
+        );
+  }
+
+  void _refresh() => ref.read(vehiculesListeProvider.notifier).refresh();
+
   void _onScroll() {
     final offset = _scrollCtrl.offset;
     final delta = offset - _lastScrollOffset;
@@ -51,24 +64,27 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
     } else if (delta < -6 && !_headerVisible) {
       setState(() => _headerVisible = true);
     }
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 300) {
+      ref.read(vehiculesListeProvider.notifier).loadMore();
+    }
   }
 
+  // Recherche texte : filtre client sur les éléments chargés (le statut est
+  // déjà appliqué côté serveur).
   List<Vehicule> _filter(List<Vehicule> all) {
     final q = _query.toLowerCase().trim();
+    if (q.isEmpty) return all;
     return all.where((v) {
-      final matchQuery = q.isEmpty ||
-          v.immatriculation.toLowerCase().contains(q) ||
+      return v.immatriculation.toLowerCase().contains(q) ||
           v.displayName.toLowerCase().contains(q) ||
           (v.groupe?.toLowerCase().contains(q) ?? false);
-      final matchStatut =
-          _statutFilter == null || v.statut == _statutFilter;
-      return matchQuery && matchStatut;
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(vehiculeNotifierProvider);
+    final state = ref.watch(vehiculesListeProvider);
 
     return Scaffold(
       body: Column(
@@ -92,9 +108,7 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
             context,
             MaterialPageRoute(builder: (_) => const VehiculeFormPage()),
           );
-          if (mounted) {
-            ref.read(vehiculeNotifierProvider.notifier).loadVehicules();
-          }
+          if (mounted) _refresh();
         },
         icon: const Icon(Icons.add_rounded),
         label: const Text('Ajouter un véhicule'),
@@ -177,7 +191,10 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
                   for (final s in ref.watch(statutsVehiculeResolvedProvider))
                     DropdownMenuItem(value: s.code, child: Text(s.libelle)),
                 ],
-                onChanged: (v) => setState(() => _statutFilter = v),
+                onChanged: (v) {
+                  setState(() => _statutFilter = v);
+                  _load();
+                },
               ),
             ),
           ),
@@ -186,33 +203,26 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
     );
   }
 
-  Widget _buildBody(VehiculeState state) {
-    return switch (state) {
-      VehiculeLoading() => const _SkeletonList(),
-      VehiculeError(:final message) => _ErrorState(
-          message: message,
-          onRetry: () =>
-              ref.read(vehiculeNotifierProvider.notifier).loadVehicules(),
-        ),
-      VehiculeLoaded(:final vehicules) ||
-      VehiculeActionSuccess(:final vehicules) =>
-        _buildList(vehicules),
-      _ => const _SkeletonList(),
-    };
+  Widget _buildBody(PagedListState<Vehicule> state) {
+    if (state.initialLoading && state.items.isEmpty) {
+      return const _SkeletonList();
+    }
+    if (state.error != null && state.items.isEmpty) {
+      return _ErrorState(message: state.error!, onRetry: _load);
+    }
+    return _buildList(state);
   }
 
-  Widget _buildList(List<Vehicule> all) {
-    final vehicules = _filter(all);
-    if (all.isEmpty) {
+  Widget _buildList(PagedListState<Vehicule> state) {
+    final vehicules = _filter(state.items);
+    if (state.items.isEmpty) {
       return _EmptyState(
         onAdd: () async {
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const VehiculeFormPage()),
           );
-          if (mounted) {
-            ref.read(vehiculeNotifierProvider.notifier).loadVehicules();
-          }
+          if (mounted) _refresh();
         },
       );
     }
@@ -224,6 +234,7 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
             _query = '';
             _statutFilter = null;
           });
+          _load();
         },
       );
     }
@@ -244,12 +255,17 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () =>
-                ref.read(vehiculeNotifierProvider.notifier).loadVehicules(),
+                ref.read(vehiculesListeProvider.notifier).refresh(),
             child: ListView.builder(
               controller: _scrollCtrl,
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 96),
-              itemCount: vehicules.length,
-              itemBuilder: (_, i) => _VehiculeCard(vehicule: vehicules[i]),
+              itemCount: vehicules.length + (state.hasMore ? 1 : 0),
+              itemBuilder: (_, i) {
+                if (i >= vehicules.length) {
+                  return const PagedListLoadMoreTile();
+                }
+                return _VehiculeCard(vehicule: vehicules[i]);
+              },
             ),
           ),
         ),

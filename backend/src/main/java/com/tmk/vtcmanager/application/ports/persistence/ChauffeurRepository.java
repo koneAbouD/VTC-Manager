@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
 
@@ -13,6 +14,8 @@ public interface ChauffeurRepository {
     Optional<Chauffeur> findById(Long id);
 
     List<Chauffeur> findAll();
+
+    PageResult<Chauffeur> findPage(ChauffeurStatus statut, int page, int size);
 
     List<Chauffeur> findByStatut(ChauffeurStatus statut);
 

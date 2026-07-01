@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/contravention_remote_datasource.dart';
 import '../../data/repositories_impl/contravention_repository_impl.dart';
@@ -134,6 +135,13 @@ class ContraventionNotifier extends StateNotifier<ContraventionState> {
     );
   }
 }
+
+// ── Liste paginée (scroll infini) pour la page Contraventions ────────────────
+
+final contraventionsListeProvider = StateNotifierProvider.autoDispose<
+    PagedListNotifier<Contravention>, PagedListState<Contravention>>(
+  (ref) => PagedListNotifier<Contravention>(),
+);
 
 final contraventionNotifierProvider =
     StateNotifierProvider<ContraventionNotifier, ContraventionState>((ref) {

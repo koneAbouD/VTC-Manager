@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatus;
 
@@ -16,6 +17,8 @@ public interface VehiculeRepository {
     Optional<Vehicule> findByImmatriculation(String immatriculation);
 
     List<Vehicule> findAll();
+
+    PageResult<Vehicule> findPage(VehiculeStatus statut, int page, int size);
 
     List<Vehicule> findByStatut(VehiculeStatus statut);
 

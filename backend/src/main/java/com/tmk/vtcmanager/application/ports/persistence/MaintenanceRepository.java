@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 
@@ -14,6 +15,9 @@ public interface MaintenanceRepository {
     Optional<Maintenance> findById(Long id);
 
     List<Maintenance> findAll();
+
+    PageResult<Maintenance> findPageByFiltres(LocalDate dateDebut, LocalDate dateFin,
+                                              MaintenanceStatus statut, Long vehiculeId, int page, int size);
 
     List<Maintenance> findByVehiculeId(Long vehiculeId);
 

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/chauffeur_remote_datasource.dart';
 import '../../data/repositories_impl/chauffeur_repository_impl.dart';
@@ -156,6 +157,13 @@ final chauffeurNotifierProvider =
     deleteChauffeur: ref.watch(_deleteChauffeurUseCaseProvider),
   );
 });
+
+// ── Liste paginée (scroll infini) pour la page Chauffeurs ────────────────────
+
+final chauffeursListeProvider = StateNotifierProvider.autoDispose<
+    PagedListNotifier<Chauffeur>, PagedListState<Chauffeur>>(
+  (ref) => PagedListNotifier<Chauffeur>(),
+);
 
 // ── Provider GET by ID ──────────────────────────────────────────────────────
 

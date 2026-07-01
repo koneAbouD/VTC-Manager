@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../../domain/entities/encaissement_cotisation.dart';
 import '../../domain/entities/ligne_cotisation.dart';
 import '../../domain/entities/ligne_cotisation_filtres.dart';
@@ -17,6 +18,24 @@ class LigneCotisationRepositoryImpl implements LigneCotisationRepository {
   Future<Either<Failure, List<LigneCotisation>>> getLignes(LigneCotisationFiltres f) async {
     try {
       return Right(await _datasource.getLignes(
+        vehiculeId: f.vehiculeId,
+        chauffeurId: f.chauffeurId,
+        statut: _statutStr(f.statut),
+        dateDebut: f.dateDebut?.toIso8601String().substring(0, 10),
+        dateFin: f.dateFin?.toIso8601String().substring(0, 10),
+      ));
+    } on ApiException catch (e) { return Left(_map(e)); }
+    on NetworkException catch (e) { return Left(NetworkFailure(e.message)); }
+    catch (e) { return Left(UnknownFailure(e.toString())); }
+  }
+
+  @override
+  Future<Either<Failure, PageResult<LigneCotisation>>> getLignesPage(
+      LigneCotisationFiltres f, {int page = 0, int size = 20}) async {
+    try {
+      return Right(await _datasource.getLignesPage(
+        page: page,
+        size: size,
         vehiculeId: f.vehiculeId,
         chauffeurId: f.chauffeurId,
         statut: _statutStr(f.statut),

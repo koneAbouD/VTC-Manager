@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/maintenance_remote_datasource.dart';
 import '../../data/repositories_impl/maintenance_repository_impl.dart';
@@ -148,6 +149,13 @@ class MaintenanceNotifier extends StateNotifier<MaintenanceState> {
     );
   }
 }
+
+// ── Liste paginée (scroll infini) pour la page Maintenances ──────────────────
+
+final maintenancesListeProvider = StateNotifierProvider.autoDispose<
+    PagedListNotifier<Maintenance>, PagedListState<Maintenance>>(
+  (ref) => PagedListNotifier<Maintenance>(),
+);
 
 final maintenanceNotifierProvider =
     StateNotifierProvider<MaintenanceNotifier, MaintenanceState>((ref) {

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/vehicule_remote_datasource.dart';
 import '../../data/models/vehicule_photo_model.dart';
@@ -113,6 +114,13 @@ class VehiculeNotifier extends StateNotifier<VehiculeState> {
     );
   }
 }
+
+// ── Liste paginée (scroll infini) pour la page Véhicules ─────────────────────
+
+final vehiculesListeProvider = StateNotifierProvider.autoDispose<
+    PagedListNotifier<Vehicule>, PagedListState<Vehicule>>(
+  (ref) => PagedListNotifier<Vehicule>(),
+);
 
 // ── Provider GET by ID ──────────────────────────────────────────────────────
 

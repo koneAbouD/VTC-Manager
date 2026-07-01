@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../../domain/entities/contravention.dart';
 import '../../domain/repositories/contravention_repository.dart';
 import '../datasources/contravention_remote_datasource.dart';
@@ -15,6 +16,30 @@ class ContraventionRepositoryImpl implements ContraventionRepository {
   Future<Either<Failure, List<Contravention>>> getContraventions() async {
     try {
       final result = await _datasource.getContraventions();
+      return Right(result);
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PageResult<Contravention>>> getContraventionsPage({
+    int page = 0,
+    int size = 20,
+    int? chauffeurId,
+    int? vehiculeId,
+  }) async {
+    try {
+      final result = await _datasource.getContraventionsPage(
+        page: page,
+        size: size,
+        chauffeurId: chauffeurId,
+        vehiculeId: vehiculeId,
+      );
       return Right(result);
     } on ApiException catch (e) {
       return Left(_mapApiException(e));

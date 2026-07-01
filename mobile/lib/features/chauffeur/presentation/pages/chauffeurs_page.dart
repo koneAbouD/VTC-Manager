@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../domain/entities/chauffeur.dart';
 import '../../domain/enums/chauffeur_status.dart';
 import '../../domain/enums/type_chauffeur.dart';
 import '../providers/chauffeur_provider.dart';
-import '../providers/chauffeur_state.dart';
 import '../pages/chauffeur_detail_page.dart';
 import 'chauffeur_form_page.dart';
 
@@ -79,9 +79,7 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => ref.read(chauffeurNotifierProvider.notifier).loadChauffeurs(),
-    );
+    Future.microtask(_load);
     _searchCtrl.addListener(() => setState(() => _query = _searchCtrl.text));
     _scrollCtrl.addListener(_onScroll);
   }
@@ -93,6 +91,29 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
     super.dispose();
   }
 
+  // Filtre statut envoyé au serveur ; recherche texte = filtre client.
+  void _load() {
+    final repo = ref.read(chauffeurRepositoryProvider);
+    ref.read(chauffeursListeProvider.notifier).load(
+          (page, size) => repo.getChauffeursPage(
+            page: page,
+            size: size,
+            statut: _statutApi(_statutFilter),
+          ),
+        );
+  }
+
+  void _refresh() => ref.read(chauffeursListeProvider.notifier).refresh();
+
+  String? _statutApi(ChauffeurStatus? s) => switch (s) {
+        ChauffeurStatus.actif => 'ACTIF',
+        ChauffeurStatus.enService => 'EN_SERVICE',
+        ChauffeurStatus.inactif => 'INACTIF',
+        ChauffeurStatus.enConge => 'EN_CONGE',
+        ChauffeurStatus.suspendu => 'SUSPENDU',
+        null => null,
+      };
+
   void _onScroll() {
     final offset = _scrollCtrl.offset;
     final delta = offset - _lastScrollOffset;
@@ -102,18 +123,21 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
     } else if (delta < -6 && !_headerVisible) {
       setState(() => _headerVisible = true);
     }
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 300) {
+      ref.read(chauffeursListeProvider.notifier).loadMore();
+    }
   }
 
+  // Recherche texte : filtre client sur les éléments chargés (le statut est
+  // déjà appliqué côté serveur).
   List<Chauffeur> _filter(List<Chauffeur> all) {
     final q = _query.toLowerCase().trim();
+    if (q.isEmpty) return all;
     return all.where((c) {
-      final matchQuery = q.isEmpty ||
-          c.displayName.toLowerCase().contains(q) ||
+      return c.displayName.toLowerCase().contains(q) ||
           (c.telephone?.contains(q) ?? false) ||
           (c.vehiculeNom?.toLowerCase().contains(q) ?? false);
-      final matchStatut =
-          _statutFilter == null || c.statut == _statutFilter;
-      return matchQuery && matchStatut;
     }).toList();
   }
 
@@ -140,14 +164,17 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
     if (confirmed != true) return;
     final error =
         await ref.read(chauffeurNotifierProvider.notifier).deleteChauffeur(id);
-    if (mounted && error != null) {
+    if (!mounted) return;
+    if (error != null) {
       _appToast(context, error, type: _ToastType.error);
+    } else {
+      _refresh();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(chauffeurNotifierProvider);
+    final state = ref.watch(chauffeursListeProvider);
 
     return Scaffold(
       body: Column(
@@ -171,9 +198,7 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
             context,
             MaterialPageRoute(builder: (_) => const ChauffeurFormPage()),
           );
-          if (mounted) {
-            ref.read(chauffeurNotifierProvider.notifier).loadChauffeurs();
-          }
+          if (mounted) _refresh();
         },
         icon: const Icon(Icons.person_add_rounded),
         label: const Text('Ajouter un chauffeur'),
@@ -263,7 +288,10 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
                       value: ChauffeurStatus.inactif,
                       child: Text('Inactif')),
                 ],
-                onChanged: (v) => setState(() => _statutFilter = v),
+                onChanged: (v) {
+                  setState(() => _statutFilter = v);
+                  _load();
+                },
               ),
             ),
           ),
@@ -272,34 +300,27 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
     );
   }
 
-  Widget _buildBody(ChauffeurState state) {
-    return switch (state) {
-      ChauffeurLoading() => const _SkeletonList(),
-      ChauffeurError(:final message) => _ErrorState(
-          message: message,
-          onRetry: () =>
-              ref.read(chauffeurNotifierProvider.notifier).loadChauffeurs(),
-        ),
-      ChauffeurLoaded(:final chauffeurs) ||
-      ChauffeurActionSuccess(:final chauffeurs) =>
-        _buildList(chauffeurs),
-      _ => const _SkeletonList(),
-    };
+  Widget _buildBody(PagedListState<Chauffeur> state) {
+    if (state.initialLoading && state.items.isEmpty) {
+      return const _SkeletonList();
+    }
+    if (state.error != null && state.items.isEmpty) {
+      return _ErrorState(message: state.error!, onRetry: _load);
+    }
+    return _buildList(state);
   }
 
-  Widget _buildList(List<Chauffeur> all) {
-    final chauffeurs = _filter(all);
+  Widget _buildList(PagedListState<Chauffeur> state) {
+    final chauffeurs = _filter(state.items);
 
-    if (all.isEmpty) {
+    if (state.items.isEmpty) {
       return _EmptyState(
         onAdd: () async {
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ChauffeurFormPage()),
           );
-          if (mounted) {
-            ref.read(chauffeurNotifierProvider.notifier).loadChauffeurs();
-          }
+          if (mounted) _refresh();
         },
       );
     }
@@ -311,6 +332,7 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
             _query = '';
             _statutFilter = null;
           });
+          _load();
         },
       );
     }
@@ -332,12 +354,15 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () =>
-                ref.read(chauffeurNotifierProvider.notifier).loadChauffeurs(),
+                ref.read(chauffeursListeProvider.notifier).refresh(),
             child: ListView.builder(
               controller: _scrollCtrl,
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 96),
-              itemCount: chauffeurs.length,
+              itemCount: chauffeurs.length + (state.hasMore ? 1 : 0),
               itemBuilder: (_, i) {
+                if (i >= chauffeurs.length) {
+                  return const PagedListLoadMoreTile();
+                }
                 final c = chauffeurs[i];
                 return _ChauffeurCard(
                   chauffeur: c,
@@ -353,11 +378,7 @@ class _ChauffeursPageState extends ConsumerState<ChauffeursPage> {
                       MaterialPageRoute(
                           builder: (_) => ChauffeurFormPage(initial: c)),
                     );
-                    if (mounted) {
-                      ref
-                          .read(chauffeurNotifierProvider.notifier)
-                          .loadChauffeurs();
-                    }
+                    if (mounted) _refresh();
                   },
                   onDelete: () => _confirmDelete(c.id!, c.displayName),
                 );

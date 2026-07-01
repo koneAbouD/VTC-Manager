@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.contravention.Contravention;
 import com.tmk.vtcmanager.application.domain.contravention.ContraventionStatus;
 
@@ -13,6 +14,8 @@ public interface ContraventionRepository {
     Optional<Contravention> findById(Long id);
 
     List<Contravention> findAll();
+
+    PageResult<Contravention> findPage(Long chauffeurId, Long vehiculeId, int page, int size);
 
     List<Contravention> findByChauffeurId(Long chauffeurId);
 

@@ -12,6 +12,7 @@ import com.tmk.vtcmanager.application.usecases.penalite.GenererLignesPenaliteUse
 import com.tmk.vtcmanager.application.usecases.penalite.GetLignesPenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.LeverImmobilisationUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.NotifierAvertissementUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.penalite.dto.request.EncaissementPenaliteRequest;
 import com.tmk.vtcmanager.interfaces.rest.penalite.dto.request.LignePenaliteRequest;
 import com.tmk.vtcmanager.interfaces.rest.penalite.dto.request.SignalerRetardRequest;
@@ -67,7 +68,27 @@ public class LignePenaliteController {
                         .build()));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/page")
+    public PageResponse<LignePenaliteResponse> getLignesPage(
+            @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(required = false) Long chauffeurId,
+            @RequestParam(required = false) TypeSanction typeSanction,
+            @RequestParam(required = false) StatutLignePenalite statut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var result = getLignesUseCase.findPageByCriteres(
+                LignePenaliteFiltres.builder()
+                        .vehiculeId(vehiculeId).chauffeurId(chauffeurId)
+                        .typeSanction(typeSanction).statut(statut)
+                        .dateDebut(dateDebut).dateFin(dateFin)
+                        .build(),
+                page, size).map(mapper::toResponse);
+        return PageResponse.from(result);
+    }
+
+    @GetMapping("/{id:\\d+}")
     public LignePenaliteResponse getLigneById(@PathVariable Long id) {
         return mapper.toResponse(getLignesUseCase.findById(id));
     }

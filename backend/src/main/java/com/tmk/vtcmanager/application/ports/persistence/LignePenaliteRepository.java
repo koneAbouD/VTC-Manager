@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.conditionTravail.TypePenalite;
 import com.tmk.vtcmanager.application.domain.penalite.LignePenalite;
 import com.tmk.vtcmanager.application.domain.penalite.LignePenaliteFiltres;
@@ -18,6 +19,8 @@ public interface LignePenaliteRepository {
     Optional<LignePenalite> findById(Long id);
 
     List<LignePenalite> findByCriteres(LignePenaliteFiltres filtres);
+
+    PageResult<LignePenalite> findPageByCriteres(LignePenaliteFiltres filtres, int page, int size);
 
     boolean existsDejaGeneree(Long vehiculeId, Long chauffeurId, TypePenalite typePenalite, LocalDate dateFaute);
 

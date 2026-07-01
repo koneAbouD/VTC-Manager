@@ -10,6 +10,7 @@ import com.tmk.vtcmanager.application.usecases.maintenance.GetMaintenanceTotalCo
 import com.tmk.vtcmanager.application.usecases.maintenance.GetUpcomingMaintenancesUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.ScheduleMaintenanceUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.UpdateMaintenanceUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.request.CompleteMaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.request.MaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.response.MaintenanceResponse;
@@ -56,7 +57,21 @@ public class MaintenanceController {
         return mapper.toResponseList(getAllMaintenancesUseCase.execute(vehiculeId, dateDebut, dateFin, statut));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/page")
+    public PageResponse<MaintenanceResponse> findPage(
+            @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(required = false) LocalDate dateDebut,
+            @RequestParam(required = false) LocalDate dateFin,
+            @RequestParam(required = false) MaintenanceStatus statut,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var result = getAllMaintenancesUseCase
+                .executePage(vehiculeId, dateDebut, dateFin, statut, page, size)
+                .map(mapper::toResponse);
+        return PageResponse.from(result);
+    }
+
+    @GetMapping("/{id:\\d+}")
     public MaintenanceResponse findById(@PathVariable Long id) {
         return mapper.toResponse(getMaintenanceByIdUseCase.execute(id));
     }

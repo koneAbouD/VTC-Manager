@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../../domain/entities/encaissement_penalite.dart';
 import '../../domain/entities/ligne_penalite.dart';
 import '../../domain/entities/ligne_penalite_filtres.dart';
@@ -18,6 +19,30 @@ class PenaliteRepositoryImpl implements PenaliteRepository {
       LignePenaliteFiltres filtres) async {
     try {
       final result = await _datasource.getLignes(
+        vehiculeId: filtres.vehiculeId,
+        chauffeurId: filtres.chauffeurId,
+        typeSanction: _typeSanctionToString(filtres.typeSanction),
+        statut: _statutToString(filtres.statut),
+        dateDebut: filtres.dateDebut?.toIso8601String().substring(0, 10),
+        dateFin: filtres.dateFin?.toIso8601String().substring(0, 10),
+      );
+      return Right(result);
+    } on ApiException catch (e) {
+      return Left(_map(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PageResult<LignePenalite>>> getLignesPage(
+      LignePenaliteFiltres filtres, {int page = 0, int size = 20}) async {
+    try {
+      final result = await _datasource.getLignesPage(
+        page: page,
+        size: size,
         vehiculeId: filtres.vehiculeId,
         chauffeurId: filtres.chauffeurId,
         typeSanction: _typeSanctionToString(filtres.typeSanction),

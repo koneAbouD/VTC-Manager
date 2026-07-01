@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../data/datasources/ligne_recette_remote_datasource.dart';
 import '../../data/repositories_impl/ligne_recette_repository_impl.dart';
@@ -98,3 +99,10 @@ final ligneRecetteNotifierProvider =
     StateNotifierProvider<LigneRecetteNotifier, LigneRecetteState>((ref) {
   return LigneRecetteNotifier(ref.watch(ligneRecetteRepositoryProvider));
 });
+
+// ── Liste paginée (scroll infini) pour la page Recettes ──────────────────────
+
+final lignesRecetteListeProvider = StateNotifierProvider.autoDispose<
+    PagedListNotifier<LigneRecette>, PagedListState<LigneRecette>>(
+  (ref) => PagedListNotifier<LigneRecette>(),
+);

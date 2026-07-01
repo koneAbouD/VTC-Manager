@@ -1,10 +1,31 @@
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/page_result.dart';
 import '../models/contravention_model.dart';
 
 class ContraventionRemoteDatasource {
   final ApiClient _client;
   const ContraventionRemoteDatasource(this._client);
+
+  /// Liste paginée (scroll infini) via `GET /contraventions/page`.
+  Future<PageResult<ContraventionModel>> getContraventionsPage({
+    int page = 0,
+    int size = 20,
+    int? chauffeurId,
+    int? vehiculeId,
+  }) async {
+    final query = <String, String>{
+      'page': '$page',
+      'size': '$size',
+      if (chauffeurId != null) 'chauffeurId': '$chauffeurId',
+      if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
+    };
+    final data = await _client.get('/contraventions/page', query: query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return PageResult.fromJson(data, (e) => ContraventionModel.fromJson(e));
+  }
 
   Future<List<ContraventionModel>> getContraventions() async {
     final data = await _client.get('/contraventions');

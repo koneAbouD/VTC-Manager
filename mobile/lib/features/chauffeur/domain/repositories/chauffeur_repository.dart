@@ -3,10 +3,17 @@ import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../entities/chauffeur.dart';
 
 abstract interface class ChauffeurRepository {
   Future<Either<Failure, List<Chauffeur>>> getChauffeurs();
+
+  Future<Either<Failure, PageResult<Chauffeur>>> getChauffeursPage({
+    int page,
+    int size,
+    String? statut,
+  });
 
   Future<Either<Failure, Chauffeur>> getChauffeurById(int id);
 

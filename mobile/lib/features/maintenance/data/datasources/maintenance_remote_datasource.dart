@@ -1,10 +1,35 @@
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/page_result.dart';
 import '../models/maintenance_model.dart';
 
 class MaintenanceRemoteDatasource {
   final ApiClient _client;
   const MaintenanceRemoteDatasource(this._client);
+
+  /// Liste paginée (scroll infini) via `GET /maintenances/page`.
+  Future<PageResult<MaintenanceModel>> getMaintenancesPage({
+    int page = 0,
+    int size = 20,
+    String? dateDebut,
+    String? dateFin,
+    String? statut,
+    int? vehiculeId,
+  }) async {
+    final query = <String, String>{
+      'page': '$page',
+      'size': '$size',
+      if (dateDebut != null) 'dateDebut': dateDebut,
+      if (dateFin != null) 'dateFin': dateFin,
+      if (statut != null) 'statut': statut,
+      if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
+    };
+    final data = await _client.get('/maintenances/page', query: query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return PageResult.fromJson(data, (e) => MaintenanceModel.fromJson(e));
+  }
 
   Future<List<MaintenanceModel>> getMaintenances({
     String? dateDebut,

@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.conditionTravail.TypePenalite;
 import com.tmk.vtcmanager.application.domain.conditionTravail.TypeSanction;
 import com.tmk.vtcmanager.application.domain.penalite.LignePenalite;
@@ -15,6 +16,8 @@ import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.VehiculeJpaR
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.LignePenalitePersistenceMapper;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
@@ -74,7 +77,22 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
 
     @Override
     public List<LignePenalite> findByCriteres(LignePenaliteFiltres filtres) {
-        Specification<LignePenaliteEntity> spec = (root, query, cb) -> {
+        return mapper.toDomainList(jpaRepository.findAll(buildSpec(filtres),
+                Sort.by(Sort.Direction.DESC, "dateGeneration")));
+    }
+
+    @Override
+    public PageResult<LignePenalite> findPageByCriteres(LignePenaliteFiltres filtres, int page, int size) {
+        Page<LignePenalite> result = jpaRepository
+                .findAll(buildSpec(filtres),
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "dateGeneration")))
+                .map(mapper::toDomain);
+        return new PageResult<>(
+                result.getContent(), result.getNumber(), result.getSize(), result.getTotalElements());
+    }
+
+    private Specification<LignePenaliteEntity> buildSpec(LignePenaliteFiltres filtres) {
+        return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (filtres.getVehiculeId() != null)
                 predicates.add(cb.equal(root.get("vehicule").get("id"), filtres.getVehiculeId()));
@@ -90,8 +108,6 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
                 predicates.add(cb.lessThanOrEqualTo(root.get("dateGeneration"), filtres.getDateFin()));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-        return mapper.toDomainList(jpaRepository.findAll(spec,
-                Sort.by(Sort.Direction.DESC, "dateGeneration")));
     }
 
     @Override

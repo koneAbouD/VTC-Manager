@@ -1,11 +1,16 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.indisponibilite.Indisponibilite;
 import com.tmk.vtcmanager.application.domain.indisponibilite.IndisponibiliteStatut;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.IndisponibiliteEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.IndisponibiliteJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.IndisponibilitePersistenceMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +38,17 @@ public class IndisponibiliteRepositoryAdapter implements IndisponibiliteReposito
     @Override
     public List<Indisponibilite> findAll() {
         return mapper.toDomainList(jpaRepository.findAll(Sort.by(Sort.Direction.DESC, "dateDebut")));
+    }
+
+    @Override
+    public PageResult<Indisponibilite> findPage(Long chauffeurId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "dateDebut"));
+        Page<IndisponibiliteEntity> result = (chauffeurId != null)
+                ? jpaRepository.findByChauffeurId(chauffeurId, pageable)
+                : jpaRepository.findAll(pageable);
+        return new PageResult<>(
+                mapper.toDomainList(result.getContent()),
+                result.getNumber(), result.getSize(), result.getTotalElements());
     }
 
     @Override

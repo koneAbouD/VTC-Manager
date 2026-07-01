@@ -1,10 +1,20 @@
 import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../entities/maintenance.dart';
 
 abstract interface class MaintenanceRepository {
   Future<Either<Failure, List<Maintenance>>> getMaintenances({
+    String? dateDebut,
+    String? dateFin,
+    String? statut,
+    int? vehiculeId,
+  });
+
+  Future<Either<Failure, PageResult<Maintenance>>> getMaintenancesPage({
+    int page,
+    int size,
     String? dateDebut,
     String? dateFin,
     String? statut,

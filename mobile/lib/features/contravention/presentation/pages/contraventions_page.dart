@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../providers/contravention_provider.dart';
-import '../providers/contravention_state.dart';
 import '../widgets/contravention_card.dart';
 import 'contravention_form_page.dart';
 
@@ -51,14 +51,37 @@ class ContraventionsPage extends ConsumerStatefulWidget {
 }
 
 class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
+  final _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () =>
-          ref.read(contraventionNotifierProvider.notifier).loadContraventions(),
-    );
+    _scrollController.addListener(_onScroll);
+    Future.microtask(_load);
   }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      ref.read(contraventionsListeProvider.notifier).loadMore();
+    }
+  }
+
+  void _load() {
+    final repo = ref.read(contraventionRepositoryProvider);
+    ref.read(contraventionsListeProvider.notifier).load(
+          (page, size) => repo.getContraventionsPage(page: page, size: size),
+        );
+  }
+
+  void _refresh() => ref.read(contraventionsListeProvider.notifier).refresh();
 
   Future<void> _confirmDelete(int id) async {
     final confirmed = await showDialog<bool>(
@@ -83,8 +106,11 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
     final error = await ref
         .read(contraventionNotifierProvider.notifier)
         .deleteContravention(id);
-    if (mounted && error != null) {
+    if (!mounted) return;
+    if (error != null) {
       _appToast(context, error, type: _ToastType.error);
+    } else {
+      _refresh();
     }
   }
 
@@ -129,63 +155,58 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
     final error = await ref
         .read(contraventionNotifierProvider.notifier)
         .payContravention(id, montant);
-    if (mounted && error != null) {
+    if (!mounted) return;
+    if (error != null) {
       _appToast(context, error, type: _ToastType.error);
-    } else if (mounted) {
+    } else {
       _appToast(context, 'Paiement enregistré !');
+      _refresh();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(contraventionNotifierProvider);
+    final state = ref.watch(contraventionsListeProvider);
+    final items = state.items;
 
     return Scaffold(
-      body: switch (state) {
-        ContraventionLoading() =>
-          const Center(child: CircularProgressIndicator()),
-        ContraventionError(:final message) => _ErrorView(
-            message: message,
-            onRetry: () => ref
-                .read(contraventionNotifierProvider.notifier)
-                .loadContraventions(),
-          ),
-        ContraventionLoaded(:final contraventions) ||
-        ContraventionActionSuccess(:final contraventions) =>
-          contraventions.isEmpty
-              ? _EmptyView(
-                  onRetry: () => ref
-                      .read(contraventionNotifierProvider.notifier)
-                      .loadContraventions(),
-                )
-              : RefreshIndicator(
-                  onRefresh: () => ref
-                      .read(contraventionNotifierProvider.notifier)
-                      .loadContraventions(),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: contraventions.length,
-                    itemBuilder: (ctx, i) {
-                      final c = contraventions[i];
-                      return ContraventionCard(
-                        contravention: c,
-                        onEdit: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  ContraventionFormPage(initial: c),
-                            ),
+      body: state.initialLoading && items.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : (state.error != null && items.isEmpty)
+              ? _ErrorView(message: state.error!, onRetry: _load)
+              : items.isEmpty
+                  ? _EmptyView(onRetry: _load)
+                  : RefreshIndicator(
+                      onRefresh: () => ref
+                          .read(contraventionsListeProvider.notifier)
+                          .refresh(),
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: items.length + (state.hasMore ? 1 : 0),
+                        itemBuilder: (ctx, i) {
+                          if (i >= items.length) {
+                            return const PagedListLoadMoreTile();
+                          }
+                          final c = items[i];
+                          return ContraventionCard(
+                            contravention: c,
+                            onEdit: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ContraventionFormPage(initial: c),
+                                ),
+                              );
+                              if (mounted) _refresh();
+                            },
+                            onDelete: () => _confirmDelete(c.id!),
+                            onPay: c.isPaid ? null : () => _showPayDialog(c.id!),
                           );
                         },
-                        onDelete: () => _confirmDelete(c.id!),
-                        onPay: c.isPaid ? null : () => _showPayDialog(c.id!),
-                      );
-                    },
-                  ),
-                ),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+                      ),
+                    ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await Navigator.push(
@@ -193,6 +214,7 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
             MaterialPageRoute(
                 builder: (_) => const ContraventionFormPage()),
           );
+          if (mounted) _refresh();
         },
         icon: const Icon(Icons.add),
         label: const Text('Ajouter'),

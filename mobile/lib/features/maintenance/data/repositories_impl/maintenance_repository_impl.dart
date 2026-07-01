@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../../domain/entities/maintenance.dart';
 import '../../domain/repositories/maintenance_repository.dart';
 import '../datasources/maintenance_remote_datasource.dart';
@@ -20,6 +21,34 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
   }) async {
     try {
       final result = await _datasource.getMaintenances(
+        dateDebut: dateDebut,
+        dateFin: dateFin,
+        statut: statut,
+        vehiculeId: vehiculeId,
+      );
+      return Right(result);
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PageResult<Maintenance>>> getMaintenancesPage({
+    int page = 0,
+    int size = 20,
+    String? dateDebut,
+    String? dateFin,
+    String? statut,
+    int? vehiculeId,
+  }) async {
+    try {
+      final result = await _datasource.getMaintenancesPage(
+        page: page,
+        size: size,
         dateDebut: dateDebut,
         dateFin: dateFin,
         statut: statut,

@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
@@ -11,6 +12,8 @@ import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.VehiculeJpaR
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.LigneCotisationPersistenceMapper;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
@@ -56,7 +59,22 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
 
     @Override
     public List<LigneCotisation> findByCriteres(LigneCotisationFiltres filtres) {
-        Specification<LigneCotisationEntity> spec = (root, query, cb) -> {
+        return mapper.toDomainList(
+                jpaRepository.findAll(buildSpec(filtres), Sort.by(Sort.Direction.DESC, "dateCotisation")));
+    }
+
+    @Override
+    public PageResult<LigneCotisation> findPageByCriteres(LigneCotisationFiltres filtres, int page, int size) {
+        Page<LigneCotisation> result = jpaRepository
+                .findAll(buildSpec(filtres),
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "dateCotisation")))
+                .map(mapper::toDomain);
+        return new PageResult<>(
+                result.getContent(), result.getNumber(), result.getSize(), result.getTotalElements());
+    }
+
+    private Specification<LigneCotisationEntity> buildSpec(LigneCotisationFiltres filtres) {
+        return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (filtres.getVehiculeId() != null)
                 predicates.add(cb.equal(root.get("vehicule").get("id"), filtres.getVehiculeId()));
@@ -70,7 +88,6 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
                 predicates.add(cb.lessThanOrEqualTo(root.get("dateCotisation"), filtres.getDateFin()));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-        return mapper.toDomainList(jpaRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "dateCotisation")));
     }
 
     @Override

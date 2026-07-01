@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../data/datasources/penalite_remote_datasource.dart';
 import '../../data/repositories_impl/penalite_repository_impl.dart';
-import '../../domain/entities/encaissement_penalite.dart';
 import '../../domain/entities/ligne_penalite.dart';
 import '../../domain/entities/ligne_penalite_filtres.dart';
 import '../../domain/repositories/penalite_repository.dart';
@@ -107,3 +107,10 @@ final lignePenaliteNotifierProvider =
     StateNotifierProvider<LignePenaliteNotifier, LignePenaliteState>((ref) {
   return LignePenaliteNotifier(ref.watch(penaliteRepositoryProvider));
 });
+
+// ── Liste paginée (scroll infini) pour la page Pénalités ─────────────────────
+
+final lignesPenaliteListeProvider = StateNotifierProvider.autoDispose<
+    PagedListNotifier<LignePenalite>, PagedListState<LignePenalite>>(
+  (ref) => PagedListNotifier<LignePenalite>(),
+);

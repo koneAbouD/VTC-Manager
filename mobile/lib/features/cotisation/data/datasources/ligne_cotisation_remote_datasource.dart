@@ -1,11 +1,38 @@
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/page_result.dart';
 import '../models/encaissement_cotisation_model.dart';
 import '../models/ligne_cotisation_model.dart';
 
 class LigneCotisationRemoteDatasource {
   final ApiClient _client;
   const LigneCotisationRemoteDatasource(this._client);
+
+  /// Liste paginée (scroll infini) via `GET /cotisations/lignes/page`.
+  Future<PageResult<LigneCotisationModel>> getLignesPage({
+    int page = 0,
+    int size = 20,
+    int? vehiculeId,
+    int? chauffeurId,
+    String? statut,
+    String? dateDebut,
+    String? dateFin,
+  }) async {
+    final query = <String, String>{
+      'page': '$page',
+      'size': '$size',
+      if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
+      if (chauffeurId != null) 'chauffeurId': '$chauffeurId',
+      if (statut != null) 'statut': statut,
+      if (dateDebut != null) 'dateDebut': dateDebut,
+      if (dateFin != null) 'dateFin': dateFin,
+    };
+    final data = await _client.get('/cotisations/lignes/page', query: query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return PageResult.fromJson(data, (e) => LigneCotisationModel.fromJson(e));
+  }
 
   Future<List<LigneCotisationModel>> getLignes({
     int? vehiculeId,

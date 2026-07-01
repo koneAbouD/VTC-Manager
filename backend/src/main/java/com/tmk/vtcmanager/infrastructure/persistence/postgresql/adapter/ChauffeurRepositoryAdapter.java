@@ -1,6 +1,10 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
@@ -68,6 +72,18 @@ public class ChauffeurRepositoryAdapter implements ChauffeurRepository {
     @Transactional(readOnly = true)
     public List<Chauffeur> findAll() {
         return mapper.toDomainList(jpaRepository.findAll(Sort.by(Sort.Direction.DESC, "updatedAt")));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<Chauffeur> findPage(ChauffeurStatus statut, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        Page<ChauffeurEntity> result = (statut != null)
+                ? jpaRepository.findByStatut(statut, pageable)
+                : jpaRepository.findAll(pageable);
+        return new PageResult<>(
+                mapper.toDomainList(result.getContent()),
+                result.getNumber(), result.getSize(), result.getTotalElements());
     }
 
     @Override

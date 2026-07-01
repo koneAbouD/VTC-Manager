@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.usecases.indisponibilite.GetAllIndisponibi
 import com.tmk.vtcmanager.application.usecases.indisponibilite.GetIndisponibiliteByIdUseCase;
 import com.tmk.vtcmanager.application.usecases.indisponibilite.TerminerIndisponibiliteUseCase;
 import com.tmk.vtcmanager.application.usecases.indisponibilite.UpdateIndisponibiliteUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.indisponibilite.dto.request.IndisponibiliteRequest;
 import com.tmk.vtcmanager.interfaces.rest.indisponibilite.dto.response.IndisponibiliteResponse;
 import com.tmk.vtcmanager.interfaces.rest.indisponibilite.mapper.IndisponibiliteRestMapper;
@@ -43,7 +44,17 @@ public class IndisponibiliteController {
         return mapper.toResponseList(getAllIndisponibilitesUseCase.execute(chauffeurId));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/page")
+    public PageResponse<IndisponibiliteResponse> findPage(
+            @RequestParam(required = false) Long chauffeurId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var result = getAllIndisponibilitesUseCase.executePage(chauffeurId, page, size)
+                .map(mapper::toResponse);
+        return PageResponse.from(result);
+    }
+
+    @GetMapping("/{id:\\d+}")
     public IndisponibiliteResponse findById(@PathVariable Long id) {
         return mapper.toResponse(getIndisponibiliteByIdUseCase.execute(id));
     }

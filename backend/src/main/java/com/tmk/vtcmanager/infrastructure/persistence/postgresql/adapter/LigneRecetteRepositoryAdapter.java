@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecetteFiltres;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
@@ -11,6 +12,8 @@ import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.VehiculeJpaR
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.LigneRecettePersistenceMapper;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
@@ -55,7 +58,22 @@ public class LigneRecetteRepositoryAdapter implements LigneRecetteRepository {
 
     @Override
     public List<LigneRecette> findByCriteres(LigneRecetteFiltres filtres) {
-        Specification<LigneRecetteEntity> spec = (root, query, cb) -> {
+        return mapper.toDomainList(
+                jpaRepository.findAll(buildSpec(filtres), Sort.by(Sort.Direction.DESC, "dateRecette")));
+    }
+
+    @Override
+    public PageResult<LigneRecette> findPageByCriteres(LigneRecetteFiltres filtres, int page, int size) {
+        Page<LigneRecette> result = jpaRepository
+                .findAll(buildSpec(filtres),
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "dateRecette")))
+                .map(mapper::toDomain);
+        return new PageResult<>(
+                result.getContent(), result.getNumber(), result.getSize(), result.getTotalElements());
+    }
+
+    private Specification<LigneRecetteEntity> buildSpec(LigneRecetteFiltres filtres) {
+        return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (filtres.getVehiculeId() != null) {
                 predicates.add(cb.equal(root.get("vehicule").get("id"), filtres.getVehiculeId()));
@@ -74,8 +92,6 @@ public class LigneRecetteRepositoryAdapter implements LigneRecetteRepository {
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-        return mapper.toDomainList(
-                jpaRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "dateRecette")));
     }
 
     @Override

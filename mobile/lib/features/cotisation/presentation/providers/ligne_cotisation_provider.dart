@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../data/datasources/ligne_cotisation_remote_datasource.dart';
 import '../../data/repositories_impl/ligne_cotisation_repository_impl.dart';
@@ -62,3 +63,10 @@ final ligneCotisationNotifierProvider =
     StateNotifierProvider<LigneCotisationNotifier, LigneCotisationState>((ref) {
   return LigneCotisationNotifier(ref.watch(ligneCotisationRepositoryProvider));
 });
+
+// ── Liste paginée (scroll infini) pour la page Cotisations ───────────────────
+
+final lignesCotisationListeProvider = StateNotifierProvider.autoDispose<
+    PagedListNotifier<LigneCotisation>, PagedListState<LigneCotisation>>(
+  (ref) => PagedListNotifier<LigneCotisation>(),
+);

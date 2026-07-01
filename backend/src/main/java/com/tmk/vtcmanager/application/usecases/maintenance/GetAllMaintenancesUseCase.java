@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.usecases.maintenance;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
@@ -20,5 +21,10 @@ public class GetAllMaintenancesUseCase {
         return vehiculeId == null
                 ? maintenanceRepository.findAll()
                 : maintenanceRepository.findByVehiculeId(vehiculeId);
+    }
+
+    public PageResult<Maintenance> executePage(Long vehiculeId, LocalDate dateDebut, LocalDate dateFin,
+                                               MaintenanceStatus statut, int page, int size) {
+        return maintenanceRepository.findPageByFiltres(dateDebut, dateFin, statut, vehiculeId, page, size);
     }
 }

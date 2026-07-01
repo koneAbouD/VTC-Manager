@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../../domain/entities/encaissement.dart';
 import '../../domain/entities/ligne_recette.dart';
 import '../../domain/repositories/ligne_recette_repository.dart';
@@ -22,6 +23,36 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
   }) async {
     try {
       final result = await _datasource.getLignes(
+        vehiculeId: vehiculeId,
+        chauffeurId: chauffeurId,
+        statut: _statutToString(statut),
+        dateDebut: dateDebut?.toIso8601String().substring(0, 10),
+        dateFin: dateFin?.toIso8601String().substring(0, 10),
+      );
+      return Right(result);
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PageResult<LigneRecette>>> getLignesPage({
+    int page = 0,
+    int size = 20,
+    int? vehiculeId,
+    int? chauffeurId,
+    StatutLigneRecette? statut,
+    DateTime? dateDebut,
+    DateTime? dateFin,
+  }) async {
+    try {
+      final result = await _datasource.getLignesPage(
+        page: page,
+        size: size,
         vehiculeId: vehiculeId,
         chauffeurId: chauffeurId,
         statut: _statutToString(statut),

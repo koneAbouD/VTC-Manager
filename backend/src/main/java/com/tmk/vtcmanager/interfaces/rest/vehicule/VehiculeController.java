@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.interfaces.rest.vehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.CreateVehiculeCommand;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculePhoto;
+import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatus;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculePhotoRepository;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import com.tmk.vtcmanager.application.usecases.document.GetDocumentsByVehiculeUseCase;
@@ -21,6 +22,7 @@ import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.response.VehiculeDetailRe
 import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.response.VehiculePhotoResponse;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.response.VehiculeResponse;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.mapper.VehiculeRestMapper;
+import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
@@ -63,7 +65,17 @@ public class VehiculeController {
         return mapper.toResponseList(getAllVehiculesUseCase.execute());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/page")
+    public PageResponse<VehiculeResponse> findPage(
+            @RequestParam(required = false) VehiculeStatus statut,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var result = getAllVehiculesUseCase.executePage(statut, page, size)
+                .map(mapper::toResponse);
+        return PageResponse.from(result);
+    }
+
+    @GetMapping("/{id:\\d+}")
     public VehiculeDetailResponse findById(@PathVariable Long id) {
         VehiculeResponse base = mapper.toResponse(getVehiculeByIdUseCase.execute(id));
         List<DocumentResponse> documents = documentMapper

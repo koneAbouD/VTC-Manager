@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/indisponibilite_remote_datasource.dart';
 import '../../data/models/indisponibilite_model.dart';
@@ -100,6 +101,13 @@ final indisponibiliteNotifierProvider =
     StateNotifierProvider<IndisponibiliteNotifier, IndisponibiliteState>(
   (ref) =>
       IndisponibiliteNotifier(ref.watch(indisponibiliteDatasourceProvider)),
+);
+
+// ── Liste paginée (scroll infini) pour la page Indisponibilités ──────────────
+
+final indisponibilitesListeProvider = StateNotifierProvider.autoDispose<
+    PagedListNotifier<Indisponibilite>, PagedListState<Indisponibilite>>(
+  (ref) => PagedListNotifier<Indisponibilite>(),
 );
 
 /// Indisponibilités actuellement en cours (statut EN_COURS).

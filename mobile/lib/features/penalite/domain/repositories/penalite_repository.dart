@@ -1,12 +1,16 @@
 import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../entities/encaissement_penalite.dart';
 import '../entities/ligne_penalite.dart';
 import '../entities/ligne_penalite_filtres.dart';
 
 abstract class PenaliteRepository {
   Future<Either<Failure, List<LignePenalite>>> getLignes(LignePenaliteFiltres filtres);
+
+  Future<Either<Failure, PageResult<LignePenalite>>> getLignesPage(
+      LignePenaliteFiltres filtres, {int page, int size});
 
   Future<Either<Failure, LignePenalite>> getLigneById(int id);
 

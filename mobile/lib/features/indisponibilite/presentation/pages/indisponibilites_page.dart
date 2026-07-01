@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/error/exception.dart';
+import '../../../../core/error/failure.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../domain/entities/indisponibilite.dart';
 import '../providers/indisponibilite_provider.dart';
-import '../providers/indisponibilite_state.dart';
 import 'indisponibilite_detail_page.dart';
 import 'indisponibilite_form_page.dart';
 
@@ -18,63 +21,101 @@ class IndisponibilitesPage  extends ConsumerStatefulWidget {
 }
 
 class _State extends ConsumerState<IndisponibilitesPage> {
+  final _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-        () => ref.read(indisponibiliteNotifierProvider.notifier).load());
+    _scrollController.addListener(_onScroll);
+    Future.microtask(_load);
   }
 
-  void _openForm([Indisponibilite? i]) {
-    Navigator.push(
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      ref.read(indisponibilitesListeProvider.notifier).loadMore();
+    }
+  }
+
+  // Pas de repository ici : le fetcher wrappe le datasource en Either.
+  void _load() {
+    final ds = ref.read(indisponibiliteDatasourceProvider);
+    ref.read(indisponibilitesListeProvider.notifier).load((page, size) async {
+      try {
+        return Right(await ds.getIndisponibilitesPage(page: page, size: size));
+      } on ApiException catch (e) {
+        return Left(ServerFailure(e.message, statusCode: e.statusCode));
+      } on NetworkException catch (e) {
+        return Left(NetworkFailure(e.message));
+      } catch (e) {
+        return Left(UnknownFailure(e.toString()));
+      }
+    });
+  }
+
+  void _refresh() =>
+      ref.read(indisponibilitesListeProvider.notifier).refresh();
+
+  Future<void> _openForm([Indisponibilite? i]) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => IndisponibiliteFormPage(initial: i)),
     );
+    if (mounted) _refresh();
   }
 
-  void _openDetail(Indisponibilite i) {
-    Navigator.push(
+  Future<void> _openDetail(Indisponibilite i) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
           builder: (_) => IndisponibiliteDetailPage(indisponibilite: i)),
     );
+    if (mounted) _refresh();
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(indisponibiliteNotifierProvider);
+    final state = ref.watch(indisponibilitesListeProvider);
+    final items = state.items;
 
     return Scaffold(
       appBar: AppHeader(
         title: 'Indisponibilités',
         action: AppHeaderAction(icon: Icons.add_rounded, onTap: _openForm),
       ),
-      body: switch (state) {
-        IndisponibiliteLoading() =>
-          const Center(child: CircularProgressIndicator()),
-        IndisponibiliteError(:final message) => _ErrorView(
-            message: message,
-            onRetry: () =>
-                ref.read(indisponibiliteNotifierProvider.notifier).load(),
-          ),
-        IndisponibiliteLoaded(:final indisponibilites) =>
-          indisponibilites.isEmpty
-              ? _EmptyView(onAdd: _openForm)
-              : RefreshIndicator(
-                  onRefresh: () =>
-                      ref.read(indisponibiliteNotifierProvider.notifier).load(),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                    itemCount: indisponibilites.length,
-                    itemBuilder: (_, idx) => _IndispoCard(
-                      indispo: indisponibilites[idx],
-                      onView: () => _openDetail(indisponibilites[idx]),
-                      onEdit: () => _openForm(indisponibilites[idx]),
+      body: state.initialLoading && items.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : (state.error != null && items.isEmpty)
+              ? _ErrorView(message: state.error!, onRetry: _load)
+              : items.isEmpty
+                  ? _EmptyView(onAdd: _openForm)
+                  : RefreshIndicator(
+                      onRefresh: () => ref
+                          .read(indisponibilitesListeProvider.notifier)
+                          .refresh(),
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        itemCount: items.length + (state.hasMore ? 1 : 0),
+                        itemBuilder: (_, idx) {
+                          if (idx >= items.length) {
+                            return const PagedListLoadMoreTile();
+                          }
+                          return _IndispoCard(
+                            indispo: items[idx],
+                            onView: () => _openDetail(items[idx]),
+                            onEdit: () => _openForm(items[idx]),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ),
-        _ => const SizedBox.shrink(),
-      },
     );
   }
 }
@@ -209,9 +250,13 @@ class _IndispoCard extends ConsumerWidget {
           if (!await _confirmSuppression(context)) return;
           err = await notifier.delete(indispo.id!);
         }
-        if (context.mounted && err != null) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(err), backgroundColor: AppColors.error));
+        if (err != null) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(err), backgroundColor: AppColors.error));
+          }
+        } else {
+          ref.read(indisponibilitesListeProvider.notifier).refresh();
         }
       },
       itemBuilder: (_) => items,

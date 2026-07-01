@@ -1,7 +1,10 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.MaintenanceSpecs;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
@@ -66,6 +69,18 @@ public class MaintenanceRepositoryAdapter implements MaintenanceRepository {
         return mapper.toDomainList(
                 jpaRepository.findAll(MaintenanceSpecs.byFiltres(dateDebut, dateFin, statut, vehiculeId))
         );
+    }
+
+    @Override
+    public PageResult<Maintenance> findPageByFiltres(LocalDate dateDebut, LocalDate dateFin,
+                                                     MaintenanceStatus statut, Long vehiculeId, int page, int size) {
+        // Le tri (datePrevue) est porté par la Specification → PageRequest sans Sort.
+        Page<Maintenance> result = jpaRepository
+                .findAll(MaintenanceSpecs.byFiltres(dateDebut, dateFin, statut, vehiculeId),
+                        PageRequest.of(page, size))
+                .map(mapper::toDomain);
+        return new PageResult<>(
+                result.getContent(), result.getNumber(), result.getSize(), result.getTotalElements());
     }
 
     @Override

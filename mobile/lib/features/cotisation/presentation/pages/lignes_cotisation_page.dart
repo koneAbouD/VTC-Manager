@@ -7,7 +7,7 @@ import '../../domain/entities/encaissement_cotisation.dart';
 import '../../domain/entities/ligne_cotisation.dart';
 import '../../domain/entities/ligne_cotisation_filtres.dart';
 import '../providers/ligne_cotisation_provider.dart';
-import '../providers/ligne_cotisation_state.dart';
+import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
@@ -47,20 +47,31 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
   Chauffeur? _chauffeurFiltre;
 
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   OverlayEntry? _overlayEntry;
   final _filtreButtonKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     Future.microtask(_load);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _overlayEntry?.remove();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      ref.read(lignesCotisationListeProvider.notifier).loadMore();
+    }
   }
 
   Future<void> _showFiltreAvance() async {
@@ -75,6 +86,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
         _vehiculeFiltre  = result.vehicule;
         _chauffeurFiltre = result.chauffeur;
       });
+      _load();
     }
   }
 
@@ -93,32 +105,38 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
         _FiltreMode.periode => (_periodeDebut, _periodeFin),
       };
 
+  // Filtres serveur (date + statut + véhicule + chauffeur), page par page.
   void _load() {
     final (debut, fin) = _plageActive();
-    ref.read(ligneCotisationNotifierProvider.notifier).load(
-          LigneCotisationFiltres(dateDebut: debut, dateFin: fin),
+    final repo = ref.read(ligneCotisationRepositoryProvider);
+    ref.read(lignesCotisationListeProvider.notifier).load(
+          (page, size) => repo.getLignesPage(
+            LigneCotisationFiltres(
+              vehiculeId: _vehiculeFiltre?.id,
+              chauffeurId: _chauffeurFiltre?.id,
+              statut: _statut,
+              dateDebut: debut,
+              dateFin: fin,
+            ),
+            page: page,
+            size: size,
+          ),
         );
   }
 
-  // ── Filtrage client ─────────────────────────────────────────────────────
-
-  List<LigneCotisation> _filtrer(List<LigneCotisation> all) {
-    final query = _recherche.toLowerCase();
+  // Recherche texte : filtre client sur les éléments déjà chargés (le backend
+  // cotisation n'expose pas de recherche libre). Autres filtres = serveur.
+  List<LigneCotisation> _filtrerRecherche(List<LigneCotisation> all) {
+    final query = _recherche.trim().toLowerCase();
+    if (query.isEmpty) return all;
     return all.where((l) {
-      if (_vehiculeFiltre != null && l.vehiculeId != _vehiculeFiltre!.id) return false;
-      if (_chauffeurFiltre != null && _chauffeurFiltre!.id != null && l.chauffeurId != _chauffeurFiltre!.id) return false;
-      if (_statut != null && l.statut != _statut) return false;
-      if (query.isNotEmpty) {
-        final hay = [
-          l.vehiculeImmatriculation ?? '',
-          l.nomCotisation,
-          l.statut.label,
-        ].join(' ').toLowerCase();
-        if (!hay.contains(query)) return false;
-      }
-      return true;
-    }).toList()
-      ..sort((a, b) => b.dateCotisation.compareTo(a.dateCotisation));
+      final hay = [
+        l.vehiculeImmatriculation ?? '',
+        l.nomCotisation,
+        l.statut.label,
+      ].join(' ').toLowerCase();
+      return hay.contains(query);
+    }).toList();
   }
 
   // ── Overlay filtre mode ─────────────────────────────────────────────────
@@ -282,8 +300,9 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
   }
 
   Future<void> _generer() async {
-    final error =
-        await ref.read(ligneCotisationNotifierProvider.notifier).generer();
+    final result =
+        await ref.read(ligneCotisationRepositoryProvider).generer();
+    final error = result.fold((f) => f.message, (_) => null);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(error ?? "Cotisations d'hier générées avec succès."),
@@ -298,14 +317,8 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
   Widget build(BuildContext context) {
     final money = NumberFormat.currency(
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
-    final state = ref.watch(ligneCotisationNotifierProvider);
-
-    final allLignes = switch (state) {
-      LigneCotisationLoaded(:final lignes)        => lignes,
-      LigneCotisationActionSuccess(:final lignes) => lignes,
-      _                                           => <LigneCotisation>[],
-    };
-    final filtered = _filtrer(allLignes);
+    final state = ref.watch(lignesCotisationListeProvider);
+    final filtered = _filtrerRecherche(state.items);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
@@ -357,19 +370,22 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
 
             // ── Corps ──────────────────────────────────────────────────
             Expanded(
-              child: state is LigneCotisationLoading
+              child: state.initialLoading && state.items.isEmpty
                   ? const Center(child: CircularProgressIndicator())
-                  : state is LigneCotisationError
+                  : (state.error != null && state.items.isEmpty)
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(24),
-                            child: Text(state.message,
+                            child: Text(state.error!,
                                 style: const TextStyle(color: Colors.red),
                                 textAlign: TextAlign.center),
                           ))
                       : RefreshIndicator(
-                          onRefresh: () async => _load(),
+                          onRefresh: () => ref
+                              .read(lignesCotisationListeProvider.notifier)
+                              .refresh(),
                           child: CustomScrollView(
+                            controller: _scrollController,
                             slivers: [
                               // ── Filtre date ──────────────────────────
                               SliverToBoxAdapter(
@@ -397,14 +413,16 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                                   onSearchChanged: (v) =>
                                       setState(() => _recherche = v),
                                   statutSelectionne: _statut,
-                                  onStatutChanged: (s) =>
-                                      setState(() => _statut = s),
+                                  onStatutChanged: (s) {
+                                    setState(() => _statut = s);
+                                    _load();
+                                  },
                                   onTunePressed:   _showFiltreAvance,
                                   hasActiveFilter: _vehiculeFiltre != null || _chauffeurFiltre != null,
                                 ),
                               ),
 
-                              // ── Liste ou état vide ───────────────────
+                              // ── Liste / vide / loader bas de page ────
                               if (filtered.isEmpty)
                                 const SliverFillRemaining(
                                     child: _EmptyState())
@@ -414,22 +432,29 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                                       16, 10, 16, 24),
                                   sliver: SliverList(
                                     delegate: SliverChildBuilderDelegate(
-                                      (_, i) => _LigneCotisationCard(
-                                        ligne: filtered[i],
-                                        money: money,
-                                        onTap: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                LigneCotisationDetailPage(
-                                                    ligneId: filtered[i].id!),
-                                          ),
-                                        ).then((_) => _load()),
-                                        onEncaisser: filtered[i].estActive
-                                            ? () => _openEncaisserDialog(filtered[i])
-                                            : null,
-                                      ),
-                                      childCount: filtered.length,
+                                      (_, i) {
+                                        if (i >= filtered.length) {
+                                          return const PagedListLoadMoreTile();
+                                        }
+                                        final ligne = filtered[i];
+                                        return _LigneCotisationCard(
+                                          ligne: ligne,
+                                          money: money,
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  LigneCotisationDetailPage(
+                                                      ligneId: ligne.id!),
+                                            ),
+                                          ).then((_) => _load()),
+                                          onEncaisser: ligne.estActive
+                                              ? () => _openEncaisserDialog(ligne)
+                                              : null,
+                                        );
+                                      },
+                                      childCount: filtered.length +
+                                          (state.hasMore ? 1 : 0),
                                     ),
                                   ),
                                 ),

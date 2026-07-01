@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.application.usecases.recette.ConfirmerVersementUseCase
 import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GenererLignesRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GetLignesRecetteUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.request.EncaissementRequest;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.EncaissementResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.LigneRecetteResponse;
@@ -58,7 +59,28 @@ public class LigneRecetteController {
         return mapper.toResponseList(getLignesRecetteUseCase.findByCriteres(filtres));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/page")
+    public PageResponse<LigneRecetteResponse> getLignesPage(
+            @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(required = false) Long chauffeurId,
+            @RequestParam(required = false) StatutLigneRecette statut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        LigneRecetteFiltres filtres = LigneRecetteFiltres.builder()
+                .vehiculeId(vehiculeId)
+                .chauffeurId(chauffeurId)
+                .statut(statut)
+                .dateDebut(dateDebut)
+                .dateFin(dateFin)
+                .build();
+        var result = getLignesRecetteUseCase.findPageByCriteres(filtres, page, size)
+                .map(mapper::toResponse);
+        return PageResponse.from(result);
+    }
+
+    @GetMapping("/{id:\\d+}")
     public LigneRecetteResponse getLigneById(@PathVariable Long id) {
         return mapper.toResponse(getLignesRecetteUseCase.findById(id));
     }
