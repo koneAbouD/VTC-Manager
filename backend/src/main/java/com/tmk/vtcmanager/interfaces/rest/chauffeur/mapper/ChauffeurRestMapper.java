@@ -19,6 +19,8 @@ public interface ChauffeurRestMapper {
     @Mapping(target = "geolocalisation", ignore = true)
     @Mapping(target = "photoUrl", ignore = true)
     @Mapping(target = "photoPresignedUrl", ignore = true)
+    @Mapping(target = "statutManuel", ignore = true)
+    @Mapping(target = "dateSuspension", ignore = true)
     Chauffeur toDomain(ChauffeurRequest request);
 
     @Mapping(target = "documents", expression = "java(java.util.List.of())")

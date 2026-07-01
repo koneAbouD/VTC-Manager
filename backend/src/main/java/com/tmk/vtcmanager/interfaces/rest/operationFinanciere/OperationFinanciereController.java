@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -25,7 +24,6 @@ public class OperationFinanciereController {
 
     private final CreateOperationFinanciereUseCase createUseCase;
     private final UpdateOperationFinanciereUseCase updateUseCase;
-    private final DeleteOperationFinanciereUseCase deleteUseCase;
     private final GetOperationFinanciereByIdUseCase getByIdUseCase;
     private final GetAllOperationsFinancieresUseCase getAllUseCase;
     private final AnnulerOperationFinanciereUseCase annulerUseCase;
@@ -94,9 +92,6 @@ public class OperationFinanciereController {
         return mapper.toResponse(annulerUseCase.execute(id));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-        return ResponseEntity.noContent().build();
-    }
+    // La suppression d'une opération est volontairement non exposée :
+    // une opération ne peut pas être supprimée, seulement annulée (PATCH /annuler).
 }

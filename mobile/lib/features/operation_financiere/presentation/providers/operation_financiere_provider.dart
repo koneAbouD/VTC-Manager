@@ -4,11 +4,9 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/operation_financiere_remote_datasource.dart';
 import '../../data/repositories_impl/operation_financiere_repository_impl.dart';
-import '../../domain/entities/operation_financiere.dart';
 import '../../domain/repositories/operation_financiere_repository.dart';
 import '../../domain/usecases/annuler_operation_financiere_usecase.dart';
 import '../../domain/usecases/create_operation_financiere_usecase.dart';
-import '../../domain/usecases/delete_operation_financiere_usecase.dart';
 import '../../domain/usecases/get_operations_financieres_usecase.dart';
 import '../../domain/usecases/update_operation_financiere_usecase.dart';
 import 'operation_financiere_state.dart';
@@ -45,10 +43,6 @@ final _updateOpUCProvider = Provider((ref) =>
     UpdateOperationFinanciereUseCase(
         ref.watch(operationFinanciereRepositoryProvider)));
 
-final _deleteOpUCProvider = Provider((ref) =>
-    DeleteOperationFinanciereUseCase(
-        ref.watch(operationFinanciereRepositoryProvider)));
-
 final _annulerOpUCProvider = Provider((ref) =>
     AnnulerOperationFinanciereUseCase(
         ref.watch(operationFinanciereRepositoryProvider)));
@@ -60,30 +54,18 @@ class OperationFinanciereNotifier
   final GetOperationsFinancieresUseCase _getAll;
   final CreateOperationFinanciereUseCase _create;
   final UpdateOperationFinanciereUseCase _update;
-  final DeleteOperationFinanciereUseCase _delete;
   final AnnulerOperationFinanciereUseCase _annuler;
 
   OperationFinanciereNotifier({
     required GetOperationsFinancieresUseCase getAll,
     required CreateOperationFinanciereUseCase create,
     required UpdateOperationFinanciereUseCase update,
-    required DeleteOperationFinanciereUseCase delete,
     required AnnulerOperationFinanciereUseCase annuler,
   })  : _getAll = getAll,
         _create = create,
         _update = update,
-        _delete = delete,
         _annuler = annuler,
         super(const OperationFinanciereInitial());
-
-  List<OperationFinanciere> _current() {
-    final s = state;
-    return switch (s) {
-      OperationFinanciereLoaded(:final operations) => operations,
-      OperationFinanciereActionSuccess(:final operations) => operations,
-      _ => [],
-    };
-  }
 
   Future<void> loadAll({
     String? typeOperation,
@@ -128,18 +110,6 @@ class OperationFinanciereNotifier
     );
   }
 
-  Future<String?> delete(int id) async {
-    final result = await _delete(id);
-    return result.fold(
-      (f) => f.message,
-      (_) {
-        final updated = _current().where((o) => o.id != id).toList();
-        state = OperationFinanciereActionSuccess(updated, 'Opération supprimée');
-        return null;
-      },
-    );
-  }
-
   Future<String?> annuler(int id) async {
     final result = await _annuler(id);
     return result.fold(
@@ -159,7 +129,6 @@ final operationFinanciereNotifierProvider =
     getAll: ref.watch(_getOpUCProvider),
     create: ref.watch(_createOpUCProvider),
     update: ref.watch(_updateOpUCProvider),
-    delete: ref.watch(_deleteOpUCProvider),
     annuler: ref.watch(_annulerOpUCProvider),
   );
 });

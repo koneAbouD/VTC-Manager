@@ -86,9 +86,6 @@ class OperationFinanciereRemoteDatasource {
     return OperationFinanciereModel.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<void> delete(int id) =>
-      _client.delete('/operations-financieres/$id');
-
   Future<void> annuler(int id) =>
       _client.patch('/operations-financieres/$id/annuler');
 }
