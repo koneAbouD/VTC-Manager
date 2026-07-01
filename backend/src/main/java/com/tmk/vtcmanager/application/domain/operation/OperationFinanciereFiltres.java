@@ -8,5 +8,8 @@ public record OperationFinanciereFiltres(
         LocalDate fin,
         StatutOperation statut,
         String recherche,
-        String categorieCode
+        String categorieCode,
+        Long vehiculeId,
+        Long chauffeurId,
+        String sousCategorieLibelle
 ) {}

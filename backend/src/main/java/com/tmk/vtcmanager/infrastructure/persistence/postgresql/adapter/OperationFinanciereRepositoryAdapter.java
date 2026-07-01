@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciereFiltres;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
@@ -7,6 +8,8 @@ import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.OperationFin
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.OperationFinanciereSpecs;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.OperationFinancierePersistenceMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -32,6 +35,20 @@ public class OperationFinanciereRepositoryAdapter implements OperationFinanciere
     @Override
     public List<OperationFinanciere> findByCriteres(OperationFinanciereFiltres filtres) {
         return mapper.toDomainList(jpaRepository.findAll(OperationFinanciereSpecs.byCriteres(filtres)));
+    }
+
+    @Override
+    public PageResult<OperationFinanciere> findPageByCriteres(OperationFinanciereFiltres filtres, int page, int size) {
+        // Le tri est porté par la Specification (dateOperation desc) ; on passe
+        // donc un PageRequest non trié pour éviter tout conflit d'ordre.
+        Page<OperationFinanciere> result = jpaRepository
+                .findAll(OperationFinanciereSpecs.byCriteres(filtres), PageRequest.of(page, size))
+                .map(mapper::toDomain);
+        return new PageResult<>(
+                result.getContent(),
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements());
     }
 
     @Override

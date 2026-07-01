@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
+import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciereFiltres;
 
@@ -13,6 +14,8 @@ public interface OperationFinanciereRepository {
     Optional<OperationFinanciere> findById(Long id);
 
     List<OperationFinanciere> findByCriteres(OperationFinanciereFiltres filtres);
+
+    PageResult<OperationFinanciere> findPageByCriteres(OperationFinanciereFiltres filtres, int page, int size);
 
     List<OperationFinanciere> findByChauffeurId(Long chauffeurId);
 

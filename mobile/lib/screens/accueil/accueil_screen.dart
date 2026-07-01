@@ -724,10 +724,9 @@ class _DerniereOpTile extends StatelessWidget {
     final sign = isRevenu ? '+' : '-';
 
     // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
-    // Libellé relatif sur la date métier (recette/cotisation/faute), recalculé
-    // à l'affichage — pas de tâche planifiée.
-    final categorie = op.categorieLibelle ?? op.typeOperation.libelle;
-    final titre = '$categorie ${op.libelleDateRelative}';
+    // La date relative (recalculée à l'affichage) n'est ajoutée que pour les
+    // encaissements ; les autres opérations (ex. Vidange) s'affichent sans date.
+    final titre = op.libelleLigne;
 
     // Ligne 2 : « [imat véhicule - Nom chauffeur] »
     final vehiculeChauffeur = [

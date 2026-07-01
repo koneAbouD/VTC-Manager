@@ -44,7 +44,7 @@ public class GetDashboardSummaryUseCase {
 
         // --- Opérations mois courant ---
         List<OperationFinanciere> opsMois = operationRepository.findByCriteres(
-                new OperationFinanciereFiltres(null, debutMois, finMois, null, null, null));
+                new OperationFinanciereFiltres(null, debutMois, finMois, null, null, null, null, null, null));
         List<OperationFinanciere> revenusMois = opsMois.stream()
                 .filter(o -> TypeOperation.REVENU.equals(o.getTypeOperation())).toList();
         List<OperationFinanciere> depensesMois = opsMois.stream()
@@ -58,7 +58,7 @@ public class GetDashboardSummaryUseCase {
 
         // --- Opérations mois précédent ---
         List<OperationFinanciere> opsPrecedent = operationRepository.findByCriteres(
-                new OperationFinanciereFiltres(null, debutMoisPrecedent, finMoisPrecedent, null, null, null));
+                new OperationFinanciereFiltres(null, debutMoisPrecedent, finMoisPrecedent, null, null, null, null, null, null));
         BigDecimal totalRevenusPrecedent = opsPrecedent.stream()
                 .filter(o -> TypeOperation.REVENU.equals(o.getTypeOperation()))
                 .map(OperationFinanciere::getMontant).reduce(BigDecimal.ZERO, BigDecimal::add);

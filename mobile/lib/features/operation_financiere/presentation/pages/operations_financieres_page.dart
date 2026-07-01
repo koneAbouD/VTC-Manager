@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,8 +11,7 @@ import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
 import '../../domain/entities/operation_financiere.dart';
 import '../../domain/enums/statut_operation.dart';
 import '../../domain/enums/type_operation.dart';
-import '../providers/operation_financiere_provider.dart';
-import '../providers/operation_financiere_state.dart';
+import '../providers/operations_liste_provider.dart';
 import 'operation_financiere_detail_page.dart';
 import 'operation_financiere_form_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
@@ -43,17 +44,20 @@ enum _CategorieFiltre {
         document    => Colors.blue,
       };
 
-  bool matches(OperationFinanciere op) {
-    final catCode = op.categorieCode?.toUpperCase() ?? '';
-    final scLib   = op.sousCategorieLibelle?.toLowerCase() ?? '';
-    return switch (this) {
-      recette     => catCode == 'ENCAISSEMENT_RECETTES',
-      cotisation  => catCode == 'ENCAISSEMENT_COTISATIONS',
-      penalite    => catCode == 'ENCAISSEMENT_PENALITES',
-      maintenance => scLib == 'maintenances',
-      document    => scLib == 'documents',
-    };
-  }
+  /// Code catégorie envoyé au backend (encaissements), ou null.
+  String? get categorieCodeParam => switch (this) {
+        recette     => 'ENCAISSEMENT_RECETTES',
+        cotisation  => 'ENCAISSEMENT_COTISATIONS',
+        penalite    => 'ENCAISSEMENT_PENALITES',
+        _           => null,
+      };
+
+  /// Libellé de sous-catégorie envoyé au backend (maintenance / document), ou null.
+  String? get sousCategorieLibelleParam => switch (this) {
+        maintenance => 'maintenances',
+        document    => 'documents',
+        _           => null,
+      };
 }
 
 class OperationsFinancieresPage extends ConsumerStatefulWidget {
@@ -79,13 +83,25 @@ class _OperationsFinancieresPageState
   Chauffeur? _chauffeurFiltre;
 
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+  Timer? _searchDebounce;
   OverlayEntry? _overlayEntry;
   final _filtreButtonKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     Future.microtask(_loadWithFilters);
+  }
+
+  // Déclenche le chargement de la page suivante à l'approche du bas de liste.
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      ref.read(operationsListeProvider.notifier).loadMore();
+    }
   }
 
   // ── Plage de dates active ─────────────────────────────────────────────────
@@ -107,15 +123,22 @@ class _OperationsFinancieresPageState
 
   void _loadWithFilters() {
     final (debut, fin) = _plageActive();
-    ref.read(operationFinanciereNotifierProvider.notifier).loadAll(
+    ref.read(operationsListeProvider.notifier).load(
           debut: DateFormat('yyyy-MM-dd').format(debut),
-          fin:   DateFormat('yyyy-MM-dd').format(fin),
+          fin: DateFormat('yyyy-MM-dd').format(fin),
+          categorieCode: _categorieFiltre?.categorieCodeParam,
+          sousCategorieLibelle: _categorieFiltre?.sousCategorieLibelleParam,
+          vehiculeId: _vehiculeFiltre?.id,
+          chauffeurId: _chauffeurFiltre?.id,
+          recherche: _recherche.isEmpty ? null : _recherche,
         );
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
+    _searchDebounce?.cancel();
     _overlayEntry?.remove();
     super.dispose();
   }
@@ -225,6 +248,7 @@ class _OperationsFinancieresPageState
         _vehiculeFiltre  = result.vehicule;
         _chauffeurFiltre = result.chauffeur;
       });
+      _loadWithFilters();
     }
   }
 
@@ -285,49 +309,22 @@ class _OperationsFinancieresPageState
     }
   }
 
-  // Filtrage côté client — les dates sont déjà gérées par le backend.
-  // Seuls catégorie, véhicule, chauffeur et texte libre restent ici.
-  List<OperationFinanciere> _filtrer(List<OperationFinanciere> all) {
-    final query = _recherche.toLowerCase();
-    return all.where((op) {
-      if (_categorieFiltre != null && !_categorieFiltre!.matches(op)) {
-        return false;
-      }
-      if (_vehiculeFiltre != null && op.vehiculeId != _vehiculeFiltre!.id) {
-        return false;
-      }
-      if (_chauffeurFiltre != null &&
-          op.chauffeurId != _chauffeurFiltre!.id) {
-        return false;
-      }
-      if (query.isNotEmpty) {
-        final hay = [
-          op.categorieLibelle ?? '',
-          op.sousCategorieLibelle ?? '',
-          op.chauffeurNom ?? '',
-          op.vehiculeNom ?? '',
-          op.reference ?? '',
-        ].join(' ').toLowerCase();
-        if (!hay.contains(query)) return false;
-      }
-      return true;
-    }).toList()
-      ..sort((a, b) => b.dateOperation.compareTo(a.dateOperation));
+  // Recherche : rechargement serveur après une courte temporisation (évite un
+  // appel réseau à chaque frappe). Le filtrage (catégorie, véhicule, chauffeur,
+  // texte) et le tri sont désormais gérés côté backend, page par page.
+  void _onSearchChanged(String v) {
+    setState(() => _recherche = v);
+    _searchDebounce?.cancel();
+    _searchDebounce =
+        Timer(const Duration(milliseconds: 400), _loadWithFilters);
   }
 
   @override
   Widget build(BuildContext context) {
     final money = NumberFormat.currency(
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
-    final state = ref.watch(operationFinanciereNotifierProvider);
-
-    final allOps = switch (state) {
-      OperationFinanciereLoaded(:final operations) => operations,
-      OperationFinanciereActionSuccess(:final operations) => operations,
-      _ => <OperationFinanciere>[],
-    };
-
-    final filtered = _filtrer(allOps);
+    final state = ref.watch(operationsListeProvider);
+    final ops = state.items;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
@@ -335,11 +332,15 @@ class _OperationsFinancieresPageState
         title: 'Opérations',
         action: AppHeaderAction(
           icon: Icons.add_rounded,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const OperationFinanciereFormPage()),
-          ),
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const OperationFinanciereFormPage()),
+            );
+            if (!mounted) return;
+            ref.read(operationsListeProvider.notifier).refresh();
+          },
         ),
       ),
       body: SafeArea(
@@ -349,11 +350,14 @@ class _OperationsFinancieresPageState
           children: [
             // ── Corps ─────────────────────────────────────────────────
             Expanded(
-              child: state is OperationFinanciereLoading
+              child: state.initialLoading && ops.isEmpty
                   ? const Center(child: CircularProgressIndicator())
                   : RefreshIndicator(
-                      onRefresh: () async => _loadWithFilters(),
+                      onRefresh: () => ref
+                          .read(operationsListeProvider.notifier)
+                          .refresh(),
                       child: CustomScrollView(
+                        controller: _scrollController,
                         slivers: [
                           // ── Filtre date ────────────────────────────
                           SliverToBoxAdapter(
@@ -378,8 +382,7 @@ class _OperationsFinancieresPageState
                           SliverToBoxAdapter(
                             child: _SearchBarWidget(
                               controller: _searchController,
-                              onChanged: (v) =>
-                                  setState(() => _recherche = v),
+                              onChanged: _onSearchChanged,
                               onTunePressed: _showFiltreAvance,
                               hasActiveFilter: _vehiculeFiltre != null ||
                                   _chauffeurFiltre != null,
@@ -390,13 +393,15 @@ class _OperationsFinancieresPageState
                           SliverToBoxAdapter(
                             child: _CategorieChipBar(
                               selected: _categorieFiltre,
-                              onChanged: (c) =>
-                                  setState(() => _categorieFiltre = c),
+                              onChanged: (c) {
+                                setState(() => _categorieFiltre = c);
+                                _loadWithFilters();
+                              },
                             ),
                           ),
 
-                          // ── Liste ou état vide ─────────────────────
-                          if (filtered.isEmpty)
+                          // ── Liste / état vide / loader bas de page ──
+                          if (ops.isEmpty)
                             const SliverFillRemaining(child: _EmptyState())
                           else
                             SliverPadding(
@@ -404,20 +409,34 @@ class _OperationsFinancieresPageState
                                   const EdgeInsets.fromLTRB(16, 10, 16, 24),
                               sliver: SliverList(
                                 delegate: SliverChildBuilderDelegate(
-                                  (_, i) => _OpCard(
-                                    op: filtered[i],
-                                    money: money,
-                                    onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            OperationFinanciereDetailPage(
-                                          operation: filtered[i],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  childCount: filtered.length,
+                                  (_, i) {
+                                    if (i >= ops.length) {
+                                      return const _LoadMoreTile();
+                                    }
+                                    final op = ops[i];
+                                    return _OpCard(
+                                      op: op,
+                                      money: money,
+                                      onTap: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                OperationFinanciereDetailPage(
+                                              operation: op,
+                                            ),
+                                          ),
+                                        );
+                                        if (!mounted) return;
+                                        ref
+                                            .read(operationsListeProvider
+                                                .notifier)
+                                            .refresh();
+                                      },
+                                    );
+                                  },
+                                  childCount:
+                                      ops.length + (state.hasMore ? 1 : 0),
                                 ),
                               ),
                             ),
@@ -671,10 +690,9 @@ class _OpCard extends StatelessWidget {
     final sign = isRevenu ? '+' : '-';
 
     // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
-    // Libellé relatif sur la date métier (recette/cotisation/faute), recalculé
-    // à l'affichage — pas de tâche planifiée.
-    final categorie = op.categorieLibelle ?? op.typeOperation.libelle;
-    final titre = '$categorie ${op.libelleDateRelative}';
+    // La date relative (recalculée à l'affichage) n'est ajoutée que pour les
+    // encaissements ; les autres opérations (ex. Vidange) s'affichent sans date.
+    final titre = op.libelleLigne;
 
     // Ligne 2 : « [imat véhicule - Nom chauffeur] »
     final vehiculeChauffeur = [
@@ -884,6 +902,26 @@ class _StatusBadge extends StatelessWidget {
 }
 
 // ── Popup filtre avancé → voir core/widgets/filtre_vehicule_chauffeur_dialog.dart
+
+// ── Loader bas de liste (scroll infini) ─────────────────────────────────────
+
+class _LoadMoreTile extends StatelessWidget {
+  const _LoadMoreTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+    );
+  }
+}
 
 // ── État vide ──────────────────────────────────────────────────────────────
 

@@ -83,4 +83,21 @@ class OperationFinanciere {
   ///  sans dépendre d'un code de catégorie figé).
   bool get isMaintenance =>
       sousCategorieLibelle?.toLowerCase() == 'maintenances';
+
+  /// Vrai si l'opération est un encaissement (recette / cotisation / pénalité).
+  /// Seuls ces types conservent la date relative dans leur libellé de ligne ;
+  /// les autres opérations (dépenses, maintenance…) s'affichent sans date.
+  bool get estEncaissement => const {
+        'ENCAISSEMENT_RECETTES',
+        'ENCAISSEMENT_COTISATIONS',
+        'ENCAISSEMENT_PENALITES',
+      }.contains(categorieCode?.toUpperCase());
+
+  /// Libellé du titre affiché sur les lignes d'opération (Accueil, liste des
+  /// opérations) : « Catégorie d'hier » pour un encaissement, « Catégorie »
+  /// seul sinon (pas de date dans le titre pour les non-encaissements).
+  String get libelleLigne {
+    final categorie = categorieLibelle ?? typeOperation.libelle;
+    return estEncaissement ? '$categorie $libelleDateRelative' : categorie;
+  }
 }

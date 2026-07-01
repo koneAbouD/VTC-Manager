@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.operation.OperationFinanciereFiltre
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.application.usecases.operationFinanciere.*;
+import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.OperationFinanciereRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.OperationFinanciereResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.mapper.OperationFinanciereRestMapper;
@@ -44,8 +45,35 @@ public class OperationFinanciereController {
             @RequestParam(required = false) StatutOperation statut,
             @RequestParam(required = false) String recherche,
             @RequestParam(required = false) String categorieCode) {
-        var filtres = new OperationFinanciereFiltres(typeOperation, debut, fin, statut, recherche, categorieCode);
+        var filtres = new OperationFinanciereFiltres(
+                typeOperation, debut, fin, statut, recherche, categorieCode, null, null, null);
         return mapper.toResponseList(getAllUseCase.execute(filtres));
+    }
+
+    /**
+     * Liste paginée (scroll infini côté mobile). Supporte les mêmes filtres que
+     * {@link #findAll} + véhicule / chauffeur, et renvoie une enveloppe
+     * {@link PageResponse}.
+     */
+    @GetMapping("/page")
+    public PageResponse<OperationFinanciereResponse> findPage(
+            @RequestParam(required = false) TypeOperation typeOperation,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
+            @RequestParam(required = false) StatutOperation statut,
+            @RequestParam(required = false) String recherche,
+            @RequestParam(required = false) String categorieCode,
+            @RequestParam(required = false) String sousCategorieLibelle,
+            @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(required = false) Long chauffeurId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var filtres = new OperationFinanciereFiltres(
+                typeOperation, debut, fin, statut, recherche, categorieCode,
+                vehiculeId, chauffeurId, sousCategorieLibelle);
+        var result = getAllUseCase.executePage(filtres, page, size)
+                .map(mapper::toResponse);
+        return PageResponse.from(result);
     }
 
     @GetMapping("/{id}")

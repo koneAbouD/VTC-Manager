@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../../domain/entities/operation_financiere.dart';
 import '../../domain/repositories/operation_financiere_repository.dart';
 import '../datasources/operation_financiere_remote_datasource.dart';
@@ -26,6 +27,44 @@ class OperationFinanciereRepositoryImpl
           fin: fin,
           statut: statut,
           categorieCode: categorieCode);
+      return Right(result);
+    } on ApiException catch (e) {
+      return Left(_map(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PageResult<OperationFinanciere>>> getPage({
+    int page = 0,
+    int size = 20,
+    String? typeOperation,
+    String? debut,
+    String? fin,
+    String? statut,
+    String? categorieCode,
+    String? sousCategorieLibelle,
+    int? vehiculeId,
+    int? chauffeurId,
+    String? recherche,
+  }) async {
+    try {
+      final result = await _datasource.getPage(
+        page: page,
+        size: size,
+        typeOperation: typeOperation,
+        debut: debut,
+        fin: fin,
+        statut: statut,
+        categorieCode: categorieCode,
+        sousCategorieLibelle: sousCategorieLibelle,
+        vehiculeId: vehiculeId,
+        chauffeurId: chauffeurId,
+        recherche: recherche,
+      );
       return Right(result);
     } on ApiException catch (e) {
       return Left(_map(e));

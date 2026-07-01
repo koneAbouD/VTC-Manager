@@ -17,12 +17,13 @@ public class OperationFinanciereSpecs {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            boolean filterByCategorie = f.categorieCode() != null && !f.categorieCode().isBlank();
-            boolean hasRecherche      = f.recherche()     != null && !f.recherche().isBlank();
+            boolean filterByCategorie    = f.categorieCode() != null && !f.categorieCode().isBlank();
+            boolean filterBySousCategorie = f.sousCategorieLibelle() != null && !f.sousCategorieLibelle().isBlank();
+            boolean hasRecherche         = f.recherche()     != null && !f.recherche().isBlank();
 
             // Joins créés une seule fois et réutilisés pour éviter les doublons
             var cat = (filterByCategorie || hasRecherche) ? root.join("categorie",    JoinType.LEFT) : null;
-            var sc  = hasRecherche ? root.join("sousCategorie", JoinType.LEFT) : null;
+            var sc  = (filterBySousCategorie || hasRecherche) ? root.join("sousCategorie", JoinType.LEFT) : null;
             var ch  = hasRecherche ? root.join("chauffeur",     JoinType.LEFT) : null;
             var v   = hasRecherche ? root.join("vehicule",      JoinType.LEFT) : null;
 
@@ -38,8 +39,17 @@ public class OperationFinanciereSpecs {
             if (f.fin() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("dateOperation"), f.fin()));
             }
+            if (f.vehiculeId() != null) {
+                predicates.add(cb.equal(root.get("vehicule").get("id"), f.vehiculeId()));
+            }
+            if (f.chauffeurId() != null) {
+                predicates.add(cb.equal(root.get("chauffeur").get("id"), f.chauffeurId()));
+            }
             if (filterByCategorie) {
                 predicates.add(cb.equal(cb.upper(cat.get("code")), f.categorieCode().toUpperCase()));
+            }
+            if (filterBySousCategorie) {
+                predicates.add(cb.equal(cb.lower(sc.get("libelle")), f.sousCategorieLibelle().toLowerCase()));
             }
             if (hasRecherche) {
                 String pattern = "%" + f.recherche().toLowerCase() + "%";

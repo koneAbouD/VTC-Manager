@@ -1,5 +1,6 @@
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_result.dart';
 import '../entities/operation_financiere.dart';
 
 abstract class OperationFinanciereRepository {
@@ -9,6 +10,20 @@ abstract class OperationFinanciereRepository {
     String? fin,
     String? statut,
     String? categorieCode,
+  });
+
+  Future<Either<Failure, PageResult<OperationFinanciere>>> getPage({
+    int page,
+    int size,
+    String? typeOperation,
+    String? debut,
+    String? fin,
+    String? statut,
+    String? categorieCode,
+    String? sousCategorieLibelle,
+    int? vehiculeId,
+    int? chauffeurId,
+    String? recherche,
   });
 
   Future<Either<Failure, OperationFinanciere>> getById(int id);
