@@ -35,7 +35,9 @@ public interface LigneCotisationJpaRepository
     Optional<LigneCotisationEntity> findActiveByChauffeurIdAndDate(
             @Param("chauffeurId") Long chauffeurId, @Param("date") LocalDate date);
 
-    @Modifying
+    // flush + clear : cf. LigneRecetteJpaRepository (évite que l'annulation
+    // d'encaissement soit réécrasée par l'entité ligne périmée au commit).
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE LigneCotisationEntity l SET l.statut = :statut, l.montantEncaisse = :montant WHERE l.id = :id")
     void updateStatutAndMontantEncaisse(
             @Param("id") Long id,

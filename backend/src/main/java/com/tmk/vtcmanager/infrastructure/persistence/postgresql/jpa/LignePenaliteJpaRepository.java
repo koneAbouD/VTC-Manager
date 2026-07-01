@@ -61,7 +61,9 @@ public interface LignePenaliteJpaRepository
     @Query("UPDATE LignePenaliteEntity l SET l.statut = :statut WHERE l.id = :id")
     void updateStatut(@Param("id") Long id, @Param("statut") StatutLignePenalite statut);
 
-    @Modifying
+    // flush + clear : cf. LigneRecetteJpaRepository (évite que l'annulation
+    // d'encaissement soit réécrasée par l'entité ligne périmée au commit).
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE LignePenaliteEntity l
             SET l.statut = :statut, l.montantEncaisse = :montantEncaisse

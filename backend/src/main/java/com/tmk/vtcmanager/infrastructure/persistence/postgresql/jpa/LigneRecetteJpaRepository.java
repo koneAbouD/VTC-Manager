@@ -37,7 +37,10 @@ public interface LigneRecetteJpaRepository
            "AND l.statut IN ('EN_ATTENTE', 'PARTIELLEMENT_ENCAISSE')")
     Optional<LigneRecetteEntity> findActiveByChauffeurIdAndDate(@Param("chauffeurId") Long chauffeurId, @Param("date") LocalDate date);
 
-    @Modifying
+    // flush + clear : la suppression d'encaissement est persistée avant l'update,
+    // et l'entité ligne périmée est évincée du contexte pour ne pas réécraser la
+    // valeur (montant/statut) au commit — sinon l'annulation ne « prend » pas.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE LigneRecetteEntity l SET l.statut = :statut, l.montantEncaisse = :montant WHERE l.id = :id")
     void updateStatutAndMontantEncaisse(@Param("id") Long id, @Param("statut") StatutLigneRecette statut, @Param("montant") BigDecimal montant);
 }
