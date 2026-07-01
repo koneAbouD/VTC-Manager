@@ -185,7 +185,7 @@ class _DetailBody extends ConsumerWidget {
 
     final error = await ref
         .read(operationFinanciereNotifierProvider.notifier)
-        .delete(id);
+        .annuler(id);
     if (!context.mounted) return;
 
     if (error != null) {

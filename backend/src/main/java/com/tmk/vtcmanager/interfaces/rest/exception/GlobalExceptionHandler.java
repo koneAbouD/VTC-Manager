@@ -141,6 +141,17 @@ public class GlobalExceptionHandler {
         Matcher m = CONSTRAINT_PATTERN.matcher(raw);
         String constraintName = m.find() ? m.group(1) : null;
 
+        if ("23503".equals(sqlState)) {
+            // Violation de clé étrangère : sur un DELETE, la ligne est encore
+            // référencée par d'autres enregistrements (≠ doublon). On expose le
+            // nom de la contrainte pour un diagnostic immédiat côté serveur.
+            String message = "Suppression impossible : cet enregistrement est encore référencé"
+                    + (constraintName != null ? " (contrainte « " + constraintName + " »)." : ".");
+            List<String> details = constraintName != null
+                    ? List.of("contrainte:" + constraintName) : null;
+            return respond(HttpStatus.CONFLICT, "REFERENCE_EXISTANTE", message, request, details, ex);
+        }
+
         if ("23514".equals(sqlState)) {
             // Violation CHECK : une valeur fournie n'est pas autorisée pour une
             // colonne (≠ doublon). Message distinct pour ne pas induire en erreur.

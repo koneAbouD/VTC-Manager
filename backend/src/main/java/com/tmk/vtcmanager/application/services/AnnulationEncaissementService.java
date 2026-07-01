@@ -26,10 +26,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AnnulationEncaissementService {
 
-    private static final String CODE_RECETTE    = "ENCAISSEMENT_RECETTES";
-    private static final String CODE_COTISATION = "ENCAISSEMENT_COTISATIONS";
-    private static final String CODE_PENALITE   = "ENCAISSEMENT_PENALITES";
-
     private final EncaissementRepository encaissementRepository;
     private final EncaissementCotisationRepository encaissementCotisationRepository;
     private final EncaissementPenaliteRepository encaissementPenaliteRepository;
@@ -38,17 +34,18 @@ public class AnnulationEncaissementService {
     private final LignePenaliteRepository lignePenaliteRepository;
 
     public void annulerEncaissementLie(OperationFinanciere operation) {
-        if (operation == null || operation.getCategorie() == null
-                || operation.getCategorie().getCode() == null) {
+        if (operation == null || operation.getId() == null) {
             return;
         }
         Long opId = operation.getId();
-        switch (operation.getCategorie().getCode()) {
-            case CODE_RECETTE    -> annulerRecette(opId);
-            case CODE_COTISATION -> annulerCotisation(opId);
-            case CODE_PENALITE   -> annulerPenalite(opId);
-            default -> { /* opération non liée à un encaissement → rien à faire */ }
-        }
+        // On sonde directement les 3 tables d'encaissement par operationFinanciereId,
+        // sans se fier au code catégorie de l'opération. Une opération dont la
+        // catégorie a changé (donnée héritée) conserverait sinon un encaissement
+        // enfant orphelin, bloquant sa suppression (FK fk_encaissements_operation).
+        // Chaque méthode est un no-op si aucun encaissement lié n'existe.
+        annulerRecette(opId);
+        annulerCotisation(opId);
+        annulerPenalite(opId);
     }
 
     private void annulerRecette(Long opId) {
