@@ -7,6 +7,7 @@ import '../../data/datasources/maintenance_remote_datasource.dart';
 import '../../data/repositories_impl/maintenance_repository_impl.dart';
 import '../../domain/entities/maintenance.dart';
 import '../../domain/repositories/maintenance_repository.dart';
+import '../../domain/usecases/annuler_maintenance_usecase.dart';
 import '../../domain/usecases/complete_maintenance_usecase.dart';
 import '../../domain/usecases/create_maintenance_usecase.dart';
 import '../../domain/usecases/delete_maintenance_usecase.dart';
@@ -52,6 +53,10 @@ final _deleteMaintenanceUseCaseProvider = Provider(
   (ref) =>
       DeleteMaintenanceUseCase(ref.watch(maintenanceRepositoryProvider)),
 );
+final _annulerMaintenanceUseCaseProvider = Provider(
+  (ref) =>
+      AnnulerMaintenanceUseCase(ref.watch(maintenanceRepositoryProvider)),
+);
 final _completeMaintenanceUseCaseProvider = Provider(
   (ref) =>
       CompleteMaintenanceUseCase(ref.watch(maintenanceRepositoryProvider)),
@@ -64,6 +69,7 @@ class MaintenanceNotifier extends StateNotifier<MaintenanceState> {
   final CreateMaintenanceUseCase _createMaintenance;
   final UpdateMaintenanceUseCase _updateMaintenance;
   final DeleteMaintenanceUseCase _deleteMaintenance;
+  final AnnulerMaintenanceUseCase _annulerMaintenance;
   final CompleteMaintenanceUseCase _completeMaintenance;
 
   MaintenanceNotifier({
@@ -71,11 +77,13 @@ class MaintenanceNotifier extends StateNotifier<MaintenanceState> {
     required CreateMaintenanceUseCase createMaintenance,
     required UpdateMaintenanceUseCase updateMaintenance,
     required DeleteMaintenanceUseCase deleteMaintenance,
+    required AnnulerMaintenanceUseCase annulerMaintenance,
     required CompleteMaintenanceUseCase completeMaintenance,
   })  : _getMaintenances = getMaintenances,
         _createMaintenance = createMaintenance,
         _updateMaintenance = updateMaintenance,
         _deleteMaintenance = deleteMaintenance,
+        _annulerMaintenance = annulerMaintenance,
         _completeMaintenance = completeMaintenance,
         super(const MaintenanceInitial());
 
@@ -138,6 +146,17 @@ class MaintenanceNotifier extends StateNotifier<MaintenanceState> {
     );
   }
 
+  Future<String?> annulerMaintenance(int id) async {
+    final result = await _annulerMaintenance.call(id);
+    return result.fold(
+      (failure) => failure.message,
+      (_) {
+        loadMaintenances();
+        return null;
+      },
+    );
+  }
+
   Future<String?> completeMaintenance(int id, double cout) async {
     final result = await _completeMaintenance.call(id, cout);
     return result.fold(
@@ -164,6 +183,7 @@ final maintenanceNotifierProvider =
     createMaintenance: ref.watch(_createMaintenanceUseCaseProvider),
     updateMaintenance: ref.watch(_updateMaintenanceUseCaseProvider),
     deleteMaintenance: ref.watch(_deleteMaintenanceUseCaseProvider),
+    annulerMaintenance: ref.watch(_annulerMaintenanceUseCaseProvider),
     completeMaintenance: ref.watch(_completeMaintenanceUseCaseProvider),
   );
 });

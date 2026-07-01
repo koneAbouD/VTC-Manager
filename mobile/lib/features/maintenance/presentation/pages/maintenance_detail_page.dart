@@ -171,23 +171,23 @@ class _MaintenanceDetailPageState
     }
   }
 
-  Future<void> _delete() async {
+  Future<void> _annuler() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Supprimer la maintenance',
+        title: const Text('Annuler la maintenance',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         content: const Text(
-            'Cette action est irréversible. Confirmer la suppression ?'),
+            'La maintenance sera marquée comme annulée. Confirmer ?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
+              child: const Text('Non')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            child: const Text('Oui, annuler'),
           ),
         ],
       ),
@@ -196,7 +196,7 @@ class _MaintenanceDetailPageState
 
     final error = await ref
         .read(maintenanceNotifierProvider.notifier)
-        .deleteMaintenance(_m.id!);
+        .annulerMaintenance(_m.id!);
 
     if (!mounted) return;
     if (error != null) {
@@ -425,25 +425,28 @@ class _MaintenanceDetailPageState
                       ),
                     ),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      onPressed: _delete,
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          color: Colors.red),
-                      label: const Text('Supprimer',
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.red)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.red, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                  // L'annulation n'est proposée que si la maintenance ne l'est
+                  // pas déjà (évite l'erreur « déjà annulée »).
+                  if (_m.statut != 'ANNULEE')
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton.icon(
+                        onPressed: _annuler,
+                        icon: const Icon(Icons.cancel_outlined,
+                            color: Colors.red),
+                        label: const Text('Annuler',
+                            style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.red)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red, width: 1.5),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
                       ),
                     ),
-                  ),
         ],
       ),
     );

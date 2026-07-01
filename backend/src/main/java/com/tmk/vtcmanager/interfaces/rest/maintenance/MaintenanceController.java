@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.interfaces.rest.maintenance;
 
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
+import com.tmk.vtcmanager.application.usecases.maintenance.AnnulerMaintenanceUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.CompleteMaintenanceUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.DeleteMaintenanceUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.GetAllMaintenancesUseCase;
@@ -34,6 +35,7 @@ public class MaintenanceController {
     private final ScheduleMaintenanceUseCase scheduleMaintenanceUseCase;
     private final UpdateMaintenanceUseCase updateMaintenanceUseCase;
     private final DeleteMaintenanceUseCase deleteMaintenanceUseCase;
+    private final AnnulerMaintenanceUseCase annulerMaintenanceUseCase;
     private final GetMaintenanceByIdUseCase getMaintenanceByIdUseCase;
     private final GetAllMaintenancesUseCase getAllMaintenancesUseCase;
     private final CompleteMaintenanceUseCase completeMaintenanceUseCase;
@@ -86,6 +88,11 @@ public class MaintenanceController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         deleteMaintenanceUseCase.execute(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/annuler")
+    public MaintenanceResponse annuler(@PathVariable Long id) {
+        return mapper.toResponse(annulerMaintenanceUseCase.execute(id));
     }
 
     @PostMapping("/{id}/complete")

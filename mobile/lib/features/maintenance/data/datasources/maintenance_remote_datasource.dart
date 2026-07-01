@@ -71,6 +71,11 @@ class MaintenanceRemoteDatasource {
 
   Future<void> deleteMaintenance(int id) => _client.delete('/maintenances/$id');
 
+  Future<MaintenanceModel> annulerMaintenance(int id) async {
+    final data = await _client.patch('/maintenances/$id/annuler');
+    return MaintenanceModel.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<MaintenanceModel> completeMaintenance(int id, double cout) async {
     final data = await _client.post('/maintenances/$id/complete', {'cout': cout});
     return MaintenanceModel.fromJson(data as Map<String, dynamic>);

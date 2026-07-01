@@ -28,6 +28,8 @@ public class Maintenance {
     private BigDecimal cout;
     private String prestataire;
     private MaintenanceStatus statut;
+    /** Statut mémorisé juste avant la complétion, pour une réouverture fidèle. */
+    private MaintenanceStatus statutAvantCompletion;
     private Vehicule vehicule;
     private CategorieOperation categorieType;
     private DetailMaintenance detailMaintenance;
@@ -37,6 +39,9 @@ public class Maintenance {
     }
 
     public void terminer(BigDecimal coutEffectif, LocalDate dateEffectuee) {
+        // Mémorise le statut d'origine (PLANIFIEE / EN_COURS) pour pouvoir le
+        // restaurer si l'opération de dépense générée est annulée.
+        this.statutAvantCompletion = this.statut;
         this.statut = MaintenanceStatus.TERMINEE;
         this.dateEffectuee = dateEffectuee != null ? dateEffectuee : LocalDate.now();
         if (coutEffectif != null) {
@@ -50,11 +55,15 @@ public class Maintenance {
 
     /**
      * Rouvre une maintenance terminée (retour à l'état antérieur à la
-     * complétion) : repasse EN_COURS et efface la date d'exécution et le coût
-     * enregistrés lors de la complétion.
+     * complétion) : restaure le statut d'origine mémorisé (PLANIFIEE / EN_COURS,
+     * défaut EN_COURS) et efface la date d'exécution et le coût enregistrés lors
+     * de la complétion.
      */
     public void reouvrir() {
-        this.statut = MaintenanceStatus.EN_COURS;
+        this.statut = this.statutAvantCompletion != null
+                ? this.statutAvantCompletion
+                : MaintenanceStatus.EN_COURS;
+        this.statutAvantCompletion = null;
         this.dateEffectuee = null;
         this.cout = null;
     }

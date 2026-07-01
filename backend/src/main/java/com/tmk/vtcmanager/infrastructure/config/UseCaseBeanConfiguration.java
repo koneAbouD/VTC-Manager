@@ -343,6 +343,13 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public AnnulerMaintenanceUseCase annulerMaintenanceUseCase(
+            MaintenanceRepository repo,
+            VehiculeStatutEventPublisher statutEventPublisher) {
+        return new AnnulerMaintenanceUseCase(repo, statutEventPublisher);
+    }
+
+    @Bean
     public GetMaintenanceByIdUseCase getMaintenanceByIdUseCase(MaintenanceRepository repo) {
         return new GetMaintenanceByIdUseCase(repo);
     }
