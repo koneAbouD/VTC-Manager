@@ -1,6 +1,7 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- JDD Opérations financières  (~28 opérations sur 3 mois glissants)
 -- Catégories et sous-catégories issues de V12.1.0 / V12.2.0
+-- Statuts alignés sur le modèle courant : ENCAISSE (revenu) / PAYE (dépense) / ANNULEE.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 INSERT INTO operations_financieres
@@ -20,7 +21,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'mamadou.diallo@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'AB-751-PR'),
     85000, 'ESPECES', CURRENT_DATE - 2,
-    'Versement hebdomadaire Diallo', 'VALIDEE', NULL
+    'Versement hebdomadaire Diallo', 'ENCAISSE', NULL
 ),
 
 -- REVENU — Commissions sur courses (Uber)
@@ -31,7 +32,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'ibrahim.kone@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'BC-752-PR'),
     47500, 'MOBILE_MONEY', CURRENT_DATE - 3,
-    'Commission Uber — semaine 21', 'VALIDEE', NULL
+    'Commission Uber — semaine 21', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Réparation
@@ -42,7 +43,7 @@ VALUES
     NULL,
     (SELECT id FROM vehicules WHERE immatriculation = 'AB-751-PR'),
     28000, 'MOBILE_MONEY', CURRENT_DATE - 5,
-    'Remplacement filtre habitacle', 'VALIDEE', NULL
+    'Remplacement filtre habitacle', 'PAYE', NULL
 ),
 
 -- REVENU — Encaissement chauffeur virement
@@ -53,10 +54,10 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'ibrahim.kone@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'BC-752-PR'),
     93000, 'MOBILE_MONEY', CURRENT_DATE - 7,
-    'Versement virement Koné — semaine 21', 'VALIDEE', NULL
+    'Versement virement Koné — semaine 21', 'ENCAISSE', NULL
 ),
 
--- REVENU — Commissions sur courses (Bolt) — en brouillon
+-- REVENU — Commissions sur courses (Bolt)
 (
     'JDD-0005', 'REVENU',
     (SELECT id FROM categories_operation     WHERE code = 'COMMISSIONS_COURSES'),
@@ -64,7 +65,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'julien.martin@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'CD-753-PR'),
     39500, 'MOBILE_MONEY', CURRENT_DATE - 8,
-    'Commission Bolt — mai', 'BROUILLON', NULL
+    'Commission Bolt — mai', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Frais bancaire (frais de compte)
@@ -74,7 +75,7 @@ VALUES
     (SELECT id FROM sous_categories_operation WHERE code = 'SC_FRAIS_BANCAIRE'),
     NULL, NULL,
     7500, 'MOBILE_MONEY', CURRENT_DATE - 10,
-    'Frais de tenue de compte mensuel', 'VALIDEE', NULL
+    'Frais de tenue de compte mensuel', 'PAYE', NULL
 ),
 
 -- REVENU — Encaissement chauffeur espèces
@@ -85,7 +86,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'julien.martin@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'CD-753-PR'),
     79000, 'ESPECES', CURRENT_DATE - 12,
-    'Versement Martin — semaine 20', 'VALIDEE', NULL
+    'Versement Martin — semaine 20', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Réparation véhicule
@@ -96,7 +97,7 @@ VALUES
     NULL,
     (SELECT id FROM vehicules WHERE immatriculation = 'BC-752-PR'),
     32000, 'MOBILE_MONEY', CURRENT_DATE - 14,
-    'Remplacement courroie accessoires', 'VALIDEE', NULL
+    'Remplacement courroie accessoires', 'PAYE', NULL
 ),
 
 -- REVENU — Encaissement chauffeur espèces
@@ -107,7 +108,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'rachid.benali@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'DE-754-ST'),
     88000, 'ESPECES', CURRENT_DATE - 16,
-    'Versement Benali — semaine 20', 'VALIDEE', NULL
+    'Versement Benali — semaine 20', 'ENCAISSE', NULL
 ),
 
 -- REVENU — Commissions sur courses (Heetch)
@@ -118,7 +119,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'rachid.benali@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'DE-754-ST'),
     43000, 'MOBILE_MONEY', CURRENT_DATE - 18,
-    'Commission Heetch — avril', 'VALIDEE', NULL
+    'Commission Heetch — avril', 'ENCAISSE', NULL
 ),
 
 -- ══════════════════════════════════════════════════════════════════════════════
@@ -132,7 +133,7 @@ VALUES
     (SELECT id FROM sous_categories_operation WHERE code = 'SC_FRAIS_BANCAIRE'),
     NULL, NULL,
     120000, 'MOBILE_MONEY', CURRENT_DATE - 32,
-    'Prime assurance mensuelle flotte', 'VALIDEE', NULL
+    'Prime assurance mensuelle flotte', 'PAYE', NULL
 ),
 
 -- REVENU — Encaissement chauffeur virement
@@ -143,7 +144,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'carlos.garcia@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'EF-755-ST'),
     96000, 'MOBILE_MONEY', CURRENT_DATE - 34,
-    'Versement Garcia — semaine 18', 'VALIDEE', NULL
+    'Versement Garcia — semaine 18', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Équipements (GPS fleet)
@@ -154,7 +155,7 @@ VALUES
     NULL,
     (SELECT id FROM vehicules WHERE immatriculation = 'KL-761-NV'),
     45000, 'MOBILE_MONEY', CURRENT_DATE - 36,
-    'Boîtier télématique GPS flotte', 'VALIDEE', NULL
+    'Boîtier télématique GPS flotte', 'PAYE', NULL
 ),
 
 -- REVENU — Encaissement chauffeur espèces
@@ -165,7 +166,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'thomas.dupont@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'FG-756-ST'),
     71000, 'ESPECES', CURRENT_DATE - 38,
-    'Versement Dupont — semaine 17', 'VALIDEE', NULL
+    'Versement Dupont — semaine 17', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Maintenance (révision complète Mercedes, avec détail)
@@ -175,8 +176,8 @@ VALUES
     (SELECT id FROM sous_categories_operation WHERE code = 'SC_MAINTENANCE'),
     NULL,
     (SELECT id FROM vehicules WHERE immatriculation = 'AB-751-PR'),
-    125500, 'MOBILE_MONEY', CURRENT_DATE - 40,
-    'Révision 20 000 km Mercedes Classe E', 'VALIDEE',
+    125500, 'ESPECES', CURRENT_DATE - 40,
+    'Révision 20 000 km Mercedes Classe E', 'PAYE',
     (SELECT id FROM details_maintenance ORDER BY id ASC LIMIT 1)
 ),
 
@@ -188,7 +189,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'carlos.garcia@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'EF-755-ST'),
     52000, 'MOBILE_MONEY', CURRENT_DATE - 42,
-    'Commission Uber — semaine 17', 'VALIDEE', NULL
+    'Commission Uber — semaine 17', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Frais bancaire (forfait téléphonique)
@@ -198,7 +199,7 @@ VALUES
     (SELECT id FROM sous_categories_operation WHERE code = 'SC_FRAIS_BANCAIRE'),
     NULL, NULL,
     18000, 'MOBILE_MONEY', CURRENT_DATE - 44,
-    'Forfait professionnel 4 lignes', 'VALIDEE', NULL
+    'Forfait professionnel 4 lignes', 'PAYE', NULL
 ),
 
 -- REVENU — Encaissement chauffeur espèces
@@ -209,7 +210,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'mamadou.diallo@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'AB-751-PR'),
     82000, 'ESPECES', CURRENT_DATE - 46,
-    'Versement Diallo — semaine 16', 'VALIDEE', NULL
+    'Versement Diallo — semaine 16', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Marketing et publicité
@@ -219,7 +220,7 @@ VALUES
     (SELECT id FROM sous_categories_operation WHERE code = 'SC_MARKETING_PUBLICITE'),
     NULL, NULL,
     25000, 'MOBILE_MONEY', CURRENT_DATE - 48,
-    'Campagne publicité réseaux sociaux', 'VALIDEE', NULL
+    'Campagne publicité réseaux sociaux', 'PAYE', NULL
 ),
 
 -- REVENU — Commissions sur courses — ANNULEE (doublon)
@@ -245,7 +246,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'ibrahim.kone@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'BC-752-PR'),
     87000, 'ESPECES', CURRENT_DATE - 62,
-    'Versement Koné — semaine 12', 'VALIDEE', NULL
+    'Versement Koné — semaine 12', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Frais bancaire (assurance RC)
@@ -255,7 +256,7 @@ VALUES
     (SELECT id FROM sous_categories_operation WHERE code = 'SC_FRAIS_BANCAIRE'),
     NULL, NULL,
     95000, 'MOBILE_MONEY', CURRENT_DATE - 64,
-    'Prime RC professionnelle T2', 'VALIDEE', NULL
+    'Prime RC professionnelle T2', 'PAYE', NULL
 ),
 
 -- DEPENSE — Maintenance (remplacement pneumatiques BMW, avec détail)
@@ -265,8 +266,8 @@ VALUES
     (SELECT id FROM sous_categories_operation WHERE code = 'SC_MAINTENANCE'),
     NULL,
     (SELECT id FROM vehicules WHERE immatriculation = 'BC-752-PR'),
-    200000, 'MOBILE_MONEY', CURRENT_DATE - 66,
-    'Remplacement 4 pneumatiques BMW Série 5', 'VALIDEE',
+    200000, 'ESPECES', CURRENT_DATE - 66,
+    'Remplacement 4 pneumatiques BMW Série 5', 'PAYE',
     (SELECT id FROM details_maintenance ORDER BY id DESC LIMIT 1)
 ),
 
@@ -278,7 +279,7 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'rachid.benali@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'DE-754-ST'),
     91000, 'ESPECES', CURRENT_DATE - 68,
-    'Versement Benali — semaine 11', 'VALIDEE', NULL
+    'Versement Benali — semaine 11', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Intérêts sur les prêts véhicules
@@ -289,7 +290,7 @@ VALUES
     NULL,
     (SELECT id FROM vehicules WHERE immatriculation = 'BC-752-PR'),
     29000, 'MOBILE_MONEY', CURRENT_DATE - 70,
-    'Mensualité crédit véhicule BMW', 'VALIDEE', NULL
+    'Mensualité crédit véhicule BMW', 'PAYE', NULL
 ),
 
 -- REVENU — Remboursement (sinistre)
@@ -300,7 +301,7 @@ VALUES
     NULL,
     (SELECT id FROM vehicules  WHERE immatriculation = 'EF-755-ST'),
     45000, 'MOBILE_MONEY', CURRENT_DATE - 72,
-    'Remboursement sinistre assurance mars', 'VALIDEE', NULL
+    'Remboursement sinistre assurance mars', 'ENCAISSE', NULL
 ),
 
 -- DEPENSE — Frais de formation
@@ -310,10 +311,10 @@ VALUES
     (SELECT id FROM sous_categories_operation WHERE code = 'SC_FRAIS_FORMATION'),
     NULL, NULL,
     12000, 'ESPECES', CURRENT_DATE - 75,
-    'Formation conduite préventive chauffeurs', 'VALIDEE', NULL
+    'Formation conduite préventive chauffeurs', 'PAYE', NULL
 ),
 
--- REVENU — Encaissement chauffeur espèces — brouillon
+-- REVENU — Encaissement chauffeur espèces
 (
     'JDD-0028', 'REVENU',
     (SELECT id FROM categories_operation     WHERE code = 'ENCAISSEMENT_CHAUFFEUR'),
@@ -321,5 +322,5 @@ VALUES
     (SELECT id FROM chauffeurs WHERE email = 'julien.martin@vtcmanager.dev'),
     (SELECT id FROM vehicules  WHERE immatriculation = 'CD-753-PR'),
     75000, 'ESPECES', CURRENT_DATE - 78,
-    'Versement Martin — semaine 9', 'BROUILLON', NULL
+    'Versement Martin — semaine 9', 'ENCAISSE', NULL
 );
