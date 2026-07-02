@@ -55,14 +55,10 @@ public class CreateEncaissementUseCase {
 
         Encaissement saved = encaissementRepository.save(encaissement);
 
-        // Recalcul du statut de la ligne via rechargement avec encaissements
-        LigneRecette ligneComplete = ligneRecetteRepository.findById(ligneRecetteId).orElseThrow();
-        ligneComplete.getEncaissements().add(saved);
-        ligneComplete.recalculerStatutEtMontant();
-        ligneRecetteRepository.updateStatutAndMontantEncaisse(
-                ligneRecetteId,
-                ligneComplete.getStatut(),
-                ligneComplete.getMontantEncaisse());
+        // Recalcul fiable depuis la BDD (source de vérité) : montant_encaisse +
+        // statut = agrégat des encaissements de la ligne, en une instruction
+        // atomique. Évite le double comptage de l'ancien rechargement en mémoire.
+        ligneRecetteRepository.recalculerDepuisEncaissements(ligneRecetteId);
 
         return saved;
     }

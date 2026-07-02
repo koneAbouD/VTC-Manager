@@ -43,4 +43,29 @@ public interface LigneRecetteJpaRepository
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE LigneRecetteEntity l SET l.statut = :statut, l.montantEncaisse = :montant WHERE l.id = :id")
     void updateStatutAndMontantEncaisse(@Param("id") Long id, @Param("statut") StatutLigneRecette statut, @Param("montant") BigDecimal montant);
+
+    /**
+     * Recalcule montant_encaisse ET statut d'une ligne DIRECTEMENT depuis la
+     * table des encaissements (source de vérité), en une seule instruction
+     * atomique. À appeler après tout ajout/suppression d'encaissement.
+     * flushAutomatically : rend visibles l'INSERT/DELETE en attente avant le
+     * SUM ; clearAutomatically : évince l'entité ligne périmée du contexte.
+     * Ne touche pas une ligne annulée.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE lignes_recette lr
+            SET montant_encaisse = sub.total,
+                statut = CASE
+                    WHEN lr.montant_attendu IS NULL
+                        THEN CASE WHEN sub.total > 0 THEN 'PARTIELLEMENT_ENCAISSE' ELSE 'EN_ATTENTE' END
+                    WHEN sub.total >= lr.montant_attendu THEN 'ENCAISSE'
+                    WHEN sub.total > 0 THEN 'PARTIELLEMENT_ENCAISSE'
+                    ELSE 'EN_ATTENTE'
+                END
+            FROM (SELECT COALESCE(SUM(montant), 0) AS total
+                  FROM encaissements WHERE ligne_recette_id = :ligneId) sub
+            WHERE lr.id = :ligneId AND lr.statut <> 'ANNULEE'
+            """, nativeQuery = true)
+    void recalculerDepuisEncaissements(@Param("ligneId") Long ligneId);
 }

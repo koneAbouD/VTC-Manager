@@ -112,6 +112,12 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
     }
 
     @Override
+    @Transactional
+    public void recalculerDepuisEncaissements(Long ligneId) {
+        jpaRepository.recalculerDepuisEncaissements(ligneId);
+    }
+
+    @Override
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
     }

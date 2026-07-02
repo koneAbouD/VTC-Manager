@@ -31,5 +31,8 @@ public interface LigneRecetteRepository {
 
     void updateStatutAndMontantEncaisse(Long id, StatutLigneRecette statut, java.math.BigDecimal montantEncaisse);
 
+    /** Recalcule montant_encaisse + statut de la ligne depuis ses encaissements (source de vérité). */
+    void recalculerDepuisEncaissements(Long ligneId);
+
     void deleteById(Long id);
 }

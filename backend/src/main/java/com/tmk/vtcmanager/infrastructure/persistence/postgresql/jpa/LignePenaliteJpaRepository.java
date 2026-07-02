@@ -74,6 +74,29 @@ public interface LignePenaliteJpaRepository
             @Param("statut") StatutLignePenalite statut,
             @Param("montantEncaisse") BigDecimal montantEncaisse);
 
+    /**
+     * Recalcule montant_encaisse + statut d'une pénalité (amende) depuis la
+     * table des encaissements pénalité (source de vérité), atomiquement.
+     * Ne touche QUE les statuts liés à l'encaissement (EN_ATTENTE /
+     * PARTIELLEMENT_ENCAISSEE / ENCAISSEE) pour ne pas écraser un statut de
+     * cycle de vie (EXECUTEE, NOTIFIEE, EN_COURS, LEVEE, ANNULEE).
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE lignes_penalite lp
+            SET montant_encaisse = sub.total,
+                statut = CASE
+                    WHEN sub.total >= lp.montant THEN 'ENCAISSEE'
+                    WHEN sub.total > 0 THEN 'PARTIELLEMENT_ENCAISSEE'
+                    ELSE 'EN_ATTENTE'
+                END
+            FROM (SELECT COALESCE(SUM(montant), 0) AS total
+                  FROM encaissements_penalite WHERE ligne_penalite_id = :ligneId) sub
+            WHERE lp.id = :ligneId
+              AND lp.statut IN ('EN_ATTENTE', 'PARTIELLEMENT_ENCAISSEE', 'ENCAISSEE')
+            """, nativeQuery = true)
+    void recalculerDepuisEncaissements(@Param("ligneId") Long ligneId);
+
     @Modifying
     @Query("""
             UPDATE LignePenaliteEntity l

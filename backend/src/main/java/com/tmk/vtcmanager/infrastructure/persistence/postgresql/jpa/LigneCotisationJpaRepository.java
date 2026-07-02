@@ -43,4 +43,23 @@ public interface LigneCotisationJpaRepository
             @Param("id") Long id,
             @Param("statut") StatutLigneCotisation statut,
             @Param("montant") BigDecimal montant);
+
+    /**
+     * Recalcule montant_encaisse + statut depuis la table des encaissements
+     * cotisation (source de vérité), atomiquement. Cf. LigneRecetteJpaRepository.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE lignes_cotisation lc
+            SET montant_encaisse = sub.total,
+                statut = CASE
+                    WHEN sub.total >= lc.montant_du THEN 'ENCAISSE'
+                    WHEN sub.total > 0 THEN 'PARTIELLEMENT_ENCAISSE'
+                    ELSE 'EN_ATTENTE'
+                END
+            FROM (SELECT COALESCE(SUM(montant), 0) AS total
+                  FROM encaissements_cotisation WHERE ligne_cotisation_id = :ligneId) sub
+            WHERE lc.id = :ligneId AND lc.statut <> 'ANNULEE'
+            """, nativeQuery = true)
+    void recalculerDepuisEncaissements(@Param("ligneId") Long ligneId);
 }

@@ -33,6 +33,9 @@ public interface LignePenaliteRepository {
 
     void updateStatutAndMontantEncaisse(Long id, StatutLignePenalite statut, BigDecimal montantEncaisse);
 
+    /** Recalcule montant_encaisse + statut (amende) depuis ses encaissements (source de vérité). */
+    void recalculerDepuisEncaissements(Long ligneId);
+
     void updateDebutImmobilisation(Long id, StatutLignePenalite statut, LocalDateTime dateDebut);
 
     void updateFinImmobilisation(Long id, StatutLignePenalite statut, LocalDateTime dateFin);

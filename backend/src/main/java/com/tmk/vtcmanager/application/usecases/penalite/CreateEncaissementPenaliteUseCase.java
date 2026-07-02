@@ -50,13 +50,8 @@ public class CreateEncaissementPenaliteUseCase {
 
         EncaissementPenalite saved = encaissementPenaliteRepository.save(encaissement);
 
-        LignePenalite ligneComplete = lignePenaliteRepository.findById(lignePenaliteId).orElseThrow();
-        ligneComplete.getEncaissements().add(saved);
-        ligneComplete.recalculerStatutAmende();
-        lignePenaliteRepository.updateStatutAndMontantEncaisse(
-                lignePenaliteId,
-                ligneComplete.getStatut(),
-                ligneComplete.getMontantEncaisse());
+        // Recalcul fiable depuis la BDD (source de vérité), une instruction atomique.
+        lignePenaliteRepository.recalculerDepuisEncaissements(lignePenaliteId);
 
         return saved;
     }

@@ -70,7 +70,8 @@ class OperationsFinancieresPage extends ConsumerStatefulWidget {
 
 class _OperationsFinancieresPageState
     extends ConsumerState<OperationsFinancieresPage> {
-  _FiltreMode _filtreMode = _FiltreMode.mois;
+  // null = aucun filtre par date (toutes périodes) — comportement par défaut.
+  _FiltreMode? _filtreMode;
   int _moisSelectionne = DateTime.now().month;
   int _anneeSelectionnee = DateTime.now().year;
   DateTime _jourSelectionne = DateTime.now();
@@ -106,7 +107,9 @@ class _OperationsFinancieresPageState
 
   // ── Plage de dates active ─────────────────────────────────────────────────
 
-  (DateTime, DateTime) _plageActive() => switch (_filtreMode) {
+  // (null, null) quand aucun filtre par date n'est actif.
+  (DateTime?, DateTime?) _plageActive() => switch (_filtreMode) {
+        null => (null, null),
         _FiltreMode.mois => (
             DateTime(_anneeSelectionnee, _moisSelectionne, 1),
             DateTime(_anneeSelectionnee, _moisSelectionne + 1, 0),
@@ -124,8 +127,8 @@ class _OperationsFinancieresPageState
   void _loadWithFilters() {
     final (debut, fin) = _plageActive();
     ref.read(operationsListeProvider.notifier).load(
-          debut: DateFormat('yyyy-MM-dd').format(debut),
-          fin: DateFormat('yyyy-MM-dd').format(fin),
+          debut: debut != null ? DateFormat('yyyy-MM-dd').format(debut) : null,
+          fin: fin != null ? DateFormat('yyyy-MM-dd').format(fin) : null,
           categorieCode: _categorieFiltre?.categorieCodeParam,
           sousCategorieLibelle: _categorieFiltre?.sousCategorieLibelleParam,
           vehiculeId: _vehiculeFiltre?.id,
@@ -164,7 +167,7 @@ class _OperationsFinancieresPageState
                 elevation: 8,
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  width: 190,
+                  width: 210,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -172,8 +175,10 @@ class _OperationsFinancieresPageState
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: _FiltreMode.values.map((mode) {
+                    // null = « Toutes les périodes » (désactive le filtre par date).
+                    children: <_FiltreMode?>[null, ..._FiltreMode.values].map((mode) {
                       final label = switch (mode) {
+                        null => 'Toutes les périodes',
                         _FiltreMode.mois => 'Mois',
                         _FiltreMode.semaine => 'Semaine',
                         _FiltreMode.jour => 'Jour',
@@ -454,7 +459,7 @@ class _OperationsFinancieresPageState
 // ── Barre de filtre ────────────────────────────────────────────────────────
 
 class _FiltreBar extends StatelessWidget {
-  final _FiltreMode mode;
+  final _FiltreMode? mode;
   final GlobalKey filtreKey;
   final VoidCallback onFiltrePressed;
   final int moisSelectionne;
@@ -487,13 +492,20 @@ class _FiltreBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final modeLabel = switch (mode) {
+      null => 'Période',
       _FiltreMode.mois => 'Mois',
       _FiltreMode.semaine => 'Semaine',
       _FiltreMode.jour => 'Jour',
       _FiltreMode.periode => 'Période',
     };
 
-    final datePill = switch (mode) {
+    final Widget? datePill = switch (mode) {
+      // Carte de valeur statique quand aucun filtre par date n'est actif.
+      null => _DatePill(
+          icon: Icons.calendar_month_outlined,
+          label: 'Toutes les périodes',
+          onTap: onFiltrePressed,
+        ),
       _FiltreMode.mois => _DatePill(
           icon: Icons.calendar_month_outlined,
           label: '${kMoisNoms[moisSelectionne - 1]} $anneeSelectionnee',
@@ -554,7 +566,7 @@ class _FiltreBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(child: datePill),
+          if (datePill != null) Expanded(child: datePill),
         ],
       ),
     );

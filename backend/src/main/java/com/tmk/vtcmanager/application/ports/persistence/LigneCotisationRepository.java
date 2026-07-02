@@ -28,5 +28,8 @@ public interface LigneCotisationRepository {
 
     void updateStatutAndMontantEncaisse(Long id, StatutLigneCotisation statut, BigDecimal montantEncaisse);
 
+    /** Recalcule montant_encaisse + statut de la ligne depuis ses encaissements (source de vérité). */
+    void recalculerDepuisEncaissements(Long ligneId);
+
     void deleteById(Long id);
 }

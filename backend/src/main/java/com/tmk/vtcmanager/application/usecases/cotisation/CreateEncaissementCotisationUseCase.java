@@ -49,13 +49,8 @@ public class CreateEncaissementCotisationUseCase {
 
         EncaissementCotisation saved = encaissementCotisationRepository.save(encaissement);
 
-        LigneCotisation ligneComplete = ligneCotisationRepository.findById(ligneCotisationId).orElseThrow();
-        ligneComplete.getEncaissements().add(saved);
-        ligneComplete.recalculerStatutEtMontant();
-        ligneCotisationRepository.updateStatutAndMontantEncaisse(
-                ligneCotisationId,
-                ligneComplete.getStatut(),
-                ligneComplete.getMontantEncaisse());
+        // Recalcul fiable depuis la BDD (source de vérité), une instruction atomique.
+        ligneCotisationRepository.recalculerDepuisEncaissements(ligneCotisationId);
 
         return saved;
     }

@@ -148,6 +148,12 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
 
     @Override
     @Transactional
+    public void recalculerDepuisEncaissements(Long ligneId) {
+        jpaRepository.recalculerDepuisEncaissements(ligneId);
+    }
+
+    @Override
+    @Transactional
     public void updateDebutImmobilisation(Long id, StatutLignePenalite statut, LocalDateTime dateDebut) {
         jpaRepository.updateDebutImmobilisation(id, statut, dateDebut);
     }
