@@ -72,7 +72,7 @@ class _EncaissementPenaliteFormPageState
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _mode,
+              initialValue: _mode,
               decoration: const InputDecoration(
                 labelText: 'Mode d\'encaissement *',
                 border: OutlineInputBorder(),

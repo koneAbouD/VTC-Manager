@@ -12,7 +12,7 @@ class ChauffeurRemoteDatasource {
 
   Future<List<ChauffeurModel>> getChauffeurs() async {
     final data = await _client.get('/chauffeurs');
-    if (data is! List) throw ApiException(500, 'Format de réponse inattendu');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => ChauffeurModel.fromJson(e as Map<String, dynamic>))
         .toList();

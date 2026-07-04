@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.vehicule.*;
 import com.tmk.vtcmanager.application.exception.ResourceAlreadyExistsException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.*;
+import com.tmk.vtcmanager.application.services.VehiculeStatutHistoriqueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,7 @@ public class CreateVehiculeUseCase {
     private final TypeVehiculeRepository typeVehiculeRepository;
     private final TypeActiviteRepository typeActiviteRepository;
     private final GroupeVehiculeRepository groupeVehiculeRepository;
+    private final VehiculeStatutHistoriqueService statutHistoriqueService;
 
     @Transactional
     public Vehicule execute(CreateVehiculeCommand command) {
@@ -72,6 +74,9 @@ public class CreateVehiculeUseCase {
                 .dateEntreeFlotte(command.dateEntreeFlotte())
                 .build();
 
-        return vehiculeRepository.save(vehiculeToCreate);
+        Vehicule saved = vehiculeRepository.save(vehiculeToCreate);
+        statutHistoriqueService.enregistrerTransition(saved.getId(), saved.getStatut(),
+                VehiculeStatutMotif.ENTREE_FLOTTE);
+        return saved;
     }
 }

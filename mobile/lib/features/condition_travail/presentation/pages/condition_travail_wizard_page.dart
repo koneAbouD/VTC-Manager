@@ -541,7 +541,7 @@ class _ConditionTravailWizardPageState
       children: [
         // ── Identité ──────────────────────────────────────────────────────
         _FormCard(children: [
-          _CardSectionTitle('Nom de la condition', Icons.label_rounded),
+          const _CardSectionTitle('Nom de la condition', Icons.label_rounded),
           const SizedBox(height: 10),
           _Field(
             controller: _nomCtrl,
@@ -553,10 +553,10 @@ class _ConditionTravailWizardPageState
 
         // ── Programme ─────────────────────────────────────────────────────
         _FormCard(children: [
-          _CardSectionTitle('Programme de travail', Icons.work_rounded),
+          const _CardSectionTitle('Programme de travail', Icons.work_rounded),
           const SizedBox(height: 14),
 
-          _FieldLabel('Type de programme'),
+          const _FieldLabel('Type de programme'),
           const SizedBox(height: 8),
           _PillSelector(
             options: const {
@@ -572,7 +572,7 @@ class _ConditionTravailWizardPageState
           ),
 
           const SizedBox(height: 16),
-          _FieldLabel('Nombre de chauffeurs'),
+          const _FieldLabel('Nombre de chauffeurs'),
           const SizedBox(height: 8),
           _PillSelector(
             options: const {'1': '1 chauffeur', '2': '2 chauffeurs'},
@@ -615,7 +615,7 @@ class _ConditionTravailWizardPageState
             const SizedBox(height: 16),
             const Divider(color: Color(0xFFF0F2F8)),
             const SizedBox(height: 12),
-            _FieldLabel("Mode d'alternance"),
+            const _FieldLabel("Mode d'alternance"),
             const SizedBox(height: 8),
             _PillSelector(
               options: const {
@@ -627,7 +627,7 @@ class _ConditionTravailWizardPageState
             ),
             if (_modeAlternance == 'AUTOMATIQUE') ...[
               const SizedBox(height: 16),
-              _FieldLabel("Jours d'alternance"),
+              const _FieldLabel("Jours d'alternance"),
               const SizedBox(height: 8),
               _PillSelector(
                 options: const {'1': '1 jour', '2': '2 jours', '3': '3 jours'},
@@ -636,7 +636,7 @@ class _ConditionTravailWizardPageState
                     setState(() => _joursAlternance = int.parse(v)),
               ),
               const SizedBox(height: 16),
-              _FieldLabel("Date de début de l'alternance"),
+              const _FieldLabel("Date de début de l'alternance"),
               const SizedBox(height: 8),
               _DateField(
                 date: _dateDebutAlternance,
@@ -670,7 +670,7 @@ class _ConditionTravailWizardPageState
       children: [
         if (_nbChauffeurs == 1) ...[
           _FormCard(children: [
-            _CardSectionTitle('Jours de travail', Icons.calendar_month_rounded),
+            const _CardSectionTitle('Jours de travail', Icons.calendar_month_rounded),
             const SizedBox(height: 6),
             Text('Sélectionnez les jours où le chauffeur travaille.',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
@@ -682,7 +682,7 @@ class _ConditionTravailWizardPageState
           ]),
         ] else if (_modeAlternance == 'AUTOMATIQUE') ...[
           _FormCard(children: [
-            _CardSectionTitle('Jours communs', Icons.calendar_month_rounded),
+            const _CardSectionTitle('Jours communs', Icons.calendar_month_rounded),
             const SizedBox(height: 6),
             Text(
                 'Jours de travail partagés par les deux chauffeurs en alternance.',
@@ -695,7 +695,7 @@ class _ConditionTravailWizardPageState
           ]),
           const SizedBox(height: 14),
           _FormCard(children: [
-            _CardSectionTitle(
+            const _CardSectionTitle(
                 'Première alternance', Icons.swap_horiz_rounded),
             const SizedBox(height: 6),
             Text('Choisissez quel chauffeur commence la première période.',
@@ -714,7 +714,7 @@ class _ConditionTravailWizardPageState
         ] else ...[
           // Alternance manuelle : jours séparés
           _FormCard(children: [
-            _CardSectionTitle(
+            const _CardSectionTitle(
                 'Jours – Chauffeur 1', Icons.person_rounded),
             const SizedBox(height: 6),
             Text(
@@ -729,7 +729,7 @@ class _ConditionTravailWizardPageState
           ]),
           const SizedBox(height: 14),
           _FormCard(children: [
-            _CardSectionTitle(
+            const _CardSectionTitle(
                 'Jours – Chauffeur 2', Icons.person_rounded),
             const SizedBox(height: 6),
             Text(
@@ -746,7 +746,7 @@ class _ConditionTravailWizardPageState
         const SizedBox(height: 14),
         // ── Jour de salaire ───────────────────────────────────────────────
         _FormCard(children: [
-          _CardSectionTitle('Jour de salaire', Icons.event_rounded),
+          const _CardSectionTitle('Jour de salaire', Icons.event_rounded),
           const SizedBox(height: 6),
           Text(
             'Jour où les chauffeurs travaillent à leur propre compte.',
@@ -764,7 +764,7 @@ class _ConditionTravailWizardPageState
           ),
           if (_jourSalaireActif) ...[
             const SizedBox(height: 16),
-            _FieldLabel('Jour concerné'),
+            const _FieldLabel('Jour concerné'),
             const SizedBox(height: 10),
             _InlineDaySelector(
               selected: {_jourSalaire},
@@ -777,7 +777,7 @@ class _ConditionTravailWizardPageState
         ]),
         // Rappel config si pas encore rempli
         if (_nbChauffeurs == 1 && _joursSlot1.isEmpty)
-          _HintBanner('Sélectionnez au moins un jour de travail.'),
+          const _HintBanner('Sélectionnez au moins un jour de travail.'),
       ],
     );
   }
@@ -792,7 +792,7 @@ class _ConditionTravailWizardPageState
       children: [
         // ── Encaissement ──────────────────────────────────────────────────
         _FormCard(children: [
-          _CardSectionTitle("Mode d'encaissement", Icons.account_balance_wallet_rounded),
+          const _CardSectionTitle("Mode d'encaissement", Icons.account_balance_wallet_rounded),
           const SizedBox(height: 12),
           _PillSelector(
             expand: true,
@@ -815,7 +815,7 @@ class _ConditionTravailWizardPageState
 
         // ── Type de recette ───────────────────────────────────────────────
         _FormCard(children: [
-          _CardSectionTitle('Type de recette', Icons.trending_up_rounded),
+          const _CardSectionTitle('Type de recette', Icons.trending_up_rounded),
           const SizedBox(height: 6),
           Text(
             'Montant réel : le chauffeur verse ce qu\'il a encaissé.\nMontant fixe : un objectif précis est défini.',
@@ -835,7 +835,7 @@ class _ConditionTravailWizardPageState
           ),
           if (_typeRecette == 'MONTANT_FIXE') ...[
             const SizedBox(height: 16),
-            _FieldLabel('Objectif par chauffeur (XOF)', required: true),
+            const _FieldLabel('Objectif par chauffeur (XOF)', required: true),
             const SizedBox(height: 8),
             _Field(
               controller: _objectifCtrl,
@@ -850,10 +850,10 @@ class _ConditionTravailWizardPageState
 
         // ── Versement ─────────────────────────────────────────────────────
         _FormCard(children: [
-          _CardSectionTitle('Versement de recette', Icons.schedule_send_rounded),
+          const _CardSectionTitle('Versement de recette', Icons.schedule_send_rounded),
           const SizedBox(height: 14),
 
-          _FieldLabel('Fréquence'),
+          const _FieldLabel('Fréquence'),
           const SizedBox(height: 8),
           _PillSelector(
             expand: true,
@@ -874,7 +874,7 @@ class _ConditionTravailWizardPageState
 
           if (_frequenceVersement == 'HEBDOMADAIRE') ...[
             const SizedBox(height: 16),
-            _FieldLabel('Jour de versement'),
+            const _FieldLabel('Jour de versement'),
             const SizedBox(height: 10),
             _InlineDaySelector(
               selected: {_jourVersement},
@@ -886,7 +886,7 @@ class _ConditionTravailWizardPageState
           ],
 
           const SizedBox(height: 16),
-          _FieldLabel('Heure limite de versement'),
+          const _FieldLabel('Heure limite de versement'),
           const SizedBox(height: 8),
           _TimeCard(
             label: 'Heure limite',
@@ -902,10 +902,10 @@ class _ConditionTravailWizardPageState
         if (_jourSalaireActif) ...[
           const SizedBox(height: 14),
           _FormCard(children: [
-            _CardSectionTitle(
+            const _CardSectionTitle(
                 'Jour de salaire', Icons.event_available_rounded),
             const SizedBox(height: 12),
-            _FieldLabel('Recette à verser ce jour-là (XOF)'),
+            const _FieldLabel('Recette à verser ce jour-là (XOF)'),
             const SizedBox(height: 8),
             _Field(
               controller: _montantJourCtrl,
@@ -1033,7 +1033,7 @@ class _ConditionTravailWizardPageState
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
       children: [
         _FormCard(children: [
-          _CardSectionTitle('Type de pénalité', Icons.gavel_rounded),
+          const _CardSectionTitle('Type de pénalité', Icons.gavel_rounded),
           const SizedBox(height: 12),
           _PenaliteDropdown(
             groups: _penaliteGroups,
@@ -1089,10 +1089,10 @@ class _ConditionTravailWizardPageState
             const Text('Ajouter une cotisation',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
-            _FieldLabel('Nom de la cotisation'),
+            const _FieldLabel('Nom de la cotisation'),
             _Field(controller: nomCtrl, hint: 'Ex: Salaire, Épargne…'),
             const SizedBox(height: 16),
-            _FieldLabel('Montant (XOF)'),
+            const _FieldLabel('Montant (XOF)'),
             _Field(
               controller: montantCtrl,
               hint: 'Montant',
@@ -1100,7 +1100,7 @@ class _ConditionTravailWizardPageState
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             ),
             const SizedBox(height: 16),
-            _AmberCard(text: "Ce montant s'ajoute à l'objectif de recette."),
+            const _AmberCard(text: "Ce montant s'ajoute à l'objectif de recette."),
             const SizedBox(height: 24),
             Row(children: [
               Expanded(
@@ -1489,7 +1489,11 @@ class _InlineDaySelector extends StatelessWidget {
                         onChanged({j});
                       } else {
                         final next = Set<String>.from(selected);
-                        if (isSelected) next.remove(j); else next.add(j);
+                        if (isSelected) {
+                          next.remove(j);
+                        } else {
+                          next.add(j);
+                        }
                         onChanged(next);
                       }
                     },
@@ -2354,7 +2358,7 @@ class _DureeMinutesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _SheetLabel("Durée avant arrêt du véhicule"),
+      const _SheetLabel("Durée avant arrêt du véhicule"),
       const SizedBox(height: 10),
       Wrap(
         spacing: 8,
@@ -2387,7 +2391,7 @@ class _DureeMinutesSection extends StatelessWidget {
         }).toList(),
       ),
       const SizedBox(height: 12),
-      _AmberCard(
+      const _AmberCard(
           text: 'Une notification sonore précède l\'arrêt automatique.'),
     ]);
   }
@@ -2529,9 +2533,9 @@ class _WizGroupHeader extends StatelessWidget {
           child: Icon(icon, size: 18, color: _kPrimary),
         ),
         const SizedBox(width: 10),
-        Expanded(
+        const Expanded(
           child: Text('Sanctions',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: _kDark)),

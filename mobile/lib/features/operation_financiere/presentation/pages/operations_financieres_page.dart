@@ -6,14 +6,12 @@ import 'package:intl/intl.dart';
 
 import '../../../chauffeur/domain/entities/chauffeur.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
-import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
 import '../../domain/entities/operation_financiere.dart';
 import '../../domain/enums/statut_operation.dart';
 import '../../domain/enums/type_operation.dart';
 import '../providers/operations_liste_provider.dart';
 import 'operation_financiere_detail_page.dart';
-import 'operation_financiere_form_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 
 enum _FiltreMode { mois, semaine, jour, periode }
@@ -60,6 +58,8 @@ enum _CategorieFiltre {
       };
 }
 
+/// Liste des opérations financières, embarquée dans l'onglet « Opérations »
+/// du hub Finances (sans en-tête propre : navigation et actions gérées par le hub).
 class OperationsFinancieresPage extends ConsumerStatefulWidget {
   const OperationsFinancieresPage({super.key});
 
@@ -178,7 +178,7 @@ class _OperationsFinancieresPageState
                     // null = « Toutes les périodes » (désactive le filtre par date).
                     children: <_FiltreMode?>[null, ..._FiltreMode.values].map((mode) {
                       final label = switch (mode) {
-                        null => 'Toutes les périodes',
+                        null => 'Tous',
                         _FiltreMode.mois => 'Mois',
                         _FiltreMode.semaine => 'Semaine',
                         _FiltreMode.jour => 'Jour',
@@ -333,21 +333,6 @@ class _OperationsFinancieresPageState
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
-      appBar: AppHeader(
-        title: 'Opérations',
-        action: AppHeaderAction(
-          icon: Icons.add_rounded,
-          onTap: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const OperationFinanciereFormPage()),
-            );
-            if (!mounted) return;
-            ref.read(operationsListeProvider.notifier).refresh();
-          },
-        ),
-      ),
       body: SafeArea(
         top: false,
         child: Column(
@@ -407,7 +392,8 @@ class _OperationsFinancieresPageState
 
                           // ── Liste / état vide / loader bas de page ──
                           if (ops.isEmpty)
-                            const SliverFillRemaining(child: _EmptyState())
+                            const SliverFillRemaining(
+                                hasScrollBody: false, child: _EmptyState())
                           else
                             SliverPadding(
                               padding:
@@ -492,14 +478,14 @@ class _FiltreBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final modeLabel = switch (mode) {
-      null => 'Période',
+      null => 'Tous',
       _FiltreMode.mois => 'Mois',
       _FiltreMode.semaine => 'Semaine',
       _FiltreMode.jour => 'Jour',
       _FiltreMode.periode => 'Période',
     };
 
-    final Widget? datePill = switch (mode) {
+    final Widget datePill = switch (mode) {
       // Carte de valeur statique quand aucun filtre par date n'est actif.
       null => _DatePill(
           icon: Icons.calendar_month_outlined,
@@ -566,7 +552,7 @@ class _FiltreBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          if (datePill != null) Expanded(child: datePill),
+          Expanded(child: datePill),
         ],
       ),
     );
@@ -801,7 +787,9 @@ class _OpCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  DateFormat('dd/MM', 'fr_FR').format(op.dateAffichee),
+                  // Date de l'opération (date de saisie/opération), et non la
+                  // date de référence métier de l'encaissement.
+                  DateFormat('dd/MM', 'fr_FR').format(op.dateOperation),
                   style: TextStyle(
                       fontSize: 10, color: Colors.grey.shade400),
                 ),

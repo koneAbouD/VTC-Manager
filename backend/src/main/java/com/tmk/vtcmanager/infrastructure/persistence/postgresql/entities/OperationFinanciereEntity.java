@@ -54,6 +54,9 @@ public class OperationFinanciereEntity extends AbstractAuditEntity {
     @Column(name = "mode_paiement", length = 20)
     private ModePaiement modePaiement;
 
+    @Column(name = "compte_tresorerie_id")
+    private Long compteTresorerieId;
+
     @Column(name = "date_operation", nullable = false)
     private LocalDate dateOperation;
 

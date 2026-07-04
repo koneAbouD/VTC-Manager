@@ -11,12 +11,12 @@ import '../../features/operation_financiere/domain/enums/statut_operation.dart';
 import '../../features/operation_financiere/domain/enums/type_operation.dart';
 import '../../features/operation_financiere/presentation/pages/operation_financiere_detail_page.dart';
 import '../../features/operation_financiere/presentation/pages/operation_financiere_form_page.dart';
-import '../../features/operation_financiere/presentation/pages/operations_financieres_page.dart';
 import 'widgets/encaissement_rapide_dialog.dart';
 import '../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import '../../features/operation_financiere/presentation/providers/operation_financiere_state.dart';
 import '../../features/recette/presentation/pages/lignes_recette_page.dart';
 import '../fleet/fleet_action_selector_page.dart';
+import '../home_nav_provider.dart';
 import '../../features/indisponibilite/presentation/pages/indisponibilites_page.dart';
 import '../../core/widgets/date_filter_dialogs.dart';
 
@@ -71,14 +71,11 @@ class AccueilScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             Center(
               child: TextButton.icon(
-                onPressed: () async {
-                  await _push(context, const OperationsFinancieresPage());
-                  // OperationsFinancieresPage filtre la liste partagée par date ;
-                  // au retour, on restaure les opérations toutes périodes pour
-                  // l'accueil (qui affiche les 10 plus récentes).
-                  ref
-                      .read(operationFinanciereNotifierProvider.notifier)
-                      .loadAll();
+                onPressed: () {
+                  // Redirige vers le hub Finances (index 3) sur le sous-onglet
+                  // Opérations (index 2), au lieu d'ouvrir une page séparée.
+                  ref.read(financeTabIndexProvider.notifier).state = 2;
+                  ref.read(homeTabIndexProvider.notifier).state = 3;
                 },
                 icon: const Icon(Icons.unfold_more_rounded, size: 16),
                 label: const Text("Plus d'opérations"),

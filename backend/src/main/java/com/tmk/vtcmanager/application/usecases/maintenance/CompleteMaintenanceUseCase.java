@@ -15,6 +15,8 @@ import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationReposi
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
+import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,8 @@ public class CompleteMaintenanceUseCase {
     private final CategorieOperationRepository categorieRepository;
     private final SousCategorieOperationRepository sousCategorieRepository;
     private final VehiculeStatutEventPublisher statutEventPublisher;
+    private final CompteTresorerieResolver compteTresorerieResolver;
+    private final PeriodeClotureeGuard periodeClotureeGuard;
 
     @Transactional
     public Maintenance execute(Long id, BigDecimal cout, LocalDate dateEffectuee,
@@ -38,6 +42,7 @@ public class CompleteMaintenanceUseCase {
         Maintenance maintenance = maintenanceRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Maintenance", id));
 
+        periodeClotureeGuard.verifier(dateEffectuee);
         maintenance.terminer(cout, dateEffectuee);
         Maintenance saved = maintenanceRepository.save(maintenance);
 
@@ -68,6 +73,8 @@ public class CompleteMaintenanceUseCase {
                     .vehicule(saved.getVehicule())
                     .statut(StatutOperation.PAYE)
                     .modePaiement(modePaiement != null ? modePaiement : ModePaiement.ESPECES)
+                    .compteTresorerieId(compteTresorerieResolver.resoudre(null,
+                            modePaiement != null ? modePaiement : ModePaiement.ESPECES))
                     .categorie(categorie)
                     .sousCategorie(sousCategorie)
                     .detailMaintenance(operationDetail)

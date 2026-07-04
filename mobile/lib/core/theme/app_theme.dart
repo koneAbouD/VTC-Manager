@@ -33,7 +33,7 @@ abstract final class AppTheme {
         scrolledUnderElevation: 0,
       ),
 
-      navigationBarTheme: NavigationBarThemeData(
+      navigationBarTheme: const NavigationBarThemeData(
         backgroundColor: AppColors.surface,
         indicatorColor: AppColors.primaryTint,
         surfaceTintColor: Colors.transparent,

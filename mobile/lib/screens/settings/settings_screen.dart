@@ -232,7 +232,7 @@ class _MenuItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (iconColor ?? const Color(0xFF3B5BDB)).withOpacity(0.1),
+                color: (iconColor ?? const Color(0xFF3B5BDB)).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(

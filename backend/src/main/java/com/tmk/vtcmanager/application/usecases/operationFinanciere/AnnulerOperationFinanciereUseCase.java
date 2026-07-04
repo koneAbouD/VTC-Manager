@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ public class AnnulerOperationFinanciereUseCase {
     private final OperationFinanciereRepository operationRepository;
     private final AnnulationEncaissementService annulationEncaissementService;
     private final AnnulationMaintenanceService annulationMaintenanceService;
+    private final PeriodeClotureeGuard periodeClotureeGuard;
 
     @Transactional
     public OperationFinanciere execute(Long id) {
@@ -24,6 +26,10 @@ public class AnnulerOperationFinanciereUseCase {
         if (operation.getStatut() == StatutOperation.ANNULEE) {
             throw new IllegalStateException("L'opération est déjà annulée.");
         }
+
+        // Une opération d'une période clôturée ne peut plus être annulée :
+        // les états publiés sur cette période resteraient faux sinon.
+        periodeClotureeGuard.verifier(operation.getDateOperation());
 
         operation.setStatut(StatutOperation.ANNULEE);
         OperationFinanciere saved = operationRepository.save(operation);

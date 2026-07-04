@@ -344,13 +344,16 @@ class AuthPrimaryButton extends StatelessWidget {
                             Icon(icon, color: Colors.white, size: 20),
                             const SizedBox(width: 8),
                           ],
-                          Text(
-                            label,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.2,
+                          Flexible(
+                            child: Text(
+                              label,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
+                              ),
                             ),
                           ),
                         ],

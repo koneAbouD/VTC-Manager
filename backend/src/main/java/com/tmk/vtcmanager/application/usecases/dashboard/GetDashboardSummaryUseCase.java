@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.application.usecases.dashboard;
 import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
 import com.tmk.vtcmanager.application.domain.document.DocumentStatut;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
+import com.tmk.vtcmanager.application.domain.operation.NatureResultat;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciereFiltres;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
@@ -43,8 +44,8 @@ public class GetDashboardSummaryUseCase {
         LocalDate finMoisPrecedent = debutMois.minusDays(1);
 
         // --- Opérations mois courant ---
-        List<OperationFinanciere> opsMois = operationRepository.findByCriteres(
-                new OperationFinanciereFiltres(null, debutMois, finMois, null, null, null, null, null, null));
+        List<OperationFinanciere> opsMois = sansHorsResultat(operationRepository.findByCriteres(
+                new OperationFinanciereFiltres(null, debutMois, finMois, null, null, null, null, null, null)));
         List<OperationFinanciere> revenusMois = opsMois.stream()
                 .filter(o -> TypeOperation.REVENU.equals(o.getTypeOperation())).toList();
         List<OperationFinanciere> depensesMois = opsMois.stream()
@@ -57,8 +58,8 @@ public class GetDashboardSummaryUseCase {
         BigDecimal soldeNetMois = totalRevenusMois.subtract(totalDepensesMois);
 
         // --- Opérations mois précédent ---
-        List<OperationFinanciere> opsPrecedent = operationRepository.findByCriteres(
-                new OperationFinanciereFiltres(null, debutMoisPrecedent, finMoisPrecedent, null, null, null, null, null, null));
+        List<OperationFinanciere> opsPrecedent = sansHorsResultat(operationRepository.findByCriteres(
+                new OperationFinanciereFiltres(null, debutMoisPrecedent, finMoisPrecedent, null, null, null, null, null, null)));
         BigDecimal totalRevenusPrecedent = opsPrecedent.stream()
                 .filter(o -> TypeOperation.REVENU.equals(o.getTypeOperation()))
                 .map(OperationFinanciere::getMontant).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -118,6 +119,18 @@ public class GetDashboardSummaryUseCase {
                 (int) nbMaintenancesEnCours, (int) nbDocumentsExpires,
                 dernieres
         );
+    }
+
+    /**
+     * Écarte les opérations de comptes de tiers (contraventions refacturées,
+     * transferts) : elles mouvementent la trésorerie mais ne sont ni un
+     * produit ni une charge — les compter gonflerait revenus et dépenses.
+     */
+    private List<OperationFinanciere> sansHorsResultat(List<OperationFinanciere> operations) {
+        return operations.stream()
+                .filter(o -> o.getCategorie() == null
+                        || o.getCategorie().getNatureResultat() != NatureResultat.HORS_RESULTAT)
+                .toList();
     }
 
     private BigDecimal calculerVariation(BigDecimal current, BigDecimal previous) {

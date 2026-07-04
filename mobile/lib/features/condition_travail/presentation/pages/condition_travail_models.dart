@@ -1,5 +1,6 @@
 /// Modèles locaux pour les conditions de travail (utilisés dans le wizard
 /// et le sélecteur sans créer de dépendance circulaire).
+library;
 
 class CotisationLocal {
   final int? id;

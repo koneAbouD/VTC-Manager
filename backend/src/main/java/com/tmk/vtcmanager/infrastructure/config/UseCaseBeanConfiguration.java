@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionTrav
 import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionsTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.UpdateConditionTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.dashboard.GetDashboardSummaryUseCase;
+import com.tmk.vtcmanager.application.usecases.etatparc.GetEtatParcUseCase;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
@@ -18,6 +19,8 @@ import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
 import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
 import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
+import com.tmk.vtcmanager.application.services.VehiculeStatutHistoriqueService;
+import com.tmk.vtcmanager.application.ports.persistence.VehiculeStatutHistoriqueRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MarqueRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ModeleRepository;
@@ -49,6 +52,31 @@ import com.tmk.vtcmanager.application.ports.auth.KeycloakAuthPort;
 import com.tmk.vtcmanager.application.ports.auth.KeycloakAdminPort;
 import com.tmk.vtcmanager.application.ports.persistence.CatalogueElementMaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
+import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
+import com.tmk.vtcmanager.application.ports.persistence.CloturePeriodeRepository;
+import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
+import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
+import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
+import com.tmk.vtcmanager.application.ports.persistence.TransfertTresorerieRepository;
+import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.usecases.finance.CloturerPeriodeUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.ExportComptableUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetBalanceAgeeUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetBilanUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetCloturesPeriodeUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetCompteResultatUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetCreancesChauffeurUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetMargesParVehiculeUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetRapportFinancierUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetMontantAReverserEtatUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.CloturerCaisseUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.CreateCompteTresorerieUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.CreateTransfertUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.GetCloturesCaisseUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.GetComptesTresorerieUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.GetTransfertsUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.UpdateCompteTresorerieUseCase;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EncaissementCotisationRepository;
@@ -74,15 +102,23 @@ public class UseCaseBeanConfiguration {
 
     // ----- Vehicule -----
     @Bean
+    public VehiculeStatutHistoriqueService vehiculeStatutHistoriqueService(
+            VehiculeStatutHistoriqueRepository historiqueRepository) {
+        return new VehiculeStatutHistoriqueService(historiqueRepository);
+    }
+
+    @Bean
     public CreateVehiculeUseCase createVehiculeUseCase(
             VehiculeRepository repo,
             MarqueRepository marqueRepository,
             ModeleRepository modeleRepository,
             TypeVehiculeRepository typeVehiculeRepository,
             TypeActiviteRepository typeActiviteRepository,
-            GroupeVehiculeRepository groupeVehiculeRepository) {
+            GroupeVehiculeRepository groupeVehiculeRepository,
+            VehiculeStatutHistoriqueService vehiculeStatutHistoriqueService) {
         return new CreateVehiculeUseCase(repo, marqueRepository, modeleRepository,
-                typeVehiculeRepository, typeActiviteRepository, groupeVehiculeRepository);
+                typeVehiculeRepository, typeActiviteRepository, groupeVehiculeRepository,
+                vehiculeStatutHistoriqueService);
     }
 
     @Bean
@@ -98,9 +134,11 @@ public class UseCaseBeanConfiguration {
             GroupeVehiculeRepository groupeVehiculeRepository,
             ConditionTravailRepository conditionTravailRepository,
             ProgrammeTravailRepository programmeTravailRepository,
-            ConfigurationRecetteSynchronizer configurationRecetteSynchronizer) {
+            ConfigurationRecetteSynchronizer configurationRecetteSynchronizer,
+            VehiculeStatutHistoriqueService vehiculeStatutHistoriqueService) {
         return new UpdateVehiculeUseCase(repo, typeActiviteRepository, groupeVehiculeRepository,
-                conditionTravailRepository, programmeTravailRepository, configurationRecetteSynchronizer);
+                conditionTravailRepository, programmeTravailRepository, configurationRecetteSynchronizer,
+                vehiculeStatutHistoriqueService);
     }
 
     @Bean
@@ -113,9 +151,10 @@ public class UseCaseBeanConfiguration {
             VehiculeRepository vehiculeRepository,
             ChauffeurRepository chauffeurRepository,
             MaintenanceRepository maintenanceRepository,
-            LignePenaliteRepository lignePenaliteRepository) {
+            LignePenaliteRepository lignePenaliteRepository,
+            VehiculeStatutHistoriqueService vehiculeStatutHistoriqueService) {
         return new RecomputeVehiculeStatusUseCase(vehiculeRepository, chauffeurRepository,
-                maintenanceRepository, lignePenaliteRepository);
+                maintenanceRepository, lignePenaliteRepository, vehiculeStatutHistoriqueService);
     }
 
     @Bean
@@ -307,13 +346,23 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
-    public PayContraventionUseCase payContraventionUseCase(ContraventionRepository repo) {
-        return new PayContraventionUseCase(repo);
+    public PayContraventionUseCase payContraventionUseCase(
+            ContraventionRepository repo,
+            OperationFinanciereRepository operationFinanciereRepository,
+            CategorieOperationRepository categorieOperationRepository,
+            CompteTresorerieResolver compteTresorerieResolver) {
+        return new PayContraventionUseCase(repo, operationFinanciereRepository,
+                categorieOperationRepository, compteTresorerieResolver);
     }
 
     @Bean
-    public ReverseContraventionUseCase reverseContraventionUseCase(ContraventionRepository repo) {
-        return new ReverseContraventionUseCase(repo);
+    public ReverseContraventionUseCase reverseContraventionUseCase(
+            ContraventionRepository repo,
+            OperationFinanciereRepository operationFinanciereRepository,
+            CategorieOperationRepository categorieOperationRepository,
+            CompteTresorerieResolver compteTresorerieResolver) {
+        return new ReverseContraventionUseCase(repo, operationFinanciereRepository,
+                categorieOperationRepository, compteTresorerieResolver);
     }
 
     // ----- Maintenance -----
@@ -365,9 +414,12 @@ public class UseCaseBeanConfiguration {
             OperationFinanciereRepository operationRepository,
             CategorieOperationRepository categorieOperationRepository,
             SousCategorieOperationRepository sousCategorieOperationRepository,
-            VehiculeStatutEventPublisher statutEventPublisher) {
+            VehiculeStatutEventPublisher statutEventPublisher,
+            CompteTresorerieResolver compteTresorerieResolver,
+            PeriodeClotureeGuard periodeClotureeGuard) {
         return new CompleteMaintenanceUseCase(repo, operationRepository,
-                categorieOperationRepository, sousCategorieOperationRepository, statutEventPublisher);
+                categorieOperationRepository, sousCategorieOperationRepository, statutEventPublisher,
+                compteTresorerieResolver, periodeClotureeGuard);
     }
 
     @Bean
@@ -390,6 +442,16 @@ public class UseCaseBeanConfiguration {
             DocumentRepository documentRepository) {
         return new GetDashboardSummaryUseCase(operationRepository,
                 vehiculeRepository, chauffeurRepository, maintenanceRepository, documentRepository);
+    }
+
+    // ----- État de parc -----
+    @Bean
+    public GetEtatParcUseCase getEtatParcUseCase(
+            VehiculeRepository vehiculeRepository,
+            VehiculeStatutHistoriqueRepository vehiculeStatutHistoriqueRepository,
+            DocumentRepository documentRepository) {
+        return new GetEtatParcUseCase(vehiculeRepository,
+                vehiculeStatutHistoriqueRepository, documentRepository);
     }
 
     // ----- ConditionTravail -----
@@ -534,10 +596,13 @@ public class UseCaseBeanConfiguration {
             LigneCotisationRepository ligneCotisationRepository,
             EncaissementCotisationRepository encaissementCotisationRepository,
             OperationFinanciereRepository operationFinanciereRepository,
-            CategorieOperationRepository categorieOperationRepository) {
+            CategorieOperationRepository categorieOperationRepository,
+            CompteTresorerieResolver compteTresorerieResolver,
+            PeriodeClotureeGuard periodeClotureeGuard) {
         return new CreateEncaissementCotisationUseCase(
                 ligneCotisationRepository, encaissementCotisationRepository,
-                operationFinanciereRepository, categorieOperationRepository);
+                operationFinanciereRepository, categorieOperationRepository,
+                compteTresorerieResolver, periodeClotureeGuard);
     }
 
     @Bean
@@ -567,11 +632,13 @@ public class UseCaseBeanConfiguration {
             EncaissementRepository encaissementRepository,
             ConfigurationRecetteRepository configurationRecetteRepository,
             OperationFinanciereRepository operationFinanciereRepository,
-            CategorieOperationRepository categorieOperationRepository) {
+            CategorieOperationRepository categorieOperationRepository,
+            CompteTresorerieResolver compteTresorerieResolver,
+            PeriodeClotureeGuard periodeClotureeGuard) {
         return new CreateEncaissementUseCase(
                 ligneRecetteRepository, encaissementRepository,
                 configurationRecetteRepository, operationFinanciereRepository,
-                categorieOperationRepository);
+                categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard);
     }
 
     @Bean
@@ -592,9 +659,12 @@ public class UseCaseBeanConfiguration {
             VehiculeRepository vehiculeRepository,
             LigneRecetteRepository ligneRecetteRepository,
             LigneCotisationRepository ligneCotisationRepository,
-            LignePenaliteRepository lignePenaliteRepository) {
+            LignePenaliteRepository lignePenaliteRepository,
+            CompteTresorerieResolver compteTresorerieResolver,
+            PeriodeClotureeGuard periodeClotureeGuard) {
         return new CreateOperationFinanciereUseCase(repo, chauffeurRepository, vehiculeRepository,
-                ligneRecetteRepository, ligneCotisationRepository, lignePenaliteRepository);
+                ligneRecetteRepository, ligneCotisationRepository, lignePenaliteRepository,
+                compteTresorerieResolver, periodeClotureeGuard);
     }
 
     @Bean
@@ -636,9 +706,11 @@ public class UseCaseBeanConfiguration {
     public AnnulerOperationFinanciereUseCase annulerOperationFinanciereUseCase(
             OperationFinanciereRepository repo,
             AnnulationEncaissementService annulationEncaissementService,
-            AnnulationMaintenanceService annulationMaintenanceService) {
+            AnnulationMaintenanceService annulationMaintenanceService,
+            PeriodeClotureeGuard periodeClotureeGuard) {
         return new AnnulerOperationFinanciereUseCase(
-                repo, annulationEncaissementService, annulationMaintenanceService);
+                repo, annulationEncaissementService, annulationMaintenanceService,
+                periodeClotureeGuard);
     }
 
     // ----- Penalite -----
@@ -673,10 +745,13 @@ public class UseCaseBeanConfiguration {
             LignePenaliteRepository lignePenaliteRepository,
             EncaissementPenaliteRepository encaissementPenaliteRepository,
             OperationFinanciereRepository operationFinanciereRepository,
-            CategorieOperationRepository categorieOperationRepository) {
+            CategorieOperationRepository categorieOperationRepository,
+            CompteTresorerieResolver compteTresorerieResolver,
+            PeriodeClotureeGuard periodeClotureeGuard) {
         return new CreateEncaissementPenaliteUseCase(
                 lignePenaliteRepository, encaissementPenaliteRepository,
-                operationFinanciereRepository, categorieOperationRepository);
+                operationFinanciereRepository, categorieOperationRepository,
+                compteTresorerieResolver, periodeClotureeGuard);
     }
 
     @Bean
@@ -832,5 +907,117 @@ public class UseCaseBeanConfiguration {
             ChauffeurRepository chauffeurRepository,
             IndisponibiliteRepository indisponibiliteRepository) {
         return new RecomputeChauffeurStatusUseCase(chauffeurRepository, indisponibiliteRepository);
+    }
+
+    // ----- Trésorerie -----
+    @Bean
+    public CompteTresorerieResolver compteTresorerieResolver(CompteTresorerieRepository repo) {
+        return new CompteTresorerieResolver(repo);
+    }
+
+    @Bean
+    public GetComptesTresorerieUseCase getComptesTresorerieUseCase(CompteTresorerieRepository repo) {
+        return new GetComptesTresorerieUseCase(repo);
+    }
+
+    @Bean
+    public CreateCompteTresorerieUseCase createCompteTresorerieUseCase(CompteTresorerieRepository repo) {
+        return new CreateCompteTresorerieUseCase(repo);
+    }
+
+    @Bean
+    public UpdateCompteTresorerieUseCase updateCompteTresorerieUseCase(CompteTresorerieRepository repo) {
+        return new UpdateCompteTresorerieUseCase(repo);
+    }
+
+    // ----- Finance (créances) -----
+    @Bean
+    public GetBalanceAgeeUseCase getBalanceAgeeUseCase(CreanceRepository repo) {
+        return new GetBalanceAgeeUseCase(repo);
+    }
+
+    @Bean
+    public GetCreancesChauffeurUseCase getCreancesChauffeurUseCase(CreanceRepository repo) {
+        return new GetCreancesChauffeurUseCase(repo);
+    }
+
+    @Bean
+    public GetMontantAReverserEtatUseCase getMontantAReverserEtatUseCase(CreanceRepository repo) {
+        return new GetMontantAReverserEtatUseCase(repo);
+    }
+
+    // ----- Trésorerie V2 : transferts + clôture de caisse -----
+    @Bean
+    public CreateTransfertUseCase createTransfertUseCase(
+            TransfertTresorerieRepository transfertRepository,
+            CompteTresorerieRepository compteTresorerieRepository,
+            PeriodeClotureeGuard periodeClotureeGuard) {
+        return new CreateTransfertUseCase(transfertRepository, compteTresorerieRepository,
+                periodeClotureeGuard);
+    }
+
+    @Bean
+    public GetTransfertsUseCase getTransfertsUseCase(TransfertTresorerieRepository repo) {
+        return new GetTransfertsUseCase(repo);
+    }
+
+    @Bean
+    public CloturerCaisseUseCase cloturerCaisseUseCase(
+            CompteTresorerieRepository compteTresorerieRepository,
+            ClotureCaisseRepository clotureCaisseRepository,
+            OperationFinanciereRepository operationFinanciereRepository,
+            CategorieOperationRepository categorieOperationRepository) {
+        return new CloturerCaisseUseCase(compteTresorerieRepository, clotureCaisseRepository,
+                operationFinanciereRepository, categorieOperationRepository);
+    }
+
+    @Bean
+    public GetCloturesCaisseUseCase getCloturesCaisseUseCase(ClotureCaisseRepository repo) {
+        return new GetCloturesCaisseUseCase(repo);
+    }
+
+    // ----- Finance V2/V3 : résultat, bilan, clôture, export -----
+    @Bean
+    public PeriodeClotureeGuard periodeClotureeGuard(CloturePeriodeRepository repo) {
+        return new PeriodeClotureeGuard(repo);
+    }
+
+    @Bean
+    public GetCompteResultatUseCase getCompteResultatUseCase(FinanceReportingRepository repo) {
+        return new GetCompteResultatUseCase(repo);
+    }
+
+    @Bean
+    public GetMargesParVehiculeUseCase getMargesParVehiculeUseCase(FinanceReportingRepository repo) {
+        return new GetMargesParVehiculeUseCase(repo);
+    }
+
+    @Bean
+    public GetRapportFinancierUseCase getRapportFinancierUseCase(OperationFinanciereRepository repo) {
+        return new GetRapportFinancierUseCase(repo);
+    }
+
+    @Bean
+    public GetBilanUseCase getBilanUseCase(
+            CompteTresorerieRepository compteTresorerieRepository,
+            CreanceRepository creanceRepository,
+            FinanceReportingRepository reportingRepository) {
+        return new GetBilanUseCase(compteTresorerieRepository, creanceRepository,
+                reportingRepository);
+    }
+
+    @Bean
+    public ExportComptableUseCase exportComptableUseCase(OperationFinanciereRepository repo) {
+        return new ExportComptableUseCase(repo);
+    }
+
+    @Bean
+    public CloturerPeriodeUseCase cloturerPeriodeUseCase(CloturePeriodeRepository repo) {
+        return new CloturerPeriodeUseCase(repo);
+    }
+
+    @Bean
+    public GetCloturesPeriodeUseCase getCloturesPeriodeUseCase(CloturePeriodeRepository repo) {
+        return new GetCloturesPeriodeUseCase(repo);
     }
 }

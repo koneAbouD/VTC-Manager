@@ -18,6 +18,8 @@ import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepo
 import com.tmk.vtcmanager.application.ports.persistence.EncaissementRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,8 @@ public class CreateEncaissementUseCase {
     private final ConfigurationRecetteRepository configurationRecetteRepository;
     private final OperationFinanciereRepository operationFinanciereRepository;
     private final CategorieOperationRepository categorieOperationRepository;
+    private final CompteTresorerieResolver compteTresorerieResolver;
+    private final PeriodeClotureeGuard periodeClotureeGuard;
 
     @Transactional
     public Encaissement executer(Long ligneRecetteId, Encaissement encaissement) {
@@ -45,6 +49,7 @@ public class CreateEncaissementUseCase {
             throw new LigneRecetteDejaSoldeeException(ligneRecetteId);
         }
 
+        periodeClotureeGuard.verifier(encaissement.getDateEncaissement());
         validerModePaiement(ligne, encaissement.getModeEncaissement());
         validerMontant(ligne, encaissement.getMontant());
 
@@ -99,6 +104,7 @@ public class CreateEncaissementUseCase {
                 .chauffeur(chauffeurRef(ligne.getChauffeurId()))
                 .montant(encaissement.getMontant())
                 .modePaiement(encaissement.getModeEncaissement())
+                .compteTresorerieId(compteTresorerieResolver.resoudre(null, encaissement.getModeEncaissement()))
                 .dateOperation(encaissement.getDateEncaissement())
                 .dateReference(ligne.getDateRecette())
                 .commentaire(encaissement.getCommentaire())

@@ -76,6 +76,13 @@ public class VehiculeEntity extends AbstractAuditEntity {
     @Column(name = "date_achat")
     private LocalDate dateAchat;
 
+    @Column(name = "prix_achat", precision = 19, scale = 2)
+    private java.math.BigDecimal prixAchat;
+
+    /** Durée d'amortissement linéaire (60 mois par défaut). */
+    @Column(name = "duree_amortissement_mois", nullable = false)
+    private int dureeAmortissementMois = 60;
+
     @Column(name = "date_prochaine_maintenance")
     private LocalDate dateProchaineMaintenance;
 

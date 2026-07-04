@@ -13,6 +13,8 @@ import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
+import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,9 +34,13 @@ public class CreateOperationFinanciereUseCase {
     private final LigneRecetteRepository ligneRecetteRepository;
     private final LigneCotisationRepository ligneCotisationRepository;
     private final LignePenaliteRepository lignePenaliteRepository;
+    private final CompteTresorerieResolver compteTresorerieResolver;
+    private final PeriodeClotureeGuard periodeClotureeGuard;
 
     @Transactional
     public OperationFinanciere execute(OperationFinanciere operation) {
+        periodeClotureeGuard.verifier(operation.getDateOperation());
+
         // Validation chauffeur
         if (operation.getChauffeur() != null && operation.getChauffeur().getId() != null) {
             chauffeurRepository.findById(operation.getChauffeur().getId())
@@ -77,6 +83,11 @@ public class CreateOperationFinanciereUseCase {
 
         // Génération de la référence
         operation.setReference(generateReference(operation.getTypeOperation()));
+
+        // Rattachement trésorerie : compte explicite ou compte par défaut
+        // du type correspondant au mode de paiement.
+        operation.setCompteTresorerieId(compteTresorerieResolver.resoudre(
+                operation.getCompteTresorerieId(), operation.getModePaiement()));
 
         // Statut par défaut : une opération manuelle est directement "terminée"
         // (ENCAISSE pour un revenu, PAYE pour une dépense) — pas d'étape brouillon.

@@ -25,6 +25,12 @@ public class OperationFinanciere {
     private Vehicule vehicule;
     private BigDecimal montant;
     private ModePaiement modePaiement;
+    /**
+     * Compte de trésorerie mouvementé. Null toléré (opérations legacy sans
+     * compte) : résolu au compte par défaut du type dérivé du mode de
+     * paiement lors de la création.
+     */
+    private Long compteTresorerieId;
     private LocalDate dateOperation;
     /**
      * Date "métier" de référence : pour un encaissement de période, c'est la date

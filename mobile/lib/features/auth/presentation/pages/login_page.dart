@@ -123,8 +123,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
             ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Text('Pas encore de compte ?',
                     style: TextStyle(color: kAuthHint, fontSize: 14)),

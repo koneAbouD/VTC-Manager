@@ -13,6 +13,8 @@ import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationReposi
 import com.tmk.vtcmanager.application.ports.persistence.EncaissementCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,8 @@ public class CreateEncaissementCotisationUseCase {
     private final EncaissementCotisationRepository encaissementCotisationRepository;
     private final OperationFinanciereRepository operationFinanciereRepository;
     private final CategorieOperationRepository categorieOperationRepository;
+    private final CompteTresorerieResolver compteTresorerieResolver;
+    private final PeriodeClotureeGuard periodeClotureeGuard;
 
     @Transactional
     public EncaissementCotisation executer(Long ligneCotisationId, EncaissementCotisation encaissement) {
@@ -37,6 +41,8 @@ public class CreateEncaissementCotisationUseCase {
         if (!ligne.estActive()) {
             throw new LigneCotisationDejaSoldeeException(ligneCotisationId);
         }
+
+        periodeClotureeGuard.verifier(encaissement.getDateEncaissement());
 
         if (encaissement.getMontant().compareTo(ligne.montantRestant()) > 0) {
             throw new EncaissementDepasseMontantDuException(ligne.montantRestant());
@@ -73,6 +79,7 @@ public class CreateEncaissementCotisationUseCase {
                 .chauffeur(chauffeur)
                 .montant(encaissement.getMontant())
                 .modePaiement(encaissement.getModeEncaissement())
+                .compteTresorerieId(compteTresorerieResolver.resoudre(null, encaissement.getModeEncaissement()))
                 .dateOperation(encaissement.getDateEncaissement())
                 .dateReference(ligne.getDateCotisation())
                 .commentaire(encaissement.getCommentaire() != null && !encaissement.getCommentaire().isBlank()

@@ -377,7 +377,7 @@ class _ConditionCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: _programmeColor.withOpacity(0.06),
+                  color: _programmeColor.withValues(alpha: 0.06),
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
@@ -525,7 +525,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -667,25 +667,25 @@ class _SkeletonCard extends StatelessWidget {
                   const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
+            child: const Row(
               children: [
                 _Shimmer(width: 140, height: 14, radius: 7),
-                const Spacer(),
+                Spacer(),
                 _Shimmer(width: 70, height: 22, radius: 11),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
                   _Shimmer(width: 90, height: 28, radius: 8),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   _Shimmer(width: 110, height: 28, radius: 8),
                 ]),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 _Shimmer(width: 200, height: 12, radius: 6),
               ],
             ),

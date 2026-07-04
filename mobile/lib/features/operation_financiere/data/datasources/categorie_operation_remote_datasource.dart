@@ -15,7 +15,7 @@ class CategorieOperationRemoteDatasource {
     };
     final data =
         await _client.get('/categories-operation', query: query);
-    if (data is! List) throw ApiException(500, 'Format de réponse inattendu');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) =>
             CategorieOperationModel.fromJson(e as Map<String, dynamic>))
@@ -26,7 +26,7 @@ class CategorieOperationRemoteDatasource {
       {required int categorieId}) async {
     final data = await _client.get('/sous-categories-operation',
         query: {'categorieId': '$categorieId'});
-    if (data is! List) throw ApiException(500, 'Format de réponse inattendu');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => SousCategorieOperationModel.fromJson(
             e as Map<String, dynamic>))

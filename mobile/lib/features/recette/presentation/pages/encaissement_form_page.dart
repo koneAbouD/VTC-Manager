@@ -79,7 +79,7 @@ class _EncaissementFormPageState extends ConsumerState<EncaissementFormPage> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<ModeEncaissement>(
-              value: _mode,
+              initialValue: _mode,
               decoration: const InputDecoration(
                 labelText: 'Mode d\'encaissement *',
                 border: OutlineInputBorder(),

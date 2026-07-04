@@ -60,7 +60,7 @@ class _State extends ConsumerState<EncaissementCotisationFormPage> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<ModePaiementCotisation>(
-            value: _mode,
+            initialValue: _mode,
             decoration: const InputDecoration(labelText: "Mode d'encaissement *", border: OutlineInputBorder()),
             items: ModePaiementCotisation.values
                 .map((m) => DropdownMenuItem(value: m, child: Text(m.label))).toList(),

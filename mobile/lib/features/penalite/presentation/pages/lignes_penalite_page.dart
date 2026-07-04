@@ -39,7 +39,8 @@ class LignesPenalitePage extends ConsumerStatefulWidget {
 class _LignesPenaliteListPageState
     extends ConsumerState<LignesPenalitePage> {
   // ── Filtres serveur ────────────────────────────────────────────────────
-  _FiltreMode _filtreMode     = _FiltreMode.mois;
+  // null = aucun filtre par date (toutes périodes) — comportement par défaut.
+  _FiltreMode? _filtreMode;
   int         _moisSelectionne    = DateTime.now().month;
   int         _anneeSelectionnee  = DateTime.now().year;
   DateTime    _jourSelectionne    = DateTime.now();
@@ -98,7 +99,9 @@ class _LignesPenaliteListPageState
 
   // ── Logique date ────────────────────────────────────────────────────────
 
-  (DateTime, DateTime) _plageActive() => switch (_filtreMode) {
+  // (null, null) quand aucun filtre par date n'est actif.
+  (DateTime?, DateTime?) _plageActive() => switch (_filtreMode) {
+        null => (null, null),
         _FiltreMode.mois => (
             DateTime(_anneeSelectionnee, _moisSelectionne, 1),
             DateTime(_anneeSelectionnee, _moisSelectionne + 1, 0),
@@ -169,14 +172,16 @@ class _LignesPenaliteListPageState
               elevation: 8,
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                width: 190,
+                width: 210,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                     color: Colors.white, borderRadius: BorderRadius.circular(12)),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: _FiltreMode.values.map((mode) {
+                  // null = « Toutes les périodes » (désactive le filtre par date).
+                  children: <_FiltreMode?>[null, ..._FiltreMode.values].map((mode) {
                     final label = switch (mode) {
+                      null                => 'Tous',
                       _FiltreMode.mois    => 'Mois',
                       _FiltreMode.semaine => 'Semaine',
                       _FiltreMode.jour    => 'Jour',
@@ -416,6 +421,7 @@ class _LignesPenaliteListPageState
                               // ── Liste / vide / loader bas de page ────
                               if (filtered.isEmpty)
                                 const SliverFillRemaining(
+                                    hasScrollBody: false,
                                     child: _EmptyState())
                               else
                                 SliverPadding(
@@ -462,7 +468,7 @@ class _LignesPenaliteListPageState
 // ── Barre filtre date (identique recette) ─────────────────────────────────
 
 class _FiltreDateBar extends StatelessWidget {
-  final _FiltreMode mode;
+  final _FiltreMode? mode;
   final GlobalKey filtreKey;
   final VoidCallback onFiltrePressed;
   final int moisSelectionne;
@@ -495,13 +501,19 @@ class _FiltreDateBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final modeLabel = switch (mode) {
+      null                => 'Tous',
       _FiltreMode.mois    => 'Mois',
       _FiltreMode.semaine => 'Semaine',
       _FiltreMode.jour    => 'Jour',
       _FiltreMode.periode => 'Période',
     };
 
-    final datePill = switch (mode) {
+    final Widget datePill = switch (mode) {
+      // Carte de valeur statique quand aucun filtre par date n'est actif.
+      null => _DatePill(
+          icon: Icons.calendar_month_outlined,
+          label: 'Toutes les périodes',
+          onTap: onFiltrePressed),
       _FiltreMode.mois => _DatePill(
           icon: Icons.calendar_month_outlined,
           label: '${kMoisNoms[moisSelectionne - 1]} $anneeSelectionnee',

@@ -8,7 +8,7 @@ class RecetteRemoteDatasource {
 
   Future<List<RecetteModel>> getRecettes() async {
     final data = await _client.get('/recettes');
-    if (data is! List) throw ApiException(500, 'Format de réponse inattendu');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => RecetteModel.fromJson(e as Map<String, dynamic>))
         .toList();

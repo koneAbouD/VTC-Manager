@@ -29,7 +29,7 @@ class ContraventionRemoteDatasource {
 
   Future<List<ContraventionModel>> getContraventions() async {
     final data = await _client.get('/contraventions');
-    if (data is! List) throw ApiException(500, 'Format de réponse inattendu');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => ContraventionModel.fromJson(e as Map<String, dynamic>))
         .toList();

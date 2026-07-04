@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.*;
 import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
+import com.tmk.vtcmanager.application.services.VehiculeStatutHistoriqueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ public class UpdateVehiculeUseCase {
     private final ConditionTravailRepository conditionTravailRepository;
     private final ProgrammeTravailRepository programmeTravailRepository;
     private final ConfigurationRecetteSynchronizer configurationRecetteSynchronizer;
+    private final VehiculeStatutHistoriqueService statutHistoriqueService;
 
     @Transactional
     public Vehicule execute(Long id, UpdateVehiculeCommand cmd) {
@@ -37,6 +39,7 @@ public class UpdateVehiculeUseCase {
         if (cmd.identifiantBalise() != null) existing.setIdentifiantBalise(cmd.identifiantBalise());
         if (cmd.couleur() != null) existing.setCouleur(cmd.couleur());
         if (cmd.kilometrage() != null) existing.setKilometrage(cmd.kilometrage());
+        VehiculeStatus statutAvant = existing.getStatut();
         if (cmd.statut() != null) existing.appliquerStatutManuel(cmd.statut());
         if (cmd.dateAchat() != null) existing.setDateAchat(cmd.dateAchat());
         if (cmd.dateProchaineMaintenance() != null) existing.setDateProchaineMaintenance(cmd.dateProchaineMaintenance());
@@ -69,6 +72,10 @@ public class UpdateVehiculeUseCase {
 
         Vehicule saved = vehiculeRepository.save(existing);
 
+        if (cmd.statut() != null && saved.getStatut() != statutAvant) {
+            statutHistoriqueService.enregistrerTransition(id, saved.getStatut(), motifManuel(cmd.statut()));
+        }
+
         // Re-synchroniser le programme et la configuration de recette si la condition a changé
         if (conditionChanged && existing.getConditionTravail() != null) {
             ConditionTravail condition = existing.getConditionTravail();
@@ -83,5 +90,14 @@ public class UpdateVehiculeUseCase {
         }
 
         return saved;
+    }
+
+    /** Motif historisé selon la nature du statut demandé manuellement. */
+    private VehiculeStatutMotif motifManuel(VehiculeStatus demande) {
+        return switch (demande) {
+            case IMMOBILISE -> VehiculeStatutMotif.PANNE_OU_ACCIDENT;
+            case HORS_PARC -> VehiculeStatutMotif.SORTIE_PARC;
+            default -> VehiculeStatutMotif.DECISION_MANUELLE;
+        };
     }
 }

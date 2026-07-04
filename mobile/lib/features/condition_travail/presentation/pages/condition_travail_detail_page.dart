@@ -515,9 +515,9 @@ class _PenalitesSection extends StatelessWidget {
                       size: 16, color: Colors.red.shade700),
                 ),
                 const SizedBox(width: 10),
-                Text(
+                const Text(
                   'Pénalités',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                     color: _kDark,

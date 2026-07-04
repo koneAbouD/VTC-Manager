@@ -15,6 +15,9 @@ public class CategorieOperation {
     private String code;
     private String libelle;
     private TypeOperation typeOperation;
+    private NatureResultat natureResultat;
+    /** Compte du plan comptable (SYSCOHADA) pour l'export ; null si non mappé. */
+    private String compteComptable;
     private boolean actif;
     private SousCategorieOperation sousCategorie;
 }

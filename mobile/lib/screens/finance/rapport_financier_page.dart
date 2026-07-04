@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/widgets/app_header.dart';
+import '../../core/widgets/month_filter_pill.dart';
 
 // ── Modèles ──────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,11 @@ final rapportFinancierProvider = FutureProvider.family<RapportFinancierData,
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 class RapportFinancierPage extends ConsumerStatefulWidget {
-  const RapportFinancierPage({super.key});
+  /// true quand la page est embarquée dans un onglet du hub Finances :
+  /// masque le bouton retour de l'en-tête.
+  final bool embedded;
+
+  const RapportFinancierPage({super.key, this.embedded = false});
 
   @override
   ConsumerState<RapportFinancierPage> createState() =>
@@ -132,7 +137,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      appBar: const AppHeader(title: 'Rapport financier'),
+      appBar: AppHeader(title: 'Rapport financier', showBack: !widget.embedded),
       body: Column(
         children: [
           _buildFilters(),
@@ -181,41 +186,20 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
   }
 
   Widget _buildFilters() {
-    final moisLabel = DateFormat('MMMM yyyy', 'fr_FR')
-        .format(DateTime(_annee, _mois))
-        .toUpperCase();
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Row(
         children: [
-          // Mois picker
+          // Mois picker (style filtre par date des opérations)
           Expanded(
-            child: InkWell(
-              onTap: _pickMois,
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.calendar_today_outlined,
-                        size: 16, color: Colors.blue),
-                    const SizedBox(width: 6),
-                    Flexible(
-                        child: Text(moisLabel,
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w500),
-                            overflow: TextOverflow.ellipsis)),
-                    const Icon(Icons.arrow_drop_down, size: 18),
-                  ],
-                ),
-              ),
+            child: MonthFilterPill(
+              mois: _mois,
+              annee: _annee,
+              onChanged: (m, a) => setState(() {
+                _mois = m;
+                _annee = a;
+              }),
             ),
           ),
           const SizedBox(width: 8),
@@ -274,7 +258,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                     boxShadow: _showRevenus
                         ? [
                             BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
+                                color: Colors.black.withValues(alpha: 0.08),
                                 blurRadius: 4)
                           ]
                         : [],
@@ -302,7 +286,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                     boxShadow: !_showRevenus
                         ? [
                             BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
+                                color: Colors.black.withValues(alpha: 0.08),
                                 blurRadius: 4)
                           ]
                         : [],
@@ -339,7 +323,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2))
         ],
@@ -416,7 +400,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2))
         ],
@@ -507,7 +491,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2))
         ],
@@ -590,23 +574,6 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
     );
   }
 
-  void _pickMois() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(_annee, _mois),
-      firstDate: DateTime(now.year - 2),
-      lastDate: now,
-      initialEntryMode: DatePickerEntryMode.calendarOnly,
-    );
-    if (picked != null) {
-      setState(() {
-        _mois = picked.month;
-        _annee = picked.year;
-      });
-    }
-  }
-
   void _toggleGroupBy() {
     setState(() =>
         _groupBy = _groupBy == 'CHAUFFEUR' ? 'VEHICULE' : 'CHAUFFEUR');
@@ -633,7 +600,7 @@ class _OperationTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 6,
               offset: const Offset(0, 1))
         ],
@@ -644,7 +611,7 @@ class _OperationTile extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(

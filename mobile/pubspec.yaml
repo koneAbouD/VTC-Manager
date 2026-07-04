@@ -52,6 +52,7 @@ dependencies:
   # Sélection de fichiers (PDF, images) pour les documents
   file_picker: ^8.1.2
 
+  http_parser: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

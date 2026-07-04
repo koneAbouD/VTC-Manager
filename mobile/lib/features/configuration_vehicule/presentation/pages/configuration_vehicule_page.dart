@@ -657,7 +657,7 @@ class _ConfigurationVehiculePageState
                             borderRadius: BorderRadius.circular(14)),
                       ),
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Passer',
+                      child: const Text('Annuler',
                           style: TextStyle(color: Colors.black54)),
                     ),
                   ),

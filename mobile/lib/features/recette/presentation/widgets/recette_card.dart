@@ -42,7 +42,7 @@ class RecetteCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.12),
+                color: Colors.green.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.attach_money, color: Colors.green),

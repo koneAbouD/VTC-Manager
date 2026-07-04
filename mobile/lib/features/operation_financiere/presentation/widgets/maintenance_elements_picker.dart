@@ -183,8 +183,8 @@ class _MaintenanceElementsPickerState
 
 class _CatalogueSelection {
   final CatalogueElementMaintenance element;
-  double montant;
-  _CatalogueSelection(this.element, {this.montant = 0});
+  double montant = 0;
+  _CatalogueSelection(this.element);
 }
 
 class _CataloguePickerSheet extends StatefulWidget {

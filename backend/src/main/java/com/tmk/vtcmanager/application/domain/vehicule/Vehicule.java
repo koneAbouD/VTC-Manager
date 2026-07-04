@@ -35,6 +35,11 @@ public class Vehicule {
     private GroupeVehicule groupe;
     private ConditionTravail conditionTravail;
     private LocalDate dateAchat;
+    /** Prix d'acquisition : base de l'amortissement et du bilan de gestion. */
+    private java.math.BigDecimal prixAchat;
+    /** Durée d'amortissement linéaire en mois (60 par défaut). */
+    @Builder.Default
+    private int dureeAmortissementMois = 60;
     private LocalDate dateProchaineMaintenance;
     private LocalDate dateMiseEnCirculation;
     private LocalDate dateEntreeFlotte;

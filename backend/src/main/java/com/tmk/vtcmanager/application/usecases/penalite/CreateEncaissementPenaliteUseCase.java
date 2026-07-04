@@ -13,6 +13,8 @@ import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationReposi
 import com.tmk.vtcmanager.application.ports.persistence.EncaissementPenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,8 @@ public class CreateEncaissementPenaliteUseCase {
     private final EncaissementPenaliteRepository encaissementPenaliteRepository;
     private final OperationFinanciereRepository operationFinanciereRepository;
     private final CategorieOperationRepository categorieOperationRepository;
+    private final CompteTresorerieResolver compteTresorerieResolver;
+    private final PeriodeClotureeGuard periodeClotureeGuard;
 
     @Transactional
     public EncaissementPenalite executer(Long lignePenaliteId, EncaissementPenalite encaissement) {
@@ -38,6 +42,8 @@ public class CreateEncaissementPenaliteUseCase {
         if (!ligne.isEncaissable()) {
             throw new LignePenaliteNonEncaissableException(lignePenaliteId);
         }
+
+        periodeClotureeGuard.verifier(encaissement.getDateEncaissement());
 
         if (encaissement.getMontant().compareTo(ligne.montantRestant()) > 0) {
             throw new EncaissementPenaliteDepasseMontantException(ligne.montantRestant());
@@ -74,6 +80,7 @@ public class CreateEncaissementPenaliteUseCase {
                 .chauffeur(chauffeur)
                 .montant(encaissement.getMontant())
                 .modePaiement(encaissement.getModeEncaissement())
+                .compteTresorerieId(compteTresorerieResolver.resoudre(null, encaissement.getModeEncaissement()))
                 .dateOperation(encaissement.getDateEncaissement())
                 .dateReference(ligne.getDateFaute())
                 .commentaire(encaissement.getCommentaire())

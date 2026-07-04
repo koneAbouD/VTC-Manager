@@ -8,7 +8,7 @@ class CatalogueElementMaintenanceRemoteDatasource {
 
   Future<List<CatalogueElementMaintenanceModel>> getAll() async {
     final data = await _client.get('/catalogue-elements-maintenance');
-    if (data is! List) throw ApiException(500, 'Format de réponse inattendu');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => CatalogueElementMaintenanceModel.fromJson(
             e as Map<String, dynamic>))

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_config.dart';
 import '../../core/storage/secure_storage.dart';
+import '../../core/utils/csv_downloader.dart';
 import '../../features/chauffeur/domain/entities/chauffeur.dart';
 import '../../features/chauffeur/domain/enums/chauffeur_status.dart';
 import '../../features/chauffeur/domain/enums/type_chauffeur.dart';
@@ -10,6 +11,7 @@ import '../../features/chauffeur/presentation/providers/chauffeur_provider.dart'
 import '../../features/chauffeur/presentation/providers/chauffeur_state.dart';
 import '../../features/chauffeur/presentation/pages/chauffeur_detail_page.dart';
 import '../../features/chauffeur/presentation/pages/chauffeur_form_page.dart';
+import '../../features/etat_parc/presentation/widgets/etat_parc_tab.dart';
 import '../../features/vehicule/domain/entities/statut_vehicule.dart';
 import '../../features/vehicule/domain/entities/vehicule.dart';
 import '../../features/vehicule/presentation/vehicule_couleurs.dart';
@@ -18,7 +20,51 @@ import '../../features/vehicule/presentation/providers/vehicule_provider.dart';
 import '../../features/vehicule/presentation/providers/vehicule_state.dart';
 import '../../features/vehicule/presentation/pages/vehicule_form_page.dart';
 import '../../features/vehicule/presentation/pages/vehicule_detail_page.dart';
-import 'fleet_filter_provider.dart';
+import 'fleet_csv.dart';
+
+// ── Bouton d'export CSV (barre de recherche des onglets Véhicules/Chauffeurs) ─
+
+class _ExportButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ExportButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 46,
+        width: 46,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
+        ),
+        child: Icon(Icons.file_download_outlined,
+            size: 20, color: Colors.grey.shade600),
+      ),
+    );
+  }
+}
+
+// Feedback commun après un export CSV depuis un onglet de la flotte.
+void _showFleetExportSnack(BuildContext context, String message,
+    {String? path}) {
+  final detail = path != null ? '\n$path' : '';
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(children: [
+        const Icon(Icons.check_circle_outline_rounded,
+            color: Colors.white, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text('$message$detail')),
+      ]),
+      duration: const Duration(seconds: 4),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
 
 // ── Helpers couleur statut ───────────────────────────────────────────────────
 
@@ -56,9 +102,6 @@ class _FleetScreenState extends ConsumerState<FleetScreen>
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
-    _tab.addListener(() {
-      ref.read(fleetActiveTabProvider.notifier).state = _tab.index;
-    });
   }
 
   @override
@@ -106,10 +149,11 @@ class _FleetScreenState extends ConsumerState<FleetScreen>
             ),
             indicatorSize: TabBarIndicatorSize.tab,
             dividerColor: Colors.transparent,
-            labelColor: Color(0xFF43A047),
+            labelColor: const Color(0xFF43A047),
             unselectedLabelColor: Colors.grey.shade600,
             labelStyle:
-                const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
             tabs: [
               const Tab(text: 'État de parc'),
               Tab(text: 'Véhicules ($vCount)'),
@@ -121,353 +165,10 @@ class _FleetScreenState extends ConsumerState<FleetScreen>
           child: TabBarView(
             controller: _tab,
             children: [
-              _EtatParcTab(),
+              const EtatParcTab(),
               _VehiculeTab(),
               _ChauffeurTab(),
             ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Tab État de parc ─────────────────────────────────────────────────────────
-
-// ── Données des sous-onglets ─────────────────────────────────────────────────
-
-class _SubTab {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final String description;
-  final String emptyTitle;
-  final String emptySubtitle;
-  final String voirLabel;
-
-  const _SubTab({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.description,
-    required this.emptyTitle,
-    required this.emptySubtitle,
-    required this.voirLabel,
-  });
-}
-
-const _subTabs = [
-  _SubTab(
-    label: 'Pannes',
-    icon: Icons.warning_amber_rounded,
-    color: Color(0xFFE65100),
-    description:
-        "Dans l'onglet Pannes, vous pouvez enregistrer et suivre l'évolution des pannes de vos véhicules.",
-    emptyTitle: 'Aucune panne enregistrée',
-    emptySubtitle:
-        'Les pannes déclarées sur vos véhicules apparaîtront ici.',
-    voirLabel: 'Voir toutes les pannes',
-  ),
-  _SubTab(
-    label: 'Maintenances',
-    icon: Icons.build_rounded,
-    color: Color(0xFF1565C0),
-    description:
-        "Dans l'onglet Maintenances, vous pouvez enregistrer et suivre l'évolution des maintenances de vos véhicules.",
-    emptyTitle: 'Aucune maintenance programmée',
-    emptySubtitle:
-        'Programmez des entretiens sur vos véhicules en appuyant sur le bouton "+" ci-dessus.',
-    voirLabel: 'Voir toutes les maintenances',
-  ),
-  _SubTab(
-    label: 'Check-up',
-    icon: Icons.task_alt_rounded,
-    color: Color(0xFF2E7D32),
-    description:
-        "Dans l'onglet Check-up, vous pouvez enregistrer et suivre l'évolution des check-up de vos véhicules.",
-    emptyTitle: 'Aucun check-up effectué',
-    emptySubtitle:
-        'Les vérifications périodiques de vos véhicules apparaîtront ici.',
-    voirLabel: 'Voir tous les check-up',
-  ),
-  _SubTab(
-    label: 'Sinistres',
-    icon: Icons.car_crash_rounded,
-    color: Color(0xFFC62828),
-    description:
-        "Dans l'onglet Sinistres, vous pouvez enregistrer et suivre l'évolution des sinistres de vos véhicules.",
-    emptyTitle: 'Aucun sinistre déclaré',
-    emptySubtitle:
-        'Les accidents et sinistres de vos véhicules apparaîtront ici.',
-    voirLabel: 'Voir tous les sinistres',
-  ),
-];
-
-// ── Tab État de parc ─────────────────────────────────────────────────────────
-
-class _EtatParcTab extends ConsumerStatefulWidget {
-  @override
-  ConsumerState<_EtatParcTab> createState() => _EtatParcTabState();
-}
-
-class _EtatParcTabState extends ConsumerState<_EtatParcTab>
-    with SingleTickerProviderStateMixin {
-  late final TabController _subTab;
-
-  @override
-  void initState() {
-    super.initState();
-    _subTab = TabController(length: _subTabs.length, vsync: this);
-    _subTab.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _subTab.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final vehiculeState = ref.watch(vehiculeNotifierProvider);
-    final List<Vehicule> vehicules = switch (vehiculeState) {
-      VehiculeLoaded(:final vehicules) => vehicules,
-      VehiculeActionSuccess(:final vehicules) => vehicules,
-      _ => [],
-    };
-    final statuts = ref.watch(statutsVehiculeResolvedProvider);
-
-    return Column(
-      children: [
-        // ── Résumé statuts ──────────────────────────────────────────
-        Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: Row(
-                children: [
-                  for (var i = 0; i < statuts.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 8),
-                    _MiniStat(
-                      label: statuts[i].libelle,
-                      count: vehicules
-                          .where((v) => v.statut == statuts[i].code)
-                          .length,
-                      color: statuts[i].couleur,
-                      icon: statuts[i].icon,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            // ── Sous-onglets ────────────────────────────────────────────
-            SizedBox(
-              height: 48,
-              child: TabBar(
-                controller: _subTab,
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                indicatorColor: Colors.transparent,
-                dividerColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                tabs: List.generate(_subTabs.length, (i) {
-                  final t = _subTabs[i];
-                  final isActive = _subTab.index == i;
-                  return _SubTabChip(tab: t, isActive: isActive);
-                }),
-              ),
-            ),
-            // ── Contenu ─────────────────────────────────────────────────
-        Expanded(
-          child: TabBarView(
-            controller: _subTab,
-            children: _subTabs.map((t) => _SubTabContent(tab: t)).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Mini stat compact (ligne du haut) ────────────────────────────────────────
-
-class _MiniStat extends StatelessWidget {
-  final String label;
-  final int count;
-  final Color color;
-  final IconData icon;
-
-  const _MiniStat({
-    required this.label,
-    required this.count,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 4),
-            Text(
-              '$count',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Chip de sous-onglet ──────────────────────────────────────────────────────
-
-class _SubTabChip extends StatelessWidget {
-  final _SubTab tab;
-  final bool isActive;
-
-  const _SubTabChip({required this.tab, required this.isActive});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: isActive ? tab.color : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isActive ? tab.color : Colors.grey.shade300,
-        ),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: tab.color.withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                )
-              ]
-            : [],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(tab.icon,
-              size: 15,
-              color: isActive ? Colors.white : tab.color),
-          const SizedBox(width: 6),
-          Text(
-            tab.label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isActive ? Colors.white : Colors.grey.shade700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Contenu d'un sous-onglet ─────────────────────────────────────────────────
-
-class _SubTabContent extends StatelessWidget {
-  final _SubTab tab;
-  const _SubTabContent({required this.tab});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // État vide centré
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: tab.color.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(tab.icon, size: 34, color: tab.color),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  tab.emptyTitle,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  tab.emptySubtitle,
-                  textAlign: TextAlign.center,
-                  style:
-                      TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-        ),
-        // Bouton "Voir tous" en bas
-        Positioned(
-          left: 24,
-          right: 24,
-          bottom: 24,
-          child: ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: tab.color,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: StadiumBorder(),
-              elevation: 4,
-              shadowColor: tab.color.withValues(alpha: 0.4),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(tab.voirLabel,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14)),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_rounded, size: 18),
-              ],
-            ),
           ),
         ),
       ],
@@ -494,9 +195,7 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
   void initState() {
     super.initState();
     _searchCtrl.addListener(() {
-      final text = _searchCtrl.text;
-      setState(() => _query = text);
-      ref.read(vehiculeFilterQueryProvider.notifier).state = text;
+      setState(() => _query = _searchCtrl.text);
     });
     _scrollCtrl.addListener(_onScroll);
   }
@@ -554,6 +253,19 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
     );
   }
 
+  Future<void> _exportCsv() async {
+    final all = switch (ref.read(vehiculeNotifierProvider)) {
+      VehiculeLoaded(:final vehicules) => vehicules,
+      VehiculeActionSuccess(:final vehicules) => vehicules,
+      _ => <Vehicule>[],
+    };
+    final vehicules = _filter(all);
+    final path = await downloadCsvFile(vehiculesToCsv(vehicules), 'vehicules.csv');
+    if (!mounted) return;
+    _showFleetExportSnack(
+        context, '${vehicules.length} véhicule(s) exporté(s)', path: path);
+  }
+
   Widget _buildSearchHeader(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     final hasFilter = _statutFilter != null;
@@ -563,6 +275,59 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // ── Filtre par statut (à gauche) ─────────────────────────────
+          SizedBox(
+            height: 46,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: hasFilter
+                    ? primary.withValues(alpha: 0.08)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: hasFilter
+                      ? primary.withValues(alpha: 0.6)
+                      : Colors.grey.shade200,
+                  width: hasFilter ? 1.5 : 1,
+                ),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String?>(
+                  value: _statutFilter,
+                  isDense: true,
+                  icon: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color:
+                        hasFilter ? primary : Colors.grey.shade400,
+                  ),
+                  dropdownColor: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  menuMaxHeight: 280,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: hasFilter
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                    color:
+                        hasFilter ? primary : Colors.grey.shade600,
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Tous')),
+                    for (final s in ref.watch(statutsVehiculeResolvedProvider))
+                      DropdownMenuItem(value: s.code, child: Text(s.libelle)),
+                  ],
+                  onChanged: (v) {
+                    setState(() => _statutFilter = v);
+                  },
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // ── Barre de recherche (au centre) ───────────────────────────
           Expanded(
             child: SizedBox(
               height: 46,
@@ -614,57 +379,8 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
             ),
           ),
           const SizedBox(width: 8),
-          SizedBox(
-            height: 46,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: hasFilter
-                    ? primary.withValues(alpha: 0.08)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: hasFilter
-                      ? primary.withValues(alpha: 0.6)
-                      : Colors.grey.shade200,
-                  width: hasFilter ? 1.5 : 1,
-                ),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _statutFilter,
-                  isDense: true,
-                  icon: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color:
-                        hasFilter ? primary : Colors.grey.shade400,
-                  ),
-                  dropdownColor: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  menuMaxHeight: 280,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: hasFilter
-                        ? FontWeight.w600
-                        : FontWeight.w500,
-                    color:
-                        hasFilter ? primary : Colors.grey.shade600,
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Tous')),
-                    for (final s in ref.watch(statutsVehiculeResolvedProvider))
-                      DropdownMenuItem(value: s.code, child: Text(s.libelle)),
-                  ],
-                  onChanged: (v) {
-                    setState(() => _statutFilter = v);
-                    ref.read(vehiculeFilterStatutProvider.notifier).state = v;
-                  },
-                ),
-              ),
-            ),
-          ),
+          // ── Bouton d'export (à droite) ───────────────────────────────
+          _ExportButton(onTap: _exportCsv),
         ],
       ),
     );
@@ -706,7 +422,6 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
             _query = '';
             _statutFilter = null;
           });
-          ref.read(vehiculeFilterStatutProvider.notifier).state = null;
         },
       );
     }
@@ -876,9 +591,7 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
   void initState() {
     super.initState();
     _searchCtrl.addListener(() {
-      final text = _searchCtrl.text;
-      setState(() => _query = text);
-      ref.read(chauffeurFilterQueryProvider.notifier).state = text;
+      setState(() => _query = _searchCtrl.text);
     });
     _scrollCtrl.addListener(_onScroll);
   }
@@ -968,6 +681,20 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
     );
   }
 
+  Future<void> _exportCsv() async {
+    final all = switch (ref.read(chauffeurNotifierProvider)) {
+      ChauffeurLoaded(:final chauffeurs) => chauffeurs,
+      ChauffeurActionSuccess(:final chauffeurs) => chauffeurs,
+      _ => <Chauffeur>[],
+    };
+    final chauffeurs = _filter(all);
+    final path =
+        await downloadCsvFile(chauffeursToCsv(chauffeurs), 'chauffeurs.csv');
+    if (!mounted) return;
+    _showFleetExportSnack(
+        context, '${chauffeurs.length} chauffeur(s) exporté(s)', path: path);
+  }
+
   Widget _buildSearchHeader(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     final hasFilter = _statutFilter != null;
@@ -977,57 +704,7 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            child: SizedBox(
-              height: 46,
-              child: TextField(
-                controller: _searchCtrl,
-                style: const TextStyle(
-                    fontSize: 14, color: Color(0xFF1A1A2E)),
-                decoration: InputDecoration(
-                  hintText: 'Nom, téléphone…',
-                  hintStyle: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade400,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    size: 18,
-                    color: _query.isNotEmpty
-                        ? primary
-                        : Colors.grey.shade400,
-                  ),
-                  suffixIcon: _query.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.close_rounded,
-                              size: 16, color: Colors.grey.shade400),
-                          onPressed: _searchCtrl.clear,
-                          splashRadius: 16,
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 4),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        BorderSide(color: Colors.grey.shade200, width: 1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: primary, width: 1.5),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
+          // ── Filtre par statut (à gauche) ─────────────────────────────
           SizedBox(
             height: 46,
             child: AnimatedContainer(
@@ -1083,12 +760,66 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
                   ],
                   onChanged: (v) {
                     setState(() => _statutFilter = v);
-                    ref.read(chauffeurFilterStatutProvider.notifier).state = v;
                   },
                 ),
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          // ── Barre de recherche (au centre) ───────────────────────────
+          Expanded(
+            child: SizedBox(
+              height: 46,
+              child: TextField(
+                controller: _searchCtrl,
+                style: const TextStyle(
+                    fontSize: 14, color: Color(0xFF1A1A2E)),
+                decoration: InputDecoration(
+                  hintText: 'Nom, téléphone…',
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade400,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 18,
+                    color: _query.isNotEmpty
+                        ? primary
+                        : Colors.grey.shade400,
+                  ),
+                  suffixIcon: _query.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.close_rounded,
+                              size: 16, color: Colors.grey.shade400),
+                          onPressed: _searchCtrl.clear,
+                          splashRadius: 16,
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 4),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: primary, width: 1.5),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // ── Bouton d'export (à droite) ───────────────────────────────
+          _ExportButton(onTap: _exportCsv),
         ],
       ),
     );
@@ -1130,7 +861,6 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
             _query = '';
             _statutFilter = null;
           });
-          ref.read(chauffeurFilterStatutProvider.notifier).state = null;
         },
       );
     }
@@ -1592,146 +1322,6 @@ class _Bone extends StatelessWidget {
           borderRadius: BorderRadius.circular(r),
         ),
       );
-}
-
-// ── SummaryCard véhicules ────────────────────────────────────────────────────
-
-class _SummaryCard extends StatelessWidget {
-  final IconData icon;
-  final int? count;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _SummaryCard({
-    required this.icon,
-    this.count,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 134,
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: count != null
-              ? color.withValues(alpha: 0.1)
-              : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            Icon(icon, color: color, size: 22),
-            const Spacer(),
-            if (count != null) ...[
-              Text('$count',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: color)),
-              const SizedBox(height: 2),
-            ],
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: count != null ? color : Colors.grey.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Icon(Icons.arrow_forward,
-                    size: 12,
-                    color:
-                        count != null ? color : Colors.grey.shade600),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── ChauffeurActionCard ──────────────────────────────────────────────────────
-
-class _ChauffeurActionCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconBg;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _ChauffeurActionCard({
-    required this.icon,
-    required this.iconBg,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: iconBg.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(height: 16),
-            Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 17,
-                    color: Color(0xFF1A1A2E))),
-            const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Text(subtitle,
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                          height: 1.25)),
-                ),
-                Icon(Icons.arrow_forward,
-                    size: 16, color: Colors.grey.shade700),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ── États communs ────────────────────────────────────────────────────────────

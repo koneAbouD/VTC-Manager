@@ -168,7 +168,7 @@ class _LignesMaintenancePageState
                   // null = « Toutes les périodes » (désactive le filtre par date).
                   children: <_FiltreMode?>[null, ..._FiltreMode.values].map((mode) {
                     final label = switch (mode) {
-                      null                => 'Toutes les périodes',
+                      null                => 'Tous',
                       _FiltreMode.mois    => 'Mois',
                       _FiltreMode.semaine => 'Semaine',
                       _FiltreMode.jour    => 'Jour',
@@ -390,7 +390,8 @@ class _LignesMaintenancePageState
                             ),
                           ),
                           if (filtered.isEmpty)
-                            const SliverFillRemaining(child: _EmptyState())
+                            const SliverFillRemaining(
+                                hasScrollBody: false, child: _EmptyState())
                           else
                             SliverPadding(
                               padding:
@@ -473,14 +474,14 @@ class _FiltreBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final modeLabel = switch (mode) {
-      null                => 'Période',
+      null                => 'Tous',
       _FiltreMode.mois    => 'Mois',
       _FiltreMode.semaine => 'Semaine',
       _FiltreMode.jour    => 'Jour',
       _FiltreMode.periode => 'Période',
     };
 
-    final Widget? datePill = switch (mode) {
+    final Widget datePill = switch (mode) {
       // Carte de valeur statique quand aucun filtre par date n'est actif.
       null => _DatePill(
           icon:  Icons.calendar_month_outlined,
@@ -540,7 +541,7 @@ class _FiltreBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        if (datePill != null) Expanded(child: datePill),
+        Expanded(child: datePill),
       ]),
     );
   }

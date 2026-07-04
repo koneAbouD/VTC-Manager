@@ -1,4 +1,3 @@
-import '../../domain/entities/encaissement.dart';
 import '../../domain/entities/ligne_recette.dart';
 import 'encaissement_model.dart';
 

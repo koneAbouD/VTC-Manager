@@ -153,7 +153,7 @@ class _DetailBody extends ConsumerWidget {
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
             onPressed: () => _supprimer(context, ref),
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(Icons.cancel_outlined),
             label: const Text('Annuler'),
           ),
         ],

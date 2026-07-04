@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities;
 
+import com.tmk.vtcmanager.application.domain.operation.NatureResultat;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,6 +30,13 @@ public class CategorieOperationEntity extends AbstractAuditEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "type_operation", nullable = false, length = 20)
     private TypeOperation typeOperation;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "nature_resultat", nullable = false, length = 30)
+    private NatureResultat natureResultat;
+
+    @Column(name = "compte_comptable", length = 10)
+    private String compteComptable;
 
     @Column(nullable = false)
     private boolean actif;

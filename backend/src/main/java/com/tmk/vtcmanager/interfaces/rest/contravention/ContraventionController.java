@@ -80,7 +80,7 @@ public class ContraventionController {
 
     @PostMapping("/{id}/payments")
     public ContraventionResponse pay(@PathVariable Long id, @Valid @RequestBody PaymentRequest request) {
-        return mapper.toResponse(payContraventionUseCase.execute(id, request.montantPaye()));
+        return mapper.toResponse(payContraventionUseCase.execute(id, request.montantPaye(), request.modePaiement()));
     }
 
     @PostMapping("/{id}/reverse")
