@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatus;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatutHistorique;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatutMotif;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
+import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeStatutHistoriqueRepository;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.EtatParcSummaryResponse;
@@ -32,6 +33,7 @@ class GetEtatParcUseCaseTest {
     private VehiculeRepository vehiculeRepository;
     private VehiculeStatutHistoriqueRepository historiqueRepository;
     private DocumentRepository documentRepository;
+    private IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
     private GetEtatParcUseCase useCase;
 
     @BeforeEach
@@ -39,7 +41,9 @@ class GetEtatParcUseCaseTest {
         vehiculeRepository = mock(VehiculeRepository.class);
         historiqueRepository = mock(VehiculeStatutHistoriqueRepository.class);
         documentRepository = mock(DocumentRepository.class);
-        useCase = new GetEtatParcUseCase(vehiculeRepository, historiqueRepository, documentRepository);
+        indisponibiliteVehiculeRepository = mock(IndisponibiliteVehiculeRepository.class);
+        useCase = new GetEtatParcUseCase(vehiculeRepository, historiqueRepository,
+                documentRepository, indisponibiliteVehiculeRepository);
         when(historiqueRepository.findAllEnCours()).thenReturn(List.of());
         when(documentRepository.findAll()).thenReturn(List.of());
     }

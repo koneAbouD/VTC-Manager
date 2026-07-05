@@ -70,8 +70,8 @@ class LignePenaliteNotifier extends StateNotifier<LignePenaliteState> {
     return result.fold((f) => f.message, (_) { load(); return null; });
   }
 
-  Future<String?> annuler(int id) async {
-    final result = await _repository.annuler(id);
+  Future<String?> annuler(int id, String motif) async {
+    final result = await _repository.annuler(id, motif);
     return result.fold((f) => f.message, (_) { load(); return null; });
   }
 
@@ -99,8 +99,8 @@ class LignePenaliteNotifier extends StateNotifier<LignePenaliteState> {
   Future<String?> leverDetail(int id) async =>
       (await _repository.lever(id)).fold((f) => f.message, (_) => null);
 
-  Future<String?> annulerDetail(int id) async =>
-      (await _repository.annuler(id)).fold((f) => f.message, (_) => null);
+  Future<String?> annulerDetail(int id, String motif) async =>
+      (await _repository.annuler(id, motif)).fold((f) => f.message, (_) => null);
 }
 
 final lignePenaliteNotifierProvider =

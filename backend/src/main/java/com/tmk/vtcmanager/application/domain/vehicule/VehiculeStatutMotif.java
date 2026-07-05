@@ -8,6 +8,8 @@ package com.tmk.vtcmanager.application.domain.vehicule;
 public enum VehiculeStatutMotif {
     /** Immobilisation liée à une pénalité active (calculée). */
     IMMOBILISATION_PENALITE,
+    /** Immobilisation planifiée hors atelier (accident/sinistre, panne, administratif). */
+    IMMOBILISATION_INDISPONIBILITE,
     /** Immobilisation décidée manuellement (panne, accident, saisie). */
     PANNE_OU_ACCIDENT,
     /** Au moins une maintenance EN_COURS. */

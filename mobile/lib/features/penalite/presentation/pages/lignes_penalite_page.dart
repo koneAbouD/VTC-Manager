@@ -19,6 +19,15 @@ import '../../../../core/widgets/date_filter_dialogs.dart';
 
 enum _FiltreMode { mois, semaine, jour, periode }
 
+/// Libellé d'une ligne : « Immatriculation - Nom chauffeur »
+/// (immatriculation seule si le nom du chauffeur est absent). Le chauffeur est
+/// celui qui était programmé sur le véhicule le jour de la faute.
+String _libelleVehiculeChauffeur(LignePenalite ligne) {
+  final immat = ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}';
+  final nom = ligne.chauffeurNomComplet;
+  return (nom != null && nom.isNotEmpty) ? '$immat - $nom' : immat;
+}
+
 // ── Page principale ────────────────────────────────────────────────────────
 
 class LignesPenalitePage extends ConsumerStatefulWidget {
@@ -277,7 +286,7 @@ class _LignesPenaliteListPageState
     final result   = await showEncaissementLigneDialog(
       context,
       titre:          'Amende — ${_typePenaliteLabel(ligne.typePenalite)}',
-      sousTitre:      ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}',
+      sousTitre:      _libelleVehiculeChauffeur(ligne),
       montantRestant: ligne.montantRestant,
       couleur:        const Color(0xFFB71C1C),
       icone:          Icons.gavel_outlined,
@@ -782,8 +791,7 @@ class _LignePenaliteCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    ligne.vehiculeImmatriculation ??
-                        'Véhicule ${ligne.vehiculeId}',
+                    _libelleVehiculeChauffeur(ligne),
                     style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,

@@ -2,11 +2,14 @@ package com.tmk.vtcmanager.application.usecases.etatparc;
 
 import com.tmk.vtcmanager.application.domain.document.CibleDocument;
 import com.tmk.vtcmanager.application.domain.document.Document;
+import com.tmk.vtcmanager.application.domain.indisponibilite.IndisponibiliteStatut;
+import com.tmk.vtcmanager.application.domain.indisponibiliteVehicule.IndisponibiliteVehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatus;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatutHistorique;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatutMotif;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
+import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeStatutHistoriqueRepository;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.EtatParcAlertesDto;
@@ -43,6 +46,7 @@ public class GetEtatParcUseCase {
     private final VehiculeRepository vehiculeRepository;
     private final VehiculeStatutHistoriqueRepository statutHistoriqueRepository;
     private final DocumentRepository documentRepository;
+    private final IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
 
     /**
      * @param groupeId   si non nul, restreint le parc aux véhicules de ce groupe
@@ -77,9 +81,13 @@ public class GetEtatParcUseCase {
                 .collect(Collectors.toMap(VehiculeStatutHistorique::getVehiculeId, Function.identity(),
                         (a, b) -> a));
 
+        // Fin prévue des immobilisations planifiées couvrant aujourd'hui (indisponibilité
+        // véhicule). Une seule lecture par statut, sans requête par véhicule (pas de N+1).
+        Map<Long, LocalDate> finsPrevues = finsPrevuesParVehicule(today);
+
         List<VehiculeExceptionDto> exceptions = vehicules.stream()
                 .filter(v -> demandeUneAction(v.getStatut()))
-                .map(v -> toException(v, periodesEnCours.get(v.getId())))
+                .map(v -> toException(v, periodesEnCours.get(v.getId()), finsPrevues.get(v.getId())))
                 .sorted(Comparator.comparing(VehiculeExceptionDto::joursDansStatut,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
@@ -109,7 +117,8 @@ public class GetEtatParcUseCase {
                 || statut == VehiculeStatus.DISPONIBLE;
     }
 
-    private VehiculeExceptionDto toException(Vehicule vehicule, VehiculeStatutHistorique periode) {
+    private VehiculeExceptionDto toException(Vehicule vehicule, VehiculeStatutHistorique periode,
+                                             LocalDate finPrevue) {
         VehiculeStatutMotif motif = periode != null && periode.getMotif() != null
                 ? periode.getMotif()
                 : motifParDefaut(vehicule.getStatut());
@@ -124,7 +133,30 @@ public class GetEtatParcUseCase {
                 libelle,
                 vehicule.getStatut() != null ? vehicule.getStatut().name() : null,
                 motif != null ? motif.name() : null,
-                jours);
+                jours,
+                finPrevue);
+    }
+
+    /**
+     * Fin prévue (date_fin) des indisponibilités véhicule couvrant {@code today},
+     * par véhicule. Si plusieurs se chevauchent, on retient la plus lointaine
+     * (le véhicule reste immobilisé jusqu'à la dernière). Les immobilisations
+     * ouvertes (date_fin null) n'alimentent pas la map.
+     */
+    private Map<Long, LocalDate> finsPrevuesParVehicule(LocalDate today) {
+        Map<Long, LocalDate> fins = new java.util.HashMap<>();
+        for (IndisponibiliteStatut statut : List.of(IndisponibiliteStatut.EN_COURS,
+                IndisponibiliteStatut.PLANIFIEE)) {
+            for (IndisponibiliteVehicule i : indisponibiliteVehiculeRepository.findByStatut(statut)) {
+                if (i.getVehiculeId() == null || i.getDateDebut() == null) continue;
+                if (i.getDateDebut().isAfter(today)) continue;
+                if (i.getDateFin() != null && i.getDateFin().isBefore(today)) continue;
+                if (i.getDateFin() == null) continue; // immobilisation ouverte : pas de fin prévue
+                fins.merge(i.getVehiculeId(), i.getDateFin(),
+                        (a, b) -> a.isAfter(b) ? a : b);
+            }
+        }
+        return fins;
     }
 
     /** Motif déduit du statut quand la période historisée n'en porte pas (seed initial). */

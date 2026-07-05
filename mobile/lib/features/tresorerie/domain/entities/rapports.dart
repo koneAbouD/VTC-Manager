@@ -56,12 +56,16 @@ class MargeVehiculeData {
   final double chargesVariables;
   final double marge;
 
+  /// Nombre de jours d'immobilisation (indisponibilité véhicule) sur la période.
+  final int joursImmobilisation;
+
   const MargeVehiculeData({
     required this.vehiculeId,
     required this.immatriculation,
     required this.produits,
     required this.chargesVariables,
     required this.marge,
+    this.joursImmobilisation = 0,
   });
 
   factory MargeVehiculeData.fromJson(Map<String, dynamic> j) =>
@@ -71,6 +75,7 @@ class MargeVehiculeData {
         produits: (j['produits'] as num?)?.toDouble() ?? 0,
         chargesVariables: (j['chargesVariables'] as num?)?.toDouble() ?? 0,
         marge: (j['marge'] as num?)?.toDouble() ?? 0,
+        joursImmobilisation: (j['joursImmobilisation'] as num?)?.toInt() ?? 0,
       );
 }
 

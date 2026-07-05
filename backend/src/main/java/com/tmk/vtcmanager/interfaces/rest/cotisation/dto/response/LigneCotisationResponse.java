@@ -11,11 +11,13 @@ public record LigneCotisationResponse(
         Long vehiculeId,
         String vehiculeImmatriculation,
         Long chauffeurId,
+        String chauffeurNom,
         LocalDate dateCotisation,
         String nomCotisation,
         BigDecimal montantDu,
         BigDecimal montantEncaisse,
         BigDecimal montantRestant,
         StatutLigneCotisation statut,
+        String motifAnnulation,
         List<EncaissementCotisationResponse> encaissements
 ) {}

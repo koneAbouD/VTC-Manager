@@ -22,6 +22,9 @@ public class LigneCreance {
     private TypeDocumentCreance document;
     private Long documentId;
     private Long vehiculeId;
+    /** Chauffeur débiteur (utile dans le détail par véhicule). */
+    private Long chauffeurId;
+    private String chauffeurNom;
     private LocalDate dateReference;
     private BigDecimal montantDu;
     private BigDecimal montantRegle;

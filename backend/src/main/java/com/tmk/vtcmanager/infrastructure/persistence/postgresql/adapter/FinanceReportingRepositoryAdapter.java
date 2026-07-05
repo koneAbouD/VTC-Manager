@@ -91,19 +91,38 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
 
     @Override
     public List<MargeVehicule> margesParVehicule(LocalDate debut, LocalDate fin) {
+        // Piloté PAR véhicule (LEFT JOIN opérations) pour que les véhicules
+        // immobilisés SANS aucune opération sur la période apparaissent quand même :
+        // on garde une ligne dès qu'il y a une opération produit/charge OU des jours
+        // d'immobilisation. Les véhicules sans activité ni immobilisation sont exclus.
         return jdbcTemplate.query("""
-                SELECT v.id, v.immatriculation,
-                       COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'PRODUIT_EXPLOITATION'), 0) AS produits,
-                       COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'CHARGE_VARIABLE'), 0)      AS charges
-                FROM operations_financieres o
-                JOIN categories_operation c ON c.id = o.categorie_id
-                JOIN vehicules v            ON v.id = o.vehicule_id
-                WHERE o.statut IN ('ENCAISSE', 'PAYE')
-                  AND o.date_operation BETWEEN ? AND ?
-                  AND c.nature_resultat IN ('PRODUIT_EXPLOITATION', 'CHARGE_VARIABLE')
-                GROUP BY v.id, v.immatriculation
-                ORDER BY (COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'PRODUIT_EXPLOITATION'), 0)
-                        - COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'CHARGE_VARIABLE'), 0)) DESC
+                SELECT t.id, t.immatriculation, t.produits, t.charges, t.jours_immo
+                FROM (
+                    SELECT v.id AS id, v.immatriculation AS immatriculation,
+                           COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'PRODUIT_EXPLOITATION'), 0) AS produits,
+                           COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'CHARGE_VARIABLE'), 0)      AS charges,
+                           COUNT(o.id) FILTER (WHERE c.nature_resultat IS NOT NULL)                              AS nb_ops,
+                           COALESCE((
+                               SELECT SUM(GREATEST(0,
+                                          (LEAST(COALESCE(iv.date_fin, ?), ?) - GREATEST(iv.date_debut, ?)) + 1))
+                               FROM indisponibilites_vehicule iv
+                               WHERE iv.vehicule_id = v.id
+                                 AND iv.statut <> 'ANNULEE'
+                                 AND iv.date_debut <= ?
+                                 AND (iv.date_fin IS NULL OR iv.date_fin >= ?)
+                           ), 0) AS jours_immo
+                    FROM vehicules v
+                    LEFT JOIN operations_financieres o
+                           ON o.vehicule_id = v.id
+                          AND o.statut IN ('ENCAISSE', 'PAYE')
+                          AND o.date_operation BETWEEN ? AND ?
+                    LEFT JOIN categories_operation c
+                           ON c.id = o.categorie_id
+                          AND c.nature_resultat IN ('PRODUIT_EXPLOITATION', 'CHARGE_VARIABLE')
+                    GROUP BY v.id, v.immatriculation
+                ) t
+                WHERE t.nb_ops > 0 OR t.jours_immo > 0
+                ORDER BY (t.produits - t.charges) DESC
                 """,
                 (rs, i) -> {
                     BigDecimal produits = rs.getBigDecimal("produits");
@@ -111,11 +130,14 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                     return MargeVehicule.builder()
                             .vehiculeId(rs.getLong("id"))
                             .immatriculation(rs.getString("immatriculation"))
+                            .joursImmobilisation(rs.getLong("jours_immo"))
                             .produits(produits)
                             .chargesVariables(charges)
                             .marge(produits.subtract(charges))
                             .build();
                 },
-                debut, fin);
+                // Sous-requête jours_immo : fin (LEAST/COALESCE), fin (LEAST), debut (GREATEST),
+                // fin (date_debut <=), debut (date_fin >=) ; puis JOIN opérations : debut, fin.
+                fin, fin, debut, fin, debut, debut, fin);
     }
 }

@@ -19,7 +19,13 @@ public class VehiculeStatutHistoriqueRepositoryAdapter implements VehiculeStatut
 
     @Override
     public VehiculeStatutHistorique save(VehiculeStatutHistorique historique) {
-        return mapper.toDomain(jpaRepository.save(mapper.toEntity(historique)));
+        // saveAndFlush volontaire : lors d'une transition, le service clôt la
+        // période en cours (UPDATE date_fin) puis en insère une nouvelle (INSERT
+        // date_fin NULL). Sans flush intermédiaire, Hibernate ordonne l'INSERT
+        // avant l'UPDATE au commit → deux lignes « en cours » simultanées et
+        // violation de l'index unique partiel idx_vehicule_statut_historique_en_cours.
+        // Le flush force la clôture à être écrite avant l'insertion.
+        return mapper.toDomain(jpaRepository.saveAndFlush(mapper.toEntity(historique)));
     }
 
     @Override

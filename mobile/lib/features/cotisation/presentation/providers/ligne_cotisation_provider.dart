@@ -48,8 +48,8 @@ class LigneCotisationNotifier extends StateNotifier<LigneCotisationState> {
     return result.fold((f) => f.message, (_) { load(); return null; });
   }
 
-  Future<String?> annuler(int id) async {
-    final result = await _repository.annuler(id);
+  Future<String?> annuler(int id, String motif) async {
+    final result = await _repository.annuler(id, motif);
     return result.fold((f) => f.message, (_) { load(); return null; });
   }
 

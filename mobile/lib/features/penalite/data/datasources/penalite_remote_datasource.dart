@@ -110,8 +110,8 @@ class PenaliteRemoteDatasource {
     return LignePenaliteModel.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<LignePenaliteModel> annuler(int id) async {
-    final data = await _client.patch('/penalites/lignes/$id/annuler');
+  Future<LignePenaliteModel> annuler(int id, String motif) async {
+    final data = await _client.patch('/penalites/lignes/$id/annuler', {'motif': motif});
     return LignePenaliteModel.fromJson(data as Map<String, dynamic>);
   }
 

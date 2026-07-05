@@ -20,11 +20,14 @@ public class LigneCotisation {
     private Long vehiculeId;
     private String vehiculeImmatriculation;
     private Long chauffeurId;
+    private String chauffeurNom;
     private LocalDate dateCotisation;
     private String nomCotisation;
     private BigDecimal montantDu;
     private BigDecimal montantEncaisse;
     private StatutLigneCotisation statut;
+    /** Motif saisi lors de l'annulation de la ligne (obligatoire à l'annulation). */
+    private String motifAnnulation;
     @Builder.Default
     private List<EncaissementCotisation> encaissements = new ArrayList<>();
 
@@ -49,12 +52,33 @@ public class LigneCotisation {
                 || statut == StatutLigneCotisation.PARTIELLEMENT_ENCAISSE;
     }
 
+    /** Vrai si un versement a déjà été enregistré sur la ligne. */
+    public boolean aDesVersements() {
+        return (montantEncaisse != null && montantEncaisse.compareTo(BigDecimal.ZERO) > 0)
+                || (encaissements != null && !encaissements.isEmpty());
+    }
+
+    /** Passe la ligne en ANNULEE avec son motif (validation dans le use case). */
+    public void annuler(String motif) {
+        this.statut = StatutLigneCotisation.ANNULEE;
+        this.motifAnnulation = motif;
+    }
+
     public BigDecimal montantRestant() {
         BigDecimal encaisse = montantEncaisse != null ? montantEncaisse : BigDecimal.ZERO;
         return montantDu.subtract(encaisse).max(BigDecimal.ZERO);
     }
 
+    /**
+     * Normalise le nom de cotisation pour le stockage et la comparaison :
+     * trim, minuscules puis <b>première lettre en majuscule</b> (ex. « ENTRETIEN »
+     * ou « entretien » → « Entretien »). La comparaison ré-applique cette
+     * normalisation à la valeur stockée, la cohérence est donc préservée.
+     */
     public static String normaliserNom(String nom) {
-        return nom == null ? null : nom.trim().toLowerCase();
+        if (nom == null) return null;
+        String base = nom.trim().toLowerCase();
+        if (base.isEmpty()) return base;
+        return Character.toUpperCase(base.charAt(0)) + base.substring(1);
     }
 }

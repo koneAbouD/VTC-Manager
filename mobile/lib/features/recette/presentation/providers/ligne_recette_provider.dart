@@ -62,8 +62,8 @@ class LigneRecetteNotifier extends StateNotifier<LigneRecetteState> {
     );
   }
 
-  Future<String?> annuler(int id) async {
-    final result = await _repository.annuler(id);
+  Future<String?> annuler(int id, String motif) async {
+    final result = await _repository.annuler(id, motif);
     return result.fold(
       (failure) => failure.message,
       (_) { load(); return null; },

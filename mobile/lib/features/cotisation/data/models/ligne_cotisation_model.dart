@@ -7,12 +7,14 @@ class LigneCotisationModel extends LigneCotisation {
     required super.vehiculeId,
     super.vehiculeImmatriculation,
     required super.chauffeurId,
+    super.chauffeurNom,
     required super.dateCotisation,
     required super.nomCotisation,
     required super.montantDu,
     required super.montantEncaisse,
     super.montantRestant,
     required super.statut,
+    super.motifAnnulation,
     super.encaissements,
   });
 
@@ -26,12 +28,14 @@ class LigneCotisationModel extends LigneCotisation {
       vehiculeId: json['vehiculeId'] as int,
       vehiculeImmatriculation: json['vehiculeImmatriculation'] as String?,
       chauffeurId: json['chauffeurId'] as int,
+      chauffeurNom: json['chauffeurNom'] as String?,
       dateCotisation: DateTime.parse(json['dateCotisation'] as String),
       nomCotisation: json['nomCotisation'] as String,
       montantDu: (json['montantDu'] as num).toDouble(),
       montantEncaisse: (json['montantEncaisse'] as num?)?.toDouble() ?? 0,
       montantRestant: (json['montantRestant'] as num?)?.toDouble(),
       statut: StatutLigneCotisation.fromJson(json['statut'] as String),
+      motifAnnulation: json['motifAnnulation'] as String?,
       encaissements: enc,
     );
   }

@@ -6,6 +6,7 @@ import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/month_filter_pill.dart';
+import '../home_nav_provider.dart';
 
 // ── Modèles ──────────────────────────────────────────────────────────────────
 
@@ -337,10 +338,14 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
           const SizedBox(height: 6),
           Row(
             children: [
-              Text(
-                '${(montant.abs() / 1000).toStringAsFixed(0)} ',
-                style: const TextStyle(
-                    fontSize: 32, fontWeight: FontWeight.bold),
+              Flexible(
+                child: Text(
+                  '${NumberFormat('#,##0', 'fr_FR').format(montant.abs())} ',
+                  style: const TextStyle(
+                      fontSize: 32, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const Text('XOF',
                   style: TextStyle(fontSize: 16, color: Colors.grey)),
@@ -557,7 +562,14 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                 style:
                     TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             TextButton(
-              onPressed: () {},
+              // Revient au hub Finances et ouvre l'onglet Opérations déjà
+              // filtré sur le type courant (Revenus / Dépenses).
+              onPressed: () {
+                ref.read(operationsTypeFiltreProvider.notifier).state =
+                    _showRevenus ? 'REVENU' : 'DEPENSE';
+                ref.read(financeTabIndexProvider.notifier).state = 2;
+                Navigator.pop(context);
+              },
               child: const Text('Tout afficher',
                   style: TextStyle(fontSize: 13)),
             ),
@@ -569,7 +581,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                 ? op.type == 'REVENU'
                 : op.type == 'DEPENSE')
             .take(10)
-            .map((op) => _OperationTile(op: op, money: _money)),
+            .map((op) => _OperationTile(op: op)),
       ],
     );
   }
@@ -580,75 +592,116 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
   }
 }
 
+/// Tuile d'opération alignée sur celle de la page Opérations (`_OpCard`) :
+/// icône ronde revenu/dépense, libellé + montant signé, puis
+/// « véhicule - chauffeur · date ».
 class _OperationTile extends StatelessWidget {
   final OperationLigne op;
-  final NumberFormat money;
-  const _OperationTile({required this.op, required this.money});
+  const _OperationTile({required this.op});
 
   @override
   Widget build(BuildContext context) {
     final isRevenu = op.type == 'REVENU';
-    final color = isRevenu ? Colors.green : Colors.red;
-    final montantLabel =
-        '${isRevenu ? '+' : ''}${money.format(op.montant.abs())}';
+    final amountColor =
+        isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+    final sign = isRevenu ? '+' : '-';
+
+    final titre = op.description ?? '—';
+    final vehiculeChauffeur = [
+      if (op.vehiculeLabel != null) op.vehiculeLabel!,
+      if (op.chauffeurNom != null) op.chauffeurNom!,
+    ].join(' - ');
+
+    // Date en dd/MM comme la page Opérations (si parseable).
+    final parsed = DateTime.tryParse(op.date);
+    final dateLabel =
+        parsed != null ? DateFormat('dd/MM', 'fr_FR').format(parsed) : op.date;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 6,
-              offset: const Offset(0, 1))
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: amountColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
-                isRevenu
-                    ? Icons.trending_up_rounded
-                    : Icons.trending_down_rounded,
-                color: color,
-                size: 20),
+              isRevenu
+                  ? Icons.trending_up_rounded
+                  : Icons.trending_down_rounded,
+              color: amountColor,
+              size: 18,
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  op.description ?? '—',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (op.chauffeurNom != null)
-                  Text('Chauffeur: ${op.chauffeurNom}',
+                // Ligne 1 : libellé + montant
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        titre,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$sign${NumberFormat('#,##0', 'fr_FR').format(op.montant.abs())} XOF',
                       style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade600)),
-                Text(
-                    'Oper. ${op.date}',
-                    style: TextStyle(
-                        fontSize: 11, color: Colors.grey.shade500)),
+                        color: amountColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                // Ligne 2 : véhicule - chauffeur · date
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        vehiculeChauffeur,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      dateLabel,
+                      style: TextStyle(
+                          fontSize: 10, color: Colors.grey.shade400),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          Text(montantLabel,
-              style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14)),
         ],
       ),
     );

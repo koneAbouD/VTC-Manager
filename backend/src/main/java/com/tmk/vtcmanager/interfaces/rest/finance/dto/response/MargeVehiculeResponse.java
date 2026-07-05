@@ -7,5 +7,6 @@ public record MargeVehiculeResponse(
         String immatriculation,
         BigDecimal produits,
         BigDecimal chargesVariables,
-        BigDecimal marge
+        BigDecimal marge,
+        long joursImmobilisation
 ) {}

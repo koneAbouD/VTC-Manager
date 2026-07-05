@@ -31,7 +31,7 @@ abstract class PenaliteRepository {
 
   Future<Either<Failure, LignePenalite>> lever(int id);
 
-  Future<Either<Failure, LignePenalite>> annuler(int id);
+  Future<Either<Failure, LignePenalite>> annuler(int id, String motif);
 
   Future<Either<Failure, List<LignePenalite>>> generer({DateTime? date});
 }

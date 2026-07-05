@@ -27,11 +27,13 @@ class LigneRecette {
   final int vehiculeId;
   final String? vehiculeImmatriculation;
   final int chauffeurId;
+  final String? chauffeurNom;
   final DateTime dateRecette;
   final double? montantAttendu;
   final double montantEncaisse;
   final double? montantRestant;
   final StatutLigneRecette statut;
+  final String? motifAnnulation;
   final List<Encaissement> encaissements;
 
   const LigneRecette({
@@ -39,11 +41,13 @@ class LigneRecette {
     required this.vehiculeId,
     this.vehiculeImmatriculation,
     required this.chauffeurId,
+    this.chauffeurNom,
     required this.dateRecette,
     this.montantAttendu,
     required this.montantEncaisse,
     this.montantRestant,
     required this.statut,
+    this.motifAnnulation,
     this.encaissements = const [],
   });
 

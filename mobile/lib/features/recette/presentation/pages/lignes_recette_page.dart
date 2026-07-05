@@ -19,6 +19,14 @@ import '../../../../core/widgets/date_filter_dialogs.dart';
 
 enum _FiltreMode { mois, semaine, jour, periode }
 
+/// Libellé d'une ligne : « Immatriculation - Nom chauffeur »
+/// (immatriculation seule si le nom du chauffeur est absent).
+String _libelleVehiculeChauffeur(LigneRecette ligne) {
+  final immat = ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}';
+  final nom = ligne.chauffeurNom;
+  return (nom != null && nom.isNotEmpty) ? '$immat - $nom' : immat;
+}
+
 // ── Page principale ────────────────────────────────────────────────────────
 
 class LignesRecettePage extends ConsumerStatefulWidget {
@@ -288,7 +296,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     final result = await showEncaissementLigneDialog(
       context,
       titre:          'Recette',
-      sousTitre:      ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}',
+      sousTitre:      _libelleVehiculeChauffeur(ligne),
       montantRestant: ligne.montantRestant,
       couleur:        const Color(0xFF2E7D32),
       icone:          Icons.account_balance_wallet_outlined,
@@ -852,7 +860,7 @@ class _LigneCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}',
+                    _libelleVehiculeChauffeur(ligne),
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,

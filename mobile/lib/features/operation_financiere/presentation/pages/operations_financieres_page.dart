@@ -13,6 +13,7 @@ import '../../domain/enums/type_operation.dart';
 import '../providers/operations_liste_provider.dart';
 import 'operation_financiere_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../screens/home_nav_provider.dart';
 
 enum _FiltreMode { mois, semaine, jour, periode }
 
@@ -93,6 +94,9 @@ class _OperationsFinancieresPageState
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    // Le filtre par type ('REVENU'/'DEPENSE') est partagé via un provider, ce
+    // qui permet au « Tout afficher » du Rapport financier d'ouvrir cet onglet
+    // déjà filtré. Le premier chargement lit sa valeur courante.
     Future.microtask(_loadWithFilters);
   }
 
@@ -127,6 +131,7 @@ class _OperationsFinancieresPageState
   void _loadWithFilters() {
     final (debut, fin) = _plageActive();
     ref.read(operationsListeProvider.notifier).load(
+          typeOperation: ref.read(operationsTypeFiltreProvider),
           debut: debut != null ? DateFormat('yyyy-MM-dd').format(debut) : null,
           fin: fin != null ? DateFormat('yyyy-MM-dd').format(fin) : null,
           categorieCode: _categorieFiltre?.categorieCodeParam,
@@ -331,6 +336,14 @@ class _OperationsFinancieresPageState
     final state = ref.watch(operationsListeProvider);
     final ops = state.items;
 
+    // Filtre par type partagé : recharge la liste quand il change (ex. déclenché
+    // par le « Tout afficher » du Rapport financier alors que cet onglet est déjà
+    // monté). Le premier chargement, lui, lit la valeur dans _loadWithFilters.
+    ref.listen<String?>(operationsTypeFiltreProvider, (prev, next) {
+      if (mounted) _loadWithFilters();
+    });
+    final typeFiltre = ref.watch(operationsTypeFiltreProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
       body: SafeArea(
@@ -379,7 +392,7 @@ class _OperationsFinancieresPageState
                             ),
                           ),
 
-                          // ── Filtre catégorie ───────────────────────
+                          // ── Filtre catégorie (+ chip type actif inline) ─
                           SliverToBoxAdapter(
                             child: _CategorieChipBar(
                               selected: _categorieFiltre,
@@ -387,6 +400,10 @@ class _OperationsFinancieresPageState
                                 setState(() => _categorieFiltre = c);
                                 _loadWithFilters();
                               },
+                              typeFiltre: typeFiltre,
+                              onClearType: () => ref
+                                  .read(operationsTypeFiltreProvider.notifier)
+                                  .state = null,
                             ),
                           ),
 
@@ -811,9 +828,15 @@ class _CategorieChipBar extends StatelessWidget {
   final _CategorieFiltre? selected;
   final void Function(_CategorieFiltre?) onChanged;
 
+  /// Filtre par type actif ('REVENU'/'DEPENSE'), affiché en fin de rangée.
+  final String? typeFiltre;
+  final VoidCallback? onClearType;
+
   const _CategorieChipBar({
     required this.selected,
     required this.onChanged,
+    this.typeFiltre,
+    this.onClearType,
   });
 
   @override
@@ -836,6 +859,19 @@ class _CategorieChipBar extends StatelessWidget {
                 color: c.couleur,
                 onTap: () => onChanged(c),
               )),
+          // Chip du filtre type (Revenus/Dépenses) en fin de rangée : même
+          // ligne que les catégories, atteignable par scroll sur petit écran.
+          if (typeFiltre != null && onClearType != null) ...[
+            Center(
+              child: Container(
+                width: 1,
+                height: 18,
+                margin: const EdgeInsets.only(right: 8),
+                color: Colors.grey.shade300,
+              ),
+            ),
+            _TypeFiltreChip(type: typeFiltre!, onClear: onClearType!),
+          ],
         ],
       ),
     );
@@ -971,6 +1007,57 @@ class _EmptyState extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Chip du filtre par type (Revenus / Dépenses), effaçable ─────────────────
+// Rendu inline dans la rangée des catégories (voir _CategorieChipBar).
+
+class _TypeFiltreChip extends StatelessWidget {
+  final String type; // 'REVENU' | 'DEPENSE'
+  final VoidCallback onClear;
+  const _TypeFiltreChip({required this.type, required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    final isRevenu = type == 'REVENU';
+    final color =
+        isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+    final label = isRevenu ? 'Revenus' : 'Dépenses';
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.only(left: 12, right: 6, top: 6, bottom: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+                isRevenu
+                    ? Icons.trending_up_rounded
+                    : Icons.trending_down_rounded,
+                size: 14,
+                color: color),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color)),
+            const SizedBox(width: 2),
+            InkWell(
+              onTap: onClear,
+              borderRadius: BorderRadius.circular(20),
+              child: Icon(Icons.close_rounded, size: 15, color: color),
+            ),
+          ],
+        ),
       ),
     );
   }

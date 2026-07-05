@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.application.usecases.recette.ConfirmerVersementUseCase
 import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GenererLignesRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GetLignesRecetteUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.request.EncaissementRequest;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.EncaissementResponse;
@@ -100,8 +101,9 @@ public class LigneRecetteController {
     }
 
     @PatchMapping("/{id}/annuler")
-    public LigneRecetteResponse annuler(@PathVariable Long id) {
-        return mapper.toResponse(annulerLigneRecetteUseCase.executer(id));
+    public LigneRecetteResponse annuler(@PathVariable Long id,
+                                        @Valid @RequestBody AnnulationRequest request) {
+        return mapper.toResponse(annulerLigneRecetteUseCase.executer(id, request.motif()));
     }
 
     @PatchMapping("/{id}/confirmer-versement")

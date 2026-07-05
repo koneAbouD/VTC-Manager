@@ -6,6 +6,8 @@ import '../../domain/entities/ligne_penalite.dart';
 import '../providers/penalite_provider.dart';
 import 'encaissement_penalite_form_page.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/motif_annulation_dialog.dart';
+import '../../../tresorerie/presentation/providers/tresorerie_providers.dart';
 
 class LignePenaliteDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -56,6 +58,9 @@ class _DetailBody extends ConsumerWidget {
           _Row('Type', ligne.typeSanction.label),
           _Row('Pénalité', _typePenaliteLabel(ligne.typePenalite)),
           _Row('Statut', ligne.statut.label),
+          if (ligne.motifAnnulation != null && ligne.motifAnnulation!.isNotEmpty)
+            _Row('Motif annulation', ligne.motifAnnulation!,
+                valueColor: Colors.red),
           _Row('Véhicule',
               ligne.vehiculeImmatriculation ?? '#${ligne.vehiculeId}'),
           if (ligne.chauffeurNomComplet != null)
@@ -207,28 +212,25 @@ class _DetailBody extends ConsumerWidget {
           () => ref.read(lignePenaliteNotifierProvider.notifier).leverDetail(ligneId));
 
   Future<void> _annuler(BuildContext context, WidgetRef ref) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Annuler la pénalité ?'),
-        content: const Text('Cette action est irréversible.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Non')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Oui, annuler'),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
+    final motif = await showMotifAnnulationDialog(context,
+        titre: 'Annuler la pénalité ?');
+    if (motif == null || !context.mounted) return;
+    final error = await ref
+        .read(lignePenaliteNotifierProvider.notifier)
+        .annulerDetail(ligneId, motif);
     if (!context.mounted) return;
-    await _executeAction(context, ref,
-        () => ref.read(lignePenaliteNotifierProvider.notifier).annulerDetail(ligneId));
-    if (context.mounted) Navigator.pop(context);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: Colors.red));
+    } else {
+      // Actualise immédiatement le détail + les écrans finance impactés.
+      ref.invalidate(lignePenaliteDetailProvider(ligneId));
+      ref.invalidate(balanceAgeeProvider);
+      ref.invalidate(balanceAgeeVehiculeProvider);
+      ref.invalidate(compteResultatProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pénalité annulée')));
+    }
   }
 
   Future<void> _executeAction(BuildContext context, WidgetRef ref,

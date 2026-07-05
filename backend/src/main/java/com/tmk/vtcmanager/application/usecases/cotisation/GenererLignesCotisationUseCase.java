@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
+import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
@@ -28,6 +29,7 @@ public class GenererLignesCotisationUseCase {
     private final ConfigurationRecetteRepository configurationRecetteRepository;
     private final LigneCotisationRepository ligneCotisationRepository;
     private final IndisponibiliteSubstitutionService indisponibiliteSubstitutionService;
+    private final IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
 
     @Transactional
     public List<LigneCotisation> executer(LocalDate date) {
@@ -37,6 +39,8 @@ public class GenererLignesCotisationUseCase {
         for (ProgrammeTravail programme : programmes) {
             if (programme.getChauffeurs() == null || programme.getChauffeurs().isEmpty()) continue;
             if (!programme.travailleCeJour(date)) continue;
+            // Véhicule immobilisé (indisponibilité) ce jour → aucune cotisation due.
+            if (indisponibiliteVehiculeRepository.isImmobiliseAt(programme.getVehiculeId(), date)) continue;
 
             ConfigurationRecette config = configurationRecetteRepository
                     .findByVehiculeId(programme.getVehiculeId())

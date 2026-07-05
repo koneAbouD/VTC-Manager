@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
+import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
@@ -26,6 +27,7 @@ public class GenererLignesRecetteUseCase {
     private final ConfigurationRecetteRepository configurationRecetteRepository;
     private final LigneRecetteRepository ligneRecetteRepository;
     private final IndisponibiliteSubstitutionService indisponibiliteSubstitutionService;
+    private final IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
 
     @Transactional
     public List<LigneRecette> executer(LocalDate date) {
@@ -34,6 +36,13 @@ public class GenererLignesRecetteUseCase {
 
         for (ProgrammeTravail programme : programmes) {
             if (programme.getChauffeurs() == null || programme.getChauffeurs().isEmpty()) {
+                continue;
+            }
+
+            // Véhicule immobilisé (indisponibilité) ce jour → aucune recette due.
+            if (indisponibiliteVehiculeRepository.isImmobiliseAt(programme.getVehiculeId(), date)) {
+                log.debug("Véhicule {} immobilisé (indisponibilité) le {} — recettes ignorées",
+                        programme.getVehiculeId(), date);
                 continue;
             }
 

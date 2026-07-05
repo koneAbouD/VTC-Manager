@@ -22,4 +22,6 @@ public class MargeVehicule {
     private BigDecimal produits;
     private BigDecimal chargesVariables;
     private BigDecimal marge;
+    /** Nombre de jours d'immobilisation (indisponibilité véhicule) sur la période. */
+    private long joursImmobilisation;
 }

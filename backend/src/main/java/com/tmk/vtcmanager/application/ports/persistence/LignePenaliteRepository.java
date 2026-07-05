@@ -31,6 +31,9 @@ public interface LignePenaliteRepository {
 
     void updateStatut(Long id, StatutLignePenalite statut);
 
+    /** Annulation : passe le statut à ANNULEE et enregistre le motif. */
+    void updateStatutEtMotifAnnulation(Long id, StatutLignePenalite statut, String motif);
+
     void updateStatutAndMontantEncaisse(Long id, StatutLignePenalite statut, BigDecimal montantEncaisse);
 
     /** Recalcule montant_encaisse + statut (amende) depuis ses encaissements (source de vérité). */

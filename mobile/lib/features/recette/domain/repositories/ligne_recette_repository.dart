@@ -31,7 +31,7 @@ abstract interface class LigneRecetteRepository {
     Encaissement encaissement,
   );
 
-  Future<Either<Failure, LigneRecette>> annuler(int id);
+  Future<Either<Failure, LigneRecette>> annuler(int id, String motif);
 
   Future<Either<Failure, LigneRecette>> confirmerVersement(int id);
 

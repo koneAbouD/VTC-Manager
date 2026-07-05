@@ -12,6 +12,6 @@ abstract interface class LigneCotisationRepository {
       LigneCotisationFiltres filtres, {int page, int size});
   Future<Either<Failure, LigneCotisation>> getLigneById(int id);
   Future<Either<Failure, EncaissementCotisation>> createEncaissement(int ligneId, EncaissementCotisation enc);
-  Future<Either<Failure, LigneCotisation>> annuler(int id);
+  Future<Either<Failure, LigneCotisation>> annuler(int id, String motif);
   Future<Either<Failure, List<LigneCotisation>>> generer({DateTime? date});
 }

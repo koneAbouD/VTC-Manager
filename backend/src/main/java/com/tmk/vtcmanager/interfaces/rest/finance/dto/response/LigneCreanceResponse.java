@@ -9,6 +9,8 @@ public record LigneCreanceResponse(
         TypeDocumentCreance document,
         Long documentId,
         Long vehiculeId,
+        Long chauffeurId,
+        String chauffeurNom,
         LocalDate dateReference,
         BigDecimal montantDu,
         BigDecimal montantRegle,

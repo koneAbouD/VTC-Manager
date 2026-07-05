@@ -64,8 +64,8 @@ class LigneCotisationRemoteDatasource {
     return EncaissementCotisationModel.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<LigneCotisationModel> annuler(int id) async {
-    final data = await _client.patch('/cotisations/lignes/$id/annuler');
+  Future<LigneCotisationModel> annuler(int id, String motif) async {
+    final data = await _client.patch('/cotisations/lignes/$id/annuler', {'motif': motif});
     return LigneCotisationModel.fromJson(data as Map<String, dynamic>);
   }
 

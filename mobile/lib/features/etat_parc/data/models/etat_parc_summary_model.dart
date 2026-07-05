@@ -59,6 +59,10 @@ class VehiculeExceptionModel {
   final String? motif;
   final int? joursDansStatut;
 
+  /// Fin prévue de l'immobilisation planifiée (indisponibilité véhicule).
+  /// Null si le motif n'est pas une indisponibilité ou si elle est ouverte.
+  final DateTime? finPrevue;
+
   const VehiculeExceptionModel({
     required this.vehiculeId,
     required this.immatriculation,
@@ -66,6 +70,7 @@ class VehiculeExceptionModel {
     required this.statut,
     required this.motif,
     required this.joursDansStatut,
+    this.finPrevue,
   });
 
   factory VehiculeExceptionModel.fromJson(Map<String, dynamic> json) =>
@@ -76,11 +81,15 @@ class VehiculeExceptionModel {
         statut: json['statut'] as String?,
         motif: json['motif'] as String?,
         joursDansStatut: (json['joursDansStatut'] as num?)?.toInt(),
+        finPrevue: json['finPrevue'] != null
+            ? DateTime.tryParse(json['finPrevue'] as String)
+            : null,
       );
 
   /// Libellé français du motif historisé.
   String get motifLabel => switch (motif) {
         'IMMOBILISATION_PENALITE' => 'Pénalité en cours',
+        'IMMOBILISATION_INDISPONIBILITE' => 'Immobilisé (indisponibilité)',
         'PANNE_OU_ACCIDENT' => 'Panne ou accident',
         'MAINTENANCE_EN_COURS' => 'Maintenance en cours',
         'SANS_CHAUFFEUR' => 'Aucun chauffeur affecté',

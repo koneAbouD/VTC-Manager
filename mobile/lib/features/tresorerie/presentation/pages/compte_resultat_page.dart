@@ -286,6 +286,14 @@ class _MargeTile extends StatelessWidget {
                   '${CurrencyFormatter.format(marge.chargesVariables)}',
                   style: const TextStyle(fontSize: 11, color: AppColors.label),
                 ),
+                if (marge.joursImmobilisation > 0)
+                  Text(
+                    'Immobilisé ${marge.joursImmobilisation} j sur la période',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange.shade800,
+                        fontWeight: FontWeight.w500),
+                  ),
               ],
             ),
           ),

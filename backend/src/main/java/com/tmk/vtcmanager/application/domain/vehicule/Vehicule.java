@@ -80,16 +80,19 @@ public class Vehicule {
      * Applique le statut résultant des signaux métier, en respectant un
      * éventuel statut manuel verrouillant.
      *
-     * @param immobilisationActive immobilisation pénalité en cours sur le véhicule
-     * @param maintenanceEnCours   au moins une maintenance EN_COURS
+     * @param indisponibiliteActive immobilisation planifiée (indisponibilité véhicule) en cours
+     * @param immobilisationActive  immobilisation pénalité en cours sur le véhicule
+     * @param maintenanceEnCours    au moins une maintenance EN_COURS
      * @param chauffeurAffecte      un chauffeur est affecté au véhicule
      */
-    public void appliquerStatutCalcule(boolean immobilisationActive,
+    public void appliquerStatutCalcule(boolean indisponibiliteActive,
+                                       boolean immobilisationActive,
                                        boolean maintenanceEnCours,
                                        boolean chauffeurAffecte) {
         this.statut = estVerrouille()
                 ? statutManuel
-                : VehiculeStatusPolicy.compute(immobilisationActive, maintenanceEnCours, chauffeurAffecte);
+                : VehiculeStatusPolicy.compute(indisponibiliteActive, immobilisationActive,
+                        maintenanceEnCours, chauffeurAffecte);
     }
 
     /**

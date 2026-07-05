@@ -4,16 +4,19 @@ import com.tmk.vtcmanager.application.domain.finance.CompteResultat;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
 import com.tmk.vtcmanager.application.usecases.finance.CloturerPeriodeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.ExportComptableUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetBalanceAgeeParVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetBalanceAgeeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetBilanUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCloturesPeriodeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCompteResultatUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCreancesChauffeurUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetCreancesVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetMargesParVehiculeUseCase;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.BilanResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CloturePeriodeResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CompteResultatResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CreanceChauffeurResponse;
+import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CreanceVehiculeResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.LigneCreanceResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.MargeVehiculeResponse;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,8 @@ public class FinanceController {
 
     private final GetBalanceAgeeUseCase getBalanceAgeeUseCase;
     private final GetCreancesChauffeurUseCase getCreancesChauffeurUseCase;
+    private final GetBalanceAgeeParVehiculeUseCase getBalanceAgeeParVehiculeUseCase;
+    private final GetCreancesVehiculeUseCase getCreancesVehiculeUseCase;
     private final GetCompteResultatUseCase getCompteResultatUseCase;
     private final GetMargesParVehiculeUseCase getMargesParVehiculeUseCase;
     private final GetBilanUseCase getBilanUseCase;
@@ -54,10 +59,33 @@ public class FinanceController {
     @GetMapping("/balance-agee/{chauffeurId}")
     public List<LigneCreanceResponse> getCreancesChauffeur(@PathVariable Long chauffeurId) {
         return getCreancesChauffeurUseCase.executer(chauffeurId).stream()
-                .map(l -> new LigneCreanceResponse(l.getDocument(), l.getDocumentId(),
-                        l.getVehiculeId(), l.getDateReference(), l.getMontantDu(),
-                        l.getMontantRegle(), l.getRestant()))
+                .map(FinanceController::toLigneResponse)
                 .toList();
+    }
+
+    @GetMapping("/balance-agee-vehicule")
+    public List<CreanceVehiculeResponse> getBalanceAgeeParVehicule() {
+        return getBalanceAgeeParVehiculeUseCase.executer().stream()
+                .map(c -> new CreanceVehiculeResponse(c.getVehiculeId(),
+                        c.getImmatriculation(), c.getMarque(), c.getModele(), c.getNbLignes(),
+                        c.getDu0a7Jours(), c.getDu8a30Jours(), c.getDuPlus30Jours(),
+                        c.getTotal()))
+                .toList();
+    }
+
+    @GetMapping("/balance-agee-vehicule/{vehiculeId}")
+    public List<LigneCreanceResponse> getCreancesVehicule(@PathVariable Long vehiculeId) {
+        return getCreancesVehiculeUseCase.executer(vehiculeId).stream()
+                .map(FinanceController::toLigneResponse)
+                .toList();
+    }
+
+    private static LigneCreanceResponse toLigneResponse(
+            com.tmk.vtcmanager.application.domain.finance.LigneCreance l) {
+        return new LigneCreanceResponse(l.getDocument(), l.getDocumentId(),
+                l.getVehiculeId(), l.getChauffeurId(), l.getChauffeurNom(),
+                l.getDateReference(), l.getMontantDu(),
+                l.getMontantRegle(), l.getRestant());
     }
 
     // ── Compte de résultat ───────────────────────────────────────────────
@@ -80,7 +108,7 @@ public class FinanceController {
             @RequestParam int annee, @RequestParam int mois) {
         return getMargesParVehiculeUseCase.executer(annee, mois).stream()
                 .map(m -> new MargeVehiculeResponse(m.getVehiculeId(), m.getImmatriculation(),
-                        m.getProduits(), m.getChargesVariables(), m.getMarge()))
+                        m.getProduits(), m.getChargesVariables(), m.getMarge(), m.getJoursImmobilisation()))
                 .toList();
     }
 

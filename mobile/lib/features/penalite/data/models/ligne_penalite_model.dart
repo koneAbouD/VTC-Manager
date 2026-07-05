@@ -23,6 +23,7 @@ class LignePenaliteModel extends LignePenalite {
     super.ligneRecetteId,
     required super.statut,
     super.commentaire,
+    super.motifAnnulation,
     super.encaissements,
   });
 
@@ -56,6 +57,7 @@ class LignePenaliteModel extends LignePenalite {
         ligneRecetteId: j['ligneRecetteId'] as int?,
         statut: StatutLignePenalite.fromString(j['statut'] as String?),
         commentaire: j['commentaire'] as String?,
+        motifAnnulation: j['motifAnnulation'] as String?,
         encaissements: (j['encaissements'] as List<dynamic>?)
                 ?.map((e) => EncaissementPenaliteModel.fromJson(
                     e as Map<String, dynamic>))

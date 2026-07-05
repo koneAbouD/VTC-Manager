@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../vehicule/domain/entities/statut_vehicule.dart';
 import '../../../vehicule/presentation/pages/vehicule_detail_page.dart';
@@ -468,6 +469,7 @@ class _ExceptionTile extends ConsumerWidget {
   /// Icône dérivée du motif d'immobilisation / d'anomalie.
   static IconData _motifIcon(String? motif) => switch (motif) {
         'IMMOBILISATION_PENALITE' => Icons.gavel_rounded,
+        'IMMOBILISATION_INDISPONIBILITE' => Icons.no_transfer_rounded,
         'PANNE_OU_ACCIDENT' => Icons.car_crash_rounded,
         'MAINTENANCE_EN_COURS' => Icons.build_rounded,
         'SANS_CHAUFFEUR' => Icons.person_off_rounded,
@@ -534,6 +536,16 @@ class _ExceptionTile extends ConsumerWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (exception.finPrevue != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Fin prévue le ${DateFormat('dd MMM yyyy', 'fr_FR').format(exception.finPrevue!)}',
+                      style: TextStyle(
+                          fontSize: 11.5, color: Colors.grey.shade500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),

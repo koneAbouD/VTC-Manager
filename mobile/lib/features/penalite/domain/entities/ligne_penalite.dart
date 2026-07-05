@@ -83,6 +83,7 @@ class LignePenalite {
   final int? ligneRecetteId;
   final StatutLignePenalite statut;
   final String? commentaire;
+  final String? motifAnnulation;
   final List<EncaissementPenalite> encaissements;
 
   const LignePenalite({
@@ -106,6 +107,7 @@ class LignePenalite {
     this.ligneRecetteId,
     required this.statut,
     this.commentaire,
+    this.motifAnnulation,
     this.encaissements = const [],
   });
 

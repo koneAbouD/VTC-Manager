@@ -7,6 +7,8 @@ import '../../domain/entities/ligne_cotisation.dart';
 import '../providers/ligne_cotisation_provider.dart';
 import 'encaissement_cotisation_form_page.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/motif_annulation_dialog.dart';
+import '../../../tresorerie/presentation/providers/tresorerie_providers.dart';
 
 class LigneCotisationDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -60,6 +62,9 @@ class _Body extends ConsumerWidget {
         _Row('Cotisation', ligne.nomCotisation),
         _Row('Date', dateFmt.format(ligne.dateCotisation)),
         _Row('Statut', ligne.statut.label),
+        if (ligne.motifAnnulation != null && ligne.motifAnnulation!.isNotEmpty)
+          _Row('Motif annulation', ligne.motifAnnulation!,
+              valueColor: Colors.red),
         _Row('Dû', fmt.format(ligne.montantDu)),
         _Row('Encaissé', fmt.format(ligne.montantEncaisse)),
         _Row('Restant', fmt.format(restant), valueColor: restant > 0 ? Colors.orange : Colors.green),
@@ -91,25 +96,21 @@ class _Body extends ConsumerWidget {
   }
 
   Future<void> _annuler(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Annuler la ligne ?'),
-        content: const Text('Cette action est irréversible.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Non')),
-          FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(context, true), child: const Text('Oui, annuler')),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    final error = await ref.read(ligneCotisationNotifierProvider.notifier).annuler(ligneId);
+    final motif = await showMotifAnnulationDialog(context);
+    if (motif == null || !context.mounted) return;
+    final error = await ref
+        .read(ligneCotisationNotifierProvider.notifier)
+        .annuler(ligneId, motif);
     if (!context.mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
     } else {
-      Navigator.pop(context);
+      ref.invalidate(ligneCotisationDetailProvider(ligneId));
+      ref.invalidate(balanceAgeeProvider);
+      ref.invalidate(balanceAgeeVehiculeProvider);
+      ref.invalidate(compteResultatProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ligne annulée')));
     }
   }
 }

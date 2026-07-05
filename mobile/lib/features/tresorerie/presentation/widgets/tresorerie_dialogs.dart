@@ -29,37 +29,39 @@ Future<void> showTransfertDialog(
       builder: (ctx, setState) => AlertDialog(
         title: const Text('Transfert entre comptes',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _CompteDropdown(
-              label: 'Depuis',
-              comptes: comptes,
-              value: source,
-              onChanged: (c) => setState(() => source = c),
-            ),
-            const SizedBox(height: 12),
-            _CompteDropdown(
-              label: 'Vers',
-              comptes: comptes,
-              value: destination,
-              onChanged: (c) => setState(() => destination = c),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: montantCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                  labelText: 'Montant', suffixText: 'XOF'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: commentaireCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'Commentaire (optionnel)'),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CompteDropdown(
+                label: 'Depuis',
+                comptes: comptes,
+                value: source,
+                onChanged: (c) => setState(() => source = c),
+              ),
+              const SizedBox(height: 12),
+              _CompteDropdown(
+                label: 'Vers',
+                comptes: comptes,
+                value: destination,
+                onChanged: (c) => setState(() => destination = c),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: montantCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                    labelText: 'Montant', suffixText: 'XOF'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: commentaireCtrl,
+                decoration: const InputDecoration(
+                    labelText: 'Commentaire (optionnel)'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -129,58 +131,60 @@ Future<void> showClotureCaisseDialog(
         return AlertDialog(
           title: const Text('Clôturer la caisse',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              DropdownButtonFormField<CompteAvecSoldeVue>(
-                initialValue: selection,
-                decoration: const InputDecoration(labelText: 'Compte'),
-                items: [
-                  for (final c in comptes)
-                    DropdownMenuItem(value: c, child: Text(c.libelle)),
-                ],
-                onChanged: (c) => setState(() => selection = c ?? selection),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Solde théorique',
-                      style:
-                          TextStyle(fontSize: 13, color: AppColors.label)),
-                  Text(CurrencyFormatter.format(selection.solde),
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w700)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: comptageCtrl,
-                keyboardType: TextInputType.number,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                    labelText: 'Montant compté', suffixText: 'XOF'),
-              ),
-              if (ecart != null && ecart != 0) ...[
-                const SizedBox(height: 10),
-                Text(
-                  'Écart : ${CurrencyFormatter.format(ecart)}',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: ecart < 0
-                          ? Colors.red.shade900
-                          : Colors.orange.shade900),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<CompteAvecSoldeVue>(
+                  initialValue: selection,
+                  decoration: const InputDecoration(labelText: 'Compte'),
+                  items: [
+                    for (final c in comptes)
+                      DropdownMenuItem(value: c, child: Text(c.libelle)),
+                  ],
+                  onChanged: (c) => setState(() => selection = c ?? selection),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Solde théorique',
+                        style:
+                            TextStyle(fontSize: 13, color: AppColors.label)),
+                    Text(CurrencyFormatter.format(selection.solde),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 TextField(
-                  controller: motifCtrl,
+                  controller: comptageCtrl,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
                   decoration: const InputDecoration(
-                      labelText: 'Motif de l\'écart (obligatoire)'),
+                      labelText: 'Montant compté', suffixText: 'XOF'),
                 ),
+                if (ecart != null && ecart != 0) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Écart : ${CurrencyFormatter.format(ecart)}',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: ecart < 0
+                            ? Colors.red.shade900
+                            : Colors.orange.shade900),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: motifCtrl,
+                    decoration: const InputDecoration(
+                        labelText: 'Motif de l\'écart (obligatoire)'),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
           actions: [
             TextButton(

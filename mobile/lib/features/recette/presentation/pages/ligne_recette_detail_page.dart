@@ -7,6 +7,8 @@ import '../../domain/entities/ligne_recette.dart';
 import '../providers/ligne_recette_provider.dart';
 import 'encaissement_form_page.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/motif_annulation_dialog.dart';
+import '../../../tresorerie/presentation/providers/tresorerie_providers.dart';
 
 class LigneRecetteDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -73,6 +75,10 @@ class _DetailBody extends ConsumerWidget {
           children: [
             _Row('Date', dateFmt.format(ligne.dateRecette)),
             _Row('Statut', ligne.statut.label),
+            if (ligne.motifAnnulation != null &&
+                ligne.motifAnnulation!.isNotEmpty)
+              _Row('Motif annulation', ligne.motifAnnulation!,
+                  valueColor: Colors.red),
             _Row('Encaissé', fmt.format(ligne.montantEncaisse)),
             if (ligne.montantAttendu != null)
               _Row('Attendu', fmt.format(ligne.montantAttendu!)),
@@ -142,33 +148,25 @@ class _DetailBody extends ConsumerWidget {
   }
 
   Future<void> _annuler(BuildContext context, WidgetRef ref) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Annuler la ligne ?'),
-        content: const Text('Cette action est irréversible.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Non')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Oui, annuler'),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
+    final motif = await showMotifAnnulationDialog(context);
+    if (motif == null || !context.mounted) return;
 
-    final error =
-        await ref.read(ligneRecetteNotifierProvider.notifier).annuler(ligneId);
+    final error = await ref
+        .read(ligneRecetteNotifierProvider.notifier)
+        .annuler(ligneId, motif);
     if (!context.mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
     } else {
-      Navigator.pop(context);
+      // Actualise immédiatement le détail + les écrans finance impactés
+      // (la ligne annulée sort des créances et du compte de résultat).
+      ref.invalidate(ligneRecetteDetailProvider(ligneId));
+      ref.invalidate(balanceAgeeProvider);
+      ref.invalidate(balanceAgeeVehiculeProvider);
+      ref.invalidate(compteResultatProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ligne annulée')));
     }
   }
 }

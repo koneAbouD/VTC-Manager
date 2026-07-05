@@ -142,6 +142,12 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
 
     @Override
     @Transactional
+    public void updateStatutEtMotifAnnulation(Long id, StatutLignePenalite statut, String motif) {
+        jpaRepository.updateStatutEtMotifAnnulation(id, statut, motif);
+    }
+
+    @Override
+    @Transactional
     public void updateStatutAndMontantEncaisse(Long id, StatutLignePenalite statut, BigDecimal montantEncaisse) {
         jpaRepository.updateStatutAndMontantEncaisse(id, statut, montantEncaisse);
     }

@@ -74,8 +74,8 @@ class LigneCotisationRepositoryImpl implements LigneCotisationRepository {
   }
 
   @override
-  Future<Either<Failure, LigneCotisation>> annuler(int id) async {
-    try { return Right(await _datasource.annuler(id)); }
+  Future<Either<Failure, LigneCotisation>> annuler(int id, String motif) async {
+    try { return Right(await _datasource.annuler(id, motif)); }
     on ApiException catch (e) { return Left(_map(e)); }
     on NetworkException catch (e) { return Left(NetworkFailure(e.message)); }
     catch (e) { return Left(UnknownFailure(e.toString())); }

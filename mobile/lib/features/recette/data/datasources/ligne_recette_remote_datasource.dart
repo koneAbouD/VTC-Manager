@@ -63,8 +63,8 @@ class LigneRecetteRemoteDatasource {
     return EncaissementModel.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<LigneRecetteModel> annuler(int id) async {
-    final data = await _client.patch('/recettes/lignes/$id/annuler');
+  Future<LigneRecetteModel> annuler(int id, String motif) async {
+    final data = await _client.patch('/recettes/lignes/$id/annuler', {'motif': motif});
     return LigneRecetteModel.fromJson(data as Map<String, dynamic>);
   }
 

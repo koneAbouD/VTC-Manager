@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.usecases.cotisation.AnnulerLigneCotisation
 import com.tmk.vtcmanager.application.usecases.cotisation.CreateEncaissementCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GenererLignesCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GetLignesCotisationUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.request.EncaissementCotisationRequest;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.EncaissementCotisationResponse;
@@ -90,8 +91,9 @@ public class LigneCotisationController {
     }
 
     @PatchMapping("/{id}/annuler")
-    public LigneCotisationResponse annuler(@PathVariable Long id) {
-        return mapper.toResponse(annulerUseCase.executer(id));
+    public LigneCotisationResponse annuler(@PathVariable Long id,
+                                           @Valid @RequestBody AnnulationRequest request) {
+        return mapper.toResponse(annulerUseCase.executer(id, request.motif()));
     }
 
     @PostMapping("/generer")

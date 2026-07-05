@@ -26,5 +26,6 @@ public record LignePenaliteResponse(
         Long ligneRecetteId,
         String statut,
         String commentaire,
+        String motifAnnulation,
         List<EncaissementPenaliteResponse> encaissements
 ) {}

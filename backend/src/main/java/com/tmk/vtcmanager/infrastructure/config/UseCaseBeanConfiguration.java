@@ -12,6 +12,7 @@ import com.tmk.vtcmanager.application.usecases.etatparc.GetEtatParcUseCase;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
+import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
@@ -40,6 +41,7 @@ import com.tmk.vtcmanager.application.usecases.configurationRecette.GetConfigura
 import com.tmk.vtcmanager.application.usecases.configurationRecette.UpdateConfigurationRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.*;
 import com.tmk.vtcmanager.application.usecases.indisponibilite.*;
+import com.tmk.vtcmanager.application.usecases.indisponibiliteVehicule.*;
 import com.tmk.vtcmanager.application.usecases.maintenance.*;
 import com.tmk.vtcmanager.application.usecases.programmeTravail.CreateProgrammeTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.programmeTravail.GetProgrammeTravailUseCase;
@@ -62,11 +64,13 @@ import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.usecases.finance.CloturerPeriodeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.ExportComptableUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetBalanceAgeeParVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetBalanceAgeeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetBilanUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCloturesPeriodeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCompteResultatUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCreancesChauffeurUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetCreancesVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetMargesParVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetRapportFinancierUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetMontantAReverserEtatUseCase;
@@ -152,9 +156,11 @@ public class UseCaseBeanConfiguration {
             ChauffeurRepository chauffeurRepository,
             MaintenanceRepository maintenanceRepository,
             LignePenaliteRepository lignePenaliteRepository,
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository,
             VehiculeStatutHistoriqueService vehiculeStatutHistoriqueService) {
         return new RecomputeVehiculeStatusUseCase(vehiculeRepository, chauffeurRepository,
-                maintenanceRepository, lignePenaliteRepository, vehiculeStatutHistoriqueService);
+                maintenanceRepository, lignePenaliteRepository, indisponibiliteVehiculeRepository,
+                vehiculeStatutHistoriqueService);
     }
 
     @Bean
@@ -449,9 +455,11 @@ public class UseCaseBeanConfiguration {
     public GetEtatParcUseCase getEtatParcUseCase(
             VehiculeRepository vehiculeRepository,
             VehiculeStatutHistoriqueRepository vehiculeStatutHistoriqueRepository,
-            DocumentRepository documentRepository) {
+            DocumentRepository documentRepository,
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository) {
         return new GetEtatParcUseCase(vehiculeRepository,
-                vehiculeStatutHistoriqueRepository, documentRepository);
+                vehiculeStatutHistoriqueRepository, documentRepository,
+                indisponibiliteVehiculeRepository);
     }
 
     // ----- ConditionTravail -----
@@ -581,9 +589,10 @@ public class UseCaseBeanConfiguration {
             ProgrammeTravailRepository programmeTravailRepository,
             ConfigurationRecetteRepository configurationRecetteRepository,
             LigneCotisationRepository ligneCotisationRepository,
-            IndisponibiliteSubstitutionService indisponibiliteSubstitutionService) {
+            IndisponibiliteSubstitutionService indisponibiliteSubstitutionService,
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository) {
         return new GenererLignesCotisationUseCase(programmeTravailRepository, configurationRecetteRepository,
-                ligneCotisationRepository, indisponibiliteSubstitutionService);
+                ligneCotisationRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository);
     }
 
     @Bean
@@ -616,9 +625,10 @@ public class UseCaseBeanConfiguration {
             ProgrammeTravailRepository programmeTravailRepository,
             ConfigurationRecetteRepository configurationRecetteRepository,
             LigneRecetteRepository ligneRecetteRepository,
-            IndisponibiliteSubstitutionService indisponibiliteSubstitutionService) {
+            IndisponibiliteSubstitutionService indisponibiliteSubstitutionService,
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository) {
         return new GenererLignesRecetteUseCase(programmeTravailRepository, configurationRecetteRepository,
-                ligneRecetteRepository, indisponibiliteSubstitutionService);
+                ligneRecetteRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository);
     }
 
     @Bean
@@ -734,10 +744,11 @@ public class UseCaseBeanConfiguration {
             ProgrammeTravailRepository programmeTravailRepository,
             ConditionTravailRepository conditionTravailRepository,
             LigneRecetteRepository ligneRecetteRepository,
-            LignePenaliteRepository lignePenaliteRepository) {
+            LignePenaliteRepository lignePenaliteRepository,
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository) {
         return new GenererLignesPenaliteUseCase(
                 programmeTravailRepository, conditionTravailRepository,
-                ligneRecetteRepository, lignePenaliteRepository);
+                ligneRecetteRepository, lignePenaliteRepository, indisponibiliteVehiculeRepository);
     }
 
     @Bean
@@ -909,6 +920,54 @@ public class UseCaseBeanConfiguration {
         return new RecomputeChauffeurStatusUseCase(chauffeurRepository, indisponibiliteRepository);
     }
 
+    // ----- Indisponibilité véhicule -----
+    @Bean
+    public CreateIndisponibiliteVehiculeUseCase createIndisponibiliteVehiculeUseCase(
+            IndisponibiliteVehiculeRepository repo,
+            VehiculeStatutEventPublisher vehiculeStatutEventPublisher) {
+        return new CreateIndisponibiliteVehiculeUseCase(repo, vehiculeStatutEventPublisher);
+    }
+
+    @Bean
+    public UpdateIndisponibiliteVehiculeUseCase updateIndisponibiliteVehiculeUseCase(
+            IndisponibiliteVehiculeRepository repo,
+            VehiculeStatutEventPublisher vehiculeStatutEventPublisher) {
+        return new UpdateIndisponibiliteVehiculeUseCase(repo, vehiculeStatutEventPublisher);
+    }
+
+    @Bean
+    public DeleteIndisponibiliteVehiculeUseCase deleteIndisponibiliteVehiculeUseCase(
+            IndisponibiliteVehiculeRepository repo,
+            VehiculeStatutEventPublisher vehiculeStatutEventPublisher) {
+        return new DeleteIndisponibiliteVehiculeUseCase(repo, vehiculeStatutEventPublisher);
+    }
+
+    @Bean
+    public GetIndisponibiliteVehiculeByIdUseCase getIndisponibiliteVehiculeByIdUseCase(
+            IndisponibiliteVehiculeRepository repo) {
+        return new GetIndisponibiliteVehiculeByIdUseCase(repo);
+    }
+
+    @Bean
+    public GetAllIndisponibilitesVehiculeUseCase getAllIndisponibilitesVehiculeUseCase(
+            IndisponibiliteVehiculeRepository repo) {
+        return new GetAllIndisponibilitesVehiculeUseCase(repo);
+    }
+
+    @Bean
+    public TerminerIndisponibiliteVehiculeUseCase terminerIndisponibiliteVehiculeUseCase(
+            IndisponibiliteVehiculeRepository repo,
+            VehiculeStatutEventPublisher vehiculeStatutEventPublisher) {
+        return new TerminerIndisponibiliteVehiculeUseCase(repo, vehiculeStatutEventPublisher);
+    }
+
+    @Bean
+    public SynchroniserIndisponibilitesVehiculeUseCase synchroniserIndisponibilitesVehiculeUseCase(
+            IndisponibiliteVehiculeRepository repo,
+            VehiculeStatutEventPublisher vehiculeStatutEventPublisher) {
+        return new SynchroniserIndisponibilitesVehiculeUseCase(repo, vehiculeStatutEventPublisher);
+    }
+
     // ----- Trésorerie -----
     @Bean
     public CompteTresorerieResolver compteTresorerieResolver(CompteTresorerieRepository repo) {
@@ -939,6 +998,16 @@ public class UseCaseBeanConfiguration {
     @Bean
     public GetCreancesChauffeurUseCase getCreancesChauffeurUseCase(CreanceRepository repo) {
         return new GetCreancesChauffeurUseCase(repo);
+    }
+
+    @Bean
+    public GetBalanceAgeeParVehiculeUseCase getBalanceAgeeParVehiculeUseCase(CreanceRepository repo) {
+        return new GetBalanceAgeeParVehiculeUseCase(repo);
+    }
+
+    @Bean
+    public GetCreancesVehiculeUseCase getCreancesVehiculeUseCase(CreanceRepository repo) {
+        return new GetCreancesVehiculeUseCase(repo);
     }
 
     @Bean

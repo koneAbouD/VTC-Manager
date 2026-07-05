@@ -28,6 +28,18 @@ final creancesChauffeurProvider =
       ref.watch(_tresorerieDatasourceProvider).getCreancesChauffeur(chauffeurId),
 );
 
+/// Balance âgée agrégée par véhicule (qui doit quoi, par véhicule).
+final balanceAgeeVehiculeProvider = FutureProvider<List<CreanceVehicule>>(
+  (ref) => ref.watch(_tresorerieDatasourceProvider).getBalanceAgeeParVehicule(),
+);
+
+/// Documents ouverts rattachés à un véhicule, du plus ancien au plus récent.
+final creancesVehiculeProvider =
+    FutureProvider.family<List<LigneCreance>, int>(
+  (ref, vehiculeId) =>
+      ref.watch(_tresorerieDatasourceProvider).getCreancesVehicule(vehiculeId),
+);
+
 /// Compte de résultat en cascade pour (mois, annee, base CAISSE|ENGAGEMENT).
 final compteResultatProvider = FutureProvider.family<CompteResultatData,
     ({int annee, int mois, String base})>(

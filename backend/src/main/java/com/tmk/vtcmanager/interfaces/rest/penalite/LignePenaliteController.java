@@ -12,6 +12,7 @@ import com.tmk.vtcmanager.application.usecases.penalite.GenererLignesPenaliteUse
 import com.tmk.vtcmanager.application.usecases.penalite.GetLignesPenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.LeverImmobilisationUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.NotifierAvertissementUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.penalite.dto.request.EncaissementPenaliteRequest;
 import com.tmk.vtcmanager.interfaces.rest.penalite.dto.request.LignePenaliteRequest;
@@ -142,8 +143,9 @@ public class LignePenaliteController {
     }
 
     @PatchMapping("/{id}/annuler")
-    public LignePenaliteResponse annuler(@PathVariable Long id) {
-        return mapper.toResponse(annulerUseCase.executer(id));
+    public LignePenaliteResponse annuler(@PathVariable Long id,
+                                         @Valid @RequestBody AnnulationRequest request) {
+        return mapper.toResponse(annulerUseCase.executer(id, request.motif()));
     }
 
     @PostMapping("/generer")

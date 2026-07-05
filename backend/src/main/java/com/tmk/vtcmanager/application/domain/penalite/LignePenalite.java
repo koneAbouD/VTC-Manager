@@ -46,6 +46,9 @@ public class LignePenalite {
 
     private String commentaire;
 
+    /** Motif saisi lors de l'annulation de la ligne (obligatoire à l'annulation). */
+    private String motifAnnulation;
+
     public boolean isEncaissable() {
         return TypeSanction.AMENDE.equals(typeSanction)
                 && statut != StatutLignePenalite.ENCAISSEE
@@ -92,5 +95,17 @@ public class LignePenalite {
         BigDecimal encaisse = montantEncaisse != null ? montantEncaisse : BigDecimal.ZERO;
         BigDecimal base = montant != null ? montant : BigDecimal.ZERO;
         return base.subtract(encaisse).max(BigDecimal.ZERO);
+    }
+
+    /** Vrai si un versement a déjà été enregistré sur la ligne. */
+    public boolean aDesVersements() {
+        return (montantEncaisse != null && montantEncaisse.compareTo(BigDecimal.ZERO) > 0)
+                || (encaissements != null && !encaissements.isEmpty());
+    }
+
+    /** Passe la ligne en ANNULEE avec son motif (validation dans le use case). */
+    public void annuler(String motif) {
+        this.statut = StatutLignePenalite.ANNULEE;
+        this.motifAnnulation = motif;
     }
 }

@@ -35,6 +35,22 @@ class TresorerieRemoteDatasource {
         .toList();
   }
 
+  Future<List<CreanceVehicule>> getBalanceAgeeParVehicule() async {
+    final data = await _client.get('/finances/balance-agee-vehicule');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => CreanceVehicule.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<LigneCreance>> getCreancesVehicule(int vehiculeId) async {
+    final data = await _client.get('/finances/balance-agee-vehicule/$vehiculeId');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => LigneCreance.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   // ── V2 : transferts + clôture de caisse ─────────────────────────────────
 
   Future<void> createTransfert({

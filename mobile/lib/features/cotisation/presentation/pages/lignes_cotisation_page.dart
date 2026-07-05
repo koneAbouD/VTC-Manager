@@ -20,6 +20,15 @@ import '../../../../core/widgets/date_filter_dialogs.dart';
 
 enum _FiltreMode { mois, semaine, jour, periode }
 
+/// Libellé d'une ligne : « Immatriculation - Nom chauffeur »
+/// (immatriculation seule si le nom du chauffeur est absent). Le chauffeur est
+/// celui qui était programmé sur le véhicule le jour de la cotisation.
+String _libelleVehiculeChauffeur(LigneCotisation ligne) {
+  final immat = ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}';
+  final nom = ligne.chauffeurNom;
+  return (nom != null && nom.isNotEmpty) ? '$immat - $nom' : immat;
+}
+
 // ── Page principale ────────────────────────────────────────────────────────
 
 class LignesCotisationPage extends ConsumerStatefulWidget {
@@ -281,7 +290,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
     final result = await showEncaissementLigneDialog(
       context,
       titre:     ligne.nomCotisation,
-      sousTitre: ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}',
+      sousTitre: _libelleVehiculeChauffeur(ligne),
       montantRestant: ligne.montantRestant ??
           (ligne.montantDu - ligne.montantEncaisse),
       couleur: const Color(0xFFE65100),
@@ -797,8 +806,7 @@ class _LigneCotisationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                      ligne.vehiculeImmatriculation ??
-                          'Véhicule ${ligne.vehiculeId}',
+                      _libelleVehiculeChauffeur(ligne),
                       style: TextStyle(
                           fontSize: 11, color: Colors.grey.shade500)),
                   Text(

@@ -13,6 +13,7 @@ import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.ports.persistence.ConditionTravailRepository;
+import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
@@ -35,6 +36,7 @@ public class GenererLignesPenaliteUseCase {
     private final ConditionTravailRepository conditionTravailRepository;
     private final LigneRecetteRepository ligneRecetteRepository;
     private final LignePenaliteRepository lignePenaliteRepository;
+    private final IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
 
     @Transactional
     public List<LignePenalite> executerPourRecettesNonVersees(LocalDate dateFaute) {
@@ -43,6 +45,8 @@ public class GenererLignesPenaliteUseCase {
 
         for (ProgrammeTravail programme : programmes) {
             if (programme.getChauffeurs() == null || programme.getChauffeurs().isEmpty()) continue;
+            // Véhicule immobilisé (indisponibilité) ce jour → aucune recette due donc aucune pénalité.
+            if (indisponibiliteVehiculeRepository.isImmobiliseAt(programme.getVehiculeId(), dateFaute)) continue;
 
             var conditionOpt = conditionTravailRepository.findByVehiculeId(programme.getVehiculeId());
             if (conditionOpt.isEmpty()) continue;

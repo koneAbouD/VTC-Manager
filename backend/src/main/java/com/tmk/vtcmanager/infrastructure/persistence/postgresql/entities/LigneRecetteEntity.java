@@ -61,6 +61,9 @@ public class LigneRecetteEntity extends AbstractAuditEntity {
     @Column(name = "statut", nullable = false, length = 30)
     private StatutLigneRecette statut;
 
+    @Column(name = "motif_annulation", length = 500)
+    private String motifAnnulation;
+
     @OneToMany(mappedBy = "ligneRecette", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<EncaissementEntity> encaissements = new ArrayList<>();
