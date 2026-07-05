@@ -9,6 +9,7 @@ import '../../domain/enums/statut_operation.dart';
 import '../../domain/enums/type_operation.dart';
 import '../providers/operation_financiere_provider.dart';
 import '../providers/operation_financiere_state.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 import 'operation_financiere_form_page.dart';
 
 /// Page de détail d'une opération financière.
@@ -195,6 +196,9 @@ class _DetailBody extends ConsumerWidget {
         SnackBar(content: Text(error), backgroundColor: Colors.red),
       );
     } else {
+      // Annuler une opération impacte trésorerie, créances, résultat… :
+      // rafraîchit tout le module Finances.
+      refreshFinances(ref);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Opération annulée')),
       );

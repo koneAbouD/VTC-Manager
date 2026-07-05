@@ -185,10 +185,12 @@ class _CascadeCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Pont vers la caisse (variation des créances)',
-                  style: TextStyle(fontSize: 11.5, color: AppColors.label)),
+              const Expanded(
+                child: Text('Pont vers la caisse (variation des créances)',
+                    style: TextStyle(fontSize: 11.5, color: AppColors.label)),
+              ),
+              const SizedBox(width: 8),
               Text(CurrencyFormatter.format(cr.pontCreances),
                   style: const TextStyle(
                       fontSize: 11.5,
@@ -209,12 +211,14 @@ class _CascadeCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(libelle,
-                  style: TextStyle(
-                      fontSize: 13.5,
-                      color: secondaire ? AppColors.label : AppColors.dark)),
+              Expanded(
+                child: Text(libelle,
+                    style: TextStyle(
+                        fontSize: 13.5,
+                        color: secondaire ? AppColors.label : AppColors.dark)),
+              ),
+              const SizedBox(width: 8),
               Text(CurrencyFormatter.format(montant),
                   style: TextStyle(
                       fontSize: 13.5,
@@ -240,11 +244,13 @@ class _CascadeCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(libelle,
-              style: const TextStyle(
-                  fontSize: 13.5, fontWeight: FontWeight.w600)),
+          Expanded(
+            child: Text(libelle,
+                style: const TextStyle(
+                    fontSize: 13.5, fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 8),
           Text(CurrencyFormatter.format(montant),
               style: const TextStyle(
                   fontSize: 13.5, fontWeight: FontWeight.w700)),

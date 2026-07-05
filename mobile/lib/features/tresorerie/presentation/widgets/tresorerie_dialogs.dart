@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/compte_tresorerie.dart';
 import '../providers/tresorerie_providers.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 /// Dialog de transfert entre deux comptes de trésorerie.
 Future<void> showTransfertDialog(
@@ -92,7 +93,7 @@ Future<void> showTransfertDialog(
           montant: montant,
           commentaire: commentaireCtrl.text,
         );
-    ref.invalidate(tresorerieSummaryProvider);
+    refreshFinances(ref);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
@@ -213,7 +214,7 @@ Future<void> showClotureCaisseDialog(
           soldeCompte: comptage,
           motifEcart: motifCtrl.text.trim(),
         );
-    ref.invalidate(tresorerieSummaryProvider);
+    refreshFinances(ref);
     if (context.mounted) {
       final msg = cloture.ecart == 0
           ? 'Caisse clôturée sans écart'

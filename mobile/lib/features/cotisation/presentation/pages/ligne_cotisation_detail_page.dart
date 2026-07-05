@@ -8,7 +8,7 @@ import '../providers/ligne_cotisation_provider.dart';
 import 'encaissement_cotisation_form_page.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
-import '../../../tresorerie/presentation/providers/tresorerie_providers.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 class LigneCotisationDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -42,7 +42,10 @@ class LigneCotisationDetailPage extends ConsumerWidget {
   Future<void> _encaisser(BuildContext context, WidgetRef ref, LigneCotisation ligne) async {
     final ok = await Navigator.push<bool>(context,
         MaterialPageRoute(builder: (_) => EncaissementCotisationFormPage(ligne: ligne)));
-    if (ok == true) ref.invalidate(ligneCotisationDetailProvider(ligneId));
+    if (ok == true) {
+      ref.invalidate(ligneCotisationDetailProvider(ligneId));
+      refreshFinances(ref);
+    }
   }
 }
 
@@ -106,9 +109,7 @@ class _Body extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
     } else {
       ref.invalidate(ligneCotisationDetailProvider(ligneId));
-      ref.invalidate(balanceAgeeProvider);
-      ref.invalidate(balanceAgeeVehiculeProvider);
-      ref.invalidate(compteResultatProvider);
+      refreshFinances(ref);
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ligne annulée')));
     }

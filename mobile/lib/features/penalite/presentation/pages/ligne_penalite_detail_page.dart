@@ -7,7 +7,7 @@ import '../providers/penalite_provider.dart';
 import 'encaissement_penalite_form_page.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
-import '../../../tresorerie/presentation/providers/tresorerie_providers.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 class LignePenaliteDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -192,7 +192,10 @@ class _DetailBody extends ConsumerWidget {
       MaterialPageRoute(
           builder: (_) => EncaissementPenaliteFormPage(ligne: l)),
     );
-    if (refreshed == true) ref.invalidate(lignePenaliteDetailProvider(ligneId));
+    if (refreshed == true) {
+      ref.invalidate(lignePenaliteDetailProvider(ligneId));
+      refreshFinances(ref);
+    }
   }
 
   Future<void> _executer(BuildContext context, WidgetRef ref) =>
@@ -225,9 +228,7 @@ class _DetailBody extends ConsumerWidget {
     } else {
       // Actualise immédiatement le détail + les écrans finance impactés.
       ref.invalidate(lignePenaliteDetailProvider(ligneId));
-      ref.invalidate(balanceAgeeProvider);
-      ref.invalidate(balanceAgeeVehiculeProvider);
-      ref.invalidate(compteResultatProvider);
+      refreshFinances(ref);
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Pénalité annulée')));
     }

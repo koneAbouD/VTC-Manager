@@ -15,6 +15,7 @@ import '../../domain/entities/maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import '../providers/type_maintenance_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -198,8 +199,21 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       setState(() => _submitError = error);
       _showToast(context, error, error: true);
     } else {
-      _showToast(context,
-          _isEdit ? 'Maintenance modifiée !' : 'Maintenance programmée !');
+      // Date prévue déjà passée → le backend a terminé la maintenance et généré
+      // l'opération de dépense associée : on rafraîchit le module Finances.
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final estPassee = !_isEdit && _datePrevue!.isBefore(today);
+      if (estPassee) refreshFinances(ref);
+
+      _showToast(
+        context,
+        _isEdit
+            ? 'Maintenance modifiée !'
+            : estPassee
+                ? 'Maintenance enregistrée et terminée !'
+                : 'Maintenance programmée !',
+      );
       Navigator.pop(context, true);
     }
   }

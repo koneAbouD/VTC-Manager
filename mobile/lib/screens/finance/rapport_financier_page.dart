@@ -515,12 +515,12 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
               final item = entry.value;
               final color = pieColors[i % pieColors.length];
               return SizedBox(
-                width: 130,
+                width: 160,
                 child: Row(
                   children: [
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: color, width: 5),

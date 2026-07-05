@@ -14,6 +14,7 @@ import '../providers/operations_liste_provider.dart';
 import 'operation_financiere_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../screens/home_nav_provider.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 enum _FiltreMode { mois, semaine, jour, periode }
 
@@ -340,6 +341,11 @@ class _OperationsFinancieresPageState
     // par le « Tout afficher » du Rapport financier alors que cet onglet est déjà
     // monté). Le premier chargement, lui, lit la valeur dans _loadWithFilters.
     ref.listen<String?>(operationsTypeFiltreProvider, (prev, next) {
+      if (mounted) _loadWithFilters();
+    });
+    // Rafraîchissement global du module Finances : recharge la liste (filtres
+    // conservés) quand une opération est faite ailleurs (encaissement, annulation…).
+    ref.listen<int>(financeRefreshTickProvider, (prev, next) {
       if (mounted) _loadWithFilters();
     });
     final typeFiltre = ref.watch(operationsTypeFiltreProvider);

@@ -8,7 +8,7 @@ import '../providers/ligne_recette_provider.dart';
 import 'encaissement_form_page.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
-import '../../../tresorerie/presentation/providers/tresorerie_providers.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 class LigneRecetteDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -51,7 +51,10 @@ class LigneRecetteDetailPage extends ConsumerWidget {
       context,
       MaterialPageRoute(builder: (_) => EncaissementFormPage(ligne: ligne)),
     );
-    if (refreshed == true) ref.invalidate(ligneRecetteDetailProvider(ligneId));
+    if (refreshed == true) {
+      ref.invalidate(ligneRecetteDetailProvider(ligneId));
+      refreshFinances(ref);
+    }
   }
 }
 
@@ -144,6 +147,7 @@ class _DetailBody extends ConsumerWidget {
           .showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
     } else {
       ref.invalidate(ligneRecetteDetailProvider(ligneId));
+      refreshFinances(ref);
     }
   }
 
@@ -159,12 +163,9 @@ class _DetailBody extends ConsumerWidget {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
     } else {
-      // Actualise immédiatement le détail + les écrans finance impactés
-      // (la ligne annulée sort des créances et du compte de résultat).
+      // Actualise immédiatement le détail + toutes les pages du module Finances.
       ref.invalidate(ligneRecetteDetailProvider(ligneId));
-      ref.invalidate(balanceAgeeProvider);
-      ref.invalidate(balanceAgeeVehiculeProvider);
-      ref.invalidate(compteResultatProvider);
+      refreshFinances(ref);
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ligne annulée')));
     }

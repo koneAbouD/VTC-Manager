@@ -377,9 +377,10 @@ public class UseCaseBeanConfiguration {
             MaintenanceRepository maintenanceRepo,
             VehiculeRepository vehiculeRepo,
             CategorieOperationRepository categorieOperationRepository,
-            VehiculeStatutEventPublisher statutEventPublisher) {
+            VehiculeStatutEventPublisher statutEventPublisher,
+            CompleteMaintenanceUseCase completeMaintenanceUseCase) {
         return new ScheduleMaintenanceUseCase(maintenanceRepo, vehiculeRepo,
-                categorieOperationRepository, statutEventPublisher);
+                categorieOperationRepository, statutEventPublisher, completeMaintenanceUseCase);
     }
 
     @Bean

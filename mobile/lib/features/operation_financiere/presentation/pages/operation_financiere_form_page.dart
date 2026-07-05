@@ -16,6 +16,7 @@ import '../../domain/entities/operation_financiere.dart';
 import '../../domain/enums/mode_paiement.dart';
 import '../../domain/enums/type_operation.dart';
 import '../providers/operation_financiere_provider.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 import 'categorie_operation_selector_page.dart';
 import 'elements_maintenance_page.dart';
 
@@ -230,6 +231,9 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
         setState(() => _submitError = error);
         _showToast(context, error, error: true);
       } else {
+        // Rafraîchit toutes les pages du module Finances (trésorerie, créances,
+        // compte de résultat, bilan, rapport, liste des opérations).
+        refreshFinances(ref);
         _showToast(
             context, _isEdit ? 'Opération modifiée' : 'Opération créée');
         Navigator.pop(context);
