@@ -671,11 +671,12 @@ public class UseCaseBeanConfiguration {
             LigneRecetteRepository ligneRecetteRepository,
             LigneCotisationRepository ligneCotisationRepository,
             LignePenaliteRepository lignePenaliteRepository,
+            SousCategorieOperationRepository sousCategorieOperationRepository,
             CompteTresorerieResolver compteTresorerieResolver,
             PeriodeClotureeGuard periodeClotureeGuard) {
         return new CreateOperationFinanciereUseCase(repo, chauffeurRepository, vehiculeRepository,
                 ligneRecetteRepository, ligneCotisationRepository, lignePenaliteRepository,
-                compteTresorerieResolver, periodeClotureeGuard);
+                sousCategorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard);
     }
 
     @Bean

@@ -6,6 +6,10 @@ import '../../features/tresorerie/presentation/pages/creances_tab.dart';
 import '../../features/tresorerie/presentation/pages/rapports_tab.dart';
 import '../../features/tresorerie/presentation/pages/tresorerie_tab.dart';
 import '../home_nav_provider.dart';
+import 'finance_refresh.dart';
+
+/// Index de l'onglet Finances dans la barre de navigation principale.
+const _financeNavIndex = 3;
 
 /// Hub "Finances" : Trésorerie (soldes), Créances (balance âgée),
 /// Opérations (liste existante) et Rapports (rapport existant).
@@ -40,6 +44,16 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Rafraîchit tout le module Finances à chaque entrée dans l'onglet
+    // (bottom nav) : garantit des données à jour après n'importe quelle
+    // opération faite ailleurs (encaissement rapide, maintenance, contravention…),
+    // sans dépendre d'un appel manuel à refreshFinances sur chaque flux.
+    ref.listen<int>(homeTabIndexProvider, (prev, next) {
+      if (next == _financeNavIndex && prev != next) {
+        refreshFinances(ref);
+      }
+    });
+
     // Permet à un autre écran (ex. « Plus d'opérations » de l'Accueil) de
     // demander l'affichage d'un sous-onglet précis.
     final requestedTab = ref.watch(financeTabIndexProvider);

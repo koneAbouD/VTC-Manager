@@ -58,9 +58,14 @@ public class CompleteMaintenanceUseCase {
                     ? categorieRepository.findById(categorieId).orElse(null)
                     : saved.getCategorieType();
 
+            // La sous-catégorie n'est jamais chargée avec la catégorie
+            // (CategorieOperationPersistenceMapper l'ignore) : on la résout via le
+            // repository (relation 1-1) pour que le filtre « Maintenances » la retrouve.
             SousCategorieOperation sousCategorie = sousCategorieId != null
                     ? sousCategorieRepository.findById(sousCategorieId).orElse(null)
-                    : (categorie != null ? categorie.getSousCategorie() : null);
+                    : (categorie != null && categorie.getId() != null
+                            ? sousCategorieRepository.findByCategorieId(categorie.getId()).orElse(null)
+                            : null);
 
             DetailMaintenance operationDetail = buildDetailForOperation(saved.getDetailMaintenance());
 

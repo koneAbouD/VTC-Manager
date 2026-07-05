@@ -12,6 +12,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepositor
 import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
@@ -34,6 +35,7 @@ public class CreateOperationFinanciereUseCase {
     private final LigneRecetteRepository ligneRecetteRepository;
     private final LigneCotisationRepository ligneCotisationRepository;
     private final LignePenaliteRepository lignePenaliteRepository;
+    private final SousCategorieOperationRepository sousCategorieRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
 
@@ -79,6 +81,16 @@ public class CreateOperationFinanciereUseCase {
                     .map(e -> e.getMontant() != null ? e.getMontant() : java.math.BigDecimal.ZERO)
                     .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
             operation.setMontant(total);
+        }
+
+        // Rattachement de la sous-catégorie (relation 1-1 avec la catégorie).
+        // Le formulaire n'envoie que la catégorie : on résout la sous-catégorie
+        // pour que le filtre par sous-catégorie (Maintenances / Documents) fonctionne.
+        if (operation.getSousCategorie() == null
+                && operation.getCategorie() != null
+                && operation.getCategorie().getId() != null) {
+            sousCategorieRepository.findByCategorieId(operation.getCategorie().getId())
+                    .ifPresent(operation::setSousCategorie);
         }
 
         // Génération de la référence
