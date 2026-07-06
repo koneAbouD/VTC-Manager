@@ -12,7 +12,6 @@ public record VehiculeDetailResponse(
         MarqueResponse marque,
         ModeleResponse modele,
         String numeroChassis,
-        String numeroTelephoneVehicule,
         String numeroTelephoneBalise,
         String identifiantBalise,
         String couleur,

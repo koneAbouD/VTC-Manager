@@ -23,6 +23,8 @@ public interface VehiculeRestMapper {
     @Mapping(target = "conditionTravail", ignore = true)
     @Mapping(target = "photos", ignore = true)
     @Mapping(target = "statutManuel", ignore = true)
+    @Mapping(target = "prixAchat", ignore = true)
+    @Mapping(target = "dureeAmortissementMois", ignore = true)
     @Mapping(target = "marque", source = "marqueId")
     @Mapping(target = "modele", source = "modeleId")
     @Mapping(target = "type", source = "typeVehiculeId")

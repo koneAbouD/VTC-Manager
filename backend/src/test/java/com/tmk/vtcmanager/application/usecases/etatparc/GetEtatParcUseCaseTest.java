@@ -5,15 +5,20 @@ import com.tmk.vtcmanager.application.domain.document.Document;
 import com.tmk.vtcmanager.application.domain.document.DocumentStatut;
 import com.tmk.vtcmanager.application.domain.chauffeur.TypePermis;
 import com.tmk.vtcmanager.application.domain.groupe.GroupeVehicule;
+import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
+import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import com.tmk.vtcmanager.application.domain.vehicule.TypeActivite;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatus;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatutHistorique;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatutMotif;
+import com.tmk.vtcmanager.application.domain.vehicule.Vidange;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
+import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeStatutHistoriqueRepository;
+import com.tmk.vtcmanager.application.ports.persistence.VidangeRepository;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.EtatParcSummaryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +30,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +40,8 @@ class GetEtatParcUseCaseTest {
     private VehiculeStatutHistoriqueRepository historiqueRepository;
     private DocumentRepository documentRepository;
     private IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
+    private VidangeRepository vidangeRepository;
+    private MaintenanceRepository maintenanceRepository;
     private GetEtatParcUseCase useCase;
 
     @BeforeEach
@@ -42,10 +50,16 @@ class GetEtatParcUseCaseTest {
         historiqueRepository = mock(VehiculeStatutHistoriqueRepository.class);
         documentRepository = mock(DocumentRepository.class);
         indisponibiliteVehiculeRepository = mock(IndisponibiliteVehiculeRepository.class);
+        vidangeRepository = mock(VidangeRepository.class);
+        maintenanceRepository = mock(MaintenanceRepository.class);
         useCase = new GetEtatParcUseCase(vehiculeRepository, historiqueRepository,
-                documentRepository, indisponibiliteVehiculeRepository);
+                documentRepository, indisponibiliteVehiculeRepository, vidangeRepository,
+                maintenanceRepository);
         when(historiqueRepository.findAllEnCours()).thenReturn(List.of());
         when(documentRepository.findAll()).thenReturn(List.of());
+        when(vidangeRepository.findDernieresParVehicule()).thenReturn(List.of());
+        when(maintenanceRepository.findByDatePrevueLessThanEqualAndStatut(any(), any()))
+                .thenReturn(List.of());
     }
 
     private Vehicule vehicule(long id, VehiculeStatus statut) {
@@ -152,11 +166,17 @@ class GetEtatParcUseCaseTest {
     @Test
     void compteLesAlertesPreventives() {
         LocalDate today = LocalDate.now();
-        Vehicule maintenanceDue = vehicule(1, VehiculeStatus.EN_SERVICE);
-        maintenanceDue.setDateProchaineMaintenance(today.plusDays(5));
-        Vehicule maintenanceLointaine = vehicule(2, VehiculeStatus.EN_SERVICE);
-        maintenanceLointaine.setDateProchaineMaintenance(today.plusDays(30));
-        when(vehiculeRepository.findAll()).thenReturn(List.of(maintenanceDue, maintenanceLointaine));
+        Vehicule v1 = vehicule(1, VehiculeStatus.EN_SERVICE);
+        Vehicule v2 = vehicule(2, VehiculeStatus.EN_SERVICE);
+        when(vehiculeRepository.findAll()).thenReturn(List.of(v1, v2));
+
+        // Une seule maintenance PLANIFIEE due sous 7 j (véhicule 1) ; celle du
+        // véhicule 2 est planifiée dans 30 j → hors horizon.
+        when(maintenanceRepository.findByDatePrevueLessThanEqualAndStatut(
+                today.plusDays(7), MaintenanceStatus.PLANIFIEE))
+                .thenReturn(List.of(
+                        Maintenance.builder().vehicule(v1).datePrevue(today.plusDays(5))
+                                .statut(MaintenanceStatus.PLANIFIEE).build()));
 
         when(documentRepository.findAll()).thenReturn(List.of(
                 // Assurance qui expire dans 10 jours → alerte
@@ -179,6 +199,48 @@ class GetEtatParcUseCaseTest {
         assertThat(r.alertes().documentsExpirantSous30Jours()).isEqualTo(2);
         assertThat(r.alertes().maintenancesDuesSous7Jours()).isEqualTo(1);
         assertThat(r.alertes().permisExpires()).isEqualTo(1);
+        assertThat(r.alertes().vidangesDues()).isZero();
+    }
+
+    @Test
+    void compteLesVidangesDuesParDateOuKilometrage() {
+        LocalDate today = LocalDate.now();
+        // 1 : due par kilométrage (200 km restants ≤ 500)
+        Vehicule dueKm = vehiculeAvecKm(1, VehiculeStatus.EN_SERVICE, 99_800);
+        // 2 : due par date (prochaine dans 3 j) ; km encore loin
+        Vehicule dueDate = vehiculeAvecKm(2, VehiculeStatus.EN_SERVICE, 40_000);
+        // 3 : ni date proche ni km proche → pas d'alerte
+        Vehicule nonDue = vehiculeAvecKm(3, VehiculeStatus.EN_SERVICE, 100_000);
+        // 4 : km atteint mais HORS_PARC → exclu
+        Vehicule horsParc = vehiculeAvecKm(4, VehiculeStatus.HORS_PARC, 99_900);
+        when(vehiculeRepository.findAll())
+                .thenReturn(List.of(dueKm, dueDate, nonDue, horsParc));
+
+        when(vidangeRepository.findDernieresParVehicule()).thenReturn(List.of(
+                vidange(1, null, 100_000),                 // cible km 100 000
+                vidange(2, today.plusDays(3), 200_000),    // cible date proche
+                vidange(3, today.plusDays(60), 200_000),   // rien de proche
+                vidange(4, null, 100_000)));               // HORS_PARC, ignoré
+
+        EtatParcSummaryResponse r = useCase.execute(null, null);
+
+        assertThat(r.alertes().vidangesDues()).isEqualTo(2);
+    }
+
+    private Vehicule vehiculeAvecKm(long id, VehiculeStatus statut, int kilometrage) {
+        return Vehicule.builder()
+                .id(id).immatriculation("IMM-" + id).statut(statut)
+                .kilometrage(kilometrage).build();
+    }
+
+    private Vidange vidange(long vehiculeId, LocalDate dateProchaine, Integer kmProchaine) {
+        return Vidange.builder()
+                .vehiculeId(vehiculeId)
+                .dateVidange(LocalDate.now().minusMonths(3))
+                .kilometrageVidange(0)
+                .dateProchaineVidange(dateProchaine)
+                .kilometrageProchaineVidange(kmProchaine)
+                .build();
     }
 
     private VehiculeStatutHistorique periode(long vehiculeId, VehiculeStatus statut,

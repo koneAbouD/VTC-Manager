@@ -17,6 +17,7 @@ class MaintenanceModel extends Maintenance {
     super.statut,
     super.vehiculeId,
     super.vehiculeNom,
+    super.vehiculeImmatriculation,
     super.categorieTypeId,
     super.categorieTypeLibelle,
     super.detailMaintenance,
@@ -38,6 +39,7 @@ class MaintenanceModel extends Maintenance {
     final marque          = _str(vehiculeJson?['marque']);
     final modele          = _str(vehiculeJson?['modele']);
     final vehiculeNom     = '$marque $modele'.trim();
+    final immatriculation = _str(vehiculeJson?['immatriculation']);
 
     final categorieTypeJson =
         json['categorieType'] as Map<String, dynamic>?;
@@ -60,6 +62,8 @@ class MaintenanceModel extends Maintenance {
       statut:              json['statut'] as String?,
       vehiculeId:          vehiculeJson?['id'] as int?,
       vehiculeNom:         vehiculeNom.isEmpty ? null : vehiculeNom,
+      vehiculeImmatriculation:
+          immatriculation.isEmpty ? null : immatriculation,
       categorieTypeId:     categorieTypeJson?['id'] as int?,
       categorieTypeLibelle: categorieTypeJson?['libelle'] as String?,
       detailMaintenance:   json['detailMaintenance'] != null
@@ -83,6 +87,7 @@ class MaintenanceModel extends Maintenance {
         statut:              m.statut,
         vehiculeId:          m.vehiculeId,
         vehiculeNom:         m.vehiculeNom,
+        vehiculeImmatriculation: m.vehiculeImmatriculation,
         categorieTypeId:     m.categorieTypeId,
         categorieTypeLibelle: m.categorieTypeLibelle,
         detailMaintenance:   m.detailMaintenance != null

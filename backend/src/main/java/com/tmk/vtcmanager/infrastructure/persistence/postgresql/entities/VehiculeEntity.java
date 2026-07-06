@@ -53,9 +53,6 @@ public class VehiculeEntity extends AbstractAuditEntity {
     @Column(name = "numero_chassis", length = 50)
     private String numeroChassis;
 
-    @Column(name = "numero_telephone_vehicule", length = 30)
-    private String numeroTelephoneVehicule;
-
     @Column(name = "numero_telephone_balise", length = 30)
     private String numeroTelephoneBalise;
 
@@ -80,6 +77,7 @@ public class VehiculeEntity extends AbstractAuditEntity {
     private java.math.BigDecimal prixAchat;
 
     /** Durée d'amortissement linéaire (60 mois par défaut). */
+    @Builder.Default
     @Column(name = "duree_amortissement_mois", nullable = false)
     private int dureeAmortissementMois = 60;
 

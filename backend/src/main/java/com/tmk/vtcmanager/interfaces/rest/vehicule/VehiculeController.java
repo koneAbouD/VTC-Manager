@@ -83,7 +83,7 @@ public class VehiculeController {
         return new VehiculeDetailResponse(
                 base.id(), base.immatriculation(),
                 base.marque(), base.modele(),
-                base.numeroChassis(), base.numeroTelephoneVehicule(),
+                base.numeroChassis(),
                 base.numeroTelephoneBalise(), base.identifiantBalise(),
                 base.couleur(), base.kilometrage(), base.statut(),
                 base.type(), base.activite(), base.groupe(),

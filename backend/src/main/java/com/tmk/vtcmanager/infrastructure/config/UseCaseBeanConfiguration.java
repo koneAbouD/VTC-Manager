@@ -31,6 +31,7 @@ import com.tmk.vtcmanager.application.ports.persistence.TypeActiviteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.TypeVehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculePhotoRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
+import com.tmk.vtcmanager.application.ports.persistence.VidangeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import com.tmk.vtcmanager.application.usecases.auth.*;
@@ -177,6 +178,19 @@ public class UseCaseBeanConfiguration {
             VehiculePhotoRepository photoRepository,
             FileStoragePort fileStoragePort) {
         return new GetAllVehiculesUseCase(repo, photoRepository, fileStoragePort);
+    }
+
+    @Bean
+    public CreateVidangeUseCase createVidangeUseCase(
+            VidangeRepository vidangeRepository,
+            VehiculeRepository vehiculeRepository) {
+        return new CreateVidangeUseCase(vidangeRepository, vehiculeRepository);
+    }
+
+    @Bean
+    public GetVidangesByVehiculeUseCase getVidangesByVehiculeUseCase(
+            VidangeRepository vidangeRepository) {
+        return new GetVidangesByVehiculeUseCase(vidangeRepository);
     }
 
     @Bean
@@ -384,6 +398,15 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public PlanifierVidangesDuesUseCase planifierVidangesDuesUseCase(
+            VidangeRepository vidangeRepository,
+            MaintenanceRepository maintenanceRepository,
+            ScheduleMaintenanceUseCase scheduleMaintenanceUseCase) {
+        return new PlanifierVidangesDuesUseCase(
+                vidangeRepository, maintenanceRepository, scheduleMaintenanceUseCase);
+    }
+
+    @Bean
     public UpdateMaintenanceUseCase updateMaintenanceUseCase(
             MaintenanceRepository repo,
             CategorieOperationRepository categorieOperationRepository,
@@ -457,10 +480,13 @@ public class UseCaseBeanConfiguration {
             VehiculeRepository vehiculeRepository,
             VehiculeStatutHistoriqueRepository vehiculeStatutHistoriqueRepository,
             DocumentRepository documentRepository,
-            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository) {
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository,
+            VidangeRepository vidangeRepository,
+            MaintenanceRepository maintenanceRepository) {
         return new GetEtatParcUseCase(vehiculeRepository,
                 vehiculeStatutHistoriqueRepository, documentRepository,
-                indisponibiliteVehiculeRepository);
+                indisponibiliteVehiculeRepository, vidangeRepository,
+                maintenanceRepository);
     }
 
     // ----- ConditionTravail -----

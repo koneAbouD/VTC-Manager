@@ -8,7 +8,6 @@ public record UpdateVehiculeRequest(
         String immatriculation,
         Long typeActiviteId,
         String numeroChassis,
-        String numeroTelephoneVehicule,
         String numeroTelephoneBalise,
         String identifiantBalise,
         String couleur,

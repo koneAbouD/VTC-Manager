@@ -33,6 +33,7 @@ public interface PenaliteRestMapper {
     @Mapping(target = "ligneRecetteId", ignore = true)
     @Mapping(target = "statut",         ignore = true)
     @Mapping(target = "encaissements",  ignore = true)
+    @Mapping(target = "motifAnnulation", ignore = true)
     LignePenalite toDomain(LignePenaliteRequest request);
 
     @Mapping(target = "modeEncaissement", expression = "java(ModePaiement.valueOf(request.modeEncaissement()))")

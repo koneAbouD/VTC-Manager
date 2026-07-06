@@ -20,6 +20,9 @@ import '../vehicule_couleurs.dart';
 import '../providers/documents_by_vehicule_provider.dart';
 import '../providers/referentiel_provider.dart';
 import '../providers/vehicule_provider.dart';
+import '../providers/vidanges_provider.dart';
+import '../widgets/vidange_form_dialog.dart';
+import 'vidanges_historique_page.dart';
 import 'vehicule_form_page.dart';
 import '../../../configuration_vehicule/presentation/pages/configuration_vehicule_page.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -1237,7 +1240,7 @@ class _NoConditionView extends StatelessWidget {
 
 // ── Tab Informations générales ─────────────────────────────────────────────
 
-class _InfoGeneralesTab extends StatelessWidget {
+class _InfoGeneralesTab extends ConsumerWidget {
   final Vehicule vehicule;
   const _InfoGeneralesTab({required this.vehicule});
 
@@ -1246,8 +1249,19 @@ class _InfoGeneralesTab extends StatelessWidget {
     return DateFormat('dd/MM/yyyy').format(d);
   }
 
+  static String _fmtKm(int? km) =>
+      km == null ? '—' : '${km.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]} ')} km';
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Dernière vidange = entrée la plus récente de l'historique (déjà trié
+    // antéchronologiquement par le backend) ; sa cible = prochaine vidange.
+    final vidanges = vehicule.id != null
+        ? ref.watch(vidangesByVehiculeProvider(vehicule.id!)).valueOrNull
+        : null;
+    final derniereVidange =
+        (vidanges != null && vidanges.isNotEmpty) ? vidanges.first : null;
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
@@ -1296,10 +1310,6 @@ class _InfoGeneralesTab extends StatelessWidget {
                 icon: Icons.numbers_outlined,
                 value: vehicule.numeroChassis),
             _InfoRow(
-                label: 'Tél. véhicule',
-                icon: Icons.phone_outlined,
-                value: vehicule.numeroTelephoneVehicule),
-            _InfoRow(
                 label: 'Tél. balise',
                 icon: Icons.gps_fixed_outlined,
                 value: vehicule.numeroTelephoneBalise),
@@ -1311,27 +1321,57 @@ class _InfoGeneralesTab extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _SectionCard(
-          title: 'Kilométrage',
+          title: 'Kilométrage & vidange',
           icon: Icons.speed,
-          onEdit: () {},
+          onEdit: vehicule.id == null
+              ? null
+              : () => showVidangeFormDialog(
+                    context,
+                    vehiculeId: vehicule.id!,
+                    kilometrageActuel: vehicule.kilometrage,
+                  ),
           children: [
             _InfoRow(
               label: 'Kilométrage actuel',
               icon: Icons.speed_outlined,
-              value: '${vehicule.kilometrage ?? 0} km',
+              value: vehicule.kilometrage != null
+                  ? '${vehicule.kilometrage} km'
+                  : '—',
             ),
-            const _InfoRow(
-              label: 'Kilométrage prochaine vidange',
-              icon: Icons.build_outlined,
-              value: '0 km',
+            _InfoRow(
+              label: 'Dernière vidange',
+              icon: Icons.oil_barrel_outlined,
+              value: derniereVidange != null
+                  ? '${_fmtDate(derniereVidange.dateVidange)} · ${_fmtKm(derniereVidange.kilometrageVidange)}'
+                  : '—',
+            ),
+            _InfoRow(
+              label: 'Prochaine vidange',
+              icon: Icons.event_repeat_outlined,
+              value: (derniereVidange?.dateProchaineVidange != null ||
+                      derniereVidange?.kilometrageProchaineVidange != null)
+                  ? '${_fmtDate(derniereVidange?.dateProchaineVidange)} · ${_fmtKm(derniereVidange?.kilometrageProchaineVidange)}'
+                  : '—',
             ),
             const SizedBox(height: 4),
             GestureDetector(
-              onTap: () {},
+              onTap: vehicule.id == null
+                  ? null
+                  : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => VidangesHistoriquePage(
+                            vehiculeId: vehicule.id!,
+                            vehiculeLabel:
+                                '${vehicule.marque} ${vehicule.modele} · ${vehicule.immatriculation}',
+                            kilometrageActuel: vehicule.kilometrage,
+                          ),
+                        ),
+                      ),
               child: Row(
                 children: [
                   const Text(
-                    "Voir l'historique de kilométrage",
+                    "Voir l'historique de vidange",
                     style: TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w500,
@@ -1340,13 +1380,13 @@ class _InfoGeneralesTab extends StatelessWidget {
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: Colors.black,
-                      shape: BoxShape.circle,
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(9),
                     ),
                     child: const Icon(Icons.arrow_forward,
-                        color: Colors.white, size: 14),
+                        color: AppColors.primary, size: 16),
                   ),
                 ],
               ),

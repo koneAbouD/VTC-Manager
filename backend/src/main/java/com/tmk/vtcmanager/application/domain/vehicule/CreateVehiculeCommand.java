@@ -10,7 +10,6 @@ public record CreateVehiculeCommand(
         Long typeActiviteId,
         Long groupeId,
         String numeroChassis,
-        String numeroTelephoneVehicule,
         String numeroTelephoneBalise,
         String identifiantBalise,
         String couleur,

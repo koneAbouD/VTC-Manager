@@ -22,7 +22,6 @@ public class Vehicule {
     private Marque marque;
     private Modele modele;
     private String numeroChassis;
-    private String numeroTelephoneVehicule;
     private String numeroTelephoneBalise;
     private String identifiantBalise;
     private String couleur;

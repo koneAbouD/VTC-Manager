@@ -605,6 +605,13 @@ class _AlertesSection extends StatelessWidget {
               '${s(n.maintenancesDuesSous7Jours)}',
           reste: 'due${s(n.maintenancesDuesSous7Jours)} sous 7 j',
         ),
+      if (n.vidangesDues > 0)
+        _AlerteTile(
+          icon: Icons.oil_barrel_outlined,
+          color: const Color(0xFFE65100),
+          gras: '${n.vidangesDues} vidange${s(n.vidangesDues)}',
+          reste: 'due${s(n.vidangesDues)} (échéance ou kilométrage)',
+        ),
       if (n.permisExpires > 0)
         _AlerteTile(
           icon: Icons.badge_outlined,

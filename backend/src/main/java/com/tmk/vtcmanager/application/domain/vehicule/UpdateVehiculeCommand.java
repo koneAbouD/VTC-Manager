@@ -9,7 +9,6 @@ public record UpdateVehiculeCommand(
         Long typeVehiculeId,
         Long typeActiviteId,
         String numeroChassis,
-        String numeroTelephoneVehicule,
         String numeroTelephoneBalise,
         String identifiantBalise,
         String couleur,

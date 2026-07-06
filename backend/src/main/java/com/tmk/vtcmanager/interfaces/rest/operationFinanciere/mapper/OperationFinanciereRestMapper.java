@@ -34,6 +34,7 @@ public interface OperationFinanciereRestMapper {
     @Mapping(target = "statut", ignore = true)
     @Mapping(target = "dateReference", ignore = true)
     @Mapping(target = "maintenanceId", ignore = true)
+    @Mapping(target = "compteTresorerieId", ignore = true)
     @Mapping(target = "categorie", source = "categorieId", qualifiedByName = "categorieRefFromId")
     @Mapping(target = "sousCategorie", source = "sousCategorieId", qualifiedByName = "sousCategorieRefFromId")
     @Mapping(target = "chauffeur", source = "chauffeurId", qualifiedByName = "chauffeurRefFromId")

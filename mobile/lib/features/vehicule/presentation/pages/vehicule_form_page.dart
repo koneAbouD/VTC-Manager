@@ -166,7 +166,6 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   final _formKey = GlobalKey<FormState>();
   final _immatCtrl = TextEditingController();
   final _chassisCtrl = TextEditingController();
-  final _telVehiculeCtrl = TextEditingController();
   final _telBaliseCtrl = TextEditingController();
   final _idBaliseCtrl = TextEditingController();
 
@@ -193,7 +192,6 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   // Snapshot initial pour détecter les modifications
   late final String _initImmat;
   late final String _initChassis;
-  late final String _initTelVehicule;
   late final String _initTelBalise;
   late final String _initIdBalise;
   late final ReferentielItem? _initTypeVehicule;
@@ -211,7 +209,6 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   bool get _hasChanges =>
       _immatCtrl.text != _initImmat ||
       _chassisCtrl.text != _initChassis ||
-      _telVehiculeCtrl.text != _initTelVehicule ||
       _telBaliseCtrl.text != _initTelBalise ||
       _idBaliseCtrl.text != _initIdBalise ||
       _typeVehicule?.id != _initTypeVehicule?.id ||
@@ -234,7 +231,6 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     if (v != null) {
       _immatCtrl.text = v.immatriculation;
       _chassisCtrl.text = v.numeroChassis ?? '';
-      _telVehiculeCtrl.text = v.numeroTelephoneVehicule ?? '';
       _telBaliseCtrl.text = v.numeroTelephoneBalise ?? '';
       _idBaliseCtrl.text = v.identifiantBalise ?? '';
       _couleur = v.couleur;
@@ -263,7 +259,6 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     // Snapshot après hydratation des champs
     _initImmat = _immatCtrl.text;
     _initChassis = _chassisCtrl.text;
-    _initTelVehicule = _telVehiculeCtrl.text;
     _initTelBalise = _telBaliseCtrl.text;
     _initIdBalise = _idBaliseCtrl.text;
     _initTypeVehicule = _typeVehicule;
@@ -278,7 +273,6 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
 
     _immatCtrl.addListener(_onTextChanged);
     _chassisCtrl.addListener(_onTextChanged);
-    _telVehiculeCtrl.addListener(_onTextChanged);
     _telBaliseCtrl.addListener(_onTextChanged);
     _idBaliseCtrl.addListener(_onTextChanged);
 
@@ -295,13 +289,11 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   void dispose() {
     _immatCtrl.removeListener(_onTextChanged);
     _chassisCtrl.removeListener(_onTextChanged);
-    _telVehiculeCtrl.removeListener(_onTextChanged);
     _telBaliseCtrl.removeListener(_onTextChanged);
     _idBaliseCtrl.removeListener(_onTextChanged);
     _tabCtrl.dispose();
     _immatCtrl.dispose();
     _chassisCtrl.dispose();
-    _telVehiculeCtrl.dispose();
     _telBaliseCtrl.dispose();
     _idBaliseCtrl.dispose();
     super.dispose();
@@ -488,9 +480,6 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       numeroChassis: _chassisCtrl.text.trim().isEmpty
           ? null
           : _chassisCtrl.text.trim(),
-      numeroTelephoneVehicule: _telVehiculeCtrl.text.trim().isEmpty
-          ? null
-          : _telVehiculeCtrl.text.trim(),
       numeroTelephoneBalise: _telBaliseCtrl.text.trim().isEmpty
           ? null
           : _telBaliseCtrl.text.trim(),
@@ -1349,23 +1338,13 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 ),
               ),
               const SizedBox(height: 12),
-              // N° châssis / Tél. véhicule
-              ResponsiveFieldRow(
-                left: _LabeledField(
-                  label: 'N° châssis',
-                  child: _PlainField(
-                    controller: _chassisCtrl,
-                    hint: 'VF1AA000123456789',
-                    textCapitalization: TextCapitalization.characters,
-                  ),
-                ),
-                right: _LabeledField(
-                  label: 'Tél. véhicule',
-                  child: _PlainField(
-                    controller: _telVehiculeCtrl,
-                    hint: '06 12 34 56 78',
-                    keyboardType: TextInputType.phone,
-                  ),
+              // N° châssis
+              _LabeledField(
+                label: 'N° châssis',
+                child: _PlainField(
+                  controller: _chassisCtrl,
+                  hint: 'VF1AA000123456789',
+                  textCapitalization: TextCapitalization.characters,
                 ),
               ),
             ]),

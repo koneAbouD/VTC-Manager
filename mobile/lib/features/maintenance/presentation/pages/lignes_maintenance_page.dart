@@ -128,9 +128,12 @@ class _LignesMaintenancePageState
     if (_recherche.trim().isEmpty) return all;
     final q = _recherche.toLowerCase();
     return all.where((m) {
-      final hay = [m.type, m.vehiculeNom ?? '', m.prestataire ?? '']
-          .join(' ')
-          .toLowerCase();
+      final hay = [
+        m.type,
+        m.vehiculeNom ?? '',
+        m.vehiculeImmatriculation ?? '',
+        m.prestataire ?? '',
+      ].join(' ').toLowerCase();
       return hay.contains(q);
     }).toList();
   }
@@ -774,11 +777,34 @@ class _MaintenanceCard extends StatelessWidget {
                         fontSize: 14,
                         color: Color(0xFF1A1A1A))),
                 const SizedBox(height: 3),
-                Text(
-                  m.vehiculeNom ?? 'Véhicule ${m.vehiculeId ?? '—'}',
-                  style: TextStyle(
-                      fontSize: 12, color: Colors.grey.shade600),
-                ),
+                Row(children: [
+                  Flexible(
+                    child: Text(
+                      m.vehiculeNom ?? 'Véhicule ${m.vehiculeId ?? '—'}',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (m.vehiculeImmatriculation?.isNotEmpty == true) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: _kPrimary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        m.vehiculeImmatriculation!,
+                        style: const TextStyle(
+                            fontSize: 10,
+                            color: _kPrimary,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ]),
                 const SizedBox(height: 4),
                 Row(children: [
                   Icon(Icons.calendar_today_outlined,

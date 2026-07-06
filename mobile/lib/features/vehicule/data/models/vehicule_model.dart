@@ -14,7 +14,6 @@ class VehiculeModel extends Vehicule {
     super.typeActiviteId,
     super.typeActiviteNom,
     super.numeroChassis,
-    super.numeroTelephoneVehicule,
     super.numeroTelephoneBalise,
     super.identifiantBalise,
     super.couleur,
@@ -58,7 +57,6 @@ class VehiculeModel extends Vehicule {
         typeActiviteId: _id(json['activite']) ?? json['typeActiviteId'] as int?,
         typeActiviteNom: _str(json['activite']),
         numeroChassis: json['numeroChassis'] as String?,
-        numeroTelephoneVehicule: json['numeroTelephoneVehicule'] as String?,
         numeroTelephoneBalise: json['numeroTelephoneBalise'] as String?,
         identifiantBalise: json['identifiantBalise'] as String?,
         couleur: _str(json['couleur']),
@@ -98,7 +96,6 @@ class VehiculeModel extends Vehicule {
         typeActiviteId: v.typeActiviteId,
         typeActiviteNom: v.typeActiviteNom,
         numeroChassis: v.numeroChassis,
-        numeroTelephoneVehicule: v.numeroTelephoneVehicule,
         numeroTelephoneBalise: v.numeroTelephoneBalise,
         identifiantBalise: v.identifiantBalise,
         couleur: v.couleur,
@@ -123,8 +120,6 @@ class VehiculeModel extends Vehicule {
         if (typeActiviteId != null) 'typeActiviteId': typeActiviteId,
         if (numeroChassis != null && numeroChassis!.isNotEmpty)
           'numeroChassis': numeroChassis,
-        if (numeroTelephoneVehicule != null && numeroTelephoneVehicule!.isNotEmpty)
-          'numeroTelephoneVehicule': numeroTelephoneVehicule,
         if (numeroTelephoneBalise != null && numeroTelephoneBalise!.isNotEmpty)
           'numeroTelephoneBalise': numeroTelephoneBalise,
         if (identifiantBalise != null && identifiantBalise!.isNotEmpty)

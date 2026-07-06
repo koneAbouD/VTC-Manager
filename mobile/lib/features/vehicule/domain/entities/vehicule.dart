@@ -25,7 +25,6 @@ class Vehicule {
   final int? typeActiviteId;
   final String? typeActiviteNom;
   final String? numeroChassis;
-  final String? numeroTelephoneVehicule;
   final String? numeroTelephoneBalise;
   final String? identifiantBalise;
   final String? couleur;
@@ -52,7 +51,6 @@ class Vehicule {
     this.typeActiviteId,
     this.typeActiviteNom,
     this.numeroChassis,
-    this.numeroTelephoneVehicule,
     this.numeroTelephoneBalise,
     this.identifiantBalise,
     this.couleur,
@@ -78,7 +76,6 @@ class Vehicule {
     int? typeVehiculeId,
     int? typeActiviteId,
     String? numeroChassis,
-    String? numeroTelephoneVehicule,
     String? numeroTelephoneBalise,
     String? identifiantBalise,
     String? couleur,
@@ -102,7 +99,6 @@ class Vehicule {
       typeVehiculeId: typeVehiculeId ?? this.typeVehiculeId,
       typeActiviteId: typeActiviteId ?? this.typeActiviteId,
       numeroChassis: numeroChassis ?? this.numeroChassis,
-      numeroTelephoneVehicule: numeroTelephoneVehicule ?? this.numeroTelephoneVehicule,
       numeroTelephoneBalise: numeroTelephoneBalise ?? this.numeroTelephoneBalise,
       identifiantBalise: identifiantBalise ?? this.identifiantBalise,
       couleur: couleur ?? this.couleur,

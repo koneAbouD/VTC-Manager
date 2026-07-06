@@ -62,7 +62,6 @@ public class CreateVehiculeUseCase {
                 .activite(typeActivite)
                 .groupe(groupe)
                 .numeroChassis(command.numeroChassis())
-                .numeroTelephoneVehicule(command.numeroTelephoneVehicule())
                 .numeroTelephoneBalise(command.numeroTelephoneBalise())
                 .identifiantBalise(command.identifiantBalise())
                 .couleur(command.couleur())

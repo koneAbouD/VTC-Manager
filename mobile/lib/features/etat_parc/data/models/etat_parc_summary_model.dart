@@ -106,10 +106,14 @@ class EtatParcAlertesModel {
   final int maintenancesDuesSous7Jours;
   final int permisExpires;
 
+  /// Vidanges dues : date prévue proche (≤ 7 j) ou km cible presque atteint.
+  final int vidangesDues;
+
   const EtatParcAlertesModel({
     required this.documentsExpirantSous30Jours,
     required this.maintenancesDuesSous7Jours,
     required this.permisExpires,
+    required this.vidangesDues,
   });
 
   factory EtatParcAlertesModel.fromJson(Map<String, dynamic> json) =>
@@ -119,10 +123,12 @@ class EtatParcAlertesModel {
         maintenancesDuesSous7Jours:
             (json['maintenancesDuesSous7Jours'] as num?)?.toInt() ?? 0,
         permisExpires: (json['permisExpires'] as num?)?.toInt() ?? 0,
+        vidangesDues: (json['vidangesDues'] as num?)?.toInt() ?? 0,
       );
 
   bool get hasAlertes =>
       documentsExpirantSous30Jours > 0 ||
       maintenancesDuesSous7Jours > 0 ||
-      permisExpires > 0;
+      permisExpires > 0 ||
+      vidangesDues > 0;
 }

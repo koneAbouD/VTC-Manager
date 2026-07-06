@@ -3,15 +3,19 @@ package com.tmk.vtcmanager.application.usecases.etatparc;
 import com.tmk.vtcmanager.application.domain.document.CibleDocument;
 import com.tmk.vtcmanager.application.domain.document.Document;
 import com.tmk.vtcmanager.application.domain.indisponibilite.IndisponibiliteStatut;
+import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import com.tmk.vtcmanager.application.domain.indisponibiliteVehicule.IndisponibiliteVehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatus;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatutHistorique;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatutMotif;
+import com.tmk.vtcmanager.application.domain.vehicule.Vidange;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
+import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeStatutHistoriqueRepository;
+import com.tmk.vtcmanager.application.ports.persistence.VidangeRepository;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.EtatParcAlertesDto;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.EtatParcSummaryResponse;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.VehiculeExceptionDto;
@@ -42,11 +46,16 @@ public class GetEtatParcUseCase {
 
     private static final int SEUIL_ALERTE_DOCUMENTS_JOURS = 30;
     private static final int SEUIL_ALERTE_MAINTENANCE_JOURS = 7;
+    private static final int SEUIL_ALERTE_VIDANGE_JOURS = 7;
+    /** Km restants sous lesquels une vidange est réputée due (déclenche l'alerte). */
+    private static final int SEUIL_ALERTE_VIDANGE_KM = 500;
 
     private final VehiculeRepository vehiculeRepository;
     private final VehiculeStatutHistoriqueRepository statutHistoriqueRepository;
     private final DocumentRepository documentRepository;
     private final IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
+    private final VidangeRepository vidangeRepository;
+    private final MaintenanceRepository maintenanceRepository;
 
     /**
      * @param groupeId   si non nul, restreint le parc aux véhicules de ce groupe
@@ -207,13 +216,67 @@ public class GetEtatParcUseCase {
                 .distinct()
                 .count();
 
-        long maintenancesDues = vehicules.stream()
-                .filter(v -> v.getStatut() != VehiculeStatus.HORS_PARC)
-                .filter(v -> v.getDateProchaineMaintenance() != null
-                        && !v.getDateProchaineMaintenance().isAfter(horizonMaintenance))
-                .count();
+        long maintenancesDues = compterMaintenancesDues(vehicules, horizonMaintenance);
 
-        return new EtatParcAlertesDto((int) documentsExpirant, (int) maintenancesDues, (int) permisExpires);
+        long vidangesDues = compterVidangesDues(vehicules, today);
+
+        return new EtatParcAlertesDto(
+                (int) documentsExpirant, (int) maintenancesDues, (int) permisExpires,
+                (int) vidangesDues);
+    }
+
+    /**
+     * Compte les lignes de maintenance <b>planifiées</b> (statut PLANIFIEE) dont la
+     * date prévue est échue ou tombe sous {@value #SEUIL_ALERTE_MAINTENANCE_JOURS} j,
+     * rattachées à un véhicule du parc actif filtré (HORS_PARC exclu). Contrairement
+     * au champ {@code dateProchaineMaintenance} du véhicule (jamais recalculé après
+     * complétion), cette source reflète l'état réel des maintenances à venir.
+     */
+    private long compterMaintenancesDues(List<Vehicule> vehicules, LocalDate horizon) {
+        Set<Long> parcActifIds = vehicules.stream()
+                .filter(v -> v.getStatut() != VehiculeStatus.HORS_PARC)
+                .map(Vehicule::getId)
+                .collect(Collectors.toSet());
+        if (parcActifIds.isEmpty()) return 0;
+
+        return maintenanceRepository
+                .findByDatePrevueLessThanEqualAndStatut(horizon, MaintenanceStatus.PLANIFIEE)
+                .stream()
+                .filter(m -> m.getVehicule() != null
+                        && parcActifIds.contains(m.getVehicule().getId()))
+                .count();
+    }
+
+    /**
+     * Compte les véhicules (parc actif) dont la dernière vidange indique qu'une
+     * prochaine vidange est due, soit par la date prévue (≤ {@value #SEUIL_ALERTE_VIDANGE_JOURS} j,
+     * y compris en retard), soit par le kilométrage (km cible atteint à
+     * {@value #SEUIL_ALERTE_VIDANGE_KM} km près du km actuel du véhicule). Une seule
+     * lecture des dernières vidanges (pas de N+1).
+     */
+    private long compterVidangesDues(List<Vehicule> vehicules, LocalDate today) {
+        Map<Long, Vidange> dernieres = vidangeRepository.findDernieresParVehicule().stream()
+                .filter(v -> v.getVehiculeId() != null)
+                .collect(Collectors.toMap(Vidange::getVehiculeId, Function.identity(),
+                        (a, b) -> a));
+        LocalDate horizonVidange = today.plusDays(SEUIL_ALERTE_VIDANGE_JOURS);
+
+        return vehicules.stream()
+                .filter(v -> v.getStatut() != VehiculeStatus.HORS_PARC)
+                .filter(v -> vidangeDue(dernieres.get(v.getId()), v.getKilometrage(), horizonVidange))
+                .count();
+    }
+
+    /** Vraie si la vidange est due par date (≤ horizon) ou par kilométrage restant. */
+    private boolean vidangeDue(Vidange derniere, Integer kilometrageActuel, LocalDate horizon) {
+        if (derniere == null) return false;
+        LocalDate dateProchaine = derniere.getDateProchaineVidange();
+        if (dateProchaine != null && !dateProchaine.isAfter(horizon)) {
+            return true;
+        }
+        Integer kmCible = derniere.getKilometrageProchaineVidange();
+        return kmCible != null && kilometrageActuel != null
+                && (kmCible - kilometrageActuel) <= SEUIL_ALERTE_VIDANGE_KM;
     }
 
     private BigDecimal pourcentage(int numerateur, int denominateur) {

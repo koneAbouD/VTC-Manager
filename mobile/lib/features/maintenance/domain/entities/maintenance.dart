@@ -14,6 +14,7 @@ class Maintenance {
   final String? statut;
   final int? vehiculeId;
   final String? vehiculeNom;
+  final String? vehiculeImmatriculation;
   final int? categorieTypeId;
   final String? categorieTypeLibelle;
   final DetailMaintenance? detailMaintenance;
@@ -32,6 +33,7 @@ class Maintenance {
     this.statut,
     this.vehiculeId,
     this.vehiculeNom,
+    this.vehiculeImmatriculation,
     this.categorieTypeId,
     this.categorieTypeLibelle,
     this.detailMaintenance,
@@ -54,6 +56,7 @@ class Maintenance {
     String? statut,
     int? vehiculeId,
     String? vehiculeNom,
+    String? vehiculeImmatriculation,
     int? categorieTypeId,
     String? categorieTypeLibelle,
     DetailMaintenance? detailMaintenance,
@@ -72,6 +75,8 @@ class Maintenance {
       statut: statut ?? this.statut,
       vehiculeId: vehiculeId ?? this.vehiculeId,
       vehiculeNom: vehiculeNom ?? this.vehiculeNom,
+      vehiculeImmatriculation:
+          vehiculeImmatriculation ?? this.vehiculeImmatriculation,
       categorieTypeId: categorieTypeId ?? this.categorieTypeId,
       categorieTypeLibelle: categorieTypeLibelle ?? this.categorieTypeLibelle,
       detailMaintenance: detailMaintenance ?? this.detailMaintenance,

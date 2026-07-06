@@ -46,6 +46,7 @@ app:
   scheduler:
     maintenance-reminder-cron: "0 0 8 * * *" # tous les jours à 8h
     indisponibilite-cron: "0 5 0 * * *"      # tous les jours à 00h05 (active/clôture)
+    vidange-reminder-cron: "0 30 8 * * *"    # tous les jours à 8h30 (planifie les vidanges à J-7)
   cors:
     allowed-origins: "*"
 

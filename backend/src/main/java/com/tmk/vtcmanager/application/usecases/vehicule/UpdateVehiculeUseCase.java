@@ -34,7 +34,6 @@ public class UpdateVehiculeUseCase {
             existing.setImmatriculation(cmd.immatriculation());
         }
         if (cmd.numeroChassis() != null) existing.setNumeroChassis(cmd.numeroChassis());
-        if (cmd.numeroTelephoneVehicule() != null) existing.setNumeroTelephoneVehicule(cmd.numeroTelephoneVehicule());
         if (cmd.numeroTelephoneBalise() != null) existing.setNumeroTelephoneBalise(cmd.numeroTelephoneBalise());
         if (cmd.identifiantBalise() != null) existing.setIdentifiantBalise(cmd.identifiantBalise());
         if (cmd.couleur() != null) existing.setCouleur(cmd.couleur());

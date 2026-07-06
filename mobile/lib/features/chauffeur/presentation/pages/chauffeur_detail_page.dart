@@ -432,7 +432,6 @@ class _InfoGeneralesTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final dn = chauffeur.dateNaissance;
     final de = chauffeur.dateEmbauche;
-    final ds = chauffeur.geolocalisation?.horodatage;
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -481,12 +480,6 @@ class _InfoGeneralesTab extends StatelessWidget {
               value: _formatDate(dn),
               icon: Icons.cake_outlined,
             ),
-            if (chauffeur.age != null)
-              _InfoRow(
-                label: 'Âge',
-                value: '${chauffeur.age} ans',
-                icon: Icons.calendar_today_outlined,
-              ),
             _InfoRow(
               label: "Date d'embauche",
               value: _formatDate(de),
@@ -496,11 +489,6 @@ class _InfoGeneralesTab extends StatelessWidget {
               label: 'Véhicule assigné',
               value: _vehiculeLabel(chauffeur),
               icon: Icons.directions_car_outlined,
-            ),
-            _InfoRow(
-              label: 'Dernière session',
-              value: _formatDateTime(ds),
-              icon: Icons.access_time_outlined,
             ),
           ],
         ),
@@ -518,14 +506,6 @@ class _InfoGeneralesTab extends StatelessWidget {
       'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
     ];
     return '${d.day} ${months[d.month - 1]} ${d.year}';
-  }
-
-  static String? _formatDateTime(DateTime? d) {
-    if (d == null) return null;
-    final date = _formatDate(d);
-    final hh = d.hour.toString().padLeft(2, '0');
-    final mm = d.minute.toString().padLeft(2, '0');
-    return '$date à $hh:$mm';
   }
 }
 
