@@ -44,6 +44,7 @@ public class ConfigurationRecetteRepositoryAdapter implements ConfigurationRecet
         entity.setHeureLimiteVersement(configurationRecette.getHeureLimiteVersement());
         entity.setMontantObjectifParChauffeur(configurationRecette.getMontantObjectifParChauffeur());
         entity.setMontantJourSalaire(configurationRecette.getMontantJourSalaire());
+        entity.setMontantJourFerie(configurationRecette.getMontantJourFerie());
 
         if (entity.getCotisations() == null) {
             entity.setCotisations(new ArrayList<>());

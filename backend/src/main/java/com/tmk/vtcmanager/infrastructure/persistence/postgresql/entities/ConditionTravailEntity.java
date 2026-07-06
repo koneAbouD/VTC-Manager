@@ -73,6 +73,14 @@ public class ConditionTravailEntity extends AbstractAuditEntity {
     @Column(precision = 15, scale = 2)
     private BigDecimal montantJourSalaire;
 
+    // Prise en compte des jours fériés
+    @Column(name = "feries_consideres", nullable = false)
+    private boolean feriesConsideres;
+
+    // Recette due le jour férié (recette fixe) ; null = aucune
+    @Column(name = "montant_jour_ferie", precision = 15, scale = 2)
+    private BigDecimal montantJourFerie;
+
     // MOBILE_MONEY | ESPECE | VIREMENT
     @Column(nullable = false)
     private String modeEncaissement;

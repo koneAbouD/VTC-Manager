@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
+import com.tmk.vtcmanager.application.ports.persistence.JourFerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
@@ -28,11 +29,13 @@ public class GenererLignesRecetteUseCase {
     private final LigneRecetteRepository ligneRecetteRepository;
     private final IndisponibiliteSubstitutionService indisponibiliteSubstitutionService;
     private final IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
+    private final JourFerieRepository jourFerieRepository;
 
     @Transactional
     public List<LigneRecette> executer(LocalDate date) {
         List<ProgrammeTravail> programmes = programmeTravailRepository.findAllWithChauffeurs();
         List<LigneRecette> generees = new ArrayList<>();
+        boolean estFerie = jourFerieRepository.existsByDate(date);
 
         for (ProgrammeTravail programme : programmes) {
             if (programme.getChauffeurs() == null || programme.getChauffeurs().isEmpty()) {
@@ -70,19 +73,25 @@ public class GenererLignesRecetteUseCase {
             List<LigneRecette> lignesExistantes = new ArrayList<>(
                     ligneRecetteRepository.findByVehiculeIdAndDateRecette(programme.getVehiculeId(), date));
 
-            // Jour de salaire : le chauffeur travaille à son propre compte. La recette
-            // due vaut montantJourSalaire (souvent 0). Nulle ou 0 → aucune ligne.
+            // Jour de salaire ou jour férié pris en compte : le chauffeur roule pour son
+            // propre compte. La recette due vaut le montant spécial (souvent 0) :
+            // nul ou 0 → aucune ligne.
+            boolean jourSalaire = programme.estJourSalaire(date);
+            boolean jourFerie = programme.suspendPourFerie(estFerie);
             BigDecimal montantAttendu;
-            if (programme.estJourSalaire(date)) {
-                BigDecimal montantSalaire = config.getMontantJourSalaire();
-                if (montantSalaire == null || montantSalaire.signum() == 0) {
+            if (jourSalaire || jourFerie) {
+                // Le jour de salaire prime si les deux coïncident.
+                BigDecimal montantSpecial = jourSalaire
+                        ? config.getMontantJourSalaire()
+                        : config.getMontantJourFerie();
+                if (montantSpecial == null || montantSpecial.signum() == 0) {
                     // Aucune recette due : purger les lignes EN_ATTENTE sans encaissement.
                     nettoyerLignesObsoletes(lignesExistantes, List.of());
-                    log.debug("Véhicule {} en jour de salaire le {} — aucune recette due",
-                            programme.getVehiculeId(), date);
+                    log.debug("Véhicule {} le {} : jour {} — aucune recette due",
+                            programme.getVehiculeId(), date, jourSalaire ? "de salaire" : "férié");
                     continue;
                 }
-                montantAttendu = montantSalaire;
+                montantAttendu = montantSpecial;
             } else {
                 montantAttendu = resolveMontantAttendu(config);
             }

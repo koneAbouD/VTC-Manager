@@ -142,6 +142,8 @@ class ConditionTravailLocal {
   final String typeRecette;
   final double objectifRecette;
   final double? montantJourSalaire;
+  final bool feriesConsideres;
+  final double? montantJourFerie;
   final String? modeEncaissement;
   final String? frequenceVersement;
   final String? jourVersement;
@@ -163,6 +165,8 @@ class ConditionTravailLocal {
     required this.typeRecette,
     required this.objectifRecette,
     this.montantJourSalaire,
+    this.feriesConsideres = false,
+    this.montantJourFerie,
     this.modeEncaissement,
     this.frequenceVersement,
     this.jourVersement,
@@ -190,6 +194,9 @@ class ConditionTravailLocal {
             (json['objectifRecette'] as num?)?.toDouble() ?? 0,
         montantJourSalaire:
             (json['montantJourSalaire'] as num?)?.toDouble(),
+        feriesConsideres: json['feriesConsideres'] as bool? ?? false,
+        montantJourFerie:
+            (json['montantJourFerie'] as num?)?.toDouble(),
         modeEncaissement: json['modeEncaissement'] as String?,
         frequenceVersement: json['frequenceVersement'] as String?,
         jourVersement: json['jourVersement'] as String?,
@@ -227,6 +234,8 @@ class ConditionTravailLocal {
         'objectifRecette': objectifRecette,
         if (montantJourSalaire != null)
           'montantJourSalaire': montantJourSalaire,
+        'feriesConsideres': feriesConsideres,
+        if (montantJourFerie != null) 'montantJourFerie': montantJourFerie,
         if (modeEncaissement != null) 'modeEncaissement': modeEncaissement,
         if (frequenceVersement != null)
           'frequenceVersement': frequenceVersement,

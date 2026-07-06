@@ -67,6 +67,7 @@ public class ProgrammeTravailRepositoryAdapter implements ProgrammeTravailReposi
         entity.setDateDebutAlternance(programme.getDateDebutAlternance());
         entity.setJourSalaireActif(programme.isJourSalaireActif());
         entity.setJourSalaire(programme.getJourSalaire());
+        entity.setFeriesActif(programme.isFeriesActif());
         entity.setJoursAlternanceSemaine(programme.getJoursAlternanceSemaine() != null
                 ? new java.util.HashSet<>(programme.getJoursAlternanceSemaine())
                 : new java.util.HashSet<>());

@@ -32,7 +32,7 @@ enum _CategorieFiltre {
         recette     => 'Recettes',
         cotisation  => 'Cotisations',
         penalite    => 'Pénalités',
-        maintenance => 'Maintenance',
+        maintenance => 'Maintenances',
         document    => 'Documents',
       };
 

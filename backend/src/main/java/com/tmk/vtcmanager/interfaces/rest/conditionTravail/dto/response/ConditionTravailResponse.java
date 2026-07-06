@@ -18,6 +18,8 @@ public record ConditionTravailResponse(
         BigDecimal objectifRecette,
         String typeRecette,
         BigDecimal montantJourSalaire,
+        boolean feriesConsideres,
+        BigDecimal montantJourFerie,
         String modeEncaissement,
         String frequenceVersement,
         String jourVersement,

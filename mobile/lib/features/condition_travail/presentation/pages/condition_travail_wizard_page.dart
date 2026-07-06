@@ -90,6 +90,7 @@ class _ConditionTravailWizardPageState
   DateTime _dateDebutAlternance = DateTime.now();
   bool _jourSalaireActif = false;
   String _jourSalaire = 'DIMANCHE';
+  bool _feriesActif = false;
 
   Set<String> _joursSlot1 = {};
   Set<String> _joursSlot2 = {};
@@ -98,6 +99,7 @@ class _ConditionTravailWizardPageState
 
   final _objectifCtrl = TextEditingController();
   final _montantJourCtrl = TextEditingController();
+  final _montantFerieCtrl = TextEditingController();
   String _modeEncaissement = 'MOBILE_MONEY';
   String _typeRecette = 'MONTANT_REEL';
   String _frequenceVersement = 'JOURNALIER';
@@ -147,6 +149,8 @@ class _ConditionTravailWizardPageState
     _jourSalaire = c.jourSalaire.isEmpty ? 'DIMANCHE' : c.jourSalaire;
     _objectifCtrl.text = c.objectifRecette.toStringAsFixed(0);
     _montantJourCtrl.text = c.montantJourSalaire?.toStringAsFixed(0) ?? '';
+    _feriesActif = c.feriesConsideres;
+    _montantFerieCtrl.text = c.montantJourFerie?.toStringAsFixed(0) ?? '';
     _modeEncaissement = c.modeEncaissement ?? 'MOBILE_MONEY';
     _typeRecette = c.typeRecette;
     _frequenceVersement = c.frequenceVersement ?? 'JOURNALIER';
@@ -194,6 +198,7 @@ class _ConditionTravailWizardPageState
     _nomCtrl.dispose();
     _objectifCtrl.dispose();
     _montantJourCtrl.dispose();
+    _montantFerieCtrl.dispose();
     super.dispose();
   }
 
@@ -261,6 +266,9 @@ class _ConditionTravailWizardPageState
                 ? _dateDebutAlternance.toIso8601String().substring(0, 10)
                 : null,
         'jourSalaire': _jourSalaireActif ? _jourSalaire : null,
+        'feriesConsideres': _feriesActif,
+        'montantJourFerie':
+            _feriesActif ? (double.tryParse(_montantFerieCtrl.text) ?? 0) : null,
         'joursTravail': _joursTravail().toList(),
         'modeEncaissement': _modeEncaissement,
         'typeRecette': _typeRecette,
@@ -775,6 +783,25 @@ class _ConditionTravailWizardPageState
             ),
           ],
         ]),
+        const SizedBox(height: 14),
+        // ── Jours fériés ──────────────────────────────────────────────────
+        _FormCard(children: [
+          const _CardSectionTitle('Jours fériés', Icons.flag_rounded),
+          const SizedBox(height: 6),
+          Text(
+            'Suspend la recette et les cotisations les jours fériés (comme un jour de salaire).',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
+          const SizedBox(height: 14),
+          _PillSelector(
+            options: const {
+              'true': 'Activé',
+              'false': 'Désactivé',
+            },
+            selected: _feriesActif.toString(),
+            onSelected: (v) => setState(() => _feriesActif = v == 'true'),
+          ),
+        ]),
         // Rappel config si pas encore rempli
         if (_nbChauffeurs == 1 && _joursSlot1.isEmpty)
           const _HintBanner('Sélectionnez au moins un jour de travail.'),
@@ -909,6 +936,21 @@ class _ConditionTravailWizardPageState
             const SizedBox(height: 8),
             _Field(
               controller: _montantJourCtrl,
+              hint: '0 XOF (optionnel)',
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+          ]),
+        ],
+        if (_feriesActif) ...[
+          const SizedBox(height: 14),
+          _FormCard(children: [
+            const _CardSectionTitle('Jour férié', Icons.flag_rounded),
+            const SizedBox(height: 12),
+            const _FieldLabel('Recette à verser un jour férié (XOF)'),
+            const SizedBox(height: 8),
+            _Field(
+              controller: _montantFerieCtrl,
               hint: '0 XOF (optionnel)',
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],

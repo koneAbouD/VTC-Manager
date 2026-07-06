@@ -41,6 +41,7 @@ public class ConfigurationRecetteSynchronizer {
         config.setHeureLimiteVersement(resolveHeure(condition.getHeureVersement()));
         config.setMontantObjectifParChauffeur(condition.getObjectifRecette());
         config.setMontantJourSalaire(condition.getMontantJourSalaire());
+        config.setMontantJourFerie(condition.getMontantJourFerie());
 
         List<CotisationRecette> cotisations = new ArrayList<>();
         if (condition.getCotisations() != null) {

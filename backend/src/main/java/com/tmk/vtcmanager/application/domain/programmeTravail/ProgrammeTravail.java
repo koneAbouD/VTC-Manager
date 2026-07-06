@@ -38,6 +38,8 @@ public class ProgrammeTravail {
     private Set<JourSemaine> joursTravailSemaine = new HashSet<>();
     private boolean jourSalaireActif;
     private JourSemaine jourSalaire;
+    /** Prise en compte des jours fériés : suspend recette/cotisation ces jours-là. */
+    private boolean feriesActif;
     @Builder.Default
     private List<ProgrammeChauffeur> chauffeurs = new ArrayList<>();
 
@@ -72,6 +74,7 @@ public class ProgrammeTravail {
             jourSalaire = null;
             jourSalaireActif = false;
         }
+        feriesActif = condition.isFeriesConsideres();
 
         // Jours de travail de la semaine
         if (condition.getJoursTravail() != null && !condition.getJoursTravail().isEmpty()) {
@@ -293,6 +296,15 @@ public class ProgrammeTravail {
         return jourSalaireActif
                 && jourSalaire != null
                 && jourSalaire == JourSemaine.from(date.getDayOfWeek());
+    }
+
+    /**
+     * Vrai si un jour férié doit suspendre la recette/cotisation pour ce
+     * véhicule : la date est fériée (déterminé en amont) et l'option de prise
+     * en compte des fériés est active sur ce programme.
+     */
+    public boolean suspendPourFerie(boolean estFerie) {
+        return feriesActif && estFerie;
     }
 
     /**

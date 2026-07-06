@@ -116,6 +116,11 @@ public class CreateConditionTravailUseCase {
         // Recette
         if ("MONTANT_REEL".equals(ct.getTypeRecette())) {
             ct.setMontantJourSalaire(null);
+            ct.setMontantJourFerie(null);
+        }
+        // Montant de recette du jour férié inutile si les fériés ne sont pas pris en compte
+        if (!ct.isFeriesConsideres()) {
+            ct.setMontantJourFerie(null);
         }
         if (!"HEBDOMADAIRE".equals(ct.getFrequenceVersement())) {
             ct.setJourVersement(null);

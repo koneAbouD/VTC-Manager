@@ -27,6 +27,7 @@ public class ConfigurationRecette {
     private LocalTime heureLimiteVersement;
     private BigDecimal montantObjectifParChauffeur;
     private BigDecimal montantJourSalaire;
+    private BigDecimal montantJourFerie;
     @Builder.Default
     private List<CotisationRecette> cotisations = new ArrayList<>();
 
@@ -80,6 +81,9 @@ public class ConfigurationRecette {
         }
         if (montantJourSalaire != null && montantJourSalaire.signum() < 0) {
             throw new IllegalArgumentException("La recette à payer le jour de salaire doit être positive ou nulle.");
+        }
+        if (montantJourFerie != null && montantJourFerie.signum() < 0) {
+            throw new IllegalArgumentException("La recette à payer le jour férié doit être positive ou nulle.");
         }
 
         validateCotisations();

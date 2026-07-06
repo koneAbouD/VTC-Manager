@@ -100,6 +100,9 @@ public class ProgrammeTravailEntity extends AbstractAuditEntity {
     @Column(name = "jour_salaire", length = 15)
     private JourSemaine jourSalaire;
 
+    @Column(name = "feries_actif", nullable = false)
+    private boolean feriesActif;
+
     @OneToMany(mappedBy = "programme", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ProgrammeChauffeurEntity> chauffeurs = new ArrayList<>();

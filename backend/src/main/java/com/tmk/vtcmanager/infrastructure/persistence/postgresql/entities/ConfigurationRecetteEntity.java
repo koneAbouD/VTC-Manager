@@ -68,6 +68,9 @@ public class ConfigurationRecetteEntity extends AbstractAuditEntity {
     @Column(name = "montant_jour_salaire", precision = 19, scale = 2)
     private BigDecimal montantJourSalaire;
 
+    @Column(name = "montant_jour_ferie", precision = 19, scale = 2)
+    private BigDecimal montantJourFerie;
+
     @OneToMany(mappedBy = "configuration", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("ordre ASC")
     @Builder.Default

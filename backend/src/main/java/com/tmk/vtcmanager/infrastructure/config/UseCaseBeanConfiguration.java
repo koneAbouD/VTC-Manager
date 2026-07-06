@@ -13,11 +13,13 @@ import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
+import com.tmk.vtcmanager.application.ports.persistence.JourFerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
 import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
+import com.tmk.vtcmanager.application.services.JoursFeriesCalculator;
 import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
 import com.tmk.vtcmanager.application.services.VehiculeStatutHistoriqueService;
@@ -42,6 +44,7 @@ import com.tmk.vtcmanager.application.usecases.configurationRecette.GetConfigura
 import com.tmk.vtcmanager.application.usecases.configurationRecette.UpdateConfigurationRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.*;
 import com.tmk.vtcmanager.application.usecases.indisponibilite.*;
+import com.tmk.vtcmanager.application.usecases.jourFerie.*;
 import com.tmk.vtcmanager.application.usecases.indisponibiliteVehicule.*;
 import com.tmk.vtcmanager.application.usecases.maintenance.*;
 import com.tmk.vtcmanager.application.usecases.programmeTravail.CreateProgrammeTravailUseCase;
@@ -617,9 +620,11 @@ public class UseCaseBeanConfiguration {
             ConfigurationRecetteRepository configurationRecetteRepository,
             LigneCotisationRepository ligneCotisationRepository,
             IndisponibiliteSubstitutionService indisponibiliteSubstitutionService,
-            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository) {
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository,
+            JourFerieRepository jourFerieRepository) {
         return new GenererLignesCotisationUseCase(programmeTravailRepository, configurationRecetteRepository,
-                ligneCotisationRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository);
+                ligneCotisationRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository,
+                jourFerieRepository);
     }
 
     @Bean
@@ -653,9 +658,11 @@ public class UseCaseBeanConfiguration {
             ConfigurationRecetteRepository configurationRecetteRepository,
             LigneRecetteRepository ligneRecetteRepository,
             IndisponibiliteSubstitutionService indisponibiliteSubstitutionService,
-            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository) {
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository,
+            JourFerieRepository jourFerieRepository) {
         return new GenererLignesRecetteUseCase(programmeTravailRepository, configurationRecetteRepository,
-                ligneRecetteRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository);
+                ligneRecetteRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository,
+                jourFerieRepository);
     }
 
     @Bean
@@ -1116,5 +1123,32 @@ public class UseCaseBeanConfiguration {
     @Bean
     public GetCloturesPeriodeUseCase getCloturesPeriodeUseCase(CloturePeriodeRepository repo) {
         return new GetCloturesPeriodeUseCase(repo);
+    }
+
+    // ----- Jours fériés -----
+    @Bean
+    public JoursFeriesCalculator joursFeriesCalculator() {
+        return new JoursFeriesCalculator();
+    }
+
+    @Bean
+    public GetJoursFeriesUseCase getJoursFeriesUseCase(JourFerieRepository repo) {
+        return new GetJoursFeriesUseCase(repo);
+    }
+
+    @Bean
+    public CreateJourFerieUseCase createJourFerieUseCase(JourFerieRepository repo) {
+        return new CreateJourFerieUseCase(repo);
+    }
+
+    @Bean
+    public DeleteJourFerieUseCase deleteJourFerieUseCase(JourFerieRepository repo) {
+        return new DeleteJourFerieUseCase(repo);
+    }
+
+    @Bean
+    public SeedJoursFeriesUseCase seedJoursFeriesUseCase(
+            JourFerieRepository repo, JoursFeriesCalculator calculator) {
+        return new SeedJoursFeriesUseCase(repo, calculator);
     }
 }

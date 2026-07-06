@@ -198,6 +198,10 @@ public class UpdateConditionTravailUseCase {
         }
         if ("MONTANT_REEL".equals(ct.getTypeRecette())) {
             ct.setMontantJourSalaire(null);
+            ct.setMontantJourFerie(null);
+        }
+        if (!ct.isFeriesConsideres()) {
+            ct.setMontantJourFerie(null);
         }
         if (!"HEBDOMADAIRE".equals(ct.getFrequenceVersement())) {
             ct.setJourVersement(null);

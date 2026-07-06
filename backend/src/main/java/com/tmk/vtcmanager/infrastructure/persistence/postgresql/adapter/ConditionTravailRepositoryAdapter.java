@@ -67,6 +67,8 @@ public class ConditionTravailRepositoryAdapter implements ConditionTravailReposi
         entity.setObjectifRecette(conditionTravail.getObjectifRecette());
         entity.setTypeRecette(conditionTravail.getTypeRecette());
         entity.setMontantJourSalaire(conditionTravail.getMontantJourSalaire());
+        entity.setFeriesConsideres(conditionTravail.isFeriesConsideres());
+        entity.setMontantJourFerie(conditionTravail.getMontantJourFerie());
         entity.setModeEncaissement(conditionTravail.getModeEncaissement());
         entity.setFrequenceVersement(conditionTravail.getFrequenceVersement());
         entity.setJourVersement(conditionTravail.getJourVersement());
