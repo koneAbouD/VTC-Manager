@@ -41,6 +41,11 @@ public class GenererLignesCotisationUseCase {
             if (!programme.travailleCeJour(date)) continue;
             // Véhicule immobilisé (indisponibilité) ce jour → aucune cotisation due.
             if (indisponibiliteVehiculeRepository.isImmobiliseAt(programme.getVehiculeId(), date)) continue;
+            // Jour de salaire : le chauffeur travaille à son propre compte → aucune cotisation due.
+            if (programme.estJourSalaire(date)) {
+                purgerCotisationsDuJour(programme.getVehiculeId(), date);
+                continue;
+            }
 
             ConfigurationRecette config = configurationRecetteRepository
                     .findByVehiculeId(programme.getVehiculeId())
@@ -84,6 +89,23 @@ public class GenererLignesCotisationUseCase {
         }
 
         return generees;
+    }
+
+    /**
+     * Supprime les lignes de cotisation EN_ATTENTE sans encaissement d'un véhicule
+     * pour une date devenue jour de salaire (aucune cotisation n'y est due).
+     * Idempotent : rend possible la correction d'un jour déjà généré.
+     */
+    private void purgerCotisationsDuJour(Long vehiculeId, LocalDate date) {
+        ligneCotisationRepository.findByVehiculeIdAndDateCotisation(vehiculeId, date).stream()
+                .filter(l -> l.getStatut() == StatutLigneCotisation.EN_ATTENTE
+                        && (l.getMontantEncaisse() == null
+                                || l.getMontantEncaisse().compareTo(BigDecimal.ZERO) == 0))
+                .forEach(l -> {
+                    ligneCotisationRepository.deleteById(l.getId());
+                    log.info("Cotisation jour de salaire purgée : id={}, véhicule={}, date={}",
+                            l.getId(), vehiculeId, date);
+                });
     }
 
     private void nettoyerObsoletes(List<LigneCotisation> existantes, Set<String> nomsActifs) {

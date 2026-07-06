@@ -61,7 +61,6 @@ public class GenererLignesRecetteUseCase {
                 continue;
             }
 
-            BigDecimal montantAttendu = resolveMontantAttendu(config);
             // Conducteurs planifiés du jour, avec substitution des titulaires
             // indisponibles par leur remplaçant (uniquement pour cette date).
             List<Long> chauffeursActifs = indisponibiliteSubstitutionService
@@ -70,6 +69,23 @@ public class GenererLignesRecetteUseCase {
             // Liste mutable : alimentée avec les lignes existantes + celles créées en cours de boucle
             List<LigneRecette> lignesExistantes = new ArrayList<>(
                     ligneRecetteRepository.findByVehiculeIdAndDateRecette(programme.getVehiculeId(), date));
+
+            // Jour de salaire : le chauffeur travaille à son propre compte. La recette
+            // due vaut montantJourSalaire (souvent 0). Nulle ou 0 → aucune ligne.
+            BigDecimal montantAttendu;
+            if (programme.estJourSalaire(date)) {
+                BigDecimal montantSalaire = config.getMontantJourSalaire();
+                if (montantSalaire == null || montantSalaire.signum() == 0) {
+                    // Aucune recette due : purger les lignes EN_ATTENTE sans encaissement.
+                    nettoyerLignesObsoletes(lignesExistantes, List.of());
+                    log.debug("Véhicule {} en jour de salaire le {} — aucune recette due",
+                            programme.getVehiculeId(), date);
+                    continue;
+                }
+                montantAttendu = montantSalaire;
+            } else {
+                montantAttendu = resolveMontantAttendu(config);
+            }
 
             // Supprimer les lignes EN_ATTENTE sans encaissement pour des chauffeurs qui ne travaillent plus ce jour
             nettoyerLignesObsoletes(lignesExistantes, chauffeursActifs);

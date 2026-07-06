@@ -285,6 +285,17 @@ public class ProgrammeTravail {
     }
 
     /**
+     * Vrai si la date correspond au jour de salaire actif : ce jour-là, les
+     * chauffeurs travaillent à leur propre compte. La recette normale et les
+     * cotisations ne sont donc pas dues (voir les use cases de génération).
+     */
+    public boolean estJourSalaire(LocalDate date) {
+        return jourSalaireActif
+                && jourSalaire != null
+                && jourSalaire == JourSemaine.from(date.getDayOfWeek());
+    }
+
+    /**
      * Identifiants des chauffeurs réellement actifs (devant conduire) à la date
      * donnée, en tenant compte du nombre autorisé, des jours partagés et de
      * l'alternance automatique.
