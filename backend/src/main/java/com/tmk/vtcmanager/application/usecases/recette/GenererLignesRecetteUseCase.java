@@ -73,6 +73,16 @@ public class GenererLignesRecetteUseCase {
             List<LigneRecette> lignesExistantes = new ArrayList<>(
                     ligneRecetteRepository.findByVehiculeIdAndDateRecette(programme.getVehiculeId(), date));
 
+            // Programme modifié rétroactivement (ex : inversion de l'alternance) : si un
+            // chauffeur qui ne roule plus ce jour a déjà encaissé, l'obligation du jour a
+            // été honorée par le chauffeur qui a réellement conduit. On ne régénère rien
+            // pour ce véhicule+date afin d'éviter un doublon de recette.
+            if (dejaHonoreParChauffeurRetire(lignesExistantes, chauffeursActifs)) {
+                log.warn("Véhicule {} le {} : recette déjà encaissée par un chauffeur retiré du programme "
+                        + "— génération ignorée (évite un doublon)", programme.getVehiculeId(), date);
+                continue;
+            }
+
             // Jour de salaire ou jour férié pris en compte : le chauffeur roule pour son
             // propre compte. La recette due vaut le montant spécial (souvent 0) :
             // nul ou 0 → aucune ligne.
@@ -191,6 +201,24 @@ public class GenererLignesRecetteUseCase {
                     l.getId(), l.getVehiculeId(), l.getChauffeurId());
         }
         existantes.removeAll(aSupprimer);
+    }
+
+    /**
+     * Vrai si une ligne appartenant à un chauffeur qui n'est plus actif ce jour
+     * porte déjà un encaissement (recette honorée par le conducteur réel). Sert de
+     * garde-fou contre les doublons lors d'une modification rétroactive du programme.
+     */
+    private boolean dejaHonoreParChauffeurRetire(List<LigneRecette> existantes, List<Long> chauffeursActifs) {
+        return existantes.stream()
+                .filter(l -> !chauffeursActifs.contains(l.getChauffeurId()))
+                .filter(l -> l.getStatut() != StatutLigneRecette.ANNULEE)
+                .anyMatch(this::aEteEncaisse);
+    }
+
+    private boolean aEteEncaisse(LigneRecette ligne) {
+        return ligne.getStatut() != StatutLigneRecette.EN_ATTENTE
+                || (ligne.getMontantEncaisse() != null
+                        && ligne.getMontantEncaisse().compareTo(BigDecimal.ZERO) > 0);
     }
 
     private BigDecimal resolveMontantAttendu(ConfigurationRecette config) {

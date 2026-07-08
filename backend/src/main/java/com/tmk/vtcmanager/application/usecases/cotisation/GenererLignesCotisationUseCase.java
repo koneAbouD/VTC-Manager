@@ -60,6 +60,18 @@ public class GenererLignesCotisationUseCase {
             List<Long> chauffeursActifs = indisponibiliteSubstitutionService
                     .appliquer(programme.chauffeursActifs(date), date);
 
+            // Programme modifié rétroactivement (ex : inversion de l'alternance) : si un
+            // chauffeur qui ne roule plus ce jour a déjà encaissé une cotisation, le jour
+            // a été honoré par le conducteur réel. On ne régénère rien pour ce
+            // véhicule+date afin d'éviter des cotisations en doublon.
+            List<LigneCotisation> lignesJour = ligneCotisationRepository
+                    .findByVehiculeIdAndDateCotisation(programme.getVehiculeId(), date);
+            if (dejaHonoreParChauffeurRetire(lignesJour, chauffeursActifs)) {
+                log.warn("Véhicule {} le {} : cotisation déjà encaissée par un chauffeur retiré du programme "
+                        + "— génération ignorée (évite un doublon)", programme.getVehiculeId(), date);
+                continue;
+            }
+
             for (Long chauffeurId : chauffeursActifs) {
                 List<LigneCotisation> existantes = new ArrayList<>(
                         ligneCotisationRepository.findByVehiculeIdAndDateCotisation(
@@ -110,6 +122,24 @@ public class GenererLignesCotisationUseCase {
                     log.info("Cotisation jour de salaire purgée : id={}, véhicule={}, date={}",
                             l.getId(), vehiculeId, date);
                 });
+    }
+
+    /**
+     * Vrai si une cotisation appartenant à un chauffeur qui n'est plus actif ce jour
+     * porte déjà un encaissement (jour honoré par le conducteur réel). Garde-fou
+     * contre les doublons lors d'une modification rétroactive du programme.
+     */
+    private boolean dejaHonoreParChauffeurRetire(List<LigneCotisation> lignesJour, List<Long> chauffeursActifs) {
+        return lignesJour.stream()
+                .filter(l -> !chauffeursActifs.contains(l.getChauffeurId()))
+                .filter(l -> l.getStatut() != StatutLigneCotisation.ANNULEE)
+                .anyMatch(this::aEteEncaisse);
+    }
+
+    private boolean aEteEncaisse(LigneCotisation ligne) {
+        return ligne.getStatut() != StatutLigneCotisation.EN_ATTENTE
+                || (ligne.getMontantEncaisse() != null
+                        && ligne.getMontantEncaisse().compareTo(BigDecimal.ZERO) > 0);
     }
 
     private void nettoyerObsoletes(List<LigneCotisation> existantes, Set<String> nomsActifs) {

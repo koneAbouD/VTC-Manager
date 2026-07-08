@@ -108,6 +108,11 @@ INSERT INTO sous_categories_operation (code, libelle, categorie_id, actif) VALUE
         (SELECT id FROM categories_operation WHERE code = 'PEINTURE'),
         TRUE),
 
+    ('SC_ELECTRICITE',
+        'Maintenance',
+        (SELECT id FROM categories_operation WHERE code = 'ELECTRICITE'),
+        TRUE),
+
     -- Groupe : Documents
         ('SC_ASSURANCE',
             'Documents',

@@ -906,7 +906,7 @@ class _MaintenanceCard extends StatelessWidget {
     final u = t.toUpperCase();
     if (u.contains('VIDANGE'))     return Icons.oil_barrel_outlined;
     if (u.contains('REVISION'))    return Icons.settings_outlined;
-    if (u.contains('REPARATION'))  return Icons.build_outlined;
+    if (u.contains('REPARATION'))  return Icons.handyman_outlined;
     if (u.contains('CONTROLE'))    return Icons.fact_check_outlined;
     if (u.contains('PNEUMATIQUE')) return Icons.tire_repair_outlined;
     if (u.contains('FREINAGE'))    return Icons.emergency_outlined;
@@ -954,7 +954,7 @@ class _EmptyState extends StatelessWidget {
               shape: BoxShape.circle,
             ),
           ),
-          Icon(Icons.build_outlined, size: 38, color: Colors.grey.shade300),
+          Icon(Icons.handyman_outlined, size: 38, color: Colors.grey.shade300),
         ]),
         const SizedBox(height: 16),
         Text('Aucune maintenance sur cette période',
