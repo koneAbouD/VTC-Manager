@@ -16,7 +16,22 @@ class ContraventionModel extends Contravention {
     super.chauffeurNom,
     super.vehiculeId,
     super.vehiculeNom,
+    super.numeroContravention,
+    super.heureInfraction,
+    super.vitesseRelevee,
+    super.codeInfraction,
+    super.documentSourcePath,
+    super.statutRattachement,
   });
+
+  /// Extrait un libellé qu'une valeur soit une chaîne ou un objet {nom/libelle}.
+  static String _libelle(dynamic value) {
+    if (value is String) return value;
+    if (value is Map) {
+      return (value['nom'] ?? value['libelle'] ?? '').toString();
+    }
+    return '';
+  }
 
   factory ContraventionModel.fromJson(Map<String, dynamic> json) {
     final chauffeurJson = json['chauffeur'] as Map<String, dynamic>?;
@@ -26,9 +41,12 @@ class ContraventionModel extends Contravention {
     final nom = chauffeurJson?['nom'] as String? ?? '';
     final chauffeurNom = '$prenom $nom'.trim();
 
-    final marque = vehiculeJson?['marque'] as String? ?? '';
-    final modele = vehiculeJson?['modele'] as String? ?? '';
-    final vehiculeNom = '$marque $modele'.trim();
+    // marque/modele peuvent être des objets {id, nom} (réponse véhicule) ou,
+    // par tolérance, de simples chaînes.
+    final marque = _libelle(vehiculeJson?['marque']);
+    final modele = _libelle(vehiculeJson?['modele']);
+    final immat = vehiculeJson?['immatriculation'] as String? ?? '';
+    final vehiculeNom = immat.isNotEmpty ? immat : '$marque $modele'.trim();
 
     return ContraventionModel(
       id: json['id'] as int?,
@@ -51,6 +69,12 @@ class ContraventionModel extends Contravention {
       chauffeurNom: chauffeurNom.isEmpty ? null : chauffeurNom,
       vehiculeId: vehiculeJson?['id'] as int?,
       vehiculeNom: vehiculeNom.isEmpty ? null : vehiculeNom,
+      numeroContravention: json['numeroContravention'] as String?,
+      heureInfraction: json['heureInfraction'] as String?,
+      vitesseRelevee: json['vitesseRelevee'] as int?,
+      codeInfraction: json['codeInfraction'] as String?,
+      documentSourcePath: json['documentSourcePath'] as String?,
+      statutRattachement: json['statutRattachement'] as String?,
     );
   }
 
@@ -70,11 +94,16 @@ class ContraventionModel extends Contravention {
         chauffeurNom: c.chauffeurNom,
         vehiculeId: c.vehiculeId,
         vehiculeNom: c.vehiculeNom,
+        numeroContravention: c.numeroContravention,
+        heureInfraction: c.heureInfraction,
+        vitesseRelevee: c.vitesseRelevee,
+        codeInfraction: c.codeInfraction,
+        documentSourcePath: c.documentSourcePath,
+        statutRattachement: c.statutRattachement,
       );
 
   Map<String, dynamic> toJson() => {
-        'dateInfraction':
-            dateInfraction.toIso8601String().substring(0, 10),
+        'dateInfraction': dateInfraction.toIso8601String().substring(0, 10),
         if (typeInfraction != null) 'typeInfraction': typeInfraction,
         if (lieu != null) 'lieu': lieu,
         if (description != null) 'description': description,
@@ -86,5 +115,28 @@ class ContraventionModel extends Contravention {
           'datePaiement': datePaiement!.toIso8601String().substring(0, 10),
         if (chauffeurId != null) 'chauffeurId': chauffeurId,
         if (vehiculeId != null) 'vehiculeId': vehiculeId,
+        // Champs contravention d'État (saisie manuelle).
+        if (numeroContravention != null)
+          'numeroContravention': numeroContravention,
+        if (heureInfraction != null) 'heureInfraction': heureInfraction,
+        if (vitesseRelevee != null) 'vitesseRelevee': vitesseRelevee,
+        if (codeInfraction != null) 'codeInfraction': codeInfraction,
+      };
+
+  /// Charge utile pour un item de confirmation d'import (`POST /contraventions/confirmer`).
+  Map<String, dynamic> toImportItemJson() => {
+        if (numeroContravention != null)
+          'numeroContravention': numeroContravention,
+        if (vehiculeId != null) 'vehiculeId': vehiculeId,
+        if (chauffeurId != null) 'chauffeurId': chauffeurId,
+        if (codeInfraction != null) 'codeInfraction': codeInfraction,
+        if (typeInfraction != null) 'typeInfraction': typeInfraction,
+        if (lieu != null) 'lieu': lieu,
+        'dateInfraction': dateInfraction.toIso8601String().substring(0, 10),
+        if (heureInfraction != null) 'heureInfraction': heureInfraction,
+        if (vitesseRelevee != null) 'vitesseRelevee': vitesseRelevee,
+        'montant': montant,
+        if (documentSourcePath != null)
+          'documentSourcePath': documentSourcePath,
       };
 }

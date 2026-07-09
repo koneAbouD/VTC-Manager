@@ -14,6 +14,14 @@ class Contravention {
   final int? vehiculeId;
   final String? vehiculeNom;
 
+  // ── Champs propres aux contraventions de l'État importées par PDF ──────────
+  final String? numeroContravention;
+  final String? heureInfraction; // "HH:mm:ss"
+  final int? vitesseRelevee;
+  final String? codeInfraction;
+  final String? documentSourcePath;
+  final String? statutRattachement; // AUTO | MANUEL | A_RATTACHER
+
   const Contravention({
     this.id,
     required this.dateInfraction,
@@ -29,10 +37,20 @@ class Contravention {
     this.chauffeurNom,
     this.vehiculeId,
     this.vehiculeNom,
+    this.numeroContravention,
+    this.heureInfraction,
+    this.vitesseRelevee,
+    this.codeInfraction,
+    this.documentSourcePath,
+    this.statutRattachement,
   });
 
   bool get isPaid => statut == 'PAYEE';
   bool get isPartial => statut == 'PARTIELLEMENT_PAYEE';
+
+  /// Vrai si la contravention n'a pas encore de chauffeur déterminé.
+  bool get aRattacher =>
+      statutRattachement == 'A_RATTACHER' || chauffeurId == null;
 
   Contravention copyWith({
     int? id,
@@ -49,6 +67,12 @@ class Contravention {
     String? chauffeurNom,
     int? vehiculeId,
     String? vehiculeNom,
+    String? numeroContravention,
+    String? heureInfraction,
+    int? vitesseRelevee,
+    String? codeInfraction,
+    String? documentSourcePath,
+    String? statutRattachement,
   }) {
     return Contravention(
       id: id ?? this.id,
@@ -65,6 +89,12 @@ class Contravention {
       chauffeurNom: chauffeurNom ?? this.chauffeurNom,
       vehiculeId: vehiculeId ?? this.vehiculeId,
       vehiculeNom: vehiculeNom ?? this.vehiculeNom,
+      numeroContravention: numeroContravention ?? this.numeroContravention,
+      heureInfraction: heureInfraction ?? this.heureInfraction,
+      vitesseRelevee: vitesseRelevee ?? this.vitesseRelevee,
+      codeInfraction: codeInfraction ?? this.codeInfraction,
+      documentSourcePath: documentSourcePath ?? this.documentSourcePath,
+      statutRattachement: statutRattachement ?? this.statutRattachement,
     );
   }
 }

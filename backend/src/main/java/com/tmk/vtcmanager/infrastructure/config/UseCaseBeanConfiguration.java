@@ -100,6 +100,7 @@ import com.tmk.vtcmanager.application.usecases.categorieOperation.*;
 import com.tmk.vtcmanager.application.usecases.cotisation.*;
 import com.tmk.vtcmanager.application.usecases.operationFinanciere.*;
 import com.tmk.vtcmanager.application.usecases.penalite.*;
+import com.tmk.vtcmanager.application.ports.extraction.ContraventionExtractorPort;
 import com.tmk.vtcmanager.application.usecases.recette.*;
 import com.tmk.vtcmanager.application.usecases.sousCategorieOperation.*;
 import org.springframework.context.annotation.Bean;
@@ -827,6 +828,25 @@ public class UseCaseBeanConfiguration {
     @Bean
     public AnnulerLignePenaliteUseCase annulerLignePenaliteUseCase(LignePenaliteRepository lignePenaliteRepository) {
         return new AnnulerLignePenaliteUseCase(lignePenaliteRepository);
+    }
+
+    // ----- Import PDF des contraventions de l'État -----
+    @Bean
+    public ImporterContraventionsUseCase importerContraventionsUseCase(
+            ContraventionExtractorPort contraventionExtractorPort,
+            VehiculeRepository vehiculeRepository,
+            ChauffeurRepository chauffeurRepository,
+            ProgrammeTravailRepository programmeTravailRepository,
+            ContraventionRepository contraventionRepository,
+            FileStoragePort fileStoragePort) {
+        return new ImporterContraventionsUseCase(contraventionExtractorPort, vehiculeRepository,
+                chauffeurRepository, programmeTravailRepository, contraventionRepository, fileStoragePort);
+    }
+
+    @Bean
+    public ConfirmerImportContraventionsUseCase confirmerImportContraventionsUseCase(
+            ContraventionRepository contraventionRepository) {
+        return new ConfirmerImportContraventionsUseCase(contraventionRepository);
     }
 
     // ----- Auth -----

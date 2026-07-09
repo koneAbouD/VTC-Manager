@@ -1,11 +1,13 @@
 package com.tmk.vtcmanager.interfaces.rest.contravention.dto.response;
 
 import com.tmk.vtcmanager.application.domain.contravention.ContraventionStatus;
+import com.tmk.vtcmanager.application.domain.contravention.StatutRattachement;
 import com.tmk.vtcmanager.interfaces.rest.chauffeur.dto.response.ChauffeurResponse;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.response.VehiculeResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 public record ContraventionResponse(
         Long id,
@@ -19,5 +21,11 @@ public record ContraventionResponse(
         ContraventionStatus statut,
         LocalDate datePaiement,
         ChauffeurResponse chauffeur,
-        VehiculeResponse vehicule
+        VehiculeResponse vehicule,
+        String numeroContravention,
+        LocalTime heureInfraction,
+        Integer vitesseRelevee,
+        String codeInfraction,
+        String documentSourcePath,
+        StatutRattachement statutRattachement
 ) {}

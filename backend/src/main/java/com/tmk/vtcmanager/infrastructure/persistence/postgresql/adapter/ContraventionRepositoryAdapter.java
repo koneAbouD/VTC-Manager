@@ -76,6 +76,12 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
     }
 
     @Override
+    public boolean existsByNumero(String numeroContravention) {
+        return numeroContravention != null
+                && jpaRepository.existsByNumeroContravention(numeroContravention);
+    }
+
+    @Override
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
     }

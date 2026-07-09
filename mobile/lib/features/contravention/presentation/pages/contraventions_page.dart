@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/pagination/paged_list_notifier.dart';
+import '../../domain/entities/contravention.dart';
 import '../providers/contravention_provider.dart';
 import '../widgets/contravention_card.dart';
+import 'contravention_detail_page.dart';
 import 'contravention_form_page.dart';
+import 'contravention_import_page.dart';
 
 enum _ToastType { success, error, warning, info }
 
@@ -44,7 +47,18 @@ void _appToast(
 }
 
 class ContraventionsPage extends ConsumerStatefulWidget {
-  const ContraventionsPage({super.key});
+  /// Encastré dans le hub Contraventions : masque son FAB propre
+  /// (les actions import/saisie sont fournies par le hub).
+  final bool embedded;
+
+  /// Recherche pilotée par le hub (numéro, véhicule, chauffeur, infraction).
+  final String? externalSearch;
+
+  const ContraventionsPage({
+    super.key,
+    this.embedded = false,
+    this.externalSearch,
+  });
 
   @override
   ConsumerState<ContraventionsPage> createState() => _ContraventionsPageState();
@@ -164,10 +178,26 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
     }
   }
 
+  List<Contravention> _filtrer(List<Contravention> all) {
+    final query = (widget.externalSearch ?? '').trim().toLowerCase();
+    if (query.isEmpty) return all;
+    return all.where((c) {
+      final hay = [
+        c.numeroContravention ?? '',
+        c.vehiculeNom ?? '',
+        c.chauffeurNom ?? '',
+        c.typeInfraction ?? '',
+        c.codeInfraction ?? '',
+        c.lieu ?? '',
+      ].join(' ').toLowerCase();
+      return hay.contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(contraventionsListeProvider);
-    final items = state.items;
+    final items = _filtrer(state.items);
 
     return Scaffold(
       body: state.initialLoading && items.isEmpty
@@ -192,14 +222,14 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                           return ContraventionCard(
                             contravention: c,
                             onEdit: () async {
-                              await Navigator.push(
+                              final changed = await Navigator.push<bool>(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) =>
-                                      ContraventionFormPage(initial: c),
+                                      ContraventionDetailPage(contravention: c),
                                 ),
                               );
-                              if (mounted) _refresh();
+                              if (mounted && changed == true) _refresh();
                             },
                             onDelete: () => _confirmDelete(c.id!),
                             onPay: c.isPaid ? null : () => _showPayDialog(c.id!),
@@ -207,17 +237,40 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                         },
                       ),
                     ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const ContraventionFormPage()),
-          );
-          if (mounted) _refresh();
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Ajouter'),
+      floatingActionButton: widget.embedded
+          ? null
+          : Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'importPdf',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const ContraventionImportPage()),
+              );
+              if (mounted) _refresh();
+            },
+            icon: const Icon(Icons.upload_file),
+            label: const Text('Importer PDF'),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'ajouterContravention',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const ContraventionFormPage()),
+              );
+              if (mounted) _refresh();
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Ajouter'),
+          ),
+        ],
       ),
     );
   }

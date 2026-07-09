@@ -22,4 +22,6 @@ public interface ContraventionJpaRepository
     List<ContraventionEntity> findByChauffeurIdOrderByCreatedAtDesc(Long chauffeurId);
 
     List<ContraventionEntity> findByVehiculeIdOrderByCreatedAtDesc(Long vehiculeId);
+
+    boolean existsByNumeroContravention(String numeroContravention);
 }

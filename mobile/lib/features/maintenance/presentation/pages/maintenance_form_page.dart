@@ -16,6 +16,7 @@ import '../providers/maintenance_provider.dart';
 import '../providers/type_maintenance_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../screens/finance/finance_refresh.dart';
+import '../../../etat_parc/presentation/providers/etat_parc_provider.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -205,6 +206,10 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       final today = DateTime(now.year, now.month, now.day);
       final estPassee = !_isEdit && _datePrevue!.isBefore(today);
       if (estPassee) refreshFinances(ref);
+
+      // Une maintenance modifie l'état du véhicule (immobilisation, retour en
+      // service) : rafraîchir la photo de l'État de parc.
+      ref.invalidate(etatParcSummaryProvider);
 
       _showToast(
         context,

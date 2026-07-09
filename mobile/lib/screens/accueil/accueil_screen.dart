@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:vtc_manager/features/cotisation/presentation/pages/lignes_cotisation_page.dart';
 import 'package:vtc_manager/features/maintenance/presentation/pages/lignes_maintenance_page.dart';
-import 'package:vtc_manager/features/penalite/presentation/pages/lignes_penalite_page.dart';
+import 'package:vtc_manager/features/contravention/presentation/pages/contraventions_hub_page.dart';
 
 import '../../features/condition_travail/presentation/pages/condition_travail_liste_page.dart';
 import '../../features/operation_financiere/domain/entities/operation_financiere.dart';
@@ -103,7 +103,13 @@ class AccueilScreen extends ConsumerWidget {
 
 // ── Helpers carte solde ───────────────────────────────────────────────────────
 
-enum _CardFiltre { mois, semaine }
+enum _CardFiltre { mois, semaine, jour }
+
+String _cardFiltreLabel(_CardFiltre m) => switch (m) {
+      _CardFiltre.mois => 'Mois',
+      _CardFiltre.semaine => 'Semaine',
+      _CardFiltre.jour => 'Jour',
+    };
 
 // ── Carte solde (toujours ouverte) ────────────────────────────────────────────
 
@@ -126,6 +132,7 @@ class _SoldeCardState extends State<_SoldeCard> {
   int _moisSelectionne = DateTime.now().month;
   int _anneeSelectionnee = DateTime.now().year;
   DateTime _semaineDebut = mondayOf(DateTime.now());
+  DateTime _jourSelectionne = DateTime.now();
   final GlobalKey _filtreKey = GlobalKey();
   OverlayEntry? _overlayEntry;
 
@@ -146,6 +153,12 @@ class _SoldeCardState extends State<_SoldeCard> {
           o.dateOperation.year == _anneeSelectionnee &&
           o.dateOperation.month == _moisSelectionne);
     }
+    if (_filtre == _CardFiltre.jour) {
+      return ops.where((o) =>
+          o.dateOperation.year == _jourSelectionne.year &&
+          o.dateOperation.month == _jourSelectionne.month &&
+          o.dateOperation.day == _jourSelectionne.day);
+    }
     final weekEnd = _semaineDebut.add(const Duration(days: 6));
     return ops.where((o) {
       final d = DateTime(
@@ -160,22 +173,40 @@ class _SoldeCardState extends State<_SoldeCard> {
     if (_filtre == _CardFiltre.mois) {
       return '${kMoisNoms[_moisSelectionne - 1]} $_anneeSelectionnee';
     }
+    if (_filtre == _CardFiltre.jour) {
+      return DateFormat('dd/MM/yyyy').format(_jourSelectionne);
+    }
     final weekEnd = _semaineDebut.add(const Duration(days: 6));
     return '${DateFormat('dd/MM').format(_semaineDebut)} – '
         '${DateFormat('dd/MM').format(weekEnd)}';
   }
 
-  IconData get _datePillIcon => _filtre == _CardFiltre.mois
-      ? Icons.calendar_month_outlined
-      : Icons.date_range_outlined;
+  IconData get _datePillIcon => switch (_filtre) {
+        _CardFiltre.mois => Icons.calendar_month_outlined,
+        _CardFiltre.jour => Icons.today_outlined,
+        _CardFiltre.semaine => Icons.date_range_outlined,
+      };
 
   // ── Pickers de date (dialogs partagés — même rendu que LignesRecettePage) ──
 
   Future<void> _pickDate() async {
-    if (_filtre == _CardFiltre.mois) {
-      await _pickMois();
-    } else {
-      await _pickSemaine();
+    switch (_filtre) {
+      case _CardFiltre.mois:
+        await _pickMois();
+      case _CardFiltre.jour:
+        await _pickJour();
+      case _CardFiltre.semaine:
+        await _pickSemaine();
+    }
+  }
+
+  Future<void> _pickJour() async {
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (_) => SingleDatePickerDialog(initialDate: _jourSelectionne),
+    );
+    if (result != null) {
+      setState(() => _jourSelectionne = result);
     }
   }
 
@@ -237,8 +268,7 @@ class _SoldeCardState extends State<_SoldeCard> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: _CardFiltre.values.map((mode) {
-                      final label =
-                          mode == _CardFiltre.mois ? 'Mois' : 'Semaine';
+                      final label = _cardFiltreLabel(mode);
                       final sel = _filtre == mode;
                       return InkWell(
                         onTap: () {
@@ -303,7 +333,7 @@ class _SoldeCardState extends State<_SoldeCard> {
         .where((o) => o.typeOperation == TypeOperation.DEPENSE)
         .fold<double>(0, (s, o) => s + o.montant);
     final solde = totalRev - totalDep;
-    final filtreLabel = _filtre == _CardFiltre.mois ? 'Mois' : 'Semaine';
+    final filtreLabel = _cardFiltreLabel(_filtre);
 
     return Container(
       decoration: BoxDecoration(
@@ -583,9 +613,9 @@ class _AccesRapides extends StatelessWidget {
         onTap: () => _push(context, const FleetActionSelectorPage()),
       ),
       (
-        icon: Icons.badge_outlined,
-        label: 'Penalites',
-        onTap: () => _push(context, const LignesPenalitePage()),
+        icon: Icons.gavel_outlined,
+        label: 'Contraventions',
+        onTap: () => _push(context, const ContraventionsHubPage()),
       ),
       (
         icon: Icons.account_balance_wallet_outlined,

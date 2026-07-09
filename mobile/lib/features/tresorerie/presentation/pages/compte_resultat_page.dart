@@ -164,15 +164,17 @@ class _CascadeCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('= Résultat de gestion',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: cr.resultatGestion >= 0
-                            ? AppColors.primaryDark
-                            : Colors.red.shade900)),
+                Expanded(
+                  child: Text('= Résultat de gestion',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: cr.resultatGestion >= 0
+                              ? AppColors.primaryDark
+                              : Colors.red.shade900)),
+                ),
+                const SizedBox(width: 8),
                 Text(CurrencyFormatter.format(cr.resultatGestion),
                     style: TextStyle(
                         fontSize: 15,

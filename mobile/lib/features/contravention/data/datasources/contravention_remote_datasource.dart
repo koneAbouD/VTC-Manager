@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/page_result.dart';
+import '../models/apercu_import_model.dart';
 import '../models/contravention_model.dart';
 
 class ContraventionRemoteDatasource {
@@ -61,5 +64,30 @@ class ContraventionRemoteDatasource {
     final data = await _client
         .post('/contraventions/$id/payments', {'montantPaye': montantPaye});
     return ContraventionModel.fromJson(data as Map<String, dynamic>);
+  }
+
+  // ── Import PDF (Mode 1) ────────────────────────────────────────────────────
+
+  /// Téléverse un relevé PDF et récupère l'aperçu (rien n'est persisté).
+  Future<ApercuImportModel> importerReleve(
+      Uint8List pdfBytes, String filename) async {
+    final data = await _client.postMultipartSingle(
+      '/contraventions/importer',
+      data: const {},
+      fileField: 'fichier',
+      fileBytes: pdfBytes,
+      fileFilename: filename,
+      fileContentType: 'application/pdf',
+    );
+    return ApercuImportModel.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Confirme l'import des contraventions révisées. Retourne le bilan brut.
+  Future<Map<String, dynamic>> confirmerImport(
+      List<ContraventionModel> items) async {
+    final data = await _client.post('/contraventions/confirmer', {
+      'contraventions': items.map((c) => c.toImportItemJson()).toList(),
+    });
+    return data as Map<String, dynamic>;
   }
 }

@@ -1,11 +1,13 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities;
 
 import com.tmk.vtcmanager.application.domain.contravention.ContraventionStatus;
+import com.tmk.vtcmanager.application.domain.contravention.StatutRattachement;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = ContraventionEntity.TABLE_NAME)
@@ -34,6 +36,25 @@ public class ContraventionEntity extends AbstractAuditEntity {
 
     @Column(precision = 19, scale = 2)
     private BigDecimal montant;
+
+    @Column(name = "numero_contravention", length = 50, unique = true)
+    private String numeroContravention;
+
+    @Column(name = "heure_infraction")
+    private LocalTime heureInfraction;
+
+    @Column(name = "vitesse_relevee")
+    private Integer vitesseRelevee;
+
+    @Column(name = "code_infraction", length = 20)
+    private String codeInfraction;
+
+    @Column(name = "document_source_path", length = 512)
+    private String documentSourcePath;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statut_rattachement", length = 20)
+    private StatutRattachement statutRattachement;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal cotisation;

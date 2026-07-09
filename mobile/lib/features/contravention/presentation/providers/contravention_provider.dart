@@ -1,9 +1,13 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/contravention_remote_datasource.dart';
+import '../../data/models/apercu_import_model.dart';
+import '../../data/models/contravention_model.dart';
 import '../../data/repositories_impl/contravention_repository_impl.dart';
 import '../../domain/entities/contravention.dart';
 import '../../domain/repositories/contravention_repository.dart';
@@ -153,3 +157,23 @@ final contraventionNotifierProvider =
     payContravention: ref.watch(_payContraventionUseCaseProvider),
   );
 });
+
+// ── Import PDF (Mode 1) ──────────────────────────────────────────────────────
+
+/// Contrôleur léger pour le flux d'import : upload + aperçu puis confirmation.
+/// Les pages gèrent leur propre état (chargement/erreur) autour de ces appels.
+class ContraventionImportController {
+  final ContraventionRemoteDatasource _datasource;
+  const ContraventionImportController(this._datasource);
+
+  Future<ApercuImportModel> importer(Uint8List pdfBytes, String filename) =>
+      _datasource.importerReleve(pdfBytes, filename);
+
+  Future<Map<String, dynamic>> confirmer(List<ContraventionModel> items) =>
+      _datasource.confirmerImport(items);
+}
+
+final contraventionImportProvider = Provider<ContraventionImportController>(
+  (ref) =>
+      ContraventionImportController(ref.watch(_contraventionDatasourceProvider)),
+);

@@ -917,6 +917,7 @@ class _MaintenanceCard extends StatelessWidget {
       return Icons.car_repair_outlined;
     }
     if (u.contains('PEINTURE'))    return Icons.brush_outlined;
+    if (u.contains('ELECTRIC'))    return Icons.electrical_services_outlined;
     return Icons.construction_outlined;
   }
 
@@ -933,6 +934,7 @@ class _MaintenanceCard extends StatelessWidget {
     if (u.contains('PARALISE') || u.contains('PARALYSIE')) return 'Paralysie';
     if (u.contains('TOLERIE') || u.contains('TÔLERIE'))    return 'Tôlerie';
     if (u.contains('PEINTURE'))    return 'Peinture';
+    if (u.contains('ELECTRIC'))    return 'Électricité';
     return t; // Retourner le libellé brut plutôt que 'Autre'
   }
 }

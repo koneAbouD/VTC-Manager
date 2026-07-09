@@ -17,6 +17,7 @@ import '../../domain/enums/mode_paiement.dart';
 import '../../domain/enums/type_operation.dart';
 import '../providers/operation_financiere_provider.dart';
 import '../../../../screens/finance/finance_refresh.dart';
+import '../../../etat_parc/presentation/providers/etat_parc_provider.dart';
 import 'categorie_operation_selector_page.dart';
 import 'elements_maintenance_page.dart';
 
@@ -234,6 +235,9 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
         // Rafraîchit toutes les pages du module Finances (trésorerie, créances,
         // compte de résultat, bilan, rapport, liste des opérations).
         refreshFinances(ref);
+        // Rafraîchit la photo de l'État de parc (une opération peut refléter un
+        // changement d'état du véhicule).
+        ref.invalidate(etatParcSummaryProvider);
         _showToast(
             context, _isEdit ? 'Opération modifiée' : 'Opération créée');
         Navigator.pop(context);

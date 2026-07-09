@@ -345,6 +345,61 @@ public class ProgrammeTravail {
         return tous;
     }
 
+    /**
+     * Chauffeur responsable d'une infraction survenue à une date et une heure
+     * données, pour rattacher une contravention de l'État. Repose sur
+     * {@link #chauffeursActifs(LocalDate)} puis, en cas de deux conducteurs
+     * partagés le même jour, tente de trancher par la plage de service.
+     *
+     * @return l'identifiant du chauffeur, ou {@code null} si indéterminable
+     *         (aucun programme, aucun chauffeur, ou ambiguïté non résolue).
+     */
+    public Long chauffeurResponsable(LocalDate date, LocalTime heure) {
+        List<Long> actifs = chauffeursActifs(date);
+        if (actifs.isEmpty()) {
+            return null;
+        }
+        if (actifs.size() == 1) {
+            return actifs.get(0);
+        }
+        // Deux conducteurs actifs (jour partagé, alternance manuelle) : on ne peut
+        // trancher que si l'heure situe l'infraction dans la plage de service.
+        // Sans heure ou si la plage couvre toute la journée, on reste indéterminé.
+        if (heure == null || heureDebutService == null || heureFinService == null) {
+            return null;
+        }
+        boolean dansService = plageContient(heureDebutService, heureFinService, heure);
+        // Le premier chauffeur (ordre 1) tient le service ; l'autre couvre le
+        // reste. Faute d'information plus fine, c'est la meilleure heuristique.
+        Long premier = chauffeurParOrdre(1);
+        Long second = chauffeurParOrdre(2);
+        if (premier == null || second == null) {
+            return null;
+        }
+        return dansService ? premier : second;
+    }
+
+    private Long chauffeurParOrdre(int ordre) {
+        return chauffeurs.stream()
+                .filter(pc -> pc.getChauffeurId() != null)
+                .filter(pc -> pc.getOrdreAlternance() != null && pc.getOrdreAlternance() == ordre)
+                .map(ProgrammeChauffeur::getChauffeurId)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /** Vrai si {@code heure} est dans [debut, fin], plage pouvant passer minuit. */
+    private static boolean plageContient(LocalTime debut, LocalTime fin, LocalTime heure) {
+        if (debut.equals(fin)) {
+            return true; // plage dégénérée : on considère toute la journée couverte
+        }
+        if (debut.isBefore(fin)) {
+            return !heure.isBefore(debut) && !heure.isAfter(fin);
+        }
+        // Service de nuit (ex. 20:00 → 06:00)
+        return !heure.isBefore(debut) || !heure.isAfter(fin);
+    }
+
     private Long chauffeurAlternanceAuto(LocalDate date) {
         long joursEcoules = ChronoUnit.DAYS.between(dateDebutAlternance, date);
         long periode = joursEcoules / joursAlternance;

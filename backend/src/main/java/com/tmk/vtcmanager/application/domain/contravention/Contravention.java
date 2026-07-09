@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Data
 @Builder
@@ -22,6 +23,17 @@ public class Contravention {
     private String lieu;
     private String description;
     private BigDecimal montant;
+
+    // ── Champs propres aux contraventions de l'État importées par PDF ──────────
+    /** Numéro unique du relevé (clé anti-doublon) ; null pour une saisie manuelle. */
+    private String numeroContravention;
+    private LocalTime heureInfraction;
+    private Integer vitesseRelevee;
+    private String codeInfraction;
+    /** Clé de l'objet PDF source archivé dans MinIO. */
+    private String documentSourcePath;
+    /** Mode de rattachement du chauffeur (AUTO via programme, MANUEL, ou A_RATTACHER). */
+    private StatutRattachement statutRattachement;
 
     /** Cotisation prélevée auprès du chauffeur (cas où l'entreprise paye d'avance puis se fait rembourser) */
     private BigDecimal cotisation;

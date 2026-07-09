@@ -119,6 +119,13 @@
             <version>8.5.11</version>
         </dependency>
 
+        <!-- Extraction de texte des relevés de contraventions PDF (natifs, pas d'OCR) -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.32</version>
+        </dependency>
+
         <!-- Tests -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

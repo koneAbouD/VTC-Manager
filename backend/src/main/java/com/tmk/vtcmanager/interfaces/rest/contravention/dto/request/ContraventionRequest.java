@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 public record ContraventionRequest(
         @NotNull LocalDate dateInfraction,
@@ -15,5 +16,10 @@ public record ContraventionRequest(
         BigDecimal montantPaye,
         LocalDate datePaiement,
         Long chauffeurId,
-        Long vehiculeId
+        Long vehiculeId,
+        // Champs propres aux contraventions de l'État (saisie manuelle possible).
+        String numeroContravention,
+        LocalTime heureInfraction,
+        Integer vitesseRelevee,
+        String codeInfraction
 ) {}

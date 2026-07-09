@@ -34,10 +34,19 @@ class LignesPenalitePage extends ConsumerStatefulWidget {
   final int? vehiculeId;
   final int? chauffeurId;
 
+  /// Encastré dans le hub Contraventions : masque son en-tête et sa barre de
+  /// recherche propres (fournis par le hub).
+  final bool embedded;
+
+  /// Recherche pilotée par le hub (prioritaire sur la recherche interne).
+  final String? externalSearch;
+
   const LignesPenalitePage({
     super.key,
     this.vehiculeId,
     this.chauffeurId,
+    this.embedded = false,
+    this.externalSearch,
   });
 
   @override
@@ -146,7 +155,7 @@ class _LignesPenaliteListPageState
   // Recherche texte : filtre client sur les éléments déjà chargés (le backend
   // pénalité n'expose pas de recherche libre). Autres filtres = serveur.
   List<LignePenalite> _filtrerRecherche(List<LignePenalite> all) {
-    final query = _recherche.trim().toLowerCase();
+    final query = (widget.externalSearch ?? _recherche).trim().toLowerCase();
     if (query.isEmpty) return all;
     return all.where((l) {
       final hay = [
@@ -332,6 +341,7 @@ class _LignesPenaliteListPageState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── En-tête ────────────────────────────────────────────────
+            if (!widget.embedded)
             Container(
               color: AppColors.header,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -412,20 +422,21 @@ class _LignesPenaliteListPageState
                               ),
 
                               // ── Recherche + Statut (filtre client) ───
-                              SliverToBoxAdapter(
-                                child: _SearchAndStatutBar(
-                                  controller: _searchController,
-                                  onSearchChanged: (v) =>
-                                      setState(() => _recherche = v),
-                                  statutSelectionne: _statut,
-                                  onStatutChanged: (s) {
-                                    setState(() => _statut = s);
-                                    _load();
-                                  },
-                                  onTunePressed:   _showFiltreAvance,
-                                  hasActiveFilter: _vehiculeFiltre != null || _chauffeurFiltre != null,
+                              if (!widget.embedded)
+                                SliverToBoxAdapter(
+                                  child: _SearchAndStatutBar(
+                                    controller: _searchController,
+                                    onSearchChanged: (v) =>
+                                        setState(() => _recherche = v),
+                                    statutSelectionne: _statut,
+                                    onStatutChanged: (s) {
+                                      setState(() => _statut = s);
+                                      _load();
+                                    },
+                                    onTunePressed:   _showFiltreAvance,
+                                    hasActiveFilter: _vehiculeFiltre != null || _chauffeurFiltre != null,
+                                  ),
                                 ),
-                              ),
 
                               // ── Liste / vide / loader bas de page ────
                               if (filtered.isEmpty)
@@ -759,105 +770,121 @@ class _LignePenaliteCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2))
-          ],
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE4E9EE)),
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Cercle statut (indicateur primaire — comme LignesRecettePage) ──
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                  color: statutColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle),
-              child: Icon(_iconeStatut(ligne.statut),
-                  color: statutColor, size: 19),
-            ),
-            const SizedBox(width: 12),
-
-            // ── Infos gauche ──────────────────────────────────────────
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _libelleVehiculeChauffeur(ligne),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: Color(0xFF1A1A1A)),
-                  ),
-                  const SizedBox(height: 3),
-                  // Type pénalité + badge type sanction (secondaire)
-                  Row(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          _typePenaliteLabel(ligne.typePenalite),
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade500),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      Text(
+                        _libelleVehiculeChauffeur(ligne),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: Color(0xFF1A1A2E)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 5),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: sanctionColor.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          ligne.typeSanction.label,
-                          style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: sanctionColor),
-                        ),
+                      const SizedBox(height: 7),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _pilulePenalite(
+                              ligne.typeSanction.label, sanctionColor),
+                          _pilulePenalite(
+                              _statutLabel(ligne.statut), statutColor),
+                        ],
                       ),
                     ],
                   ),
-                  if (ligne.dateFaute != null)
-                    Text(
-                      _labelDate(ligne.dateFaute!),
-                      style: TextStyle(
-                          fontSize: 10, color: Colors.grey.shade400),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
+                ),
+                const SizedBox(width: 8),
 
-            // ── Valeur + bouton encaisser (droite) ────────────────────
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _buildValeurDroite(sanctionColor),
-                if (onEncaisser != null) ...[
-                  const SizedBox(height: 6),
-                  EncaisserChip(
-                    onTap: onEncaisser!,
-                    color: const Color(0xFFB71C1C),
-                  ),
-                ],
+                // ── Valeur + bouton encaisser (droite) ────────────────────
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _buildValeurDroite(sanctionColor),
+                    if (onEncaisser != null) ...[
+                      const SizedBox(height: 6),
+                      EncaisserChip(
+                        onTap: onEncaisser!,
+                        color: const Color(0xFFB71C1C),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
+            if (ligne.dateFaute != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.only(top: 9),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: Color(0xFFE4E9EE))),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today_outlined,
+                        size: 13, color: Colors.grey.shade500),
+                    const SizedBox(width: 5),
+                    Text(_labelDate(ligne.dateFaute!),
+                        style: TextStyle(
+                            fontSize: 11.5, color: Colors.grey.shade600)),
+                    const SizedBox(width: 14),
+                    Icon(Icons.warning_amber_rounded,
+                        size: 13, color: Colors.grey.shade500),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(_typePenaliteLabel(ligne.typePenalite),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11.5, color: Colors.grey.shade600)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+
+  Widget _pilulePenalite(String label, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      );
+
+  String _statutLabel(StatutLignePenalite s) => switch (s) {
+        StatutLignePenalite.enAttente              => 'En attente',
+        StatutLignePenalite.partiellementEncaissee => 'Partiel',
+        StatutLignePenalite.encaissee              => 'Encaissée',
+        StatutLignePenalite.executee               => 'Exécutée',
+        StatutLignePenalite.notifiee               => 'Notifiée',
+        StatutLignePenalite.enCours                => 'En cours',
+        StatutLignePenalite.levee                  => 'Levée',
+        StatutLignePenalite.annulee                => 'Annulée',
+      };
 
   Widget _buildValeurDroite(Color color) {
     final fmt = NumberFormat('#,##0', 'fr_FR');
@@ -932,18 +959,6 @@ class _LignePenaliteCard extends StatelessWidget {
         StatutLignePenalite.enCours                => Colors.red.shade700,
         StatutLignePenalite.levee                  => const Color(0xFF2E7D32),
         StatutLignePenalite.annulee                => Colors.grey,
-      };
-
-  // Icônes de statut — indicateur primaire (comme LignesRecettePage)
-  IconData _iconeStatut(StatutLignePenalite s) => switch (s) {
-        StatutLignePenalite.enAttente              => Icons.hourglass_empty_rounded,
-        StatutLignePenalite.partiellementEncaissee => Icons.hourglass_top_rounded,
-        StatutLignePenalite.encaissee              => Icons.check_circle_rounded,
-        StatutLignePenalite.executee               => Icons.bolt_rounded,
-        StatutLignePenalite.notifiee               => Icons.mark_email_read_outlined,
-        StatutLignePenalite.enCours                => Icons.timer_rounded,
-        StatutLignePenalite.levee                  => Icons.lock_open_rounded,
-        StatutLignePenalite.annulee                => Icons.cancel_rounded,
       };
 
 }

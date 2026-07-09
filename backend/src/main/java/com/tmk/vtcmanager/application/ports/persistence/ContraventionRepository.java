@@ -23,5 +23,8 @@ public interface ContraventionRepository {
 
     List<Contravention> findByStatut(ContraventionStatus statut);
 
+    /** Vrai si une contravention avec ce numéro de relevé existe déjà (anti-doublon import). */
+    boolean existsByNumero(String numeroContravention);
+
     void deleteById(Long id);
 }
