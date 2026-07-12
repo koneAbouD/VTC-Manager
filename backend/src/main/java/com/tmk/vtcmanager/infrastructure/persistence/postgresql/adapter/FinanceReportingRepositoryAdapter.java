@@ -37,17 +37,16 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
 
     @Override
     public BigDecimal produitsEngagement(LocalDate debut, LocalDate fin) {
+        // Les cotisations ne sont PAS un produit (dépôt HORS_RESULTAT, restitué en
+        // fin de période) : elles sont exclues du produit d'exploitation engagement.
         BigDecimal total = jdbcTemplate.queryForObject("""
                 SELECT COALESCE((SELECT SUM(lr.montant_attendu) FROM lignes_recette lr
                                  WHERE lr.statut <> 'ANNULEE' AND lr.montant_attendu IS NOT NULL
                                    AND lr.date_recette BETWEEN ? AND ?), 0)
-                     + COALESCE((SELECT SUM(lc.montant_du) FROM lignes_cotisation lc
-                                 WHERE lc.statut <> 'ANNULEE'
-                                   AND lc.date_cotisation BETWEEN ? AND ?), 0)
                      + COALESCE((SELECT SUM(lp.montant) FROM lignes_penalite lp
                                  WHERE lp.statut <> 'ANNULEE' AND lp.type_sanction = 'AMENDE'
                                    AND COALESCE(lp.date_faute, lp.date_generation) BETWEEN ? AND ?), 0)
-                """, BigDecimal.class, debut, fin, debut, fin, debut, fin);
+                """, BigDecimal.class, debut, fin, debut, fin);
         return total == null ? BigDecimal.ZERO : total;
     }
 

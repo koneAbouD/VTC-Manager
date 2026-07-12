@@ -31,5 +31,11 @@ public interface LigneCotisationRepository {
     /** Recalcule montant_encaisse + statut de la ligne depuis ses encaissements (source de vérité). */
     void recalculerDepuisEncaissements(Long ligneId);
 
+    /** Passe la ligne en RESTITUEE et la rattache à l'arrêté qui l'a soldée. */
+    void marquerRestituee(Long ligneId, Long arreteId);
+
+    /** Annule la restitution (arrête annulé) : détache l'arrêté et recalcule le statut depuis le montant encaissé. */
+    void annulerRestitution(Long ligneId);
+
     void deleteById(Long id);
 }

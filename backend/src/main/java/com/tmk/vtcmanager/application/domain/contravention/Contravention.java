@@ -63,6 +63,25 @@ public class Contravention {
     }
 
     /**
+     * Contre-passe un paiement (annulation d'un arrêté de compte) : diminue le
+     * montant payé et recalcule le statut.
+     */
+    public void annulerPaiement(BigDecimal montantVerse) {
+        if (montantVerse == null) return;
+        BigDecimal courant = this.montantPaye == null ? BigDecimal.ZERO : this.montantPaye;
+        this.montantPaye = courant.subtract(montantVerse).max(BigDecimal.ZERO);
+
+        if (this.montantPaye.signum() == 0) {
+            this.statut = ContraventionStatus.EN_ATTENTE;
+            this.datePaiement = null;
+        } else if (this.montant != null && this.montantPaye.compareTo(this.montant) >= 0) {
+            this.statut = ContraventionStatus.PAYE;
+        } else {
+            this.statut = ContraventionStatus.PARTIELLEMENT_PAYE;
+        }
+    }
+
+    /**
      * Marque la contravention comme reversée (par ex. l'entreprise reverse à l'État).
      */
     public void reverser() {

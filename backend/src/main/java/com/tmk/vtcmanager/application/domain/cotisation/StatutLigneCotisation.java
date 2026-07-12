@@ -4,5 +4,7 @@ public enum StatutLigneCotisation {
     EN_ATTENTE,
     PARTIELLEMENT_ENCAISSE,
     ENCAISSE,
-    ANNULEE
+    ANNULEE,
+    /** Ligne prise en compte dans un arrêté de compte : dépôt rendu/netté, hors fonds restituable. */
+    RESTITUEE
 }

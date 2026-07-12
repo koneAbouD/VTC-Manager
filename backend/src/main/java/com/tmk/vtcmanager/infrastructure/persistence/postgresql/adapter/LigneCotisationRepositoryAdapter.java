@@ -118,6 +118,18 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
     }
 
     @Override
+    @Transactional
+    public void marquerRestituee(Long ligneId, Long arreteId) {
+        jpaRepository.marquerRestituee(ligneId, arreteId);
+    }
+
+    @Override
+    @Transactional
+    public void annulerRestitution(Long ligneId) {
+        jpaRepository.annulerRestitution(ligneId);
+    }
+
+    @Override
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
     }

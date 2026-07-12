@@ -8,6 +8,7 @@ import '../../../../screens/finance/rapport_financier_page.dart';
 import '../providers/tresorerie_providers.dart';
 import 'bilan_page.dart';
 import 'compte_resultat_page.dart';
+import 'comptes_courants_page.dart';
 
 /// Onglet Rapports : point d'entrée vers les états financiers.
 class RapportsTab extends ConsumerWidget {
@@ -24,6 +25,14 @@ class RapportsTab extends ConsumerWidget {
           description: 'Revenus et dépenses du mois, par chauffeur ou véhicule',
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const RapportFinancierPage())),
+        ),
+        _RapportCard(
+          icone: Icons.savings_outlined,
+          titre: 'Restitution des cotisations',
+          description:
+              'Compte courant chauffeur/véhicule : arrêté de compte et versement du net',
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const ComptesCourantsPage())),
         ),
         _RapportCard(
           icone: Icons.stacked_line_chart_rounded,

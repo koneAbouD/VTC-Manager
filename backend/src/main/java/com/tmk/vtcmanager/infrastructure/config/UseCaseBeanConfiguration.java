@@ -59,13 +59,23 @@ import com.tmk.vtcmanager.application.ports.auth.KeycloakAdminPort;
 import com.tmk.vtcmanager.application.ports.persistence.CatalogueElementMaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
+import com.tmk.vtcmanager.application.ports.persistence.ArreteCompteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CloturePeriodeRepository;
+import com.tmk.vtcmanager.application.ports.persistence.CompteCourantRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import com.tmk.vtcmanager.application.ports.persistence.TransfertTresorerieRepository;
+import com.tmk.vtcmanager.application.ports.document.ArreteDocumentRenderer;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.usecases.arrete.AnnulerArreteUseCase;
+import com.tmk.vtcmanager.application.usecases.arrete.ArreterCompteUseCase;
+import com.tmk.vtcmanager.application.usecases.arrete.ArreterTousLesChauffeursUseCase;
+import com.tmk.vtcmanager.application.usecases.arrete.CalculerCompteCourantUseCase;
+import com.tmk.vtcmanager.application.usecases.arrete.GetArreteDecompteUseCase;
+import com.tmk.vtcmanager.application.usecases.arrete.GetArreteUseCase;
+import com.tmk.vtcmanager.application.usecases.arrete.GetCompteCourantUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.CloturerPeriodeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.ExportComptableUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetBalanceAgeeParVehiculeUseCase;
@@ -1068,6 +1078,78 @@ public class UseCaseBeanConfiguration {
     @Bean
     public GetMontantAReverserEtatUseCase getMontantAReverserEtatUseCase(CreanceRepository repo) {
         return new GetMontantAReverserEtatUseCase(repo);
+    }
+
+    // ----- Arrêté de compte (restitution des cotisations) -----
+    @Bean
+    public CalculerCompteCourantUseCase calculerCompteCourantUseCase(
+            LigneCotisationRepository ligneCotisationRepository,
+            CreanceRepository creanceRepository,
+            ChauffeurRepository chauffeurRepository) {
+        return new CalculerCompteCourantUseCase(
+                ligneCotisationRepository, creanceRepository, chauffeurRepository);
+    }
+
+    @Bean
+    public GetCompteCourantUseCase getCompteCourantUseCase(CompteCourantRepository repo) {
+        return new GetCompteCourantUseCase(repo);
+    }
+
+    @Bean
+    public GetArreteUseCase getArreteUseCase(ArreteCompteRepository repo) {
+        return new GetArreteUseCase(repo);
+    }
+
+    @Bean
+    public ArreterCompteUseCase arreterCompteUseCase(
+            CalculerCompteCourantUseCase calculerCompteCourantUseCase,
+            ArreteCompteRepository arreteCompteRepository,
+            LigneCotisationRepository ligneCotisationRepository,
+            LigneRecetteRepository ligneRecetteRepository,
+            EncaissementRepository encaissementRepository,
+            LignePenaliteRepository lignePenaliteRepository,
+            EncaissementPenaliteRepository encaissementPenaliteRepository,
+            ContraventionRepository contraventionRepository,
+            OperationFinanciereRepository operationFinanciereRepository,
+            CategorieOperationRepository categorieOperationRepository,
+            CompteTresorerieResolver compteTresorerieResolver,
+            PeriodeClotureeGuard periodeClotureeGuard) {
+        return new ArreterCompteUseCase(
+                calculerCompteCourantUseCase, arreteCompteRepository, ligneCotisationRepository,
+                ligneRecetteRepository, encaissementRepository, lignePenaliteRepository,
+                encaissementPenaliteRepository, contraventionRepository, operationFinanciereRepository,
+                categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard);
+    }
+
+    @Bean
+    public AnnulerArreteUseCase annulerArreteUseCase(
+            ArreteCompteRepository arreteCompteRepository,
+            LigneCotisationRepository ligneCotisationRepository,
+            LigneRecetteRepository ligneRecetteRepository,
+            EncaissementRepository encaissementRepository,
+            LignePenaliteRepository lignePenaliteRepository,
+            EncaissementPenaliteRepository encaissementPenaliteRepository,
+            ContraventionRepository contraventionRepository,
+            OperationFinanciereRepository operationFinanciereRepository,
+            PeriodeClotureeGuard periodeClotureeGuard) {
+        return new AnnulerArreteUseCase(
+                arreteCompteRepository, ligneCotisationRepository, ligneRecetteRepository,
+                encaissementRepository, lignePenaliteRepository, encaissementPenaliteRepository,
+                contraventionRepository, operationFinanciereRepository, periodeClotureeGuard);
+    }
+
+    @Bean
+    public ArreterTousLesChauffeursUseCase arreterTousLesChauffeursUseCase(
+            CompteCourantRepository compteCourantRepository,
+            ArreterCompteUseCase arreterCompteUseCase) {
+        return new ArreterTousLesChauffeursUseCase(compteCourantRepository, arreterCompteUseCase);
+    }
+
+    @Bean
+    public GetArreteDecompteUseCase getArreteDecompteUseCase(
+            ArreteCompteRepository arreteCompteRepository,
+            ArreteDocumentRenderer arreteDocumentRenderer) {
+        return new GetArreteDecompteUseCase(arreteCompteRepository, arreteDocumentRenderer);
     }
 
     // ----- Trésorerie V2 : transferts + clôture de caisse -----

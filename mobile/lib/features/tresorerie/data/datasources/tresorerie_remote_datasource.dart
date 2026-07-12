@@ -1,10 +1,14 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
+import '../../domain/entities/compte_courant.dart';
 import '../../domain/entities/compte_tresorerie.dart';
 import '../../domain/entities/creance.dart';
 import '../../domain/entities/rapports.dart';
+
+String _isoDate(DateTime d) => d.toIso8601String().split('T').first;
 
 class TresorerieRemoteDatasource {
   final ApiClient _client;
@@ -48,6 +52,104 @@ class TresorerieRemoteDatasource {
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => LigneCreance.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // ── Restitution des cotisations : comptes courants + arrêtés ─────────────
+
+  Future<List<CompteCourant>> getComptesCourants(String perimetre) async {
+    final data =
+        await _client.get('/finances/compte-courant', query: {'perimetre': perimetre});
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => CompteCourant.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ArreteCompte> getApercuArrete({
+    required String perimetre,
+    required int perimetreId,
+    required DateTime debut,
+    required DateTime fin,
+  }) async {
+    final data = await _client.get('/finances/arretes/apercu', query: {
+      'perimetre': perimetre,
+      'perimetreId': '$perimetreId',
+      'debut': _isoDate(debut),
+      'fin': _isoDate(fin),
+    });
+    return ArreteCompte.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<ArreteCompte> arreter({
+    required String perimetre,
+    required int perimetreId,
+    required DateTime periodeDebut,
+    required DateTime periodeFin,
+    DateTime? dateArrete,
+    String? modePaiement,
+    int? compteTresorerieId,
+  }) async {
+    final data = await _client.post('/finances/arretes', {
+      'perimetre': perimetre,
+      'perimetreId': perimetreId,
+      'periodeDebut': _isoDate(periodeDebut),
+      'periodeFin': _isoDate(periodeFin),
+      if (dateArrete != null) 'dateArrete': _isoDate(dateArrete),
+      if (modePaiement != null) 'modePaiement': modePaiement,
+      if (compteTresorerieId != null) 'compteTresorerieId': compteTresorerieId,
+    });
+    return ArreteCompte.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<List<ArreteCompte>> getArretes() async {
+    final data = await _client.get('/finances/arretes');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => ArreteCompte.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ArreteCompte> getArrete(int id) async {
+    final data = await _client.get('/finances/arretes/$id');
+    return ArreteCompte.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<ArreteCompte> annulerArrete(int id, String motif) async {
+    final data =
+        await _client.patch('/finances/arretes/$id/annuler', {'motif': motif});
+    return ArreteCompte.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<Uint8List> getArretePdf(int id) async {
+    return _client.getBytes('/finances/arretes/$id/pdf');
+  }
+
+  Future<List<ArreteCompte>> getReleveChauffeur(int chauffeurId) async {
+    final data = await _client.get('/finances/arretes/chauffeur/$chauffeurId');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => ArreteCompte.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<ArreteCompte>> arreterBatch({
+    required DateTime periodeDebut,
+    required DateTime periodeFin,
+    DateTime? dateArrete,
+    String? modePaiement,
+    int? compteTresorerieId,
+  }) async {
+    final data = await _client.post('/finances/arretes/batch', {
+      'periodeDebut': _isoDate(periodeDebut),
+      'periodeFin': _isoDate(periodeFin),
+      if (dateArrete != null) 'dateArrete': _isoDate(dateArrete),
+      if (modePaiement != null) 'modePaiement': modePaiement,
+      if (compteTresorerieId != null) 'compteTresorerieId': compteTresorerieId,
+    });
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => ArreteCompte.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 

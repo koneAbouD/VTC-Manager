@@ -63,6 +63,10 @@ public class LigneCotisationEntity extends AbstractAuditEntity {
     @Column(name = "motif_annulation", length = 500)
     private String motifAnnulation;
 
+    /** Arrêté de compte ayant soldé la ligne (RESTITUEE). */
+    @Column(name = "arrete_id")
+    private Long arreteId;
+
     @OneToMany(mappedBy = "ligneCotisation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<EncaissementCotisationEntity> encaissements = new ArrayList<>();

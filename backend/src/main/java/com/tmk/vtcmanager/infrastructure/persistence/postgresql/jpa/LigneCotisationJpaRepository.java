@@ -59,7 +59,29 @@ public interface LigneCotisationJpaRepository
                 END
             FROM (SELECT COALESCE(SUM(montant), 0) AS total
                   FROM encaissements_cotisation WHERE ligne_cotisation_id = :ligneId) sub
-            WHERE lc.id = :ligneId AND lc.statut <> 'ANNULEE'
+            WHERE lc.id = :ligneId AND lc.statut NOT IN ('ANNULEE', 'RESTITUEE')
             """, nativeQuery = true)
     void recalculerDepuisEncaissements(@Param("ligneId") Long ligneId);
+
+    /** Passe la ligne en RESTITUEE et la rattache à l'arrêté qui l'a soldée. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE LigneCotisationEntity l SET l.statut = 'RESTITUEE', l.arreteId = :arreteId WHERE l.id = :id")
+    void marquerRestituee(@Param("id") Long id, @Param("arreteId") Long arreteId);
+
+    /**
+     * Annule la restitution : détache l'arrêté et recalcule le statut à partir
+     * du montant déjà encaissé (les encaissements de cotisation sont inchangés).
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE lignes_cotisation
+            SET arrete_id = NULL,
+                statut = CASE
+                    WHEN montant_encaisse >= montant_du THEN 'ENCAISSE'
+                    WHEN montant_encaisse > 0 THEN 'PARTIELLEMENT_ENCAISSE'
+                    ELSE 'EN_ATTENTE'
+                END
+            WHERE id = :ligneId AND statut = 'RESTITUEE'
+            """, nativeQuery = true)
+    void annulerRestitution(@Param("ligneId") Long ligneId);
 }

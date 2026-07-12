@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/core_providers.dart';
 import '../../data/datasources/tresorerie_remote_datasource.dart';
+import '../../domain/entities/compte_courant.dart';
 import '../../domain/entities/compte_tresorerie.dart';
 import '../../domain/entities/creance.dart';
 import '../../domain/entities/rapports.dart';
@@ -64,4 +65,30 @@ final bilanProvider = FutureProvider<BilanData>(
 /// Périodes comptables clôturées (la plus récente en premier).
 final cloturesPeriodeProvider = FutureProvider<List<CloturePeriodeData>>(
   (ref) => ref.watch(_tresorerieDatasourceProvider).getCloturesPeriode(),
+);
+
+// ── Restitution des cotisations ─────────────────────────────────────────────
+
+/// Soldes de compte courant pour un axe ('CHAUFFEUR' ou 'VEHICULE').
+final comptesCourantsProvider =
+    FutureProvider.family<List<CompteCourant>, String>(
+  (ref, perimetre) =>
+      ref.watch(_tresorerieDatasourceProvider).getComptesCourants(perimetre),
+);
+
+/// Historique des arrêtés de compte (le plus récent en premier).
+final arretesProvider = FutureProvider<List<ArreteCompte>>(
+  (ref) => ref.watch(_tresorerieDatasourceProvider).getArretes(),
+);
+
+/// Détail complet d'un arrêté (en-tête + lignes + règlements).
+final arreteDetailProvider = FutureProvider.family<ArreteCompte, int>(
+  (ref, id) => ref.watch(_tresorerieDatasourceProvider).getArrete(id),
+);
+
+/// Relevé de compte d'un chauffeur : tous les arrêtés où il est bénéficiaire.
+final releveChauffeurProvider =
+    FutureProvider.family<List<ArreteCompte>, int>(
+  (ref, chauffeurId) =>
+      ref.watch(_tresorerieDatasourceProvider).getReleveChauffeur(chauffeurId),
 );

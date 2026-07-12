@@ -28,6 +28,8 @@ public class LigneCotisation {
     private StatutLigneCotisation statut;
     /** Motif saisi lors de l'annulation de la ligne (obligatoire à l'annulation). */
     private String motifAnnulation;
+    /** Arrêté de compte ayant soldé la ligne (RESTITUEE). Null tant qu'elle n'est pas restituée. */
+    private Long arreteId;
     @Builder.Default
     private List<EncaissementCotisation> encaissements = new ArrayList<>();
 
@@ -62,6 +64,12 @@ public class LigneCotisation {
     public void annuler(String motif) {
         this.statut = StatutLigneCotisation.ANNULEE;
         this.motifAnnulation = motif;
+    }
+
+    /** Passe la ligne en RESTITUEE en la rattachant à l'arrêté qui l'a soldée. */
+    public void restituer(Long arreteId) {
+        this.statut = StatutLigneCotisation.RESTITUEE;
+        this.arreteId = arreteId;
     }
 
     public BigDecimal montantRestant() {
