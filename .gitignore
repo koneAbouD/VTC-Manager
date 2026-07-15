@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 
+# ===== Sauvegardes base de données (données sensibles) =====
+backups/
+scripts/backup.env
+
 # ===== Claude Code (config locale) =====
 .claude/settings.local.json
 
