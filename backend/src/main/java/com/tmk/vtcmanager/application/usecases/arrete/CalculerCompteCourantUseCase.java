@@ -45,19 +45,34 @@ public class CalculerCompteCourantUseCase {
     private final CreanceRepository creanceRepository;
     private final ChauffeurRepository chauffeurRepository;
 
-    /** Décomptes par bénéficiaire (seuls ceux avec matière à arrêter). */
+    /** Décomptes par bénéficiaire (arrêté total : toutes les lignes). */
     public List<DecompteBeneficiaire> calculer(PerimetreArrete perimetre, Long perimetreId,
                                                LocalDate debut, LocalDate fin) {
+        return calculer(perimetre, perimetreId, debut, fin, SelectionArrete.tout());
+    }
+
+    /**
+     * Décomptes par bénéficiaire (seuls ceux avec matière à arrêter), restreints à
+     * la sélection : seules les cotisations retenues forment le fonds et seules les
+     * créances retenues sont compensables (arrêté partiel).
+     */
+    public List<DecompteBeneficiaire> calculer(PerimetreArrete perimetre, Long perimetreId,
+                                               LocalDate debut, LocalDate fin,
+                                               SelectionArrete selection) {
         Long vehiculeId = perimetre == PerimetreArrete.VEHICULE ? perimetreId : null;
         List<DecompteBeneficiaire> resultats = new ArrayList<>();
 
         for (Long chauffeurId : resoudreBeneficiaires(perimetre, perimetreId, debut, fin)) {
-            List<LigneCotisation> cotisations = cotisationsFonds(chauffeurId, vehiculeId, debut, fin);
+            List<LigneCotisation> cotisations = cotisationsFonds(chauffeurId, vehiculeId, debut, fin).stream()
+                    .filter(selection::cotisationIncluse)
+                    .toList();
             BigDecimal fond = cotisations.stream()
                     .map(LigneCotisation::getMontantEncaisse)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            List<LigneCreance> creances = creancesOuvertes(chauffeurId, vehiculeId);
+            List<LigneCreance> creances = creancesOuvertes(chauffeurId, vehiculeId).stream()
+                    .filter(selection::creanceIncluse)
+                    .toList();
             List<DecompteBeneficiaire.Allocation> allocations = allouer(fond, creances);
 
             BigDecimal totalCompense = allocations.stream()

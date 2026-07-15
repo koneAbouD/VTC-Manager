@@ -1,10 +1,10 @@
 spring:
   flyway:
-    enabled: true
+    enabled: false
     baseline-on-migrate: true
     out-of-order: true
     ignore-migration-patterns: "*:missing"
-    locations: classpath:db/migration/flyway/schema,classpath:db/migration/flyway/jdd/reference,classpath:db/migration/flyway/jdd/dev
+    #locations: classpath:db/migration/flyway/schema,classpath:db/migration/flyway/jdd/reference,classpath:db/migration/flyway/jdd/dev
 
 logging:
   level:

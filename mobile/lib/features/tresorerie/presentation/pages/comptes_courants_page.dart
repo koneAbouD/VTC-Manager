@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/widgets/month_filter_pill.dart';
 import '../../domain/entities/compte_courant.dart';
 import '../providers/tresorerie_providers.dart';
 import 'arrete_form_page.dart';
@@ -34,11 +33,6 @@ class _ComptesCourantsPageState extends ConsumerState<ComptesCourantsPage> {
       appBar: AppBar(
         title: const Text('Restitution des cotisations'),
         actions: [
-          IconButton(
-            tooltip: 'Arrêter tout le mois',
-            icon: const Icon(Icons.playlist_add_check_rounded),
-            onPressed: _arreterBatch,
-          ),
           IconButton(
             tooltip: 'Historique des arrêtés',
             icon: const Icon(Icons.history_rounded),
@@ -108,71 +102,6 @@ class _ComptesCourantsPageState extends ConsumerState<ComptesCourantsPage> {
     }
   }
 
-  Future<void> _arreterBatch() async {
-    final precedent = DateTime(DateTime.now().year, DateTime.now().month - 1);
-    var annee = precedent.year;
-    var mois = precedent.month;
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: const Text('Arrêter tout le mois',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              MonthFilterPill(
-                mois: mois,
-                annee: annee,
-                onChanged: (m, a) => setState(() {
-                  mois = m;
-                  annee = a;
-                }),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                  'Arrête le compte de tous les chauffeurs ayant un fonds sur '
-                  'la période. Le net positif est restitué en espèces.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Annuler')),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Arrêter')),
-          ],
-        ),
-      ),
-    );
-    if (ok != true) return;
-
-    final debut = DateTime(annee, mois, 1);
-    final fin = DateTime(annee, mois + 1, 0);
-    try {
-      final arretes = await ref.read(tresorerieDatasourceProvider).arreterBatch(
-            periodeDebut: debut,
-            periodeFin: fin,
-            modePaiement: 'ESPECES',
-          );
-      ref.invalidate(comptesCourantsProvider(_perimetre));
-      ref.invalidate(arretesProvider);
-      ref.invalidate(balanceAgeeProvider);
-      ref.invalidate(tresorerieSummaryProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('${arretes.length} arrêté(s) enregistré(s)')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Échec de l\'arrêté en lot : $e')));
-      }
-    }
-  }
 }
 
 class _EnteteCard extends StatelessWidget {

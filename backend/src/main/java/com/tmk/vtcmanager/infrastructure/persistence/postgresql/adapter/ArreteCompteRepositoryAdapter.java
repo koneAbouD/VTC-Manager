@@ -45,6 +45,7 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
             .montant(rs.getBigDecimal("montant"))
             .sens(SensArrete.valueOf(rs.getString("sens")))
             .operationId(rs.getObject("operation_id", Long.class))
+            .immatriculation(rs.getString("immatriculation"))
             .build();
 
     private static final RowMapper<ReglementArrete> REGLEMENT_MAPPER = (rs, i) -> ReglementArrete.builder()
@@ -127,8 +128,18 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
         if (entetes.isEmpty()) return Optional.empty();
 
         ArreteCompte arrete = entetes.get(0);
-        arrete.setLignes(jdbcTemplate.query(
-                "SELECT * FROM lignes_arrete WHERE arrete_id = ? ORDER BY sens DESC, id", LIGNE_MAPPER, id));
+        if (arrete.getPerimetre() == PerimetreArrete.VEHICULE) {
+            jdbcTemplate.query("SELECT immatriculation FROM vehicules WHERE id = ?",
+                            (rs, i) -> rs.getString(1), arrete.getPerimetreId())
+                    .stream().findFirst().ifPresent(arrete::setPerimetreLibelle);
+        }
+        arrete.setLignes(jdbcTemplate.query("""
+                SELECT la.*, v.immatriculation
+                FROM lignes_arrete la
+                LEFT JOIN vehicules v ON v.id = la.vehicule_id
+                WHERE la.arrete_id = ?
+                ORDER BY la.sens DESC, la.id
+                """, LIGNE_MAPPER, id));
         arrete.setReglements(jdbcTemplate.query("""
                 SELECT r.*, TRIM(CONCAT(ch.prenom, ' ', ch.nom)) AS chauffeur_nom
                 FROM reglements_arrete r

@@ -86,10 +86,20 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
                         montantFormat.format(totalCompense),
                         montantFormat.format(totalNet));
 
-                y -= 30;
-                ligne(cs, REGULAR, 9, MARGE, y,
+                y -= 22;
+                double reste = montant(arrete.getResteNet());
+                String libelleReste = reste > 0 ? "Reste à restituer : "
+                        : reste < 0 ? "Reste dû : " : "Compte soldé : ";
+                ligne(cs, BOLD, 10.5f, MARGE, y,
+                        libelleReste + montantFormat.format(Math.abs(reste)) + " FCFA");
+
+                y -= 20;
+                y = ligne(cs, REGULAR, 9, MARGE, y,
                         "Cotisation = depot detenu pour le chauffeur (hors resultat). "
                                 + "Net = fonds - creances compensees.");
+                y = ligne(cs, REGULAR, 9, MARGE, y,
+                        "Reste = solde de compte courant du perimetre a ce jour "
+                                + "(fonds actif - creances ouvertes).");
             }
 
             document.save(out);

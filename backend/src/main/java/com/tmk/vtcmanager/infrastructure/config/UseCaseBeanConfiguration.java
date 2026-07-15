@@ -56,6 +56,9 @@ import com.tmk.vtcmanager.application.usecases.vehicule.DeleteVehiculePhotoUseCa
 import com.tmk.vtcmanager.application.usecases.vehicule.UploadVehiculePhotoUseCase;
 import com.tmk.vtcmanager.application.ports.auth.KeycloakAuthPort;
 import com.tmk.vtcmanager.application.ports.auth.KeycloakAdminPort;
+import com.tmk.vtcmanager.application.ports.auth.OtpDeliveryPort;
+import com.tmk.vtcmanager.application.ports.auth.OtpHashPort;
+import com.tmk.vtcmanager.application.ports.persistence.OtpCodeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CatalogueElementMaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
@@ -71,7 +74,6 @@ import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.usecases.arrete.AnnulerArreteUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.ArreterCompteUseCase;
-import com.tmk.vtcmanager.application.usecases.arrete.ArreterTousLesChauffeursUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.CalculerCompteCourantUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.GetArreteDecompteUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.GetArreteUseCase;
@@ -112,6 +114,10 @@ import com.tmk.vtcmanager.application.usecases.operationFinanciere.*;
 import com.tmk.vtcmanager.application.usecases.penalite.*;
 import com.tmk.vtcmanager.application.ports.extraction.ContraventionExtractorPort;
 import com.tmk.vtcmanager.application.usecases.recette.*;
+import com.tmk.vtcmanager.application.usecases.payment.*;
+import com.tmk.vtcmanager.application.ports.payment.PaymentGatewayPort;
+import com.tmk.vtcmanager.application.ports.persistence.PaiementRepository;
+import org.springframework.beans.factory.annotation.Value;
 import com.tmk.vtcmanager.application.usecases.sousCategorieOperation.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -295,12 +301,21 @@ public class UseCaseBeanConfiguration {
 
     // ----- Chauffeur -----
     @Bean
+    public SyncChauffeurAccountUseCase syncChauffeurAccountUseCase(
+            KeycloakAdminPort adminPort,
+            ProvisionChauffeurAccountUseCase provisionChauffeurAccountUseCase) {
+        return new SyncChauffeurAccountUseCase(adminPort, provisionChauffeurAccountUseCase);
+    }
+
+    @Bean
     public CreateChauffeurUseCase createChauffeurUseCase(
             ChauffeurRepository repo,
             TypeDocumentRepository typeDocumentRepository,
             DocumentRepository documentRepository,
-            FileStoragePort fileStoragePort) {
-        return new CreateChauffeurUseCase(repo, typeDocumentRepository, documentRepository, fileStoragePort);
+            FileStoragePort fileStoragePort,
+            SyncChauffeurAccountUseCase syncChauffeurAccountUseCase) {
+        return new CreateChauffeurUseCase(repo, typeDocumentRepository, documentRepository,
+                fileStoragePort, syncChauffeurAccountUseCase);
     }
 
     @Bean
@@ -308,8 +323,10 @@ public class UseCaseBeanConfiguration {
             ChauffeurRepository repo,
             DocumentRepository documentRepository,
             TypeDocumentRepository typeDocumentRepository,
-            FileStoragePort fileStoragePort) {
-        return new UpdateChauffeurUseCase(repo, documentRepository, typeDocumentRepository, fileStoragePort);
+            FileStoragePort fileStoragePort,
+            SyncChauffeurAccountUseCase syncChauffeurAccountUseCase) {
+        return new UpdateChauffeurUseCase(repo, documentRepository, typeDocumentRepository,
+                fileStoragePort, syncChauffeurAccountUseCase);
     }
 
     @Bean
@@ -885,6 +902,74 @@ public class UseCaseBeanConfiguration {
         return new LogoutUseCase(authPort);
     }
 
+    // ----- Auth OTP (app chauffeur) -----
+    @Bean
+    public RequestOtpUseCase requestOtpUseCase(ChauffeurRepository chauffeurRepository,
+                                               OtpCodeRepository otpCodeRepository,
+                                               OtpHashPort otpHashPort,
+                                               OtpDeliveryPort otpDeliveryPort) {
+        return new RequestOtpUseCase(chauffeurRepository, otpCodeRepository, otpHashPort, otpDeliveryPort);
+    }
+
+    @Bean
+    public VerifyOtpUseCase verifyOtpUseCase(ChauffeurRepository chauffeurRepository,
+                                             OtpCodeRepository otpCodeRepository,
+                                             OtpHashPort otpHashPort,
+                                             KeycloakAuthPort authPort) {
+        return new VerifyOtpUseCase(chauffeurRepository, otpCodeRepository, otpHashPort, authPort);
+    }
+
+    @Bean
+    public ChauffeurPasswordLoginUseCase chauffeurPasswordLoginUseCase(
+            KeycloakAuthPort authPort, ChauffeurRepository chauffeurRepository) {
+        return new ChauffeurPasswordLoginUseCase(authPort, chauffeurRepository);
+    }
+
+    @Bean
+    public SetChauffeurPasswordUseCase setChauffeurPasswordUseCase(
+            ChauffeurRepository chauffeurRepository, KeycloakAdminPort adminPort) {
+        return new SetChauffeurPasswordUseCase(chauffeurRepository, adminPort);
+    }
+
+    @Bean
+    public ProvisionChauffeurAccountUseCase provisionChauffeurAccountUseCase(
+            ChauffeurRepository chauffeurRepository, KeycloakAdminPort adminPort) {
+        return new ProvisionChauffeurAccountUseCase(chauffeurRepository, adminPort);
+    }
+
+    // ----- Paiement Mobile Money (V2) -----
+    @Bean
+    public InitierPaiementUseCase initierPaiementUseCase(
+            PaiementRepository paiementRepository,
+            PaymentGatewayPort paymentGatewayPort,
+            GetLignesRecetteUseCase getLignesRecetteUseCase,
+            GetLignesCotisationUseCase getLignesCotisationUseCase,
+            @Value("${app.payment.callback-base-url:http://localhost:8081}") String callbackBaseUrl,
+            @Value("${app.payment.provider:simulation}") String provider) {
+        String callbackUrl = callbackBaseUrl + "/api/payments/webhook/" + provider;
+        return new InitierPaiementUseCase(paiementRepository, paymentGatewayPort,
+                getLignesRecetteUseCase, getLignesCotisationUseCase, callbackUrl);
+    }
+
+    @Bean
+    public TraiterNotificationPaiementUseCase traiterNotificationPaiementUseCase(
+            PaiementRepository paiementRepository,
+            PaymentGatewayPort paymentGatewayPort,
+            CreateEncaissementUseCase createEncaissementUseCase,
+            CreateEncaissementCotisationUseCase createEncaissementCotisationUseCase) {
+        return new TraiterNotificationPaiementUseCase(paiementRepository, paymentGatewayPort,
+                createEncaissementUseCase, createEncaissementCotisationUseCase);
+    }
+
+    @Bean
+    public GetStatutPaiementUseCase getStatutPaiementUseCase(
+            PaiementRepository paiementRepository,
+            PaymentGatewayPort paymentGatewayPort,
+            TraiterNotificationPaiementUseCase traiterNotificationPaiementUseCase) {
+        return new GetStatutPaiementUseCase(paiementRepository, paymentGatewayPort,
+                traiterNotificationPaiementUseCase);
+    }
+
     // ----- Admin / RBAC -----
     @Bean
     public GetAllUsersUseCase getAllUsersUseCase(KeycloakAdminPort adminPort) {
@@ -1096,8 +1181,9 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
-    public GetArreteUseCase getArreteUseCase(ArreteCompteRepository repo) {
-        return new GetArreteUseCase(repo);
+    public GetArreteUseCase getArreteUseCase(ArreteCompteRepository repo,
+            CompteCourantRepository compteCourantRepository) {
+        return new GetArreteUseCase(repo, compteCourantRepository);
     }
 
     @Bean
@@ -1139,17 +1225,10 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
-    public ArreterTousLesChauffeursUseCase arreterTousLesChauffeursUseCase(
-            CompteCourantRepository compteCourantRepository,
-            ArreterCompteUseCase arreterCompteUseCase) {
-        return new ArreterTousLesChauffeursUseCase(compteCourantRepository, arreterCompteUseCase);
-    }
-
-    @Bean
     public GetArreteDecompteUseCase getArreteDecompteUseCase(
-            ArreteCompteRepository arreteCompteRepository,
+            GetArreteUseCase getArreteUseCase,
             ArreteDocumentRenderer arreteDocumentRenderer) {
-        return new GetArreteDecompteUseCase(arreteCompteRepository, arreteDocumentRenderer);
+        return new GetArreteDecompteUseCase(getArreteUseCase, arreteDocumentRenderer);
     }
 
     // ----- Trésorerie V2 : transferts + clôture de caisse -----

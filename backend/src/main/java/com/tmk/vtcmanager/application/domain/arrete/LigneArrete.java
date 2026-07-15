@@ -29,4 +29,6 @@ public class LigneArrete {
     private SensArrete sens;
     /** Opération de compensation créée pour une ligne DEBIT (null pour un CREDIT). Sert au contre-passage. */
     private Long operationId;
+    /** Immatriculation du véhicule de la ligne (résolue à la lecture ; null si non rattachée). */
+    private String immatriculation;
 }

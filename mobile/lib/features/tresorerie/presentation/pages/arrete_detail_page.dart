@@ -182,9 +182,23 @@ class _Synthese extends StatelessWidget {
           const Divider(height: 18),
           _row('= Net restitué', arrete.totalRestitue, Colors.green.shade800,
               gras: true),
+          if (arrete.resteNet != null) ...[
+            const Divider(height: 18),
+            _resteRow(arrete.resteNet!),
+          ],
         ],
       ),
     );
+  }
+
+  /// Solde de compte courant du périmètre à ce jour : > 0 à restituer, < 0 dû.
+  Widget _resteRow(double reste) {
+    final (label, couleur) = reste > 0
+        ? ('Reste à restituer', Colors.green.shade800)
+        : reste < 0
+            ? ('Reste dû', Colors.red.shade900)
+            : ('Compte soldé', AppColors.hint);
+    return _row(label, reste.abs(), couleur, gras: true);
   }
 
   Widget _row(String label, double montant, Color couleur, {bool gras = false}) {
@@ -293,8 +307,18 @@ class _LigneTile extends StatelessWidget {
               size: 16, color: credit ? Colors.green.shade700 : Colors.orange.shade800),
           const SizedBox(width: 10),
           Expanded(
-            child: Text('$_label #${ligne.documentId}',
-                style: const TextStyle(fontSize: 13, color: AppColors.dark)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    ligne.immatriculation != null
+                        ? '$_label · ${ligne.immatriculation}'
+                        : _label,
+                    style: const TextStyle(fontSize: 13, color: AppColors.dark)),
+                Text('#${ligne.documentId}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.hint)),
+              ],
+            ),
           ),
           Text('${credit ? '+' : '−'} ${CurrencyFormatter.format(ligne.montant)}',
               style: TextStyle(

@@ -5,12 +5,11 @@ import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
 import com.tmk.vtcmanager.application.domain.finance.CompteCourant;
 import com.tmk.vtcmanager.application.usecases.arrete.AnnulerArreteUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.ArreterCompteUseCase;
-import com.tmk.vtcmanager.application.usecases.arrete.ArreterTousLesChauffeursUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.CalculerCompteCourantUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.GetArreteDecompteUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.GetArreteUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.GetCompteCourantUseCase;
-import com.tmk.vtcmanager.interfaces.rest.arrete.dto.request.ArreterBatchRequest;
+import com.tmk.vtcmanager.application.usecases.arrete.SelectionArrete;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.request.ArreterCompteRequest;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.ArreteResponse;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.CompteCourantResponse;
@@ -36,7 +35,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Restitution des cotisations : comptes courants + arrêtés de compte. */
 @RestController
@@ -47,7 +49,6 @@ public class ArreteCompteController {
     private final GetCompteCourantUseCase getCompteCourantUseCase;
     private final CalculerCompteCourantUseCase calculerCompteCourantUseCase;
     private final ArreterCompteUseCase arreterCompteUseCase;
-    private final ArreterTousLesChauffeursUseCase arreterTousLesChauffeursUseCase;
     private final AnnulerArreteUseCase annulerArreteUseCase;
     private final GetArreteUseCase getArreteUseCase;
     private final GetArreteDecompteUseCase getArreteDecompteUseCase;
@@ -78,8 +79,20 @@ public class ArreteCompteController {
         ArreteCompte arrete = arreterCompteUseCase.executer(
                 request.perimetre(), request.perimetreId(),
                 request.periodeDebut(), request.periodeFin(),
-                request.dateArrete(), request.modePaiement(), request.compteTresorerieId());
+                request.dateArrete(), request.modePaiement(), request.compteTresorerieId(),
+                toSelection(request));
         return toArrete(arrete);
+    }
+
+    /** Mappe la sélection de la requête (null = arrêté total, cf. {@link SelectionArrete#tout()}). */
+    private static SelectionArrete toSelection(ArreterCompteRequest request) {
+        Set<Long> cotisationIds = request.cotisationIds() == null ? null
+                : new HashSet<>(request.cotisationIds());
+        Set<SelectionArrete.CreanceKey> creances = request.creances() == null ? null
+                : request.creances().stream()
+                        .map(c -> new SelectionArrete.CreanceKey(c.document(), c.documentId()))
+                        .collect(Collectors.toSet());
+        return new SelectionArrete(cotisationIds, creances);
     }
 
     @GetMapping("/arretes")
@@ -104,17 +117,6 @@ public class ArreteCompteController {
                 .toList();
     }
 
-    /** Arrêté en lot : restitution groupée de tous les chauffeurs sur la période. */
-    @PostMapping("/arretes/batch")
-    @ResponseStatus(HttpStatus.CREATED)
-    public List<ArreteResponse> arreterBatch(@Valid @RequestBody ArreterBatchRequest request) {
-        return arreterTousLesChauffeursUseCase.executer(
-                        request.periodeDebut(), request.periodeFin(), request.dateArrete(),
-                        request.modePaiement(), request.compteTresorerieId()).stream()
-                .map(ArreteCompteController::toArrete)
-                .toList();
-    }
-
     /** Annule un arrêté (motif obligatoire) : contre-passe toutes ses écritures. */
     @PatchMapping("/arretes/{id}/annuler")
     public ArreteResponse annuler(@PathVariable Long id, @Valid @RequestBody AnnulationRequest request) {
@@ -133,13 +135,13 @@ public class ArreteCompteController {
 
     // ── Mapping ──────────────────────────────────────────────────────────────
 
-    private static CompteCourantResponse toCompteCourant(CompteCourant c) {
+    public static CompteCourantResponse toCompteCourant(CompteCourant c) {
         return new CompteCourantResponse(c.getTiersId(), c.getLibelle(), c.getFondsCotisation(),
                 c.getDu0a7Jours(), c.getDu8a30Jours(), c.getDuPlus30Jours(),
                 c.getTotalCreances(), c.getNet());
     }
 
-    private static ArreteResponse toArrete(ArreteCompte a) {
+    public static ArreteResponse toArrete(ArreteCompte a) {
         List<ReglementArreteResponse> reglements = a.getReglements().stream()
                 .map(r -> new ReglementArreteResponse(r.getChauffeurId(), r.getChauffeurNom(),
                         r.getTotalCotisations(), r.getTotalCreancesCompensees(), r.getMontantNet(),
@@ -148,7 +150,8 @@ public class ArreteCompteController {
                 .toList();
         List<LigneArreteResponse> lignes = a.getLignes().stream()
                 .map(l -> new LigneArreteResponse(l.getDocument(), l.getDocumentId(),
-                        l.getChauffeurId(), l.getVehiculeId(), l.getMontant(), l.getSens()))
+                        l.getChauffeurId(), l.getVehiculeId(), l.getImmatriculation(),
+                        l.getMontant(), l.getSens()))
                 .toList();
 
         String libelle = a.getPerimetreLibelle();
@@ -159,6 +162,6 @@ public class ArreteCompteController {
         return new ArreteResponse(a.getId(), a.getPerimetre(), a.getPerimetreId(), libelle,
                 a.getPeriodeDebut(), a.getPeriodeFin(), a.getDateArrete(), a.getReference(),
                 a.getStatut() != null ? a.getStatut().name() : null, a.getMotifAnnulation(),
-                a.totalRestitue(), lignes, reglements);
+                a.totalRestitue(), a.getResteNet(), lignes, reglements);
     }
 }

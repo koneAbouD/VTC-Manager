@@ -14,6 +14,18 @@ public interface KeycloakAuthPort {
     TokenResponse login(String username, String password);
 
     /**
+     * Émet des tokens pour un utilisateur <b>sans mot de passe</b>, via le token
+     * exchange Keycloak (impersonation par le service account admin).
+     *
+     * Utilisé par le flux OTP : non destructif (ne touche pas au mot de passe du
+     * chauffeur), ce qui permet la coexistence de l'auth OTP et de l'auth par
+     * mot de passe sur un même compte.
+     *
+     * @param userId identifiant Keycloak de l'utilisateur à impersonaliser.
+     */
+    TokenResponse exchangeToken(String userId);
+
+    /**
      * Rafraîchit un access token à partir d'un refresh token.
      */
     TokenResponse refreshToken(String refreshToken);

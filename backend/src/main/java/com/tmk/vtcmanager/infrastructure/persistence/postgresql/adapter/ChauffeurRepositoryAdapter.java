@@ -55,6 +55,7 @@ public class ChauffeurRepositoryAdapter implements ChauffeurRepository {
         entity.setDateSuspension(domain.getDateSuspension());
         entity.setDateEmbauche(domain.getDateEmbauche());
         entity.setPhotoUrl(domain.getPhotoUrl());
+        entity.setKeycloakUserId(domain.getKeycloakUserId());
         if (domain.getVehicule() != null) {
             entity.setVehicule(vehiculeJpaRepository.getReferenceById(domain.getVehicule().getId()));
         } else {
@@ -66,6 +67,20 @@ public class ChauffeurRepositoryAdapter implements ChauffeurRepository {
     @Transactional(readOnly = true)
     public Optional<Chauffeur> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Chauffeur> findByKeycloakUserId(String keycloakUserId) {
+        return jpaRepository.findByKeycloakUserId(keycloakUserId).map(mapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Chauffeur> findByTelephone(String telephone) {
+        String canonique = com.tmk.vtcmanager.application.domain.common.PhoneNumberNormalizer.canonique(telephone);
+        String local = com.tmk.vtcmanager.application.domain.common.PhoneNumberNormalizer.local(telephone);
+        return jpaRepository.findByTelephoneNormalise(canonique, local).map(mapper::toDomain);
     }
 
     @Override

@@ -30,6 +30,7 @@ public class UpdateChauffeurUseCase {
     private final DocumentRepository documentRepository;
     private final TypeDocumentRepository typeDocumentRepository;
     private final FileStoragePort fileStoragePort;
+    private final SyncChauffeurAccountUseCase syncChauffeurAccountUseCase;
 
     @Transactional
     public Chauffeur execute(Long id, Chauffeur data,
@@ -73,6 +74,9 @@ public class UpdateChauffeurUseCase {
                     dateEmissionPermis, dateExpirationPermis, permisFile);
         }
 
+        Chauffeur resultat = chauffeurRepository.findById(id)
+                .orElseThrow(() -> new ChauffeurNotFoundException(id));
+        syncChauffeurAccountUseCase.synchroniser(resultat);
         return chauffeurRepository.findById(id)
                 .orElseThrow(() -> new ChauffeurNotFoundException(id));
     }

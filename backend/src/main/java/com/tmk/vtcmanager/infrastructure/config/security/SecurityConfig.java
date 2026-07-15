@@ -33,15 +33,21 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Endpoints publics (docs, santé) et authentification (login, OTP).
                         .requestMatchers(
                                 "/actuator/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
-                                "/api/**"
-
+                                "/api/auth/**"
                         ).permitAll()
+                        // App chauffeur : scope self-service réservé au rôle CHAUFFEUR.
+                        // L'identité est dérivée du token, jamais d'un paramètre client.
+                        .requestMatchers("/api/me/**").hasRole("CHAUFFEUR")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // Back-office gestionnaire : inchangé pour l'instant (à durcir
+                        // ultérieurement après audit de l'app de gestion existante).
+                        .requestMatchers("/api/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

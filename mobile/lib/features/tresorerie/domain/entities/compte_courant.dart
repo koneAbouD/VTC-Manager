@@ -42,6 +42,7 @@ class LigneArrete {
   final int documentId;
   final int? chauffeurId;
   final int? vehiculeId;
+  final String? immatriculation;
   final double montant;
   final String sens; // CREDIT | DEBIT
 
@@ -50,6 +51,7 @@ class LigneArrete {
     required this.documentId,
     this.chauffeurId,
     this.vehiculeId,
+    this.immatriculation,
     required this.montant,
     required this.sens,
   });
@@ -61,6 +63,7 @@ class LigneArrete {
         documentId: (j['documentId'] as num).toInt(),
         chauffeurId: (j['chauffeurId'] as num?)?.toInt(),
         vehiculeId: (j['vehiculeId'] as num?)?.toInt(),
+        immatriculation: j['immatriculation'] as String?,
         montant: (j['montant'] as num?)?.toDouble() ?? 0,
         sens: j['sens'] ?? '',
       );
@@ -116,6 +119,10 @@ class ArreteCompte {
   final String? statut;
   final String? motifAnnulation;
   final double totalRestitue;
+
+  /// Solde de compte courant du périmètre après cet arrêté : > 0 reste à
+  /// restituer, < 0 reste dû, 0 soldé. Null hors détail (liste/aperçu).
+  final double? resteNet;
   final List<LigneArrete> lignes;
   final List<ReglementArrete> reglements;
 
@@ -131,6 +138,7 @@ class ArreteCompte {
     this.statut,
     this.motifAnnulation,
     required this.totalRestitue,
+    this.resteNet,
     required this.lignes,
     required this.reglements,
   });
@@ -159,6 +167,7 @@ class ArreteCompte {
         statut: j['statut'],
         motifAnnulation: j['motifAnnulation'],
         totalRestitue: (j['totalRestitue'] as num?)?.toDouble() ?? 0,
+        resteNet: (j['resteNet'] as num?)?.toDouble(),
         lignes: ((j['lignes'] as List?) ?? [])
             .map((e) => LigneArrete.fromJson(e as Map<String, dynamic>))
             .toList(),

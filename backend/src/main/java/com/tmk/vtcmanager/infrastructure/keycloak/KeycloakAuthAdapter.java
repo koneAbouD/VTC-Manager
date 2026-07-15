@@ -26,17 +26,23 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
     private final String tokenUrl;
     private final String clientId;
     private final String clientSecret;
+    private final String adminClientId;
+    private final String adminClientSecret;
 
     public KeycloakAuthAdapter(
             RestTemplate restTemplate,
             @Value("${app.keycloak.auth-server-url}") String authServerUrl,
             @Value("${app.keycloak.realm}") String realm,
             @Value("${app.keycloak.client-id}") String clientId,
-            @Value("${app.keycloak.client-secret}") String clientSecret) {
+            @Value("${app.keycloak.client-secret}") String clientSecret,
+            @Value("${app.keycloak.admin.client-id}") String adminClientId,
+            @Value("${app.keycloak.admin.client-secret}") String adminClientSecret) {
         this.restTemplate = restTemplate;
         this.tokenUrl = authServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
         this.clientId = clientId;
         this.clientSecret = clientSecret;
+        this.adminClientId = adminClientId;
+        this.adminClientSecret = adminClientSecret;
     }
 
     @Override
@@ -47,6 +53,23 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
         form.add("client_secret", clientSecret);
         form.add("username", username);
         form.add("password", password);
+
+        return exchangeToken(form, false);
+    }
+
+    @Override
+    public TokenResponse exchangeToken(String userId) {
+        // Token exchange interne (impersonation) : le service account admin
+        // demande des tokens pour le compte du chauffeur, sans mot de passe.
+        // Prérequis Keycloak : feature `token-exchange` activée + client admin
+        // autorisé à impersonaliser (rôle `impersonation`).
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange");
+        form.add("client_id", adminClientId);
+        form.add("client_secret", adminClientSecret);
+        form.add("requested_subject", userId);
+        form.add("audience", clientId);
+        form.add("requested_token_type", "urn:ietf:params:oauth:token-type:refresh_token");
 
         return exchangeToken(form, false);
     }

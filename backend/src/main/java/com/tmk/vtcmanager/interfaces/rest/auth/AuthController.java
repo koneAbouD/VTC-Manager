@@ -22,6 +22,9 @@ public class AuthController {
     private final RefreshTokenUseCase refreshTokenUseCase;
     private final LogoutUseCase logoutUseCase;
     private final ForgotPasswordUseCase forgotPasswordUseCase;
+    private final RequestOtpUseCase requestOtpUseCase;
+    private final VerifyOtpUseCase verifyOtpUseCase;
+    private final ChauffeurPasswordLoginUseCase chauffeurPasswordLoginUseCase;
     private final AuthRestMapper mapper;
 
     @PostMapping("/login")
@@ -55,5 +58,32 @@ public class AuthController {
     public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDto request) {
         forgotPasswordUseCase.execute(request.email());
         return ResponseEntity.noContent().build();
+    }
+
+    // ── Authentification chauffeur par OTP WhatsApp ──
+
+    @PostMapping("/otp/request")
+    @Operation(summary = "Demander un code OTP",
+            description = "Envoie un code de vérification par WhatsApp au chauffeur. "
+                    + "Réponse neutre (204) que le numéro existe ou non.")
+    public ResponseEntity<Void> requestOtp(@Valid @RequestBody OtpRequestDto request) {
+        requestOtpUseCase.execute(request.telephone());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/otp/verify")
+    @Operation(summary = "Vérifier un code OTP",
+            description = "Vérifie le code reçu et retourne les tokens JWT en cas de succès")
+    public ResponseEntity<TokenResponseDto> verifyOtp(@Valid @RequestBody OtpVerifyDto request) {
+        return ResponseEntity.ok(mapper.toResponse(
+                verifyOtpUseCase.execute(request.telephone(), request.code())));
+    }
+
+    @PostMapping("/chauffeur/login")
+    @Operation(summary = "Connexion chauffeur par mot de passe",
+            description = "Authentifie un chauffeur via identifiant (téléphone) + mot de passe")
+    public ResponseEntity<TokenResponseDto> chauffeurLogin(@Valid @RequestBody ChauffeurLoginDto request) {
+        return ResponseEntity.ok(mapper.toResponse(
+                chauffeurPasswordLoginUseCase.execute(request.identifiant(), request.motDePasse())));
     }
 }

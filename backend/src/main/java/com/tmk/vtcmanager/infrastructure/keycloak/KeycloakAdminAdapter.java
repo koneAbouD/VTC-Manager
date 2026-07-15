@@ -112,6 +112,36 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
     }
 
     @Override
+    public void resetPassword(String userId, String newPassword) {
+        CredentialRepresentation credential = new CredentialRepresentation();
+        credential.setType(CredentialRepresentation.PASSWORD);
+        credential.setValue(newPassword);
+        credential.setTemporary(false);
+        try {
+            usersResource().get(userId).resetPassword(credential);
+        } catch (Exception e) {
+            log.error("Erreur reset password Keycloak pour {}: {}", userId, e.getMessage());
+            throw new RuntimeException("Impossible de réinitialiser le mot de passe de l'utilisateur");
+        }
+    }
+
+    @Override
+    public void markAccountReady(String userId) {
+        try {
+            UserResource userResource = usersResource().get(userId);
+            UserRepresentation user = userResource.toRepresentation();
+            user.setEnabled(true);
+            user.setEmailVerified(true);
+            user.setRequiredActions(java.util.List.of());
+            userResource.update(user);
+            log.info("Compte Keycloak {} marqué prêt (aucune required action)", userId);
+        } catch (Exception e) {
+            log.error("Erreur markAccountReady Keycloak pour {}: {}", userId, e.getMessage());
+            throw new RuntimeException("Impossible de finaliser la configuration du compte");
+        }
+    }
+
+    @Override
     public List<UserInfo> getAllUsers() {
         return usersResource().list().stream()
                 .map(this::toUserInfo)
@@ -141,6 +171,15 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
         UserInfo info = toUserInfo(users.get(0));
         info.setRoles(getUserRoles(users.get(0).getId()));
         return info;
+    }
+
+    @Override
+    public java.util.Optional<String> findUserIdByUsername(String username) {
+        List<UserRepresentation> users = usersResource().searchByUsername(username, true);
+        return users.stream()
+                .filter(u -> username.equalsIgnoreCase(u.getUsername()))
+                .map(UserRepresentation::getId)
+                .findFirst();
     }
 
     @Override

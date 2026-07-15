@@ -287,6 +287,25 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.UNAUTHORIZED, "SESSION_EXPIRED", ex.getMessage(), request, ex);
     }
 
+    @ExceptionHandler(com.tmk.vtcmanager.application.exception.OtpInvalidException.class)
+    public ResponseEntity<ApiError> handleOtpInvalid(
+            com.tmk.vtcmanager.application.exception.OtpInvalidException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNAUTHORIZED, "OTP_INVALIDE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(com.tmk.vtcmanager.application.exception.PaiementException.class)
+    public ResponseEntity<ApiError> handlePaiement(
+            com.tmk.vtcmanager.application.exception.PaiementException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "PAIEMENT_INVALIDE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(com.tmk.vtcmanager.application.exception.OtpDeliveryException.class)
+    public ResponseEntity<ApiError> handleOtpDelivery(
+            com.tmk.vtcmanager.application.exception.OtpDeliveryException ex, HttpServletRequest request) {
+        return respond(HttpStatus.BAD_GATEWAY, "OTP_ENVOI_ECHEC",
+                "L'envoi du code de vérification a échoué. Veuillez réessayer.", request, ex);
+    }
+
     // ── Validation des requêtes ────────────────────────────────────────────
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

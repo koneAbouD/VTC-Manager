@@ -33,6 +33,12 @@ public class ArreteCompte {
     private StatutArrete statut;
     private String motifAnnulation;
 
+    /**
+     * Solde de compte courant du périmètre après cet arrêté (transient, calculé
+     * à la lecture) : &gt; 0 = reste à restituer, &lt; 0 = reste dû, 0 = soldé.
+     */
+    private BigDecimal resteNet;
+
     @Builder.Default
     private List<LigneArrete> lignes = new ArrayList<>();
     @Builder.Default

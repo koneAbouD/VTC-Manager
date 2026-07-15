@@ -50,6 +50,16 @@ app:
   cors:
     allowed-origins: "*"
 
+  # Paiement Mobile Money (V2 app chauffeur)
+  payment:
+    # Agrégateur actif : "simulation" (défaut) ou un fournisseur réel à brancher.
+    provider: ${PAYMENT_PROVIDER:simulation}
+    # URL publique du backend, cible des webhooks agrégateur.
+    callback-base-url: ${PAYMENT_CALLBACK_BASE_URL:http://localhost:8081}
+    simulation:
+      # En simulation, le polling de statut conclut le paiement en REUSSI.
+      auto-success: ${PAYMENT_SIM_AUTO_SUCCESS:true}
+
   # Configuration Keycloak — le backend gère toute l'authentification
   keycloak:
     auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://localhost:8080}
@@ -61,6 +71,17 @@ app:
     admin:
       client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:vtc-manager-admin}
       client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:ZxkzmwzbjcGRy1IZtEJ773vLJQ7B8qw1}
+
+  # Envoi des OTP de l'app chauffeur via WhatsApp Cloud API (Meta).
+  # En dev (enabled=false), le code est journalisé au lieu d'être envoyé.
+  whatsapp:
+    enabled: ${WHATSAPP_ENABLED:false}
+    api-url: ${WHATSAPP_API_URL:https://graph.facebook.com}
+    api-version: ${WHATSAPP_API_VERSION:v21.0}
+    phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+    access-token: ${WHATSAPP_ACCESS_TOKEN:}
+    template-name: ${WHATSAPP_TEMPLATE_NAME:otp_login}
+    template-language: ${WHATSAPP_TEMPLATE_LANGUAGE:fr}
 
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

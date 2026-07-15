@@ -29,6 +29,8 @@ public class Chauffeur {
     private ChauffeurStatus statut;
     /** Statut manuel verrouillant (INACTIF, SUSPENDU). Prioritaire sur le calcul (EN_CONGE/ACTIF). */
     private ChauffeurStatus statutManuel;
+    /** Identifiant de l'utilisateur Keycloak associé (app chauffeur). Null si aucun compte. */
+    private String keycloakUserId;
     /** Date de prise d'effet de la suspension (renseignée quand le statut passe à SUSPENDU). */
     private LocalDate dateSuspension;
     private LocalDate dateEmbauche;

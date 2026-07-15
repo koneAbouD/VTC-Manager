@@ -11,6 +11,7 @@ public record LigneArreteResponse(
         Long documentId,
         Long chauffeurId,
         Long vehiculeId,
+        String immatriculation,
         BigDecimal montant,
         SensArrete sens
 ) {}

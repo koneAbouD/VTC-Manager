@@ -19,6 +19,7 @@ public record ArreteResponse(
         String statut,
         String motifAnnulation,
         BigDecimal totalRestitue,
+        BigDecimal resteNet,
         List<LigneArreteResponse> lignes,
         List<ReglementArreteResponse> reglements
 ) {}

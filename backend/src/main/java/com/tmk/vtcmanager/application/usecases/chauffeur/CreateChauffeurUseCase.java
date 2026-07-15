@@ -30,6 +30,7 @@ public class CreateChauffeurUseCase {
     private final TypeDocumentRepository typeDocumentRepository;
     private final DocumentRepository documentRepository;
     private final FileStoragePort fileStoragePort;
+    private final SyncChauffeurAccountUseCase syncChauffeurAccountUseCase;
 
     @Transactional
     public Chauffeur execute(Chauffeur chauffeur,
@@ -54,7 +55,9 @@ public class CreateChauffeurUseCase {
             saved = chauffeurRepository.save(saved);
         }
 
-        return chauffeurRepository.findById(saved.getId()).orElse(saved);
+        Chauffeur resultat = chauffeurRepository.findById(saved.getId()).orElse(saved);
+        syncChauffeurAccountUseCase.synchroniser(resultat);
+        return chauffeurRepository.findById(saved.getId()).orElse(resultat);
     }
 
     private void sauvegarderPermisDocument(Long chauffeurId, String numero, Set<TypePermis> types,

@@ -13,6 +13,12 @@ public interface ChauffeurRepository {
 
     Optional<Chauffeur> findById(Long id);
 
+    /** Recherche par identifiant d'utilisateur Keycloak (résolution du chauffeur courant). */
+    Optional<Chauffeur> findByKeycloakUserId(String keycloakUserId);
+
+    /** Recherche par numéro de téléphone normalisé (enrôlement / OTP). */
+    Optional<Chauffeur> findByTelephone(String telephone);
+
     List<Chauffeur> findAll();
 
     PageResult<Chauffeur> findPage(ChauffeurStatus statut, int page, int size);

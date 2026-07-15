@@ -22,6 +22,21 @@ public interface KeycloakAdminPort {
     void sendResetPasswordEmail(String email);
 
     /**
+     * Définit (écrase) le mot de passe d'un utilisateur, non temporaire.
+     * Utilisé par le flux OTP : le backend pose un secret aléatoire éphémère
+     * puis échange immédiatement un token — l'utilisateur ne connaît jamais ce secret.
+     */
+    void resetPassword(String userId, String newPassword);
+
+    /**
+     * Rend un compte immédiatement utilisable : activé, email marqué vérifié et
+     * <b>aucune required action</b> en attente (sinon Keycloak refuse le grant avec
+     * « Account is not fully set up »). Utilisé pour les comptes chauffeurs qui
+     * s'authentifient par OTP/mot de passe sans passer par les flux e-mail.
+     */
+    void markAccountReady(String userId);
+
+    /**
      * Récupère tous les utilisateurs du realm.
      */
     List<UserInfo> getAllUsers();
@@ -35,6 +50,12 @@ public interface KeycloakAdminPort {
      * Recherche un utilisateur par email.
      */
     UserInfo getUserByEmail(String email);
+
+    /**
+     * Retourne l'id Keycloak d'un utilisateur par son username exact, s'il existe.
+     * Sert à (re)lier un compte déjà présent dans Keycloak mais non référencé en base.
+     */
+    java.util.Optional<String> findUserIdByUsername(String username);
 
     /**
      * Met à jour les informations d'un utilisateur.

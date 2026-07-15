@@ -69,11 +69,21 @@ public class ArreterCompteUseCase {
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
 
-    @Transactional
+    /** Arrêté total : toutes les cotisations et créances de la période. */
     public ArreteCompte executer(PerimetreArrete perimetre, Long perimetreId,
                                  LocalDate periodeDebut, LocalDate periodeFin,
                                  LocalDate dateArrete, ModePaiement modePaiement,
                                  Long compteTresorerieId) {
+        return executer(perimetre, perimetreId, periodeDebut, periodeFin,
+                dateArrete, modePaiement, compteTresorerieId, SelectionArrete.tout());
+    }
+
+    /** Arrêté restreint à la sélection de lignes (restitution partielle). */
+    @Transactional
+    public ArreteCompte executer(PerimetreArrete perimetre, Long perimetreId,
+                                 LocalDate periodeDebut, LocalDate periodeFin,
+                                 LocalDate dateArrete, ModePaiement modePaiement,
+                                 Long compteTresorerieId, SelectionArrete selection) {
         if (periodeFin.isBefore(periodeDebut)) {
             throw new IllegalArgumentException("La fin de période ne peut précéder son début.");
         }
@@ -81,7 +91,7 @@ public class ArreterCompteUseCase {
         periodeClotureeGuard.verifier(effetArrete);
 
         List<DecompteBeneficiaire> decomptes =
-                calculerCompteCourantUseCase.calculer(perimetre, perimetreId, periodeDebut, periodeFin);
+                calculerCompteCourantUseCase.calculer(perimetre, perimetreId, periodeDebut, periodeFin, selection);
         if (decomptes.isEmpty()) {
             throw new IllegalArgumentException("Aucune cotisation ni créance à arrêter sur cette période.");
         }

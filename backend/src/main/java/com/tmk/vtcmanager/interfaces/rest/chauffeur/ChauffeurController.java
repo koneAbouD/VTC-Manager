@@ -44,6 +44,7 @@ public class ChauffeurController {
     private final AssignVehiculeToChauffeurUseCase assignVehiculeToChauffeurUseCase;
     private final UnassignVehiculeFromChauffeurUseCase unassignVehiculeFromChauffeurUseCase;
     private final GetDocumentsByChauffeurUseCase getDocumentsByChauffeurUseCase;
+    private final com.tmk.vtcmanager.application.usecases.auth.ProvisionChauffeurAccountUseCase provisionChauffeurAccountUseCase;
     private final ChauffeurRestMapper mapper;
     private final DocumentRestMapper documentMapper;
     private final ProgrammeTravailRestMapper programmeMapper;
@@ -159,5 +160,19 @@ public class ChauffeurController {
                 .contentType(mediaType)
                 .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
                 .body(new InputStreamResource(stream));
+    }
+
+    /**
+     * Crée (ou récupère) le compte d'accès à l'app chauffeur. Idempotent.
+     * Un mot de passe initial peut être fourni pour activer d'emblée la
+     * connexion par mot de passe (sinon : secret aléatoire + OTP requis).
+     */
+    @PostMapping("/{id}/compte")
+    public ChauffeurResponse provisionnerCompte(
+            @PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestBody(required = false)
+            @Valid com.tmk.vtcmanager.interfaces.rest.chauffeur.dto.request.ProvisionCompteRequest request) {
+        String motDePasse = request == null ? null : request.motDePasse();
+        return mapper.toResponse(provisionChauffeurAccountUseCase.execute(id, motDePasse));
     }
 }

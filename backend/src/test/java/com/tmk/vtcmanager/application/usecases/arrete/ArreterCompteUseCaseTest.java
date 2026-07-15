@@ -117,8 +117,12 @@ class ArreterCompteUseCaseTest {
     }
 
     private LigneCotisation cotisation(BigDecimal encaisse) {
+        return cotisation(100L, encaisse);
+    }
+
+    private LigneCotisation cotisation(Long id, BigDecimal encaisse) {
         return LigneCotisation.builder()
-                .id(100L).vehiculeId(VEHICULE).chauffeurId(CHAUFFEUR)
+                .id(id).vehiculeId(VEHICULE).chauffeurId(CHAUFFEUR)
                 .dateCotisation(LocalDate.of(2026, 6, 15)).nomCotisation("Entretien")
                 .montantDu(encaisse).montantEncaisse(encaisse)
                 .statut(StatutLigneCotisation.ENCAISSE).build();
@@ -168,6 +172,44 @@ class ArreterCompteUseCaseTest {
         assertThat(r.getMontantNet()).isEqualByComparingTo("70");
         assertThat(r.getTotalCreancesCompensees()).isEqualByComparingTo("30");
         assertThat(r.getReliquatReporte()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void selection_partielle_ne_restitue_que_les_lignes_choisies() {
+        // Deux cotisations (100, 40) et deux recettes (30, 50). Sélection : cotisation 100
+        // seule + recette 201 seule → fonds 100, compensé 50, net 50. Le reste intact.
+        when(ligneCotisationRepository.findByCriteres(any())).thenReturn(List.of(
+                cotisation(100L, BigDecimal.valueOf(100)),
+                cotisation(101L, BigDecimal.valueOf(40))));
+        when(creanceRepository.getLignesCreance(CHAUFFEUR)).thenReturn(List.of(
+                recette(200L, BigDecimal.valueOf(30)),
+                recette(201L, BigDecimal.valueOf(50))));
+        when(compteTresorerieResolver.resoudre(any(), eq(ModePaiement.ESPECES))).thenReturn(5L);
+
+        SelectionArrete selection = new SelectionArrete(
+                java.util.Set.of(100L),
+                java.util.Set.of(new SelectionArrete.CreanceKey(TypeDocumentCreance.RECETTE, 201L)));
+
+        useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null, selection);
+
+        ArgumentCaptor<OperationFinanciere> ops = ArgumentCaptor.forClass(OperationFinanciere.class);
+        verify(operationFinanciereRepository, org.mockito.Mockito.times(2)).save(ops.capture());
+
+        OperationFinanciere compensation = ops.getAllValues().stream()
+                .filter(o -> "ENCAISSEMENT_RECETTES".equals(o.getCategorie().getCode())).findFirst().orElseThrow();
+        assertThat(compensation.getMontant()).isEqualByComparingTo("50"); // recette 201 uniquement
+        assertThat(compensation.getCompteTresorerieId()).isNull();
+
+        OperationFinanciere decaissement = ops.getAllValues().stream()
+                .filter(o -> "RESTITUTION_COTISATIONS".equals(o.getCategorie().getCode())).findFirst().orElseThrow();
+        assertThat(decaissement.getMontant()).isEqualByComparingTo("50"); // net = 100 − 50
+
+        // Seules les lignes sélectionnées bougent.
+        verify(ligneRecetteRepository).recalculerDepuisEncaissements(201L);
+        verify(ligneRecetteRepository, never()).recalculerDepuisEncaissements(200L);
+        verify(ligneCotisationRepository).marquerRestituee(100L, 1L);
+        verify(ligneCotisationRepository, never()).marquerRestituee(eq(101L), anyLong());
     }
 
     @Test
