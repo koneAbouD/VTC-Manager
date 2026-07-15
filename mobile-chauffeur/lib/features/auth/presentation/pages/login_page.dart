@@ -132,11 +132,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text('Espace Chauffeur',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 28),
               SegmentedButton<_Mode>(
                 segments: const [
