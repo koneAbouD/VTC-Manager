@@ -220,23 +220,8 @@ class _PaiementSheetState extends ConsumerState<_PaiementSheet> {
           ),
         ),
         _FormCard(
-          icon: Icons.account_balance_wallet_outlined,
-          title: 'Portefeuille',
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: CanalPaiement.values.map((c) {
-              return ChoiceChip(
-                label: Text(c.label),
-                selected: c == _canal,
-                onSelected: _enCours ? null : (_) => setState(() => _canal = c),
-              );
-            }).toList(),
-          ),
-        ),
-        _FormCard(
           icon: Icons.phone_iphone_outlined,
-          title: 'Numéro Mobile Money',
+          title: 'Numéro Wave',
           child: _LabeledField(
             label: 'Numéro',
             isRequired: true,
