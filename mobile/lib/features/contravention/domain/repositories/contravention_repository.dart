@@ -21,4 +21,7 @@ abstract interface class ContraventionRepository {
   Future<Either<Failure, void>> deleteContravention(int id);
   Future<Either<Failure, Contravention>> payContravention(
       int id, double montantPaye);
+
+  /// Reverse la contravention à l'État (crée l'opération de reversement).
+  Future<Either<Failure, Contravention>> reverserContravention(int id);
 }

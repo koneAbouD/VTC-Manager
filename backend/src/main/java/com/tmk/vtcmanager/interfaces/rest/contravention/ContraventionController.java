@@ -3,7 +3,11 @@ package com.tmk.vtcmanager.interfaces.rest.contravention;
 import com.tmk.vtcmanager.application.domain.contravention.ApercuImportContraventions;
 import com.tmk.vtcmanager.application.domain.contravention.Contravention;
 import com.tmk.vtcmanager.application.domain.contravention.ResultatImportContraventions;
+import com.tmk.vtcmanager.application.domain.contravention.reversement.ApercuReversementQuittance;
+import com.tmk.vtcmanager.application.domain.contravention.reversement.ResultatReversementQuittance;
 import com.tmk.vtcmanager.application.usecases.contravention.ConfirmerImportContraventionsUseCase;
+import com.tmk.vtcmanager.application.usecases.contravention.ConfirmerReversementQuittanceUseCase;
+import com.tmk.vtcmanager.application.usecases.contravention.PreviewReversementQuittanceUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.CreateContraventionUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.DeleteContraventionUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.GetAllContraventionsUseCase;
@@ -14,11 +18,14 @@ import com.tmk.vtcmanager.application.usecases.contravention.ReverseContraventio
 import com.tmk.vtcmanager.application.usecases.contravention.UpdateContraventionUseCase;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ConfirmerImportRequest;
+import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ConfirmerReversementRequest;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ContraventionRequest;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.PaymentRequest;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ApercuImportResponse;
+import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ApercuReversementResponse;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ContraventionResponse;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ResultatImportResponse;
+import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ResultatReversementResponse;
 import com.tmk.vtcmanager.interfaces.rest.contravention.mapper.ContraventionRestMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +52,8 @@ public class ContraventionController {
     private final ReverseContraventionUseCase reverseContraventionUseCase;
     private final ImporterContraventionsUseCase importerContraventionsUseCase;
     private final ConfirmerImportContraventionsUseCase confirmerImportContraventionsUseCase;
+    private final PreviewReversementQuittanceUseCase previewReversementQuittanceUseCase;
+    private final ConfirmerReversementQuittanceUseCase confirmerReversementQuittanceUseCase;
     private final ContraventionRestMapper mapper;
 
     @PostMapping
@@ -117,5 +126,25 @@ public class ContraventionController {
         ResultatImportContraventions resultat = confirmerImportContraventionsUseCase.confirmer(
                 mapper.toImportDomainList(request.contraventions()));
         return mapper.toResultatResponse(resultat);
+    }
+
+    // ── Reversement par quittance de l'État ─────────────────────────────────
+
+    /** Prévisualise une quittance de paiement : extraction + rapprochement. Rien n'est reversé. */
+    @PostMapping(value = "/reversements/importer", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApercuReversementResponse importerQuittance(@RequestPart("fichier") MultipartFile fichier)
+            throws IOException {
+        ApercuReversementQuittance apercu = previewReversementQuittanceUseCase.previsualiser(
+                fichier.getInputStream(), fichier.getOriginalFilename(), fichier.getContentType());
+        return mapper.toApercuReversementResponse(apercu);
+    }
+
+    /** Confirme le reversement des contraventions sélectionnées (REVERSE + dépense). */
+    @PostMapping("/reversements/confirmer")
+    public ResultatReversementResponse confirmerReversement(
+            @Valid @RequestBody ConfirmerReversementRequest request) {
+        ResultatReversementQuittance resultat = confirmerReversementQuittanceUseCase.confirmer(
+                request.contraventionIds(), request.referenceQuittance());
+        return mapper.toResultatReversementResponse(resultat);
     }
 }

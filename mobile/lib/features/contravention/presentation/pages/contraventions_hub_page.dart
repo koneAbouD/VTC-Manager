@@ -89,7 +89,7 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
     if (_isEtat) {
       final items = ref.watch(contraventionsListeProvider).items;
       final impaye = items
-          .where((c) => !c.isPaid)
+          .where((c) => !c.isRegle)
           .fold<double>(0, (s, c) => s + (c.montant - (c.montantPaye ?? 0)));
       final aRattacher =
           items.where((c) => c.statutRattachement == 'A_RATTACHER').length;

@@ -82,6 +82,14 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
     }
 
     @Override
+    public Optional<Contravention> findByNumero(String numeroContravention) {
+        if (numeroContravention == null) {
+            return Optional.empty();
+        }
+        return jpaRepository.findByNumeroContravention(numeroContravention).map(mapper::toDomain);
+    }
+
+    @Override
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
     }

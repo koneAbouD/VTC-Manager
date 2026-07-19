@@ -45,8 +45,18 @@ class Contravention {
     this.statutRattachement,
   });
 
-  bool get isPaid => statut == 'PAYEE';
-  bool get isPartial => statut == 'PARTIELLEMENT_PAYEE';
+  bool get isPaid => statut == 'PAYEE' || statut == 'PAYE';
+  bool get isPartial =>
+      statut == 'PARTIELLEMENT_PAYEE' || statut == 'PARTIELLEMENT_PAYE';
+
+  /// Reversée à l'État (opération « Reversement contravention » créée).
+  bool get isReverse => statut == 'REVERSE' || statut == 'REVERSEE';
+
+  /// Annulée.
+  bool get isCancelled => statut == 'ANNULE' || statut == 'ANNULEE';
+
+  /// Contravention soldée : plus aucun règlement ni reversement à effectuer.
+  bool get isRegle => isPaid || isReverse || isCancelled;
 
   /// Vrai si la contravention n'a pas encore de chauffeur déterminé.
   bool get aRattacher =>

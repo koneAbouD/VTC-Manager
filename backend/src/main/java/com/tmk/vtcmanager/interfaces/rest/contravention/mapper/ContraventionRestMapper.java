@@ -4,13 +4,19 @@ import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.contravention.ApercuImportContraventions;
 import com.tmk.vtcmanager.application.domain.contravention.Contravention;
 import com.tmk.vtcmanager.application.domain.contravention.ResultatImportContraventions;
+import com.tmk.vtcmanager.application.domain.contravention.reversement.ApercuReversementQuittance;
+import com.tmk.vtcmanager.application.domain.contravention.reversement.LigneReversement;
+import com.tmk.vtcmanager.application.domain.contravention.reversement.ResultatReversementQuittance;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.interfaces.rest.chauffeur.mapper.ChauffeurRestMapper;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ContraventionImportItem;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ContraventionRequest;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ApercuImportResponse;
+import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ApercuReversementResponse;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ContraventionResponse;
+import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.LigneReversementResponse;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ResultatImportResponse;
+import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ResultatReversementResponse;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.mapper.VehiculeRestMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -42,6 +48,16 @@ public interface ContraventionRestMapper {
     ApercuImportResponse toApercuResponse(ApercuImportContraventions apercu);
 
     ResultatImportResponse toResultatResponse(ResultatImportContraventions resultat);
+
+    // ── Reversement par quittance de l'État ────────────────────────────────────
+
+    LigneReversementResponse toLigneReversementResponse(LigneReversement ligne);
+
+    @Mapping(target = "nombreAReverser", expression = "java(apercu.nombreAReverser())")
+    @Mapping(target = "totalAReverser", expression = "java(apercu.totalAReverser())")
+    ApercuReversementResponse toApercuReversementResponse(ApercuReversementQuittance apercu);
+
+    ResultatReversementResponse toResultatReversementResponse(ResultatReversementQuittance resultat);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "statut", ignore = true)

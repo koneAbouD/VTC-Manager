@@ -26,5 +26,8 @@ public interface ContraventionRepository {
     /** Vrai si une contravention avec ce numéro de relevé existe déjà (anti-doublon import). */
     boolean existsByNumero(String numeroContravention);
 
+    /** Contravention portant ce numéro de relevé (rapprochement quittance) ; vide si absente. */
+    Optional<Contravention> findByNumero(String numeroContravention);
+
     void deleteById(Long id);
 }

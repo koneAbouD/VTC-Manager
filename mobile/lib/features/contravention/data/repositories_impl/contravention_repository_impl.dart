@@ -125,6 +125,20 @@ class ContraventionRepositoryImpl implements ContraventionRepository {
     }
   }
 
+  @override
+  Future<Either<Failure, Contravention>> reverserContravention(int id) async {
+    try {
+      final result = await _datasource.reverser(id);
+      return Right(result);
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
   Failure _mapApiException(ApiException e) {
     if (e.statusCode == 404) return NotFoundFailure(e.message);
     if (e.statusCode == 401 || e.statusCode == 403) {

@@ -66,6 +66,13 @@ class ContraventionRemoteDatasource {
     return ContraventionModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Reverse la contravention à l'État : crée l'opération financière de
+  /// catégorie « Reversement contravention » (`POST /contraventions/{id}/reverse`).
+  Future<ContraventionModel> reverser(int id) async {
+    final data = await _client.post('/contraventions/$id/reverse', const {});
+    return ContraventionModel.fromJson(data as Map<String, dynamic>);
+  }
+
   // ── Import PDF (Mode 1) ────────────────────────────────────────────────────
 
   /// Téléverse un relevé PDF et récupère l'aperçu (rien n'est persisté).

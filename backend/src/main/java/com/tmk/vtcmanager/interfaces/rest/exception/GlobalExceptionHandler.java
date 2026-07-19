@@ -293,6 +293,14 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.UNAUTHORIZED, "OTP_INVALIDE", ex.getMessage(), request, ex);
     }
 
+    @ExceptionHandler(com.tmk.vtcmanager.application.exception.AuthServiceUnavailableException.class)
+    public ResponseEntity<ApiError> handleAuthServiceUnavailable(
+            com.tmk.vtcmanager.application.exception.AuthServiceUnavailableException ex,
+            HttpServletRequest request) {
+        return respond(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_SERVICE_UNAVAILABLE",
+                ex.getMessage(), request, ex);
+    }
+
     @ExceptionHandler(com.tmk.vtcmanager.application.exception.PaiementException.class)
     public ResponseEntity<ApiError> handlePaiement(
             com.tmk.vtcmanager.application.exception.PaiementException ex, HttpServletRequest request) {

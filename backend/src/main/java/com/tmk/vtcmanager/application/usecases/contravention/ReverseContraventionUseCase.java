@@ -31,16 +31,25 @@ public class ReverseContraventionUseCase {
 
     @Transactional
     public Contravention execute(Long id) {
+        return execute(id, null);
+    }
+
+    /**
+     * Reverse une contravention en traçant la référence de la quittance de l'État
+     * (n° de liquidation/demande) dans le commentaire de l'opération de dépense.
+     */
+    @Transactional
+    public Contravention execute(Long id, String referenceQuittance) {
         Contravention contravention = contraventionRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Contravention", id));
         contravention.reverser();
         Contravention saved = contraventionRepository.save(contravention);
 
-        creerOperation(saved);
+        creerOperation(saved, referenceQuittance);
         return saved;
     }
 
-    private void creerOperation(Contravention contravention) {
+    private void creerOperation(Contravention contravention, String referenceQuittance) {
         BigDecimal montant = contravention.getMontant();
         if (montant == null || montant.compareTo(BigDecimal.ZERO) <= 0) {
             return;

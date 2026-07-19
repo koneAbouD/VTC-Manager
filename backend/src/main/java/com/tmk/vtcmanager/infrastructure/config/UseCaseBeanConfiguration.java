@@ -113,6 +113,7 @@ import com.tmk.vtcmanager.application.usecases.cotisation.*;
 import com.tmk.vtcmanager.application.usecases.operationFinanciere.*;
 import com.tmk.vtcmanager.application.usecases.penalite.*;
 import com.tmk.vtcmanager.application.ports.extraction.ContraventionExtractorPort;
+import com.tmk.vtcmanager.application.ports.extraction.QuittanceReversementExtractorPort;
 import com.tmk.vtcmanager.application.usecases.recette.*;
 import com.tmk.vtcmanager.application.usecases.payment.*;
 import com.tmk.vtcmanager.application.ports.payment.PaymentGatewayPort;
@@ -874,6 +875,24 @@ public class UseCaseBeanConfiguration {
     public ConfirmerImportContraventionsUseCase confirmerImportContraventionsUseCase(
             ContraventionRepository contraventionRepository) {
         return new ConfirmerImportContraventionsUseCase(contraventionRepository);
+    }
+
+    // ----- Reversement par quittance de l'État -----
+    @Bean
+    public PreviewReversementQuittanceUseCase previewReversementQuittanceUseCase(
+            QuittanceReversementExtractorPort quittanceReversementExtractorPort,
+            ContraventionRepository contraventionRepository,
+            FileStoragePort fileStoragePort) {
+        return new PreviewReversementQuittanceUseCase(
+                quittanceReversementExtractorPort, contraventionRepository, fileStoragePort);
+    }
+
+    @Bean
+    public ConfirmerReversementQuittanceUseCase confirmerReversementQuittanceUseCase(
+            ContraventionRepository contraventionRepository,
+            ReverseContraventionUseCase reverseContraventionUseCase) {
+        return new ConfirmerReversementQuittanceUseCase(
+                contraventionRepository, reverseContraventionUseCase);
     }
 
     // ----- Auth -----

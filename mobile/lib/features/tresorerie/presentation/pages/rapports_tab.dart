@@ -27,7 +27,7 @@ class RapportsTab extends ConsumerWidget {
               MaterialPageRoute(builder: (_) => const RapportFinancierPage())),
         ),
         _RapportCard(
-          icone: Icons.savings_outlined,
+          icone: Icons.gavel_outlined,
           titre: 'Restitution des cotisations',
           description:
               'Compte courant chauffeur/véhicule : arrêté de compte et versement du net',
@@ -72,7 +72,9 @@ class RapportsTab extends ConsumerWidget {
 
   Future<void> _exporter(BuildContext context, WidgetRef ref) async {
     final periode = await _choisirPeriode(context,
-        titre: 'Exporter quel mois ?', action: 'Exporter');
+        titre: 'Exporter quel mois ?',
+        action: 'Exporter',
+        icone: Icons.file_download_outlined);
     if (periode == null || !context.mounted) return;
 
     try {
@@ -99,6 +101,8 @@ class RapportsTab extends ConsumerWidget {
     final periode = await _choisirPeriode(context,
         titre: 'Clôturer quel mois ?',
         action: 'Clôturer',
+        icone: Icons.lock_clock_rounded,
+        accent: AppColors.warning,
         avertissement:
             'Une période clôturée ne peut plus recevoir d\'écriture ni '
             'd\'annulation. Cette action est définitive.');
@@ -122,10 +126,14 @@ class RapportsTab extends ConsumerWidget {
     }
   }
 
-  /// Sélecteur (année, mois) — le mois précédent par défaut.
+  /// Sélecteur (année, mois) premium — le mois précédent par défaut. L'accent
+  /// (icône + bouton + bandeau) est paramétrable : primaire pour l'export,
+  /// `warning` pour une action définitive comme la clôture.
   Future<(int, int)?> _choisirPeriode(BuildContext context,
       {required String titre,
       required String action,
+      IconData icone = Icons.calendar_month_rounded,
+      Color accent = AppColors.primary,
       String? avertissement}) async {
     final precedent = DateTime(DateTime.now().year, DateTime.now().month - 1);
     var annee = precedent.year;
@@ -133,44 +141,130 @@ class RapportsTab extends ConsumerWidget {
 
     final ok = await showDialog<bool>(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: Text(titre,
-              style:
-                  const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              MonthFilterPill(
-                mois: mois,
-                annee: annee,
-                onChanged: (m, a) => setState(() {
-                  mois = m;
-                  annee = a;
-                }),
-              ),
-              if (avertissement != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3E0),
-                    borderRadius: BorderRadius.circular(8),
+        builder: (ctx, setState) => Dialog(
+          backgroundColor: AppColors.surface,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Icône dans une pastille teintée à l'accent.
+                Center(
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icone, size: 28, color: accent),
                   ),
-                  child: Text(avertissement,
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.orange.shade900)),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  titre,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                      letterSpacing: -0.4),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Choisissez le mois à ${action.toLowerCase()}.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 13.5, height: 1.4, color: AppColors.label),
+                ),
+                const SizedBox(height: 18),
+                MonthFilterPill(
+                  mois: mois,
+                  annee: annee,
+                  onChanged: (m, a) => setState(() {
+                    mois = m;
+                    annee = a;
+                  }),
+                ),
+                if (avertissement != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 11),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(14),
+                      border:
+                          Border.all(color: accent.withValues(alpha: 0.25)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            size: 18, color: accent),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(avertissement,
+                              style: TextStyle(
+                                  fontSize: 12.5,
+                                  height: 1.35,
+                                  fontWeight: FontWeight.w500,
+                                  color: accent)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.label,
+                            side: const BorderSide(color: AppColors.border),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: const Text('Annuler',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: accent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: Text(action,
+                              style: const TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ],
+            ),
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Annuler')),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true), child: Text(action)),
-          ],
         ),
       ),
     );

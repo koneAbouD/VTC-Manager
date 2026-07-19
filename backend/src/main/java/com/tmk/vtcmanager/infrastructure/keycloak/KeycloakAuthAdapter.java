@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.infrastructure.keycloak;
 
 import com.tmk.vtcmanager.application.domain.auth.TokenResponse;
+import com.tmk.vtcmanager.application.exception.AuthServiceUnavailableException;
 import com.tmk.vtcmanager.application.exception.SessionExpiredException;
 import com.tmk.vtcmanager.application.ports.auth.KeycloakAuthPort;
 import lombok.extern.slf4j.Slf4j;
@@ -141,6 +142,20 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
                 throw new IllegalArgumentException("Identifiants invalides");
             }
             throw new RuntimeException("Erreur d'authentification: " + e.getMessage());
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            // Keycloak lui-même a renvoyé une 5xx (ex. « unknown_error ») : le
+            // détail est dans les logs de Keycloak. On journalise sa réponse et
+            // on renvoie une indisponibilité de service plutôt qu'un 500 opaque.
+            log.error("Keycloak a renvoyé une erreur serveur ({}) : {} - {}",
+                    isRefresh ? "refresh" : "login", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new AuthServiceUnavailableException(
+                    "Le service d'authentification est momentanément indisponible. Réessayez plus tard.");
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            // Keycloak injoignable (connexion refusée, timeout DNS/réseau).
+            log.error("Keycloak injoignable ({}): {}",
+                    isRefresh ? "refresh" : "login", e.getMessage());
+            throw new AuthServiceUnavailableException(
+                    "Le service d'authentification est injoignable. Réessayez plus tard.");
         }
     }
 }

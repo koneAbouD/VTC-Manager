@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ContraventionJpaRepository
@@ -24,4 +25,6 @@ public interface ContraventionJpaRepository
     List<ContraventionEntity> findByVehiculeIdOrderByCreatedAtDesc(Long vehiculeId);
 
     boolean existsByNumeroContravention(String numeroContravention);
+
+    Optional<ContraventionEntity> findByNumeroContravention(String numeroContravention);
 }

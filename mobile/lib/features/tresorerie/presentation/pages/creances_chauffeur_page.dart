@@ -8,7 +8,8 @@ import '../../../../core/widgets/app_header.dart';
 import '../../../cotisation/presentation/pages/ligne_cotisation_detail_page.dart';
 import '../../../penalite/presentation/pages/ligne_penalite_detail_page.dart';
 import '../../../recette/presentation/pages/ligne_recette_detail_page.dart';
-import '../../../contravention/presentation/pages/contraventions_page.dart';
+import '../../../contravention/presentation/pages/contravention_detail_page.dart';
+import '../../../contravention/presentation/providers/contravention_provider.dart';
 import '../../domain/entities/creance.dart';
 import '../providers/tresorerie_providers.dart';
 
@@ -87,7 +88,7 @@ class CreancesChauffeurPage extends ConsumerWidget {
                 for (final ligne in lignes)
                   _LigneCreanceTile(
                     ligne: ligne,
-                    onTap: () => _ouvrirDocument(context, ligne),
+                    onTap: () => _ouvrirDocument(context, ref, ligne),
                   ),
               ],
             ),
@@ -98,15 +99,33 @@ class CreancesChauffeurPage extends ConsumerWidget {
   }
 
   /// Rouvre le document dans son module d'origine pour encaisser.
-  void _ouvrirDocument(BuildContext context, LigneCreance ligne) {
-    final Widget page = switch (ligne.document) {
-      'RECETTE' => LigneRecetteDetailPage(ligneId: ligne.documentId),
-      'COTISATION' => LigneCotisationDetailPage(ligneId: ligne.documentId),
-      'PENALITE' => LignePenaliteDetailPage(ligneId: ligne.documentId),
-      _ => const ContraventionsPage(),
-    };
-    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  Future<void> _ouvrirDocument(
+      BuildContext context, WidgetRef ref, LigneCreance ligne) async {
+    switch (ligne.document) {
+      case 'RECETTE':
+        _push(context, LigneRecetteDetailPage(ligneId: ligne.documentId));
+      case 'COTISATION':
+        _push(context, LigneCotisationDetailPage(ligneId: ligne.documentId));
+      case 'PENALITE':
+        _push(context, LignePenaliteDetailPage(ligneId: ligne.documentId));
+      default:
+        // Contravention : on charge l'entité par son id puis on ouvre son
+        // détail (la page attend une Contravention complète).
+        final result = await ref
+            .read(contraventionRepositoryProvider)
+            .getContraventionById(ligne.documentId);
+        if (!context.mounted) return;
+        result.fold(
+          (f) => ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(f.message)),
+          ),
+          (c) => _push(context, ContraventionDetailPage(contravention: c)),
+        );
+    }
   }
+
+  void _push(BuildContext context, Widget page) =>
+      Navigator.push(context, MaterialPageRoute(builder: (_) => page));
 }
 
 class _LigneCreanceTile extends StatelessWidget {

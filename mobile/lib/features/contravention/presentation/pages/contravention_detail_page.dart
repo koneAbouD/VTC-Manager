@@ -62,46 +62,161 @@ class _ContraventionDetailPageState
     if (res == true && mounted) Navigator.pop(context, true);
   }
 
-  Future<void> _pay() async {
-    final ctrl = TextEditingController(text: _reste.toStringAsFixed(0));
+  Future<void> _reverser() async {
+    // Reversement à l'État : porte sur le montant total de la contravention et
+    // peut se faire même si elle n'a pas été payée par le chauffeur. Le
+    // remboursement chauffeur (PAYE) se fait, lui, côté finance via la
+    // compensation lors de la restitution des cotisations (arrêté de compte).
+    final montant = c.montant;
+    if (montant <= 0) return;
+
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.surface,
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Enregistrer un paiement'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            labelText: 'Montant payé',
-            prefixIcon: Icon(Icons.attach_money),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Icône dans une pastille teintée.
+              Center(
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryTint,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.account_balance_outlined,
+                      size: 28, color: AppColors.primaryDark),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Reverser à l\'État',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark,
+                    letterSpacing: -0.4),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Le montant total de la contravention sera reversé à l\'État. '
+                'Une opération « Reversement contravention » sera enregistrée.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 13.5, height: 1.4, color: AppColors.label),
+              ),
+              const SizedBox(height: 18),
+              // Montant à reverser — lecture seule (cadenas = non modifiable).
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTint,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: const BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.lock_outline,
+                          size: 18, color: AppColors.primaryDark),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Montant à reverser',
+                              style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryDark)),
+                          const SizedBox(height: 2),
+                          Text('${_money.format(montant)} XOF',
+                              style: const TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primaryDark,
+                                  letterSpacing: -0.5)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.label,
+                          side: const BorderSide(color: AppColors.border),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text('Annuler',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon:
+                            const Icon(Icons.account_balance_outlined, size: 18),
+                        label: const Text('Reverser',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirmer'),
-          ),
-        ],
       ),
     );
     if (ok != true) return;
-    final montant = double.tryParse(ctrl.text.replaceAll(',', '.'));
-    if (montant == null || montant <= 0) return;
     final error = await ref
         .read(contraventionNotifierProvider.notifier)
-        .payContravention(c.id!, montant);
+        .reverserContravention(c.id!);
     if (!mounted) return;
     if (error != null) {
       _toast(error, err: true);
     } else {
-      _toast('Paiement enregistré');
+      _toast('Contravention reversée');
       Navigator.pop(context, true);
     }
   }
@@ -252,25 +367,29 @@ class _ContraventionDetailPageState
   }
 
   Widget _actions() {
+    // Le paiement (PAYE) n'est plus déclenché ici : il se fait côté finance via
+    // la compensation lors de la restitution des cotisations. Le module
+    // contraventions ne propose que le reversement à l'État (REVERSE).
+    final reversable = !c.isReverse && !c.isCancelled;
     return Row(children: [
-      if (!c.isPaid)
+      if (reversable)
         Expanded(
           child: SizedBox(
             height: 50,
             child: FilledButton.icon(
-              onPressed: _pay,
+              onPressed: _reverser,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
-              icon: const Icon(Icons.payments_outlined, size: 18),
-              label: const Text('Payer',
+              icon: const Icon(Icons.account_balance_outlined, size: 18),
+              label: const Text('Reverser',
                   style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ),
         ),
-      if (!c.isPaid) const SizedBox(width: 12),
+      if (reversable) const SizedBox(width: 12),
       SizedBox(
         height: 50,
         child: OutlinedButton.icon(

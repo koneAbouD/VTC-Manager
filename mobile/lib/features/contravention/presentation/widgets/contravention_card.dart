@@ -5,19 +5,41 @@ import '../../domain/entities/contravention.dart';
 
 /// Carte premium d'une contravention d'État — badges d'infraction, chip de
 /// rattachement (Auto / À rattacher) et méta date · heure · vitesse · n°.
-/// Tap → édition ; appui long → actions (payer / supprimer).
+/// Un appui long sur une ligne active le mode sélection (paiement en lot) en
+/// sélectionnant cette ligne ; en mode sélection, un tap sélectionne /
+/// désélectionne (la carte passe en vert). Hors mode, un tap ouvre le détail.
+/// Le chevron à droite ouvre le détail dans tous les cas. Les contraventions
+/// déjà soldées ne sont pas sélectionnables : leur tap ouvre le détail.
 class ContraventionCard extends StatelessWidget {
   final Contravention contravention;
   final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-  final VoidCallback? onPay;
+
+  /// La carte est sélectionnée.
+  final bool selected;
+
+  /// La carte peut être sélectionnée (une contravention soldée ne l'est pas).
+  final bool selectable;
+
+  /// Le mode sélection est actif : dans ce mode, un tap sur la ligne la
+  /// sélectionne / désélectionne. Hors mode, un tap ouvre le détail.
+  final bool selectionMode;
+
+  /// Bascule de sélection de la ligne (mode sélection actif).
+  final ValueChanged<bool>? onSelectChanged;
+
+  /// Appui long sur la ligne : active le mode sélection en sélectionnant cette
+  /// ligne. Null si la ligne n'est pas identifiable / pas sélectionnable.
+  final VoidCallback? onEnterSelection;
 
   const ContraventionCard({
     super.key,
     required this.contravention,
     this.onEdit,
-    this.onDelete,
-    this.onPay,
+    this.selected = false,
+    this.selectable = true,
+    this.selectionMode = false,
+    this.onSelectChanged,
+    this.onEnterSelection,
   });
 
   static const _rouge = Color(0xFFB71C1C);
@@ -30,6 +52,8 @@ class ContraventionCard extends StatelessWidget {
   static const _label = Color(0xFF6B7280);
   static const _hint = Color(0xFF8A94A6);
   static const _border = Color(0xFFE4E9EE);
+  static const _primary = Color(0xFF43A047);
+  static const _selBg = Color(0xFFF3FAF4);
 
   String _typeLabel() {
     switch (contravention.codeInfraction) {
@@ -56,43 +80,11 @@ class ContraventionCard extends StatelessWidget {
   }
 
   (String, Color) _statut() {
+    if (contravention.isReverse) return ('Reversé', _vert);
     if (contravention.isPaid) return ('Payé', _vert);
     if (contravention.isPartial) return ('Partiel', _ambre);
+    if (contravention.isCancelled) return ('Annulé', _hint);
     return ('En attente', _hint);
-  }
-
-  void _openActions(BuildContext context) {
-    if (onPay == null && onDelete == null) return;
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!contravention.isPaid && onPay != null)
-              ListTile(
-                leading: const Icon(Icons.payments_outlined, color: _vert),
-                title: const Text('Enregistrer un paiement'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  onPay!();
-                },
-              ),
-            if (onDelete != null)
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: _rouge),
-                title: const Text('Supprimer'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  onDelete!();
-                },
-              ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -102,68 +94,101 @@ class ContraventionCard extends StatelessWidget {
     final (statutLabel, statutColor) = _statut();
     final rattach = _rattachement();
 
-    return GestureDetector(
-      onTap: onEdit,
-      onLongPress: () => _openActions(context),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border),
-        ),
-        child: Column(
+    final dimmed = !selectable;
+
+    final contenu = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _titre(aRattacher),
+                  const SizedBox(height: 7),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
                     children: [
-                      _titre(aRattacher),
-                      const SizedBox(height: 7),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          _pill(_typeLabel(), _rouge, _rougeBg),
-                          if (rattach != null)
-                            _pill(rattach.$1, rattach.$2, rattach.$3,
-                                icon: rattach.$4),
-                        ],
-                      ),
+                      _pill(_typeLabel(), _rouge, _rougeBg),
+                      if (rattach != null)
+                        _pill(rattach.$1, rattach.$2, rattach.$3,
+                            icon: rattach.$4),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(fmt.format(contravention.montant),
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: _ink)),
-                    const SizedBox(height: 2),
-                    Text(statutLabel,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: statutColor)),
-                  ],
-                ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(fmt.format(contravention.montant),
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _ink)),
+                const SizedBox(height: 2),
+                Text(statutLabel,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: statutColor)),
               ],
             ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.only(top: 9),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: _border)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.only(top: 9),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: _border)),
+          ),
+          child: Row(children: _meta()),
+        ),
+      ],
+    );
+
+    // Pas de case à cocher :
+    //  • hors mode sélection → un tap ouvre le détail ; un appui long active le
+    //    mode sélection en sélectionnant cette ligne.
+    //  • en mode sélection → un tap sélectionne / désélectionne la ligne (la
+    //    carte passe en vert). Le chevron ouvre toujours le détail.
+    // Une ligne soldée n'est jamais sélectionnable : son tap ouvre le détail.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: (selectionMode && selectable)
+          ? () => onSelectChanged?.call(!selected)
+          : onEdit,
+      onLongPress: (!selectionMode && selectable) ? onEnterSelection : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 130),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.fromLTRB(14, 13, 8, 12),
+        decoration: BoxDecoration(
+          color: selected ? _selBg : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: selected ? _primary : _border,
+              width: selected ? 1.5 : 1),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Opacity(opacity: dimmed ? 0.55 : 1, child: contenu),
+            ),
+            // Chevron : accès au détail, indépendant de la sélection de la ligne.
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onEdit,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child:
+                    Icon(Icons.chevron_right_rounded, size: 22, color: _hint),
               ),
-              child: Row(children: _meta()),
             ),
           ],
         ),
