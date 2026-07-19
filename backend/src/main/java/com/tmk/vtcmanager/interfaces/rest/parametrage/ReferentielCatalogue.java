@@ -27,8 +27,7 @@ public class ReferentielCatalogue {
                 typesVehicules(),
                 typesActivites(),
                 marques(),
-                modeles(),
-                statutsVehicule());
+                catalogueElementsMaintenance());
     }
 
     private ReferentielDescriptorResponse typesVehicules() {
@@ -74,34 +73,16 @@ public class ReferentielCatalogue {
                         booleen("actif", "Actif")));
     }
 
-    private ReferentielDescriptorResponse modeles() {
+    private ReferentielDescriptorResponse catalogueElementsMaintenance() {
         return new ReferentielDescriptorResponse(
-                "modeles",
-                "Modèles",
-                "Modèles de véhicules, rattachés à une marque.",
-                "/api/v1/modeles",
+                "catalogue-elements-maintenance",
+                "Éléments de maintenance",
+                "Catalogue des éléments/postes utilisables dans les opérations de maintenance.",
+                "/api/catalogue-elements-maintenance",
                 true,
                 "id",
                 List.of(
-                        texte("nom", "Nom", true),
-                        reference("marqueId", "Marque", true, "marques"),
-                        booleen("actif", "Actif")));
-    }
-
-    private ReferentielDescriptorResponse statutsVehicule() {
-        return new ReferentielDescriptorResponse(
-                "statuts-vehicule",
-                "Statuts de véhicule",
-                "Métadonnées d'affichage des statuts de véhicule. Le code est immuable (couplé au moteur d'états).",
-                "/api/v1/statuts-vehicule",
-                true,
-                "code",
-                List.of(
-                        lectureSeule("code", "Code"),
                         texte("libelle", "Libellé", true),
-                        texte("signification", "Signification", false),
-                        couleur("couleur", "Couleur", true),
-                        nombre("ordre", "Ordre d'affichage", false),
                         booleen("actif", "Actif")));
     }
 }

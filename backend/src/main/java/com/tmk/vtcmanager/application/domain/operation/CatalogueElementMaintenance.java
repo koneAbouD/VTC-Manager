@@ -14,4 +14,12 @@ public class CatalogueElementMaintenance {
     private Long id;
     private String libelle;
     private boolean actif;
+
+    public void update(String libelle) {
+        this.libelle = libelle;
+    }
+
+    public void changerActivation(boolean actif) {
+        this.actif = actif;
+    }
 }

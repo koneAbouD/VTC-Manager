@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = TypeActiviteEntity.TABLE_NAME)
@@ -27,5 +28,6 @@ public class TypeActiviteEntity extends AbstractAuditEntity {
 
     @Builder.Default
     @Column(nullable = false)
+    @ColumnDefault("true")
     private Boolean actif = true;
 }

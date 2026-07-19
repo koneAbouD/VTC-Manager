@@ -584,6 +584,16 @@ public class UseCaseBeanConfiguration {
         return new DeleteCatalogueElementMaintenanceUseCase(repo);
     }
 
+    @Bean
+    public UpdateCatalogueElementMaintenanceUseCase updateCatalogueElementMaintenanceUseCase(CatalogueElementMaintenanceRepository repo) {
+        return new UpdateCatalogueElementMaintenanceUseCase(repo);
+    }
+
+    @Bean
+    public ToggleActifCatalogueElementMaintenanceUseCase toggleActifCatalogueElementMaintenanceUseCase(CatalogueElementMaintenanceRepository repo) {
+        return new ToggleActifCatalogueElementMaintenanceUseCase(repo);
+    }
+
     // ----- CategorieOperation -----
     @Bean
     public CreateCategorieOperationUseCase createCategorieOperationUseCase(CategorieOperationRepository repo) {

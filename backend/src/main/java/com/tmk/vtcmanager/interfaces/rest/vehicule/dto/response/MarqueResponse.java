@@ -4,5 +4,6 @@ public record MarqueResponse(
         Long id,
         String nom,
         String paysOrigine,
-        TypeVehiculeResponse type
+        TypeVehiculeResponse type,
+        boolean actif
 ) {}

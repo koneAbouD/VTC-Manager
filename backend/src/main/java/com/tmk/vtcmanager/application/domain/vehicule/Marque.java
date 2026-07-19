@@ -15,12 +15,14 @@ public class Marque {
     private String nom;
     private TypeVehicule type;
     private String paysOrigine;
+    private boolean actif;
 
     public static Marque create(String nom, TypeVehicule type, String paysOrigine) {
         return Marque.builder()
                 .nom(nom)
                 .type(type)
                 .paysOrigine(paysOrigine)
+                .actif(true)
                 .build();
     }
 
@@ -28,5 +30,9 @@ public class Marque {
         this.nom = nom;
         this.type = type;
         this.paysOrigine = paysOrigine;
+    }
+
+    public void changerActivation(boolean actif) {
+        this.actif = actif;
     }
 }

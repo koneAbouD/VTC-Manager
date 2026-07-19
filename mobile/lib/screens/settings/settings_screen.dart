@@ -11,6 +11,7 @@ import '../../features/recette/presentation/providers/ligne_recette_provider.dar
 import '../../features/cotisation/presentation/providers/ligne_cotisation_provider.dart';
 import '../../features/penalite/presentation/providers/penalite_provider.dart';
 import '../../features/jour_ferie/presentation/jours_feries_page.dart';
+import '../../features/parametrage/presentation/pages/parametrage_hub_page.dart';
 import '../../core/widgets/app_header.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -79,6 +80,13 @@ class SettingsScreen extends ConsumerWidget {
                 label: 'Jours fériés',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const JoursFeriesPage()),
+                ),
+              ),
+              _MenuItem(
+                icon: Icons.tune_rounded,
+                label: 'Données de référence',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ParametrageHubPage()),
                 ),
               ),
             ],
