@@ -24,4 +24,8 @@ public class TypeVehiculeEntity extends AbstractAuditEntity {
     private String nom;
 
     private String description;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean actif = true;
 }

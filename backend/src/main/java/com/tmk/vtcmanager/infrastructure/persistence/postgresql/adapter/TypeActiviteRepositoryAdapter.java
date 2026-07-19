@@ -19,6 +19,11 @@ public class TypeActiviteRepositoryAdapter implements TypeActiviteRepository {
     private final TypeActivitePersistenceMapper mapper;
 
     @Override
+    public TypeActivite save(TypeActivite typeActivite) {
+        return mapper.toDomain(jpaRepository.save(mapper.toEntity(typeActivite)));
+    }
+
+    @Override
     public List<TypeActivite> findAll() {
         return jpaRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
                 .map(mapper::toDomain)
@@ -28,5 +33,25 @@ public class TypeActiviteRepositoryAdapter implements TypeActiviteRepository {
     @Override
     public Optional<TypeActivite> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<TypeActivite> findByNom(String nom) {
+        return jpaRepository.findByNom(nom).map(mapper::toDomain);
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public boolean existsById(Long id) {
+        return jpaRepository.existsById(id);
+    }
+
+    @Override
+    public boolean existsByNom(String nom) {
+        return jpaRepository.existsByNom(nom);
     }
 }

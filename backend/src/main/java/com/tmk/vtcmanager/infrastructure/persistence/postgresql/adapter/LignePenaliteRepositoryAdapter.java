@@ -41,6 +41,14 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
     private final LigneRecetteJpaRepository ligneRecetteJpaRepository;
     private final LignePenalitePersistenceMapper mapper;
 
+    /**
+     * Tri d'affichage : date de la faute la plus récente d'abord (nulls en
+     * dernier, car dateFaute est optionnelle), puis date de génération en second.
+     */
+    private static final Sort SORT_RECENT = Sort.by(
+            Sort.Order.desc("dateFaute").nullsLast(),
+            Sort.Order.desc("dateGeneration"));
+
     @Override
     @Transactional
     public LignePenalite save(LignePenalite ligne) {
@@ -77,15 +85,14 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
 
     @Override
     public List<LignePenalite> findByCriteres(LignePenaliteFiltres filtres) {
-        return mapper.toDomainList(jpaRepository.findAll(buildSpec(filtres),
-                Sort.by(Sort.Direction.DESC, "dateGeneration")));
+        return mapper.toDomainList(jpaRepository.findAll(buildSpec(filtres), SORT_RECENT));
     }
 
     @Override
     public PageResult<LignePenalite> findPageByCriteres(LignePenaliteFiltres filtres, int page, int size) {
         Page<LignePenalite> result = jpaRepository
                 .findAll(buildSpec(filtres),
-                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "dateGeneration")))
+                        PageRequest.of(page, size, SORT_RECENT))
                 .map(mapper::toDomain);
         return new PageResult<>(
                 result.getContent(), result.getNumber(), result.getSize(), result.getTotalElements());

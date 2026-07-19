@@ -1,5 +1,7 @@
 package com.tmk.vtcmanager.infrastructure.extraction;
 
+import com.tmk.vtcmanager.application.exception.FormatQuittanceNonReconnuException;
+import com.tmk.vtcmanager.application.exception.QuittanceIllisibleException;
 import com.tmk.vtcmanager.application.ports.extraction.LigneQuittanceReversement;
 import com.tmk.vtcmanager.application.ports.extraction.QuittanceReversement;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -16,6 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Vérifie l'extraction d'une quittance PDF <b>native</b>. Le document de test est
@@ -83,6 +86,27 @@ class PdfBoxQuittanceReversementExtractorTest {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         assertThat(total).isEqualByComparingTo(new BigDecimal("40000"));
+    }
+
+    @Test
+    void leve_quittance_illisible_si_pdf_sans_couche_texte() {
+        // PDF natif mais sans aucun texte (simule un scan/photo non océrisé).
+        byte[] pdfSansTexte = genererPdf(List.of());
+
+        assertThatThrownBy(() -> extractor.extraire(new ByteArrayInputStream(pdfSansTexte)))
+                .isInstanceOf(QuittanceIllisibleException.class);
+    }
+
+    @Test
+    void leve_format_non_reconnu_si_aucun_numero_de_contravention() {
+        // PDF lisible mais qui n'est pas une quittance (aucun numero « C…»).
+        byte[] autreDocument = genererPdf(List.of(
+                "RECU DE PAIEMENT - TAXES DE STATIONNEMENT",
+                "Vehicule de transport avec chauffeur (VTC) 1 18000",
+                "MONTANT TOTAL PAYE 18000 F CFA"));
+
+        assertThatThrownBy(() -> extractor.extraire(new ByteArrayInputStream(autreDocument)))
+                .isInstanceOf(FormatQuittanceNonReconnuException.class);
     }
 
     // ── Génération d'un PDF natif à couche texte ────────────────────────────────

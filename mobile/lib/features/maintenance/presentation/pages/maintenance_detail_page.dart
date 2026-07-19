@@ -130,29 +130,10 @@ class _MaintenanceDetailPageState
     final ctrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Terminer la maintenance',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        content: TextFormField(
-          controller: ctrl,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: 'Coût réel (XOF)',
-            prefixIcon: const Icon(Icons.payments_outlined),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirmer'),
-          ),
-        ],
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) => _TerminerMaintenanceDialog(
+        controller: ctrl,
+        typeLabel: _displayType(),
       ),
     );
     if (confirmed != true) return;
@@ -555,4 +536,170 @@ class _MaintenanceDetailPageState
           ),
         ]),
       );
+}
+
+// ── Popup « Terminer la maintenance » (premium, alignée charte) ────────────────
+
+/// Dialogue de clôture d'une maintenance : en-tête à icône teintée, champ de
+/// saisie du coût réel stylé (suffixe XOF) et actions Annuler / Confirmer.
+/// Le bouton Confirmer reste inactif tant qu'aucun coût n'est saisi.
+class _TerminerMaintenanceDialog extends StatefulWidget {
+  final TextEditingController controller;
+  final String typeLabel;
+
+  const _TerminerMaintenanceDialog({
+    required this.controller,
+    required this.typeLabel,
+  });
+
+  @override
+  State<_TerminerMaintenanceDialog> createState() =>
+      _TerminerMaintenanceDialogState();
+}
+
+class _TerminerMaintenanceDialogState
+    extends State<_TerminerMaintenanceDialog> {
+  bool get _valide => widget.controller.text.trim().isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── En-tête ────────────────────────────────────────────────
+            Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: _kPrimary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.check_circle_outline_rounded,
+                      color: AppColors.primaryDark, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Terminer la maintenance',
+                          style: TextStyle(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.w800,
+                              color: _kDark,
+                              letterSpacing: -0.2)),
+                      const SizedBox(height: 2),
+                      Text(widget.typeLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12.5, color: _kLabel)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Renseignez le coût réel des travaux pour clôturer cette maintenance.',
+              style: TextStyle(fontSize: 13, height: 1.4, color: _kLabel),
+            ),
+            const SizedBox(height: 16),
+            // ── Champ coût réel ────────────────────────────────────────
+            TextField(
+              controller: widget.controller,
+              autofocus: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700, color: _kDark),
+              decoration: InputDecoration(
+                labelText: 'Coût réel',
+                labelStyle: const TextStyle(color: _kLabel),
+                floatingLabelStyle:
+                    const TextStyle(color: AppColors.primaryDark),
+                prefixIcon: const Icon(Icons.payments_outlined,
+                    color: _kPrimary, size: 20),
+                suffixText: 'XOF',
+                suffixStyle: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: _kLabel),
+                filled: true,
+                fillColor: const Color(0xFFF3F6F4),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _kBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _kPrimary, width: 1.6),
+                ),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              onSubmitted: (_) {
+                if (_valide) Navigator.pop(context, true);
+              },
+            ),
+            const SizedBox(height: 22),
+            // ── Actions ────────────────────────────────────────────────
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _kLabel,
+                        side: const BorderSide(color: _kBorder),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: const Text('Annuler',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: FilledButton.icon(
+                      onPressed:
+                          _valide ? () => Navigator.pop(context, true) : null,
+                      icon: const Icon(Icons.check_rounded, size: 19),
+                      label: const Text('Confirmer',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryDark,
+                        disabledBackgroundColor: _kBorder,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

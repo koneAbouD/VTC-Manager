@@ -1,5 +1,7 @@
 package com.tmk.vtcmanager.infrastructure.extraction;
 
+import com.tmk.vtcmanager.application.exception.FormatQuittanceNonReconnuException;
+import com.tmk.vtcmanager.application.exception.QuittanceIllisibleException;
 import com.tmk.vtcmanager.application.ports.extraction.LigneQuittanceReversement;
 import com.tmk.vtcmanager.application.ports.extraction.QuittanceReversement;
 import com.tmk.vtcmanager.application.ports.extraction.QuittanceReversementExtractorPort;
@@ -58,6 +60,11 @@ public class PdfBoxQuittanceReversementExtractor implements QuittanceReversement
     @Override
     public QuittanceReversement extraire(InputStream contenu) {
         String texte = lireTexte(contenu);
+        // Garde-fou 1 : PDF sans couche texte (scan/photo) → illisible en Phase 1.
+        if (texte.isBlank()) {
+            log.warn("Quittance illisible : aucune couche texte (scan/photo probable)");
+            throw new QuittanceIllisibleException();
+        }
         String plat = texte.replaceAll("[ \\t]+", " ");
 
         String numeroLiquidation = premier(LIQUIDATION, plat);
@@ -90,6 +97,11 @@ public class PdfBoxQuittanceReversementExtractor implements QuittanceReversement
 
         log.info("Quittance extraite : liquidation={}, demande={}, {} ligne(s)",
                 numeroLiquidation, numeroDemande, lignes.size());
+        // Garde-fou 2 : texte présent mais aucun numéro de contravention détecté
+        // → le document n'est pas une quittance de liquidation reconnue.
+        if (lignes.isEmpty()) {
+            throw new FormatQuittanceNonReconnuException();
+        }
         return new QuittanceReversement(numeroLiquidation, numeroDemande, demandeur, date, lignes);
     }
 

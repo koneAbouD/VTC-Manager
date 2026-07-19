@@ -26,6 +26,15 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
     private final ContraventionJpaRepository jpaRepository;
     private final ContraventionPersistenceMapper mapper;
 
+    /**
+     * Tri d'affichage : date de l'infraction la plus récente d'abord, puis date
+     * de création en second (départage les infractions de même date, ex. import
+     * en lot où tous les createdAt sont quasi identiques).
+     */
+    private static final Sort SORT_RECENT = Sort.by(
+            Sort.Order.desc("dateInfraction"),
+            Sort.Order.desc("createdAt"));
+
     @Override
     public Contravention save(Contravention contravention) {
         return mapper.toDomain(jpaRepository.save(mapper.toEntity(contravention)));
@@ -38,7 +47,7 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
 
     @Override
     public List<Contravention> findAll() {
-        return mapper.toDomainList(jpaRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")));
+        return mapper.toDomainList(jpaRepository.findAll(SORT_RECENT));
     }
 
     @Override
@@ -54,7 +63,7 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         Page<Contravention> result = jpaRepository
-                .findAll(spec, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")))
+                .findAll(spec, PageRequest.of(page, size, SORT_RECENT))
                 .map(mapper::toDomain);
         return new PageResult<>(
                 result.getContent(), result.getNumber(), result.getSize(), result.getTotalElements());
@@ -62,12 +71,12 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
 
     @Override
     public List<Contravention> findByChauffeurId(Long chauffeurId) {
-        return mapper.toDomainList(jpaRepository.findByChauffeurIdOrderByCreatedAtDesc(chauffeurId));
+        return mapper.toDomainList(jpaRepository.findByChauffeurId(chauffeurId, SORT_RECENT));
     }
 
     @Override
     public List<Contravention> findByVehiculeId(Long vehiculeId) {
-        return mapper.toDomainList(jpaRepository.findByVehiculeIdOrderByCreatedAtDesc(vehiculeId));
+        return mapper.toDomainList(jpaRepository.findByVehiculeId(vehiculeId, SORT_RECENT));
     }
 
     @Override

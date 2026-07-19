@@ -109,26 +109,36 @@ class _ContraventionImportReviewPageState
     return Scaffold(
       backgroundColor: AppColors.scaffold,
       appBar: const AppHeader(title: "Revue de l'import"),
-      body: _items.isEmpty
-          ? _EmptyState()
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              children: [
-                _resume(a, bloque),
-                if (!bloque) ...[
-                  const SizedBox(height: 16),
-                  const Text('Contraventions détectées',
-                      style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.dark)),
-                  const SizedBox(height: 10),
-                  for (var i = 0; i < _items.length; i++)
-                    _carte(_items[i], i),
-                ],
-              ],
-            ),
-      bottomNavigationBar: (_items.isEmpty || bloque) ? null : _barreConfirmer(),
+      body: Column(
+        children: [
+          Expanded(
+            child: _items.isEmpty
+                ? _EmptyState()
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    children: [
+                      _resume(a, bloque),
+                      if (!bloque) ...[
+                        const SizedBox(height: 16),
+                        const Text('Contraventions détectées',
+                            style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.dark)),
+                        const SizedBox(height: 10),
+                        for (var i = 0; i < _items.length; i++)
+                          _carte(_items[i], i),
+                      ],
+                    ],
+                  ),
+          ),
+          // Barre de confirmation intégrée au flux (et non en bottomNavigationBar) :
+          // cette page est un Scaffold imbriqué dans le hub ; un bottomNavigationBar
+          // y écrase le corps jusqu'à le faire disparaître. Placée sous l'Expanded,
+          // la barre reste toujours sous la liste.
+          if (!(_items.isEmpty || bloque)) _barreConfirmer(),
+        ],
+      ),
     );
   }
 

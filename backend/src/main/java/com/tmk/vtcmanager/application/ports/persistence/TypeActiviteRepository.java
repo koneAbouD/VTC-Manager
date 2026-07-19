@@ -7,7 +7,17 @@ import java.util.Optional;
 
 public interface TypeActiviteRepository {
 
+    TypeActivite save(TypeActivite typeActivite);
+
     List<TypeActivite> findAll();
 
     Optional<TypeActivite> findById(Long id);
+
+    Optional<TypeActivite> findByNom(String nom);
+
+    void deleteById(Long id);
+
+    boolean existsById(Long id);
+
+    boolean existsByNom(String nom);
 }

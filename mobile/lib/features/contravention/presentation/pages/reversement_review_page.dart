@@ -102,9 +102,13 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                   ),
           ),
+          // Barre de confirmation intégrée au flux (et non en bottomNavigationBar) :
+          // cette page est un Scaffold imbriqué dans le hub ; un bottomNavigationBar
+          // y écrase le corps (en-tête + liste) jusqu'à le faire disparaître.
+          // Placée sous l'Expanded, la barre reste toujours sous la liste.
+          _barreConfirmation(),
         ],
       ),
-      bottomNavigationBar: _barreConfirmation(),
     );
   }
 

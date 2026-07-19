@@ -5,6 +5,8 @@ import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedExceptio
 import com.tmk.vtcmanager.application.exception.ChauffeurPermisExpireException;
 import com.tmk.vtcmanager.application.exception.ChauffeurSuspenduException;
 import com.tmk.vtcmanager.application.exception.EncaissementPenaliteDepasseMontantException;
+import com.tmk.vtcmanager.application.exception.FormatQuittanceNonReconnuException;
+import com.tmk.vtcmanager.application.exception.QuittanceIllisibleException;
 import com.tmk.vtcmanager.application.exception.LignePenaliteDejaTermineeException;
 import com.tmk.vtcmanager.application.exception.LignePenaliteNonDemarrableException;
 import com.tmk.vtcmanager.application.exception.LignePenaliteNonEncaissableException;
@@ -181,6 +183,18 @@ public class GlobalExceptionHandler {
                 + maxFileSize + ". Veuillez choisir un fichier plus léger.";
         return respond(HttpStatus.PAYLOAD_TOO_LARGE, "DOCUMENT_TROP_VOLUMINEUX", message, request,
                 List.of("tailleMaxAutorisee:" + maxFileSize), ex);
+    }
+
+    // ── Import de quittance : document illisible ou format non reconnu ──────
+
+    @ExceptionHandler(QuittanceIllisibleException.class)
+    public ResponseEntity<ApiError> handleQuittanceIllisible(QuittanceIllisibleException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "QUITTANCE_ILLISIBLE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(FormatQuittanceNonReconnuException.class)
+    public ResponseEntity<ApiError> handleFormatQuittanceNonReconnu(FormatQuittanceNonReconnuException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "FORMAT_QUITTANCE_NON_RECONNU", ex.getMessage(), request, ex);
     }
 
     // ── Conflits / ressources ──────────────────────────────────────────────
