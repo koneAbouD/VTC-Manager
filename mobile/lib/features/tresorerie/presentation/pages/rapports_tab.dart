@@ -27,7 +27,7 @@ class RapportsTab extends ConsumerWidget {
               MaterialPageRoute(builder: (_) => const RapportFinancierPage())),
         ),
         _RapportCard(
-          icone: Icons.gavel_outlined,
+          icone: Icons.analytics_outlined,
           titre: 'Restitution des cotisations',
           description:
               'Compte courant chauffeur/véhicule : arrêté de compte et versement du net',

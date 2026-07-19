@@ -4,6 +4,7 @@ import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/page_result.dart';
 import '../models/apercu_import_model.dart';
+import '../models/apercu_reversement_model.dart';
 import '../models/contravention_model.dart';
 
 class ContraventionRemoteDatasource {
@@ -94,6 +95,34 @@ class ContraventionRemoteDatasource {
       List<ContraventionModel> items) async {
     final data = await _client.post('/contraventions/confirmer', {
       'contraventions': items.map((c) => c.toImportItemJson()).toList(),
+    });
+    return data as Map<String, dynamic>;
+  }
+
+  // ── Reversement par quittance de l'État ─────────────────────────────────
+
+  /// Téléverse une quittance de paiement (PDF) et récupère l'aperçu rapproché
+  /// (`POST /contraventions/reversements/importer`). Rien n'est reversé.
+  Future<ApercuReversementModel> importerQuittance(
+      Uint8List fileBytes, String filename) async {
+    final data = await _client.postMultipartSingle(
+      '/contraventions/reversements/importer',
+      data: const {},
+      fileField: 'fichier',
+      fileBytes: fileBytes,
+      fileFilename: filename,
+      fileContentType: 'application/pdf',
+    );
+    return ApercuReversementModel.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Confirme le reversement des contraventions sélectionnées
+  /// (`POST /contraventions/reversements/confirmer`). Retourne le bilan brut.
+  Future<Map<String, dynamic>> confirmerReversement(
+      List<int> contraventionIds, String? referenceQuittance) async {
+    final data = await _client.post('/contraventions/reversements/confirmer', {
+      'referenceQuittance': referenceQuittance,
+      'contraventionIds': contraventionIds,
     });
     return data as Map<String, dynamic>;
   }

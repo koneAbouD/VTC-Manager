@@ -7,6 +7,7 @@ import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/contravention_remote_datasource.dart';
 import '../../data/models/apercu_import_model.dart';
+import '../../data/models/apercu_reversement_model.dart';
 import '../../data/models/contravention_model.dart';
 import '../../data/repositories_impl/contravention_repository_impl.dart';
 import '../../domain/entities/contravention.dart';
@@ -192,4 +193,23 @@ class ContraventionImportController {
 final contraventionImportProvider = Provider<ContraventionImportController>(
   (ref) =>
       ContraventionImportController(ref.watch(_contraventionDatasourceProvider)),
+);
+
+/// Contrôleur du flux de reversement par quittance de l'État : upload + aperçu
+/// rapproché puis confirmation du reversement en lot.
+class ReversementImportController {
+  final ContraventionRemoteDatasource _datasource;
+  const ReversementImportController(this._datasource);
+
+  Future<ApercuReversementModel> importer(Uint8List fileBytes, String filename) =>
+      _datasource.importerQuittance(fileBytes, filename);
+
+  Future<Map<String, dynamic>> confirmer(
+          List<int> contraventionIds, String? referenceQuittance) =>
+      _datasource.confirmerReversement(contraventionIds, referenceQuittance);
+}
+
+final reversementImportProvider = Provider<ReversementImportController>(
+  (ref) =>
+      ReversementImportController(ref.watch(_contraventionDatasourceProvider)),
 );

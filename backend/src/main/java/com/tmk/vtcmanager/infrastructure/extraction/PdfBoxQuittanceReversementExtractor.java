@@ -76,8 +76,16 @@ public class PdfBoxQuittanceReversementExtractor implements QuittanceReversement
             if (!vus.add(numero)) {
                 continue; // même numéro sur deux lignes de rendu : on ne le compte qu'une fois
             }
+            String plaque = premier(PLAQUE, ligne);
+            // On isole les colonnes de droite (code, montant) en retirant le numéro
+            // et la plaque, dont les chiffres pollueraient l'extraction (ex. le
+            // « 991 » de « AA-991-SJ-01 » capté comme code d'infraction).
+            String reste = ligne.replaceFirst("C\\d{15,}", " ");
+            if (plaque != null) {
+                reste = reste.replace(plaque, " ");
+            }
             lignes.add(new LigneQuittanceReversement(
-                    numero, premier(PLAQUE, ligne), premier(CODE, ligne), dernierMontant(ligne)));
+                    numero, plaque, premier(CODE, reste), dernierMontant(reste)));
         }
 
         log.info("Quittance extraite : liquidation={}, demande={}, {} ligne(s)",

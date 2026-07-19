@@ -8,6 +8,7 @@ import '../../../penalite/presentation/providers/penalite_provider.dart';
 import '../providers/contravention_provider.dart';
 import 'contravention_form_page.dart';
 import 'contravention_import_page.dart';
+import 'reversement_import_page.dart';
 import 'contraventions_page.dart';
 
 /// Hub unifié « Contraventions » : coiffe les pénalités internes et les
@@ -73,6 +74,12 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
   Future<void> _importerPdf() async {
     await Navigator.push(context,
         MaterialPageRoute(builder: (_) => const ContraventionImportPage()));
+    if (mounted) ref.read(contraventionsListeProvider.notifier).refresh();
+  }
+
+  Future<void> _importerQuittance() async {
+    await Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const ReversementImportPage()));
     if (mounted) ref.read(contraventionsListeProvider.notifier).refresh();
   }
 
@@ -188,6 +195,15 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
                           onTap: () {
                             _closeAdd();
                             _importerPdf();
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        _addAction(
+                          label: 'Importer une quittance',
+                          icon: Icons.receipt_long_outlined,
+                          onTap: () {
+                            _closeAdd();
+                            _importerQuittance();
                           },
                         ),
                         const SizedBox(height: 10),
