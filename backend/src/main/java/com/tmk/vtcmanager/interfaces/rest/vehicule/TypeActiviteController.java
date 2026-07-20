@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.interfaces.rest.vehicule;
 
+import com.tmk.vtcmanager.application.usecases.vehicule.GetActifsTypesActivitesUseCase;
 import com.tmk.vtcmanager.application.usecases.vehicule.GetAllTypesActivitesUseCase;
 import com.tmk.vtcmanager.application.usecases.vehicule.TypeActiviteReferentielUseCase;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.request.TypeActiviteRequest;
@@ -24,13 +25,22 @@ import java.util.Map;
 public class TypeActiviteController {
 
     private final GetAllTypesActivitesUseCase getAllTypesActivitesUseCase;
+    private final GetActifsTypesActivitesUseCase getActifsTypesActivitesUseCase;
     private final TypeActiviteReferentielUseCase referentielUseCase;
     private final TypeActiviteRestMapper typeActiviteRestMapper;
 
     @GetMapping
-    @Operation(summary = "Lister tous les types d'activité")
+    @Operation(summary = "Lister tous les types d'activité (actifs ET inactifs)",
+               description = "Liste complète, destinée au paramétrage. Pour la sélection, utiliser /actifs.")
     public ResponseEntity<List<TypeActiviteResponse>> getAllTypesActivites() {
         return ResponseEntity.ok(typeActiviteRestMapper.toResponseList(getAllTypesActivitesUseCase.execute()));
+    }
+
+    @GetMapping("/actifs")
+    @Operation(summary = "Lister les types d'activité actifs",
+               description = "Uniquement les actifs, triés par nom — destinés à la sélection dans les formulaires.")
+    public ResponseEntity<List<TypeActiviteResponse>> getActifsTypesActivites() {
+        return ResponseEntity.ok(typeActiviteRestMapper.toResponseList(getActifsTypesActivitesUseCase.execute()));
     }
 
     @PostMapping

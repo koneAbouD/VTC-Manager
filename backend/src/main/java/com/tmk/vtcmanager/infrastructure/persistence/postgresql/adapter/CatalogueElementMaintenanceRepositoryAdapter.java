@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.ports.persistence.CatalogueElementMaintena
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.CatalogueElementMaintenanceJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.CatalogueElementMaintenancePersistenceMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -29,7 +30,12 @@ public class CatalogueElementMaintenanceRepositoryAdapter implements CatalogueEl
 
     @Override
     public List<CatalogueElementMaintenance> findAll() {
-        return mapper.toDomainList(jpaRepository.findAll());
+        // Ordre déterministe (createdAt desc, comme les autres référentiels) :
+        // sans tri, PostgreSQL renvoie la ligne modifiée à une autre position
+        // après un UPDATE (activation/désactivation) → la ligne « sauterait »
+        // dans la liste de paramétrage après un toggle.
+        return mapper.toDomainList(
+                jpaRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")));
     }
 
     @Override

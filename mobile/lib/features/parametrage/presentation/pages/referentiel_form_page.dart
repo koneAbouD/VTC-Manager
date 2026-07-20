@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/image_viewer.dart';
 import '../../data/parametrage_api.dart';
 import '../providers/parametrage_providers.dart';
 
@@ -24,6 +26,9 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
   final Map<String, TextEditingController> _texts = {};
   final Map<String, Object?> _refs = {}; // champNom -> id sélectionné
   final Map<String, bool> _bools = {};
+  final Map<String, String?> _images = {}; // champNom -> nom d'objet
+  final Map<String, String?> _imagePreview = {}; // champNom -> URL d'aperçu
+  final Set<String> _uploading = {};
   bool _saving = false;
 
   ReferentielDescriptor get d => widget.descriptor;
@@ -39,6 +44,11 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           break;
         case 'reference':
           _refs[c.nom] = _valRefId(c);
+          break;
+        case 'image':
+          _images[c.nom] = widget.item?[c.nom] as String?;
+          // Convention : l'URL d'aperçu est renvoyée dans « {nom}Url » (ex. imageUrl).
+          _imagePreview[c.nom] = widget.item?['${c.nom}Url'] as String?;
           break;
         default:
           _texts[c.nom] = TextEditingController(text: _valText(c));
@@ -94,6 +104,9 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           final v = _texts[c.nom]!.text.trim();
           body[c.nom] = v.isEmpty ? null : num.tryParse(v.replaceAll(',', '.'));
           break;
+        case 'image':
+          body[c.nom] = _images[c.nom];
+          break;
         default:
           final v = _texts[c.nom]!.text.trim();
           body[c.nom] = v.isEmpty ? null : v;
@@ -148,41 +161,111 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            for (final c in d.champsSaisis) ...[
-              _champ(c),
-              const SizedBox(height: 16),
-            ],
+            _enTeteInfo(),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 2, 16, 18),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final c in d.champsSaisis) ...[
+                    const SizedBox(height: 14),
+                    _champ(c),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: SizedBox(
-            height: 50,
-            child: FilledButton.icon(
-              onPressed: _saving ? null : _enregistrer,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryDark,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.border,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.scaffold,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _saving ? null : _enregistrer,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryDark,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.border,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check_rounded, size: 19),
+                label: Text(_edition ? 'Enregistrer' : 'Créer',
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w700)),
               ),
-              icon: _saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.check_rounded, size: 19),
-              label: Text(_edition ? 'Enregistrer' : 'Créer',
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // ── En-tête contextuel (identité du référentiel + action en cours) ─────────
+  Widget _enTeteInfo() {
+    final initiale = d.libelle.isNotEmpty ? d.libelle[0].toUpperCase() : '•';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryTint,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Text(initiale,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_edition ? 'Modifier' : 'Nouvel enregistrement',
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark)),
+                const SizedBox(height: 2),
+                Text(
+                  d.description.isNotEmpty ? d.description : d.libelle,
+                  style:
+                      const TextStyle(fontSize: 12.5, color: AppColors.label),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -194,9 +277,110 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         return _champBool(c);
       case 'reference':
         return _champReference(c);
+      case 'image':
+        return _champImage(c);
       default:
         return _champTexte(c);
     }
+  }
+
+  // ── Champ image (aperçu + choisir/changer/supprimer) ──────────────────────
+  Future<void> _choisirImage(String nom) async {
+    final XFile? picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1280,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+    setState(() => _uploading.add(nom));
+    try {
+      final bytes = await picked.readAsBytes();
+      final res = await ref
+          .read(parametrageApiProvider)
+          .uploaderImage(d.endpoint, bytes, picked.name);
+      if (!mounted) return;
+      setState(() {
+        _images[nom] = res.image;
+        _imagePreview[nom] = res.url;
+      });
+    } catch (e) {
+      _toast(_message(e), erreur: true);
+    } finally {
+      if (mounted) setState(() => _uploading.remove(nom));
+    }
+  }
+
+  Widget _champImage(ChampDescriptor c) {
+    final preview = _imagePreview[c.nom];
+    final uploading = _uploading.contains(c.nom);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(c),
+        Container(
+          height: 150,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: AppColors.fieldFill,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: uploading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppColors.primary))
+              : preview == null
+                  ? const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.image_outlined,
+                              size: 34, color: AppColors.hint),
+                          SizedBox(height: 6),
+                          Text('Aucune image',
+                              style: TextStyle(
+                                  color: AppColors.hint, fontSize: 12)),
+                        ],
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: () => showImageViewer(context, preview),
+                      child: Image.network(
+                        preview,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, __, ___) => const Center(
+                            child: Icon(Icons.broken_image_outlined,
+                                color: AppColors.hint)),
+                      ),
+                    ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            TextButton.icon(
+              onPressed: uploading ? null : () => _choisirImage(c.nom),
+              icon: Icon(preview == null
+                  ? Icons.add_photo_alternate_outlined
+                  : Icons.swap_horiz_rounded),
+              label: Text(preview == null ? 'Ajouter une image' : 'Changer'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
+            if (preview != null && !uploading)
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  _images[c.nom] = null;
+                  _imagePreview[c.nom] = null;
+                }),
+                icon: const Icon(Icons.delete_outline, size: 20),
+                label: const Text('Supprimer'),
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              ),
+          ],
+        ),
+      ],
+    );
   }
 
   Widget _label(ChampDescriptor c) => Padding(

@@ -101,12 +101,13 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AppHeader(title: 'Jours fériés'),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _ajouterManuel,
-        backgroundColor: const Color(0xFF3B5BDB),
-        icon: const Icon(Icons.add),
-        label: const Text('Ajouter'),
+      appBar: AppHeader(
+        title: 'Jours fériés',
+        // Bouton d'ajout dans l'en-tête (charte : même pill que LignesMaintenancePage).
+        action: AppHeaderAction(
+          icon: Icons.add_rounded,
+          onTap: _ajouterManuel,
+        ),
       ),
       body: Column(
         children: [
@@ -193,7 +194,7 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
     return RefreshIndicator(
       onRefresh: _charger,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         itemCount: _feries.length,
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, i) => _carte(_feries[i]),

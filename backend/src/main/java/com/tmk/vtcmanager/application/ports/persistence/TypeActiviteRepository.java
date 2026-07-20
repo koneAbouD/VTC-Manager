@@ -11,6 +11,8 @@ public interface TypeActiviteRepository {
 
     List<TypeActivite> findAll();
 
+    List<TypeActivite> findAllActifs();
+
     Optional<TypeActivite> findById(Long id);
 
     Optional<TypeActivite> findByNom(String nom);

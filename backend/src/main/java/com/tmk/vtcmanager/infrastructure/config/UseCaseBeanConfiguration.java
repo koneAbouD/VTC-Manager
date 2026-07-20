@@ -575,18 +575,25 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public GetActifsCatalogueElementsMaintenanceUseCase getActifsCatalogueElementsMaintenanceUseCase(CatalogueElementMaintenanceRepository repo) {
+        return new GetActifsCatalogueElementsMaintenanceUseCase(repo);
+    }
+
+    @Bean
     public CreateCatalogueElementMaintenanceUseCase createCatalogueElementMaintenanceUseCase(CatalogueElementMaintenanceRepository repo) {
         return new CreateCatalogueElementMaintenanceUseCase(repo);
     }
 
     @Bean
-    public DeleteCatalogueElementMaintenanceUseCase deleteCatalogueElementMaintenanceUseCase(CatalogueElementMaintenanceRepository repo) {
-        return new DeleteCatalogueElementMaintenanceUseCase(repo);
+    public DeleteCatalogueElementMaintenanceUseCase deleteCatalogueElementMaintenanceUseCase(
+            CatalogueElementMaintenanceRepository repo, FileStoragePort storage) {
+        return new DeleteCatalogueElementMaintenanceUseCase(repo, storage);
     }
 
     @Bean
-    public UpdateCatalogueElementMaintenanceUseCase updateCatalogueElementMaintenanceUseCase(CatalogueElementMaintenanceRepository repo) {
-        return new UpdateCatalogueElementMaintenanceUseCase(repo);
+    public UpdateCatalogueElementMaintenanceUseCase updateCatalogueElementMaintenanceUseCase(
+            CatalogueElementMaintenanceRepository repo, FileStoragePort storage) {
+        return new UpdateCatalogueElementMaintenanceUseCase(repo, storage);
     }
 
     @Bean

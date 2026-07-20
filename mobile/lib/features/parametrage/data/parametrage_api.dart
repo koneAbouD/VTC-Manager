@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../core/network/api_client.dart';
 
 /// Description d'un champ d'un référentiel (issue du meta-catalogue backend).
@@ -123,4 +125,15 @@ class ParametrageApi {
 
   Future<void> supprimer(String endpoint, Object id) =>
       _client.delete('${_p(endpoint)}/$id');
+
+  /// Upload d'une image pour un champ de type `image` : envoie le fichier à
+  /// `{endpoint}/image` (multipart) et retourne le nom d'objet (à enregistrer
+  /// dans le champ) + une URL présignée d'aperçu.
+  Future<({String image, String url})> uploaderImage(
+      String endpoint, Uint8List bytes, String filename) async {
+    final res = await _client.postFile('${_p(endpoint)}/image',
+        bytes: bytes, filename: filename);
+    final m = res as Map<String, dynamic>;
+    return (image: m['image'] as String, url: m['url'] as String);
+  }
 }

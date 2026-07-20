@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/image_viewer.dart';
 import '../../data/parametrage_api.dart';
 import '../providers/parametrage_providers.dart';
 import 'referentiel_form_page.dart';
@@ -199,16 +200,16 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
 
     return Scaffold(
       backgroundColor: AppColors.scaffold,
-      appBar: AppHeader(title: d.libelle),
-      floatingActionButton: d.editable
-          ? FloatingActionButton.extended(
-              onPressed: _busy ? null : () => _ouvrirFormulaire(),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Ajouter'),
-            )
-          : null,
+      appBar: AppHeader(
+        title: d.libelle,
+        // Bouton d'ajout dans l'en-tête (charte : même pill que LignesMaintenancePage).
+        action: d.editable
+            ? AppHeaderAction(
+                icon: Icons.add_rounded,
+                onTap: _busy ? null : () => _ouvrirFormulaire(),
+              )
+            : null,
+      ),
       body: liste == null
           ? itemsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -348,6 +349,51 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
     );
   }
 
+  Widget _leadingVisuel(String? imageUrl, String initiale) {
+    Widget pastille() => Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.10),
+            shape: BoxShape.circle,
+          ),
+          child: Text(initiale,
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary)),
+        );
+    if (imageUrl == null || imageUrl.isEmpty) return pastille();
+    return GestureDetector(
+      onTap: () => showImageViewer(context, imageUrl),
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.network(
+              imageUrl,
+              width: 40,
+              height: 40,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => pastille(),
+            ),
+          ),
+          // Petit indice « agrandir ».
+          Container(
+            padding: const EdgeInsets.all(1),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Icon(Icons.zoom_in_rounded, size: 11, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _tuile(Map<String, dynamic> item) {
     final actif = _estActif(item);
     final sousTitre = _sousTitre(item);
@@ -371,43 +417,20 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
             padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
             child: Row(
               children: [
-                // Pastille initiale
-                Container(
-                  width: 38,
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.10),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(initiale,
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary)),
-                ),
+                // Vignette image si présente, sinon pastille à initiale.
+                _leadingVisuel(item['imageUrl'] as String?, initiale),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(titre,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.dark)),
-                          ),
-                          if (d.gereActif) ...[
-                            const SizedBox(width: 8),
-                            _badgeStatut(actif),
-                          ],
-                        ],
-                      ),
+                      Text(titre,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.dark)),
                       if (sousTitre.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(sousTitre,
@@ -419,12 +442,18 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
                     ],
                   ),
                 ),
+                // Toggle minimisé (compact) : l'état est aussi rendu par
+                // l'opacité de la tuile et la pastille grisée quand inactif.
                 if (d.gereActif && d.editable)
-                  Switch.adaptive(
-                    value: actif,
-                    activeThumbColor: AppColors.primary,
-                    onChanged:
-                        _busy ? null : (v) => _basculerActif(item, v),
+                  Transform.scale(
+                    scale: 0.78,
+                    child: Switch.adaptive(
+                      value: actif,
+                      activeThumbColor: AppColors.primary,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      onChanged:
+                          _busy ? null : (v) => _basculerActif(item, v),
+                    ),
                   ),
                 if (d.editable)
                   PopupMenuButton<String>(
@@ -448,19 +477,4 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
     );
   }
 
-  Widget _badgeStatut(bool actif) {
-    final color = actif ? AppColors.success : AppColors.hint;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        actif ? 'Actif' : 'Inactif',
-        style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w700, color: color),
-      ),
-    );
-  }
 }

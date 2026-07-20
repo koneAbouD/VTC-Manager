@@ -23,15 +23,17 @@ class ReferentielDatasource {
   final ApiClient _api;
   const ReferentielDatasource(this._api);
 
+  // Sélection dans les formulaires : on ne veut que les référentiels ACTIFS.
+  // Le paramétrage, lui, liste tout via le module générique.
   Future<List<ReferentielItem>> getTypesVehicules() async {
-    final data = await _api.get('/v1/types-vehicules') as List;
+    final data = await _api.get('/v1/types-vehicules/actifs') as List;
     return data
         .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
   Future<List<ReferentielItem>> getTypesActivites() async {
-    final data = await _api.get('/v1/types-activites') as List;
+    final data = await _api.get('/v1/types-activites/actifs') as List;
     return data
         .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
         .toList();

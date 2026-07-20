@@ -19,7 +19,7 @@ public record ChampDescriptorResponse(
         String label,
 
         @Schema(description = "Type de contrôle à afficher.",
-                allowableValues = {"text", "number", "bool", "color", "date", "reference", "enum"},
+                allowableValues = {"text", "number", "bool", "color", "date", "reference", "enum", "image"},
                 example = "text")
         String type,
 
@@ -55,6 +55,11 @@ public record ChampDescriptorResponse(
 
     public static ChampDescriptorResponse reference(String nom, String label, boolean obligatoire, String refKey) {
         return new ChampDescriptorResponse(nom, label, "reference", obligatoire, true, refKey, null);
+    }
+
+    /** Champ image : upload d'un fichier via {endpoint}/image, la valeur stockée est le nom d'objet. */
+    public static ChampDescriptorResponse image(String nom, String label, boolean obligatoire) {
+        return new ChampDescriptorResponse(nom, label, "image", obligatoire, true, null, null);
     }
 
     /** Champ non modifiable (clé immuable ou dérivé). */

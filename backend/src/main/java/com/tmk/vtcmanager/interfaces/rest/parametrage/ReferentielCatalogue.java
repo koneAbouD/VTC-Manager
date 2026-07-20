@@ -83,6 +83,8 @@ public class ReferentielCatalogue {
                 "id",
                 List.of(
                         texte("libelle", "Libellé", true),
+                        nombre("montantDefaut", "Montant par défaut", false),
+                        image("image", "Image", false),
                         booleen("actif", "Actif")));
     }
 }

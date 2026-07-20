@@ -6,13 +6,17 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+/**
+ * Éléments de maintenance <b>actifs uniquement</b>, triés par libellé — destinés
+ * à la sélection (saisie d'une opération de maintenance). Le paramétrage, lui,
+ * consomme la liste complète via {@link GetAllCatalogueElementsMaintenanceUseCase}.
+ */
 @RequiredArgsConstructor
-public class GetAllCatalogueElementsMaintenanceUseCase {
+public class GetActifsCatalogueElementsMaintenanceUseCase {
 
     private final CatalogueElementMaintenanceRepository repository;
 
-    /** Liste complète (actifs ET inactifs) — utilisée par le paramétrage. */
     public List<CatalogueElementMaintenance> execute() {
-        return repository.findAll();
+        return repository.findAllActifs();
     }
 }

@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.interfaces.rest.vehicule;
 
+import com.tmk.vtcmanager.application.usecases.vehicule.GetActifsTypesVehiculesUseCase;
 import com.tmk.vtcmanager.application.usecases.vehicule.GetAllTypesVehiculesUseCase;
 import com.tmk.vtcmanager.application.usecases.vehicule.TypeVehiculeReferentielUseCase;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.request.TypeVehiculeRequest;
@@ -24,16 +25,25 @@ import java.util.Map;
 public class TypeVehiculeController {
 
     private final GetAllTypesVehiculesUseCase getAllTypesVehiculesUseCase;
+    private final GetActifsTypesVehiculesUseCase getActifsTypesVehiculesUseCase;
     private final TypeVehiculeReferentielUseCase referentielUseCase;
     private final TypeVehiculeRestMapper typeVehiculeRestMapper;
 
     @GetMapping
-    @Operation(summary = "Obtenir la liste de tous les types de véhicules", 
-               description = "Retourne la liste complète des types de véhicules disponibles (TAXI, LIVRAISON, LOCATION)")
+    @Operation(summary = "Obtenir la liste de tous les types de véhicules (actifs ET inactifs)",
+               description = "Liste complète, destinée au paramétrage. Pour la sélection, utiliser /actifs.")
     public ResponseEntity<List<TypeVehiculeResponse>> getAllTypesVehicules() {
         var types = getAllTypesVehiculesUseCase.execute();
         var response = typeVehiculeRestMapper.toResponseList(types);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/actifs")
+    @Operation(summary = "Obtenir les types de véhicules actifs",
+               description = "Uniquement les actifs, triés par nom — destinés à la sélection dans les formulaires.")
+    public ResponseEntity<List<TypeVehiculeResponse>> getActifsTypesVehicules() {
+        return ResponseEntity.ok(
+                typeVehiculeRestMapper.toResponseList(getActifsTypesVehiculesUseCase.execute()));
     }
 
     @GetMapping("/{id}")

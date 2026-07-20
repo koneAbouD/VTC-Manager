@@ -59,7 +59,8 @@ final _gestionnairesProvider =
 final _typesActivitesProvider =
     FutureProvider<List<TypeActiviteLocal>>((ref) async {
   final client = ref.watch(_gfApiClient);
-  final response = await client.get('/v1/types-activites');
+  // Sélection : uniquement les types d'activité actifs.
+  final response = await client.get('/v1/types-activites/actifs');
   final List data = response as List;
   return data
       .map((e) => TypeActiviteLocal.fromJson(e as Map<String, dynamic>))

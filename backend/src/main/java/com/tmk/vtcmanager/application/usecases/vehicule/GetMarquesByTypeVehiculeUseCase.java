@@ -13,10 +13,14 @@ public class GetMarquesByTypeVehiculeUseCase {
 
     private final MarqueRepository marqueRepository;
 
+    /**
+     * Marques d'un type de véhicule, destinées à la <b>sélection</b> (formulaire
+     * véhicule) : on ne retourne que les marques <b>actives</b>. Le paramétrage,
+     * lui, liste toutes les marques via l'endpoint de base.
+     */
     public List<Marque> execute(Long typeId) {
-        // Pour l'instant, nous allons chercher toutes les marques et filtrer par type
-        // Dans une implémentation optimisée, nous pourrions ajouter une méthode findByTypeId dans le repository
         return marqueRepository.findAll().stream()
+                .filter(Marque::isActif)
                 .filter(marque -> marque.getType() != null && marque.getType().getId().equals(typeId))
                 .toList();
     }

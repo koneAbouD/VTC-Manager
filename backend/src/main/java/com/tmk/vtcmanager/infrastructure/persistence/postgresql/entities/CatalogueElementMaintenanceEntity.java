@@ -3,6 +3,8 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = CatalogueElementMaintenanceEntity.TABLE_NAME)
 @Getter
@@ -23,4 +25,10 @@ public class CatalogueElementMaintenanceEntity extends AbstractAuditEntity {
 
     @Column(nullable = false)
     private boolean actif;
+
+    @Column(name = "montant_defaut", precision = 19, scale = 2)
+    private BigDecimal montantDefaut;
+
+    @Column(length = 512)
+    private String image;
 }

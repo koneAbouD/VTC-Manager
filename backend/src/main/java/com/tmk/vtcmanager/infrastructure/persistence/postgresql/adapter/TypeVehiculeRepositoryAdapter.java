@@ -40,6 +40,13 @@ public class TypeVehiculeRepositoryAdapter implements TypeVehiculeRepository {
     }
 
     @Override
+    public List<TypeVehicule> findAllActifs() {
+        return jpaRepository.findByActifTrueOrderByNomAsc().stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
     public Optional<TypeVehicule> findByNom(String nom) {
         return jpaRepository.findByNom(nom)
                 .map(mapper::toDomain);

@@ -13,6 +13,8 @@ public interface TypeVehiculeRepository {
 
     List<TypeVehicule> findAll();
 
+    List<TypeVehicule> findAllActifs();
+
     Optional<TypeVehicule> findByNom(String nom);
 
     void deleteById(Long id);

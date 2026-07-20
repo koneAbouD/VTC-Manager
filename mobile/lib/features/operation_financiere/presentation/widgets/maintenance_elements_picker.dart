@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/image_viewer.dart';
 import '../../domain/entities/catalogue_element_maintenance.dart';
 import '../../domain/entities/element_maintenance.dart';
 import '../providers/catalogue_element_maintenance_provider.dart';
@@ -243,10 +244,30 @@ class _CataloguePickerSheetState extends State<_CataloguePickerSheet> {
                   return CheckboxListTile(
                     dense: true,
                     value: isSelected,
+                    secondary: el.imageUrl != null
+                        ? GestureDetector(
+                            onTap: () => showImageViewer(context, el.imageUrl!,
+                                titre: el.libelle),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(el.imageUrl!,
+                                  width: 34,
+                                  height: 34,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      const SizedBox(width: 34, height: 34)),
+                            ),
+                          )
+                        : null,
                     onChanged: (v) {
                       setState(() {
                         if (v == true) {
-                          _selected[el.id] = _CatalogueSelection(el);
+                          // Pré-remplit le montant avec le montant par défaut.
+                          final defaut = el.montantDefaut ?? 0;
+                          _selected[el.id] = _CatalogueSelection(el)
+                            ..montant = defaut;
+                          _controllers[el.id]?.text =
+                              defaut > 0 ? defaut.toStringAsFixed(0) : '';
                         } else {
                           _selected.remove(el.id);
                         }

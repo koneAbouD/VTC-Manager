@@ -31,6 +31,13 @@ public class TypeActiviteRepositoryAdapter implements TypeActiviteRepository {
     }
 
     @Override
+    public List<TypeActivite> findAllActifs() {
+        return jpaRepository.findByActifTrueOrderByNomAsc().stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
     public Optional<TypeActivite> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/image_viewer.dart';
 import '../../domain/entities/catalogue_element_maintenance.dart';
 import '../../domain/entities/element_maintenance.dart';
 import '../providers/catalogue_element_maintenance_provider.dart';
@@ -125,7 +126,12 @@ class _ElementsMaintenancePageState
           el.id,
           () => _CatalogueEntry(
             libelle: el.libelle,
-            montantCtrl: TextEditingController(),
+            // Pré-remplissage avec le montant par défaut du catalogue.
+            montantCtrl: TextEditingController(
+              text: (el.montantDefaut != null && el.montantDefaut! > 0)
+                  ? el.montantDefaut!.toStringAsFixed(0)
+                  : '',
+            ),
           ),
         );
       } else {
@@ -270,6 +276,23 @@ class _ElementsMaintenancePageState
             materialTapTargetSize:
                 MaterialTapTargetSize.shrinkWrap,
           ),
+          if (el.imageUrl != null) ...[
+            GestureDetector(
+              onTap: () => showImageViewer(context, el.imageUrl!, titre: el.libelle),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  el.imageUrl!,
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const SizedBox(width: 32, height: 32),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: Text(
               el.libelle,
