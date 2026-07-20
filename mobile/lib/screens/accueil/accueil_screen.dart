@@ -7,6 +7,7 @@ import 'package:vtc_manager/features/contravention/presentation/pages/contravent
 
 import '../../features/condition_travail/presentation/pages/condition_travail_liste_page.dart';
 import '../../features/operation_financiere/domain/entities/operation_financiere.dart';
+import '../../features/operation_financiere/domain/entities/solde_periode.dart';
 import '../../features/operation_financiere/domain/enums/statut_operation.dart';
 import '../../features/operation_financiere/domain/enums/type_operation.dart';
 import '../../features/operation_financiere/presentation/pages/operation_financiere_detail_page.dart';
@@ -35,9 +36,18 @@ class AccueilScreen extends ConsumerWidget {
       _ => <OperationFinanciere>[],
     };
 
-    // 10 dernières opérations (toutes périodes)
+    // 10 dernières opérations (toutes périodes).
+    // Tri sur la date d'enregistrement (dateOperation) puis, à date égale, sur
+    // l'id décroissant (= ordre de création) : sans ce départage, toutes les
+    // opérations d'un même jour sont à égalité et le tri non stable de Dart peut
+    // éjecter du top 10 une opération pourtant récente (ex. une dépense saisie
+    // le matin, noyée parmi les encaissements du jour).
     final dernieres = (List<OperationFinanciere>.from(allOps)
-          ..sort((a, b) => b.dateOperation.compareTo(a.dateOperation)))
+          ..sort((a, b) {
+            final parDate = b.dateOperation.compareTo(a.dateOperation);
+            if (parDate != 0) return parDate;
+            return (b.id ?? 0).compareTo(a.id ?? 0);
+          }))
         .take(10)
         .toList();
 
@@ -49,7 +59,6 @@ class AccueilScreen extends ConsumerWidget {
         children: [
           // ── Carte solde ─────────────────────────────────────────────────
           _SoldeCard(
-            allOps: allOps,
             money: money,
           ),
           const SizedBox(height: 24),
@@ -113,20 +122,18 @@ String _cardFiltreLabel(_CardFiltre m) => switch (m) {
 
 // ── Carte solde (toujours ouverte) ────────────────────────────────────────────
 
-class _SoldeCard extends StatefulWidget {
-  final List<OperationFinanciere> allOps;
+class _SoldeCard extends ConsumerStatefulWidget {
   final NumberFormat money;
 
   const _SoldeCard({
-    required this.allOps,
     required this.money,
   });
 
   @override
-  State<_SoldeCard> createState() => _SoldeCardState();
+  ConsumerState<_SoldeCard> createState() => _SoldeCardState();
 }
 
-class _SoldeCardState extends State<_SoldeCard> {
+class _SoldeCardState extends ConsumerState<_SoldeCard> {
   bool _visible = false;
   _CardFiltre _filtre = _CardFiltre.semaine;
   int _moisSelectionne = DateTime.now().month;
@@ -142,29 +149,24 @@ class _SoldeCardState extends State<_SoldeCard> {
     super.dispose();
   }
 
-  // ── Calcul des totaux selon le filtre actif ────────────────────────────────
+  // ── Plage [debut, fin] envoyée au backend selon le filtre actif ────────────
 
-  Iterable<OperationFinanciere> _filtreOps() {
-    // Les opérations annulées ne comptent plus dans le solde.
-    final ops =
-        widget.allOps.where((o) => o.statut != StatutOperation.ANNULEE);
-    if (_filtre == _CardFiltre.mois) {
-      return ops.where((o) =>
-          o.dateOperation.year == _anneeSelectionnee &&
-          o.dateOperation.month == _moisSelectionne);
+  ({String debut, String fin}) _plageActive() {
+    final fmt = DateFormat('yyyy-MM-dd');
+    switch (_filtre) {
+      case _CardFiltre.jour:
+        final j = fmt.format(_jourSelectionne);
+        return (debut: j, fin: j);
+      case _CardFiltre.semaine:
+        return (
+          debut: fmt.format(_semaineDebut),
+          fin: fmt.format(_semaineDebut.add(const Duration(days: 6))),
+        );
+      case _CardFiltre.mois:
+        final premier = DateTime(_anneeSelectionnee, _moisSelectionne, 1);
+        final dernier = DateTime(_anneeSelectionnee, _moisSelectionne + 1, 0);
+        return (debut: fmt.format(premier), fin: fmt.format(dernier));
     }
-    if (_filtre == _CardFiltre.jour) {
-      return ops.where((o) =>
-          o.dateOperation.year == _jourSelectionne.year &&
-          o.dateOperation.month == _jourSelectionne.month &&
-          o.dateOperation.day == _jourSelectionne.day);
-    }
-    final weekEnd = _semaineDebut.add(const Duration(days: 6));
-    return ops.where((o) {
-      final d = DateTime(
-          o.dateOperation.year, o.dateOperation.month, o.dateOperation.day);
-      return !d.isBefore(_semaineDebut) && !d.isAfter(weekEnd);
-    });
   }
 
   // ── Label de la pill date ─────────────────────────────────────────────────
@@ -325,15 +327,25 @@ class _SoldeCardState extends State<_SoldeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final ops = _filtreOps();
-    final totalRev = ops
-        .where((o) => o.typeOperation == TypeOperation.REVENU)
-        .fold<double>(0, (s, o) => s + o.montant);
-    final totalDep = ops
-        .where((o) => o.typeOperation == TypeOperation.DEPENSE)
-        .fold<double>(0, (s, o) => s + o.montant);
-    final solde = totalRev - totalDep;
+    final plage = _plageActive();
+    final soldeAsync = ref.watch(
+        soldePeriodeProvider((debut: plage.debut, fin: plage.fin)));
+    final totaux = soldeAsync.valueOrNull ?? SoldePeriode.zero;
+    final totalRev = totaux.revenus;
+    final totalDep = totaux.depenses;
+    final solde = totaux.solde;
+    // Vrai tant qu'on charge sans valeur en cache (1er affichage d'une période).
+    final chargementInitial =
+        soldeAsync.isLoading && soldeAsync.valueOrNull == null;
     final filtreLabel = _cardFiltreLabel(_filtre);
+
+    // Rendu d'un montant : masqué (œil fermé), « … » pendant le 1er chargement,
+    // sinon la valeur formatée.
+    String afficher(double v, String masque) {
+      if (!_visible) return masque;
+      if (chargementInitial) return '…';
+      return widget.money.format(v);
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -447,9 +459,7 @@ class _SoldeCardState extends State<_SoldeCard> {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            _visible
-                                ? widget.money.format(solde)
-                                : '••••••',
+                            afficher(solde, '••••••'),
                             style: const TextStyle(
                               color: Color(0xFF1A1A1A),
                               fontSize: 30,
@@ -512,9 +522,7 @@ class _SoldeCardState extends State<_SoldeCard> {
                   child: _CardStat(
                     icon: Icons.arrow_downward,
                     label: 'Revenus',
-                    value: _visible
-                        ? widget.money.format(totalRev)
-                        : '••••',
+                    value: afficher(totalRev, '••••'),
                     color: Colors.green.shade600,
                   ),
                 ),
@@ -524,9 +532,7 @@ class _SoldeCardState extends State<_SoldeCard> {
                   child: _CardStat(
                     icon: Icons.arrow_upward,
                     label: 'Dépenses',
-                    value: _visible
-                        ? widget.money.format(totalDep)
-                        : '••••',
+                    value: afficher(totalDep, '••••'),
                     color: Colors.red.shade400,
                   ),
                 ),

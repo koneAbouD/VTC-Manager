@@ -35,8 +35,11 @@ public class MaintenanceSpecs {
                 predicates.add(cb.equal(root.get("vehicule").get("id"), vehiculeId));
             }
 
+            // Tri antéchronologique (plus récentes d'abord), avec l'id
+            // décroissant comme départage pour une pagination déterministe
+            // quand plusieurs maintenances partagent la même date prévue.
             if (!Long.class.equals(query.getResultType())) {
-                query.orderBy(cb.asc(root.get("datePrevue")));
+                query.orderBy(cb.desc(root.get("datePrevue")), cb.desc(root.get("id")));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

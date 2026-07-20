@@ -810,9 +810,13 @@ class _MaintenanceCard extends StatelessWidget {
                   Icon(Icons.calendar_today_outlined,
                       size: 11, color: Colors.grey.shade400),
                   const SizedBox(width: 4),
-                  Text(_labelDate(m.datePrevue),
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade500)),
+                  Flexible(
+                    child: Text(_labelDate(m.datePrevue),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500)),
+                  ),
                   if (m.dureeHeures != null) ...[
                     const SizedBox(width: 8),
                     Icon(Icons.timer_outlined,

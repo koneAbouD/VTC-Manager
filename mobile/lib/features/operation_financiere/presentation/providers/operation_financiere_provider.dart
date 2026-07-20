@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/operation_financiere_remote_datasource.dart';
+import '../../domain/entities/solde_periode.dart';
 import '../../data/repositories_impl/operation_financiere_repository_impl.dart';
 import '../../domain/repositories/operation_financiere_repository.dart';
 import '../../domain/usecases/annuler_operation_financiere_usecase.dart';
@@ -131,4 +132,20 @@ final operationFinanciereNotifierProvider =
     update: ref.watch(_updateOpUCProvider),
     annuler: ref.watch(_annulerOpUCProvider),
   );
+});
+
+// ── Solde de la carte d'accueil (calcul backend) ─────────────────────────────
+
+/// Totaux (revenus / dépenses / solde) pour une plage `(debut, fin)` au format
+/// `yyyy-MM-dd` (bornes nullables), calculés en base via `GET /solde`.
+///
+/// Réécoute [operationFinanciereNotifierProvider] : toute création / mise à
+/// jour / annulation d'opération (qui déclenche `loadAll`) — ainsi que le
+/// tiré-pour-rafraîchir — recharge automatiquement le solde affiché.
+final soldePeriodeProvider = FutureProvider.autoDispose
+    .family<SoldePeriode, ({String? debut, String? fin})>((ref, plage) {
+  ref.watch(operationFinanciereNotifierProvider);
+  return ref
+      .watch(_opDatasourceProvider)
+      .getSolde(debut: plage.debut, fin: plage.fin);
 });

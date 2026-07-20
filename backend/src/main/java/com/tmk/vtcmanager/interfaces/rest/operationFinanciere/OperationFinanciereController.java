@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.usecases.operationFinanciere.*;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.OperationFinanciereRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.OperationFinanciereResponse;
+import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.SoldePeriodeResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.mapper.OperationFinanciereRestMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class OperationFinanciereController {
     private final UpdateOperationFinanciereUseCase updateUseCase;
     private final GetOperationFinanciereByIdUseCase getByIdUseCase;
     private final GetAllOperationsFinancieresUseCase getAllUseCase;
+    private final CalculerSoldeOperationsFinancieresUseCase calculerSoldeUseCase;
     private final AnnulerOperationFinanciereUseCase annulerUseCase;
     private final OperationFinanciereRestMapper mapper;
 
@@ -72,6 +74,19 @@ public class OperationFinanciereController {
         var result = getAllUseCase.executePage(filtres, page, size)
                 .map(mapper::toResponse);
         return PageResponse.from(result);
+    }
+
+    /**
+     * Solde / revenus / dépenses de la carte d'accueil pour une période. La
+     * granularité (jour / semaine / mois) est convertie côté client en une plage
+     * [debut, fin] ; bornes optionnelles = pas de borne. Opérations annulées
+     * exclues, agrégation faite en base.
+     */
+    @GetMapping("/solde")
+    public SoldePeriodeResponse solde(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
+        return mapper.toSoldeResponse(calculerSoldeUseCase.execute(debut, fin));
     }
 
     // {id} contraint aux chiffres : évite qu'un sous-chemin littéral (ex. /page)

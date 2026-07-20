@@ -1,6 +1,7 @@
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/page_result.dart';
+import '../../domain/entities/solde_periode.dart';
 import '../models/operation_financiere_model.dart';
 
 class OperationFinanciereRemoteDatasource {
@@ -66,6 +67,21 @@ class OperationFinanciereRemoteDatasource {
         .map((e) =>
             OperationFinanciereModel.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Totaux revenus / dépenses / solde sur la période [debut, fin]
+  /// (format `yyyy-MM-dd`, bornes optionnelles) via `GET /solde`.
+  Future<SoldePeriode> getSolde({String? debut, String? fin}) async {
+    final query = <String, String>{
+      if (debut != null) 'debut': debut,
+      if (fin != null) 'fin': fin,
+    };
+    final data =
+        await _client.get('/operations-financieres/solde', query: query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return SoldePeriode.fromJson(data);
   }
 
   Future<OperationFinanciereModel> getById(int id) async {

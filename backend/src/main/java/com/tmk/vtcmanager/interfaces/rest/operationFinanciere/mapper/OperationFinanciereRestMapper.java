@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.DetailMaintenance;
 import com.tmk.vtcmanager.application.domain.operation.ElementMaintenance;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
+import com.tmk.vtcmanager.application.domain.operation.SoldePeriode;
 import com.tmk.vtcmanager.application.domain.operation.SousCategorieOperation;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.interfaces.rest.chauffeur.mapper.ChauffeurRestMapper;
@@ -13,6 +14,7 @@ import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.Detail
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.ElementMaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.OperationFinanciereRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.OperationFinanciereResponse;
+import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.SoldePeriodeResponse;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.mapper.VehiculeRestMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -45,6 +47,10 @@ public interface OperationFinanciereRestMapper {
     OperationFinanciereResponse toResponse(OperationFinanciere domain);
 
     List<OperationFinanciereResponse> toResponseList(List<OperationFinanciere> domains);
+
+    default SoldePeriodeResponse toSoldeResponse(SoldePeriode solde) {
+        return new SoldePeriodeResponse(solde.revenus(), solde.depenses(), solde.solde());
+    }
 
     @Named("categorieRefFromId")
     default CategorieOperation categorieRefFromId(Long id) {

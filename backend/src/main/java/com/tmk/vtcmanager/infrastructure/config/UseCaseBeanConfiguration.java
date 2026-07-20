@@ -767,6 +767,12 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public CalculerSoldeOperationsFinancieresUseCase calculerSoldeOperationsFinancieresUseCase(
+            OperationFinanciereRepository repo) {
+        return new CalculerSoldeOperationsFinancieresUseCase(repo);
+    }
+
+    @Bean
     public AnnulationEncaissementService annulationEncaissementService(
             EncaissementRepository encaissementRepository,
             EncaissementCotisationRepository encaissementCotisationRepository,

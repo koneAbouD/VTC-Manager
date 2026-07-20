@@ -296,6 +296,19 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.FORBIDDEN, HttpStatus.FORBIDDEN.getReasonPhrase(), ex.getMessage(), request, ex);
     }
 
+    /**
+     * Refus d'autorisation au niveau méthode ({@code @PreAuthorize}) : ces
+     * dénis (dont {@code AuthorizationDeniedException}) remontent jusqu'au
+     * DispatcherServlet et doivent être mappés en 403, pas capturés par le
+     * handler générique {@code Exception} → 500.
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException ex, HttpServletRequest request) {
+        return respond(HttpStatus.FORBIDDEN, HttpStatus.FORBIDDEN.getReasonPhrase(),
+                "Vous n'avez pas les droits nécessaires pour cette action.", request, ex);
+    }
+
     @ExceptionHandler(SessionExpiredException.class)
     public ResponseEntity<ApiError> handleSessionExpired(SessionExpiredException ex, HttpServletRequest request) {
         return respond(HttpStatus.UNAUTHORIZED, "SESSION_EXPIRED", ex.getMessage(), request, ex);
