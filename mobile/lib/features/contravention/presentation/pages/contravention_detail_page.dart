@@ -1,15 +1,19 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:pdfx/pdfx.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/detail_premium.dart';
 import '../../domain/entities/contravention.dart';
 import '../providers/contravention_provider.dart';
 import 'contravention_form_page.dart';
 
 /// Détail premium d'une contravention : synthèse en tête, puis toutes les
-/// informations regroupées par section, et les actions (modifier, payer,
+/// informations regroupées par section, et les actions (modifier, reverser,
 /// supprimer). Renvoie `true` au pop si une modification a eu lieu.
 class ContraventionDetailPage extends ConsumerStatefulWidget {
   final Contravention contravention;
@@ -26,33 +30,20 @@ class _ContraventionDetailPageState
 
   Contravention get c => widget.contravention;
 
-  static const _rouge = Color(0xFFB71C1C);
-  static const _ambre = Color(0xFF854F0B);
-  static const _vert = Color(0xFF2E7D32);
-
   // ── Dérivés ──────────────────────────────────────────────────────────────
 
   (String, Color) get _statut {
-    if (c.isPaid) return ('Payé', _vert);
-    if (c.isPartial) return ('Partiellement payé', _ambre);
+    if (c.isCancelled) return ('Annulé', AppColors.error);
+    if (c.isReverse) return ('Reversé', AppColors.success);
+    if (c.isPaid) return ('Payé', AppColors.success);
+    if (c.isPartial) return ('Partiellement payé', AppColors.info);
     return ('En attente', AppColors.warning);
-  }
-
-  (String, Color, IconData)? get _rattachement {
-    switch (c.statutRattachement) {
-      case 'AUTO':
-        return ('Rattaché automatiquement', _vert, Icons.person_search_outlined);
-      case 'MANUEL':
-        return ('Rattaché manuellement', _vert, Icons.person_outline);
-      case 'A_RATTACHER':
-        return ('À rattacher', _ambre, Icons.help_outline);
-      default:
-        return null;
-    }
   }
 
   double get _reste =>
       (c.montant - (c.montantPaye ?? 0)).clamp(0, double.infinity);
+
+  String _fmtXof(num v) => '${_money.format(v)} XOF';
 
   // ── Actions ────────────────────────────────────────────────────────────
 
@@ -149,7 +140,7 @@ class _ContraventionDetailPageState
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primaryDark)),
                           const SizedBox(height: 2),
-                          Text('${_money.format(montant)} XOF',
+                          Text(_fmtXof(montant),
                               style: const TextStyle(
                                   fontSize: 21,
                                   fontWeight: FontWeight.w800,
@@ -221,6 +212,16 @@ class _ContraventionDetailPageState
     }
   }
 
+  void _openDocument(int id) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _DocumentViewerPage(contraventionId: id),
+      ),
+    );
+  }
+
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -234,7 +235,7 @@ class _ContraventionDetailPageState
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Annuler')),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _rouge),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Supprimer'),
           ),
@@ -269,110 +270,136 @@ class _ContraventionDetailPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        backgroundColor: AppColors.scaffold,
-        appBar: AppHeader(
-          title: 'Contravention',
-          action: AppHeaderAction(icon: Icons.edit_outlined, onTap: _edit),
-        ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          children: [
-            _hero(),
-            const SizedBox(height: 14),
-            _section('Infraction', Icons.gavel_outlined, [
-              _row('Numéro', c.numeroContravention),
-              _row('Code', c.codeInfraction),
-              _row("Type d'infraction", c.typeInfraction),
-              _row('Date', _fmtDate(c.dateInfraction)),
-              _row('Heure', _fmtHeure(c.heureInfraction)),
-              _row('Vitesse relevée',
-                  c.vitesseRelevee != null ? '${c.vitesseRelevee} km/h' : null),
-              _row('Lieu', c.lieu),
-              _row('Description', c.description),
-            ]),
-            _section('Véhicule et chauffeur', Icons.directions_car_outlined, [
-              _row('Véhicule', c.vehiculeNom),
-              _row('Chauffeur', c.chauffeurNom),
-              _row('Rattachement', _rattachement?.$1),
-            ]),
-            _section('Montants', Icons.payments_outlined, [
-              _row('Montant', '${_money.format(c.montant)} XOF', strong: true),
-              _row('Cotisation',
-                  c.cotisation != null ? '${_money.format(c.cotisation)} XOF' : null),
-              _row('Déjà payé',
-                  c.montantPaye != null ? '${_money.format(c.montantPaye)} XOF' : null),
-              _row('Reste à payer',
-                  c.isPaid ? '0 XOF' : '${_money.format(_reste)} XOF'),
-              _row('Statut', _statut.$1),
-              _row('Date de paiement',
-                  c.datePaiement != null ? _fmtDate(c.datePaiement!) : null),
-            ]),
-            if (c.documentSourcePath != null)
-              _section('Document source', Icons.description_outlined, [
-                _row('Relevé PDF', 'Importé depuis un relevé'),
-              ]),
-            const SizedBox(height: 6),
-            _actions(),
-          ],
-        ),
-      );
-  }
-
-  Widget _hero() {
     final (statutLabel, statutColor) = _statut;
-    final rattach = _rattachement;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+
+    return Scaffold(
+      backgroundColor: AppColors.scaffold,
+      appBar: AppHeader(
+        title: 'Contravention',
+        action: AppHeaderAction(icon: Icons.edit_outlined, onTap: _edit),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          Text('${_money.format(c.montant)} XOF',
-              style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.dark,
-                  letterSpacing: -0.5)),
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            _chip(statutLabel, statutColor),
-            if (rattach != null) _chip(rattach.$1, rattach.$2, icon: rattach.$3),
-          ]),
+          PremiumHero(
+            amount: _fmtXof(c.montant),
+            footerIcon: Icons.directions_car_outlined,
+            footer: [
+              c.vehiculeNom ?? 'Véhicule non défini',
+              if (c.chauffeurNom != null) c.chauffeurNom!,
+            ].join('  ·  '),
+            chips: [
+              PremiumChip(statutLabel, statutColor),
+            ],
+          ),
           const SizedBox(height: 14),
-          Row(children: [
-            const Icon(Icons.directions_car_outlined,
-                size: 16, color: AppColors.label),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                [
-                  c.vehiculeNom ?? 'Véhicule non défini',
-                  if (c.chauffeurNom != null) c.chauffeurNom!,
-                ].join('  ·  '),
-                style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.dark),
-              ),
-            ),
-          ]),
+          PremiumSection(
+            title: 'Infraction',
+            icon: Icons.gavel_outlined,
+            children: [
+              PremiumRow('Numéro', c.numeroContravention),
+              PremiumRow('Code', c.codeInfraction),
+              PremiumRow("Type d'infraction", c.typeInfraction),
+              PremiumRow('Date', _fmtDate(c.dateInfraction)),
+              PremiumRow('Heure', _fmtHeure(c.heureInfraction)),
+              PremiumRow('Vitesse relevée',
+                  c.vitesseRelevee != null ? '${c.vitesseRelevee} km/h' : null),
+              PremiumRow('Lieu', c.lieu),
+              PremiumRow('Description', c.description),
+            ],
+          ),
+          PremiumSection(
+            title: 'Véhicule et chauffeur',
+            icon: Icons.directions_car_outlined,
+            children: [
+              PremiumRow('Véhicule', c.vehiculeNom),
+              PremiumRow('Chauffeur', c.chauffeurNom),
+            ],
+          ),
+          PremiumSection(
+            title: 'Montants',
+            icon: Icons.payments_outlined,
+            children: [
+              PremiumRow('Montant', _fmtXof(c.montant), strong: true),
+              PremiumRow('Cotisation',
+                  c.cotisation != null ? _fmtXof(c.cotisation!) : null),
+              PremiumRow('Déjà payé',
+                  c.montantPaye != null ? _fmtXof(c.montantPaye!) : null),
+              PremiumRow('Reste à payer',
+                  c.isPaid ? _fmtXof(0) : _fmtXof(_reste)),
+              PremiumRow('Statut', statutLabel, valueColor: statutColor),
+              PremiumRow('Date de paiement',
+                  c.datePaiement != null ? _fmtDate(c.datePaiement!) : null),
+            ],
+          ),
+          if (c.documentSourcePath != null && c.id != null)
+            _documentCard(onTap: () => _openDocument(c.id!)),
+          const SizedBox(height: 2),
+          _actions(),
         ],
       ),
     );
   }
 
+  // ── Composants ────────────────────────────────────────────────────────────
+
+  /// Carte « Document source » cliquable : ouvre la visualisation premium du
+  /// relevé PDF archivé.
+  Widget _documentCard({required VoidCallback onTap}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primaryTint,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.picture_as_pdf_outlined,
+                  size: 22, color: AppColors.primaryDark),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Document source',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark)),
+                  SizedBox(height: 2),
+                  Text('Relevé PDF · appuyer pour visualiser',
+                      style: TextStyle(fontSize: 12, color: AppColors.label)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                size: 22, color: AppColors.hint),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// Boutons d'action alignés côte à côte : « Reverser » (plein, prend la
+  /// largeur restante) et « Supprimer » (contour rouge, à droite). Quand le
+  /// reversement n'est plus possible, seul « Supprimer » subsiste.
   Widget _actions() {
-    // Le paiement (PAYE) n'est plus déclenché ici : il se fait côté finance via
-    // la compensation lors de la restitution des cotisations. Le module
-    // contraventions ne propose que le reversement à l'État (REVERSE).
     final reversable = !c.isReverse && !c.isCancelled;
     return Row(children: [
-      if (reversable)
+      if (reversable) ...[
         Expanded(
           child: SizedBox(
             height: 50,
@@ -380,111 +407,38 @@ class _ContraventionDetailPageState
               onPressed: _reverser,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
               icon: const Icon(Icons.account_balance_outlined, size: 18),
               label: const Text('Reverser',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
         ),
-      if (reversable) const SizedBox(width: 12),
+        const SizedBox(width: 12),
+      ],
       SizedBox(
         height: 50,
         child: OutlinedButton.icon(
           onPressed: _delete,
           style: OutlinedButton.styleFrom(
-            foregroundColor: _rouge,
-            side: const BorderSide(color: Color(0xFFF0C6C6)),
+            foregroundColor: AppColors.error,
+            side: BorderSide(color: AppColors.error.withValues(alpha: 0.4)),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             padding: const EdgeInsets.symmetric(horizontal: 18),
           ),
           icon: const Icon(Icons.delete_outline, size: 18),
           label: const Text('Supprimer',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         ),
       ),
     ]);
   }
 
-  // ── Composants ──────────────────────────────────────────────────────────
-
-  Widget _section(String title, IconData icon, List<Widget> rows) {
-    final visibles = rows.whereType<Widget>().toList();
-    if (visibles.every((w) => w is SizedBox)) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(icon, size: 18, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text(title,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.dark)),
-          ]),
-          const SizedBox(height: 8),
-          ...rows,
-        ],
-      ),
-    );
-  }
-
-  Widget _row(String label, String? value, {bool strong = false}) {
-    if (value == null || value.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(label,
-                style: const TextStyle(fontSize: 12.5, color: AppColors.label)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(value,
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
-                    color: AppColors.dark)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(String label, Color color, {IconData? icon}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 5),
-        ],
-        Text(label,
-            style: TextStyle(
-                fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
-      ]),
-    );
-  }
+  // ── Formatage ─────────────────────────────────────────────────────────────
 
   static String _fmtDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/'
@@ -493,5 +447,148 @@ class _ContraventionDetailPageState
   static String? _fmtHeure(String? h) {
     if (h == null || h.length < 5) return null;
     return h.substring(0, 5);
+  }
+}
+
+// ── Visionneuse du document source ───────────────────────────────────────────
+
+/// Page plein écran affichant le relevé PDF archivé d'une contravention.
+/// Récupère les octets via l'API (avec authentification) puis les rend avec
+/// pdfx (PDF) ou, en repli, comme image.
+class _DocumentViewerPage extends ConsumerWidget {
+  final int contraventionId;
+  const _DocumentViewerPage({required this.contraventionId});
+
+  static const _fond = Color(0xFF12122A);
+
+  bool _looksPdf(Uint8List b) =>
+      b.length >= 4 &&
+      b[0] == 0x25 &&
+      b[1] == 0x50 &&
+      b[2] == 0x44 &&
+      b[3] == 0x46; // « %PDF »
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(contraventionDocumentBytesProvider(contraventionId));
+    return Scaffold(
+      backgroundColor: _fond,
+      appBar: AppHeader(
+        title: 'Relevé PDF',
+        action: AppHeaderAction(
+          icon: Icons.refresh,
+          onTap: () =>
+              ref.invalidate(contraventionDocumentBytesProvider(contraventionId)),
+        ),
+      ),
+      body: async.when(
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: Colors.white54)),
+        error: (e, _) => _erreur(context, ref),
+        data: (bytes) {
+          if (bytes.isEmpty) return _erreur(context, ref);
+          if (_looksPdf(bytes)) return _PdfBytesViewer(bytes: bytes);
+          return InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 5,
+            child: Center(
+              child: Image.memory(bytes,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => _erreur(context, ref)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _erreur(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.description_outlined,
+              color: Colors.white24, size: 56),
+          const SizedBox(height: 12),
+          const Text('Document indisponible',
+              style: TextStyle(color: Colors.white54, fontSize: 13)),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () => ref
+                .invalidate(contraventionDocumentBytesProvider(contraventionId)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white70,
+              side: const BorderSide(color: Colors.white24),
+            ),
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Réessayer'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PdfBytesViewer extends StatefulWidget {
+  final Uint8List bytes;
+  const _PdfBytesViewer({required this.bytes});
+
+  @override
+  State<_PdfBytesViewer> createState() => _PdfBytesViewerState();
+}
+
+class _PdfBytesViewerState extends State<_PdfBytesViewer> {
+  PdfController? _controller;
+  bool _loading = true;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final doc = await PdfDocument.openData(widget.bytes);
+      if (!mounted) return;
+      setState(() {
+        _controller = PdfController(document: Future.value(doc));
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = true;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(
+          child: CircularProgressIndicator(color: Colors.white54));
+    }
+    if (_error || _controller == null) {
+      return const Center(
+        child: Text('Aperçu du PDF indisponible',
+            style: TextStyle(color: Colors.white54, fontSize: 13)),
+      );
+    }
+    return PdfView(
+      controller: _controller!,
+      scrollDirection: Axis.vertical,
+      pageSnapping: false,
+      backgroundDecoration:
+          const BoxDecoration(color: Color(0xFF12122A)),
+    );
   }
 }

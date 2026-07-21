@@ -6,7 +6,9 @@ import '../../domain/entities/encaissement.dart';
 import '../../domain/entities/ligne_recette.dart';
 import '../providers/ligne_recette_provider.dart';
 import 'encaissement_form_page.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 
@@ -20,6 +22,7 @@ class LigneRecetteDetailPage extends ConsumerWidget {
     final asyncLigne = ref.watch(ligneRecetteDetailProvider(ligneId));
 
     return Scaffold(
+      backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: 'Détail recette',
         action: AppHeaderAction(
@@ -31,12 +34,13 @@ class LigneRecetteDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text(e.toString().replaceFirst('Exception: ', ''),
-              style: const TextStyle(color: Colors.red)),
+              style: const TextStyle(color: AppColors.error)),
         ),
         data: (ligne) => _DetailBody(ligne: ligne, ligneId: ligneId),
       ),
       floatingActionButton: asyncLigne.valueOrNull?.estActive == true
           ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
               onPressed: () => _openEncaissementForm(context, ref, asyncLigne.value!),
               icon: const Icon(Icons.add),
               label: const Text('Encaisser'),
@@ -66,72 +70,95 @@ class _DetailBody extends ConsumerWidget {
 
   const _DetailBody({required this.ligne, required this.ligneId});
 
+  (String, Color) get _statut => switch (ligne.statut) {
+        StatutLigneRecette.enAttente => (ligne.statut.label, AppColors.warning),
+        StatutLigneRecette.partiellementEncaisse =>
+          (ligne.statut.label, AppColors.info),
+        StatutLigneRecette.encaisse => (ligne.statut.label, AppColors.success),
+        StatutLigneRecette.annulee => (ligne.statut.label, AppColors.error),
+      };
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fmt = NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
+    final fmt =
+        NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
     final dateFmt = DateFormat('dd/MM/yyyy');
+    final (statutLabel, statutColor) = _statut;
+    final restant = ligne.montantRestant;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
-        _InfoCard(
-          children: [
-            _Row('Date', dateFmt.format(ligne.dateRecette)),
-            _Row('Statut', ligne.statut.label),
-            if (ligne.motifAnnulation != null &&
-                ligne.motifAnnulation!.isNotEmpty)
-              _Row('Motif annulation', ligne.motifAnnulation!,
-                  valueColor: Colors.red),
-            _Row('Encaissé', fmt.format(ligne.montantEncaisse)),
-            if (ligne.montantAttendu != null)
-              _Row('Attendu', fmt.format(ligne.montantAttendu!)),
-            if (ligne.montantRestant != null)
-              _Row(
-                'Restant',
-                fmt.format(ligne.montantRestant!),
-                valueColor: ligne.montantRestant! > 0 ? Colors.orange : Colors.green,
-              ),
+        PremiumHero(
+          amount: fmt.format(ligne.montantAttendu ?? ligne.montantEncaisse),
+          footerIcon: Icons.directions_car_outlined,
+          footer: [
+            ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}',
+            if (ligne.chauffeurNom != null) ligne.chauffeurNom!,
+          ].join('  ·  '),
+          chips: [
+            PremiumChip(statutLabel, statutColor),
+            if (restant != null && restant > 0)
+              PremiumChip('Restant ${fmt.format(restant)}', AppColors.warning),
           ],
         ),
-        const SizedBox(height: 16),
-        if (ligne.estActive && ligne.montantAttendu == null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: FilledButton.icon(
-              onPressed: () => _confirmerVersement(context, ref),
-              icon: const Icon(Icons.check),
-              label: const Text('Confirmer le versement'),
+        const SizedBox(height: 14),
+        PremiumSection(
+          title: 'Recette',
+          icon: Icons.receipt_long_outlined,
+          children: [
+            PremiumRow('Date', dateFmt.format(ligne.dateRecette)),
+            PremiumRow('Véhicule',
+                ligne.vehiculeImmatriculation ?? '#${ligne.vehiculeId}'),
+            PremiumRow('Chauffeur', ligne.chauffeurNom),
+            PremiumRow('Statut', statutLabel, valueColor: statutColor),
+            PremiumRow('Motif annulation', ligne.motifAnnulation,
+                valueColor: AppColors.error),
+          ],
+        ),
+        PremiumSection(
+          title: 'Montants',
+          icon: Icons.payments_outlined,
+          children: [
+            PremiumRow('Attendu',
+                ligne.montantAttendu != null
+                    ? fmt.format(ligne.montantAttendu)
+                    : null),
+            PremiumRow('Encaissé', fmt.format(ligne.montantEncaisse),
+                valueColor: AppColors.success),
+            PremiumRow(
+              'Restant',
+              restant != null ? fmt.format(restant) : null,
+              valueColor: (restant ?? 0) > 0 ? AppColors.warning : AppColors.success,
             ),
+          ],
+        ),
+        if (ligne.estActive && ligne.montantAttendu == null)
+          PremiumButton(
+            label: 'Confirmer le versement',
+            icon: Icons.check_circle_outline,
+            onPressed: () => _confirmerVersement(context, ref),
           ),
         if (ligne.estActive)
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+          PremiumButton(
+            label: 'Annuler la ligne',
+            icon: Icons.cancel_outlined,
+            color: AppColors.error,
+            filled: false,
             onPressed: () => _annuler(context, ref),
-            icon: const Icon(Icons.cancel_outlined),
-            label: const Text('Annuler la ligne'),
           ),
-        const SizedBox(height: 20),
-        Text('Encaissements (${ligne.encaissements.length})',
-            style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
+        PremiumListHeader('Encaissements (${ligne.encaissements.length})'),
         if (ligne.encaissements.isEmpty)
-          const Text('Aucun encaissement enregistré.')
+          const PremiumEmpty('Aucun encaissement enregistré.')
         else
-          ...ligne.encaissements.map((e) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: Icon(
-                    e.modeEncaissement == ModeEncaissement.especes
-                        ? Icons.money
-                        : Icons.phone_android,
-                    color: Colors.green,
-                  ),
-                  title: Text(fmt.format(e.montant)),
-                  subtitle: Text(
+          ...ligne.encaissements.map((e) => PremiumEncaissementTile(
+                montant: fmt.format(e.montant),
+                especes: e.modeEncaissement == ModeEncaissement.especes,
+                meta:
                     '${e.modeEncaissement.label} · ${dateFmt.format(e.dateEncaissement)}'
                     '${e.reference != null ? ' · ${e.reference}' : ''}',
-                  ),
-                ),
+                commentaire: e.commentaire,
               )),
       ],
     );
@@ -143,8 +170,8 @@ class _DetailBody extends ConsumerWidget {
         .confirmerVersement(ligneId);
     if (!context.mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: AppColors.error));
     } else {
       ref.invalidate(ligneRecetteDetailProvider(ligneId));
       refreshFinances(ref);
@@ -160,54 +187,14 @@ class _DetailBody extends ConsumerWidget {
         .annuler(ligneId, motif);
     if (!context.mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: AppColors.error));
     } else {
       // Actualise immédiatement le détail + toutes les pages du module Finances.
       ref.invalidate(ligneRecetteDetailProvider(ligneId));
       refreshFinances(ref);
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ligne annulée')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Ligne annulée')));
     }
-  }
-}
-
-// ── Widgets utilitaires ───────────────────────────────────────────────────
-
-class _InfoCard extends StatelessWidget {
-  final List<Widget> children;
-  const _InfoCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
-      ),
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? valueColor;
-
-  const _Row(this.label, this.value, {this.valueColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value,
-              style: TextStyle(fontWeight: FontWeight.w500, color: valueColor)),
-        ],
-      ),
-    );
   }
 }

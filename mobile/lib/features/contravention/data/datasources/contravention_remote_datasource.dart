@@ -60,6 +60,11 @@ class ContraventionRemoteDatasource {
   Future<void> deleteContravention(int id) =>
       _client.delete('/contraventions/$id');
 
+  /// Récupère les octets du document source archivé (relevé PDF) d'une
+  /// contravention via `GET /contraventions/{id}/document`.
+  Future<Uint8List> getDocumentBytes(int id) =>
+      _client.getBytes('/contraventions/$id/document');
+
   Future<ContraventionModel> payContravention(
       int id, double montantPaye) async {
     final data = await _client

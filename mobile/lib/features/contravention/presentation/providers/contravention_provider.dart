@@ -42,6 +42,13 @@ final contraventionRepositoryProvider = Provider<ContraventionRepository>(
       ContraventionRepositoryImpl(ref.watch(_contraventionDatasourceProvider)),
 );
 
+/// Octets du document source archivé (relevé PDF) d'une contravention.
+final contraventionDocumentBytesProvider =
+    FutureProvider.family.autoDispose<Uint8List, int>(
+  (ref, id) =>
+      ref.watch(_contraventionDatasourceProvider).getDocumentBytes(id),
+);
+
 // ── Use cases ───────────────────────────────────────────────────────────────
 
 final _getContraventionsUseCaseProvider = Provider(

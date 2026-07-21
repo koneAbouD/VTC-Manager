@@ -92,5 +92,12 @@ public class Contravention {
     public void initializeDefaults() {
         if (this.statut == null) this.statut = ContraventionStatus.EN_ATTENTE;
         if (this.montantPaye == null) this.montantPaye = BigDecimal.ZERO;
+        // Saisie manuelle : le lien est MANUEL si un chauffeur est renseigné,
+        // sinon la contravention reste à rattacher.
+        if (this.statutRattachement == null) {
+            this.statutRattachement = this.chauffeur != null
+                    ? StatutRattachement.MANUEL
+                    : StatutRattachement.A_RATTACHER;
+        }
     }
 }

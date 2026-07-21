@@ -160,7 +160,9 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
   String _sousTitre(Map<String, dynamic> item) {
     final champ = d.champTitre;
     return d.champsSaisis
-        .where((c) => c != champ && c.type != 'bool')
+        // On exclut le champ image : sa « valeur » est le nom de fichier de
+        // l'objet, sans intérêt dans le sous-titre (l'image est déjà en vignette).
+        .where((c) => c != champ && c.type != 'bool' && c.type != 'image')
         .map((c) => _valeur(item, c))
         .where((v) => v.isNotEmpty)
         .join(' · ');

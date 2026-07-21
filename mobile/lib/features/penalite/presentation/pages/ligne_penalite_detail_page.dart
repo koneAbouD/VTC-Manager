@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../domain/entities/ligne_penalite.dart';
 import '../providers/penalite_provider.dart';
 import 'encaissement_penalite_form_page.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 
@@ -18,6 +20,7 @@ class LignePenaliteDetailPage extends ConsumerWidget {
     final asyncLigne = ref.watch(lignePenaliteDetailProvider(ligneId));
 
     return Scaffold(
+      backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: 'Détail pénalité',
         action: AppHeaderAction(
@@ -29,7 +32,7 @@ class LignePenaliteDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text(e.toString().replaceFirst('Exception: ', ''),
-              style: const TextStyle(color: Colors.red)),
+              style: const TextStyle(color: AppColors.error)),
         ),
         data: (ligne) => _DetailBody(ligne: ligne, ligneId: ligneId),
       ),
@@ -44,134 +47,178 @@ class _DetailBody extends ConsumerWidget {
   final int ligneId;
   const _DetailBody({required this.ligne, required this.ligneId});
 
+  (String, Color) get _statut => switch (ligne.statut) {
+        StatutLignePenalite.enAttente =>
+          (ligne.statut.label, AppColors.warning),
+        StatutLignePenalite.partiellementEncaissee =>
+          (ligne.statut.label, AppColors.info),
+        StatutLignePenalite.encaissee =>
+          (ligne.statut.label, AppColors.success),
+        StatutLignePenalite.executee => (ligne.statut.label, AppColors.success),
+        StatutLignePenalite.notifiee => (ligne.statut.label, AppColors.info),
+        StatutLignePenalite.enCours => (ligne.statut.label, AppColors.warning),
+        StatutLignePenalite.levee => (ligne.statut.label, AppColors.success),
+        StatutLignePenalite.annulee => (ligne.statut.label, AppColors.error),
+      };
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fmt = NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
+    final fmt =
+        NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
     final dateFmt = DateFormat('dd/MM/yyyy');
     final dtFmt = DateFormat('dd/MM/yyyy HH:mm');
+    final estAmende = ligne.typeSanction == TypeSanctionLigne.amende;
+    final (statutLabel, statutColor) = _statut;
+    final restant = ligne.montantRestant;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        // ── Infos générales ────────────────────────────────────────────
-        _InfoCard(children: [
-          _Row('Type', ligne.typeSanction.label),
-          _Row('Pénalité', _typePenaliteLabel(ligne.typePenalite)),
-          _Row('Statut', ligne.statut.label),
-          if (ligne.motifAnnulation != null && ligne.motifAnnulation!.isNotEmpty)
-            _Row('Motif annulation', ligne.motifAnnulation!,
-                valueColor: Colors.red),
-          _Row('Véhicule',
-              ligne.vehiculeImmatriculation ?? '#${ligne.vehiculeId}'),
-          if (ligne.chauffeurNomComplet != null)
-            _Row('Chauffeur', ligne.chauffeurNomComplet!),
-          if (ligne.dateFaute != null)
-            _Row('Date de faute', dateFmt.format(ligne.dateFaute!)),
-          _Row('Généré le', dateFmt.format(ligne.dateGeneration)),
-          if (ligne.commentaire != null)
-            _Row('Commentaire', ligne.commentaire!),
-        ]),
-        const SizedBox(height: 12),
+        PremiumHero(
+          amount: estAmende ? fmt.format(ligne.montant) : ligne.typeSanction.label,
+          footerIcon: Icons.directions_car_outlined,
+          footer: [
+            ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}',
+            if (ligne.chauffeurNomComplet != null) ligne.chauffeurNomComplet!,
+          ].join('  ·  '),
+          chips: [
+            PremiumChip(statutLabel, statutColor),
+            if (estAmende) PremiumChip(ligne.typeSanction.label, AppColors.info),
+            if (estAmende && restant != null && restant > 0)
+              PremiumChip('Restant ${fmt.format(restant)}', AppColors.warning),
+          ],
+        ),
+        const SizedBox(height: 14),
 
-        // ── Infos spécifiques selon le type ────────────────────────────
-        if (ligne.typeSanction == TypeSanctionLigne.amende) ...[
-          _InfoCard(children: [
-            _Row('Montant total', fmt.format(ligne.montant)),
-            _Row('Encaissé', fmt.format(ligne.montantEncaisse),
-                valueColor: Colors.green),
-            if (ligne.montantRestant != null && ligne.montantRestant! > 0)
-              _Row('Restant', fmt.format(ligne.montantRestant!),
-                  valueColor: Colors.orange),
-          ]),
-          const SizedBox(height: 12),
-        ],
+        // ── Infos générales ──────────────────────────────────────────────
+        PremiumSection(
+          title: 'Sanction',
+          icon: Icons.gavel_outlined,
+          children: [
+            PremiumRow('Type', ligne.typeSanction.label),
+            PremiumRow('Pénalité', _typePenaliteLabel(ligne.typePenalite)),
+            PremiumRow('Statut', statutLabel, valueColor: statutColor),
+            PremiumRow('Véhicule',
+                ligne.vehiculeImmatriculation ?? '#${ligne.vehiculeId}'),
+            PremiumRow('Chauffeur', ligne.chauffeurNomComplet),
+            PremiumRow(
+                'Date de faute',
+                ligne.dateFaute != null
+                    ? dateFmt.format(ligne.dateFaute!)
+                    : null),
+            PremiumRow('Généré le', dateFmt.format(ligne.dateGeneration)),
+            PremiumRow('Commentaire', ligne.commentaire),
+            PremiumRow('Motif annulation', ligne.motifAnnulation,
+                valueColor: AppColors.error),
+          ],
+        ),
+
+        // ── Infos spécifiques selon le type ──────────────────────────────
+        if (estAmende)
+          PremiumSection(
+            title: 'Montants',
+            icon: Icons.payments_outlined,
+            children: [
+              PremiumRow('Montant total', fmt.format(ligne.montant)),
+              PremiumRow('Encaissé', fmt.format(ligne.montantEncaisse),
+                  valueColor: AppColors.success),
+              PremiumRow(
+                  'Restant',
+                  restant != null && restant > 0 ? fmt.format(restant) : null,
+                  valueColor: AppColors.warning),
+            ],
+          ),
         if (ligne.typeSanction == TypeSanctionLigne.buzzer &&
             ligne.dureeSanctionSecondes != null)
-          _InfoCard(children: [
-            _Row('Durée buzzer', '${ligne.dureeSanctionSecondes}s'),
-          ]),
-        if (ligne.typeSanction == TypeSanctionLigne.immobilisation) ...[
-          _InfoCard(children: [
-            if (ligne.dureeImmobilisationMinutes != null)
-              _Row('Durée prévue', '${ligne.dureeImmobilisationMinutes} min'),
-            if (ligne.dateDebutImmobilisation != null)
-              _Row('Début', dtFmt.format(ligne.dateDebutImmobilisation!)),
-            if (ligne.dateFinImmobilisation != null)
-              _Row('Fin', dtFmt.format(ligne.dateFinImmobilisation!)),
-          ]),
-          const SizedBox(height: 12),
-        ],
+          PremiumSection(
+            title: 'Buzzer',
+            icon: Icons.notifications_active_outlined,
+            children: [
+              PremiumRow('Durée buzzer', '${ligne.dureeSanctionSecondes}s'),
+            ],
+          ),
+        if (ligne.typeSanction == TypeSanctionLigne.immobilisation)
+          PremiumSection(
+            title: 'Immobilisation',
+            icon: Icons.block_outlined,
+            accent: AppColors.error,
+            children: [
+              PremiumRow(
+                  'Durée prévue',
+                  ligne.dureeImmobilisationMinutes != null
+                      ? '${ligne.dureeImmobilisationMinutes} min'
+                      : null),
+              PremiumRow(
+                  'Début',
+                  ligne.dateDebutImmobilisation != null
+                      ? dtFmt.format(ligne.dateDebutImmobilisation!)
+                      : null),
+              PremiumRow(
+                  'Fin',
+                  ligne.dateFinImmobilisation != null
+                      ? dtFmt.format(ligne.dateFinImmobilisation!)
+                      : null),
+            ],
+          ),
 
-        // ── Boutons d'action ───────────────────────────────────────────
+        // ── Boutons d'action ─────────────────────────────────────────────
         if (ligne.isEncaissable)
-          _ActionButton(
+          PremiumButton(
             label: 'Encaisser',
-            icon: Icons.payments,
-            color: Colors.green,
+            icon: Icons.payments_outlined,
             onPressed: () => _openEncaissement(context, ref, ligne),
           ),
         if (ligne.isExecutable)
-          _ActionButton(
+          PremiumButton(
             label: 'Marquer comme exécuté',
-            icon: Icons.volume_up,
-            color: Colors.orange,
+            icon: Icons.volume_up_outlined,
+            color: AppColors.warning,
             onPressed: () => _executer(context, ref),
           ),
         if (ligne.isNotifiable)
-          _ActionButton(
+          PremiumButton(
             label: 'Marquer comme notifié',
-            icon: Icons.warning_amber,
-            color: Colors.amber.shade700,
+            icon: Icons.warning_amber_rounded,
+            color: AppColors.warning,
             onPressed: () => _notifier(context, ref),
           ),
         if (ligne.isDemarrable)
-          _ActionButton(
+          PremiumButton(
             label: 'Démarrer l\'immobilisation',
-            icon: Icons.block,
-            color: Colors.red,
+            icon: Icons.block_outlined,
+            color: AppColors.error,
             onPressed: () => _demarrer(context, ref),
           ),
         if (ligne.isLevable)
-          _ActionButton(
+          PremiumButton(
             label: 'Lever l\'immobilisation',
-            icon: Icons.lock_open,
-            color: Colors.purple,
+            icon: Icons.lock_open_outlined,
+            color: AppColors.info,
             onPressed: () => _lever(context, ref),
           ),
-        if (!ligne.statut.isTerminal) ...[
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+        if (!ligne.statut.isTerminal)
+          PremiumButton(
+            label: 'Annuler la pénalité',
+            icon: Icons.cancel_outlined,
+            color: AppColors.error,
+            filled: false,
             onPressed: () => _annuler(context, ref),
-            icon: const Icon(Icons.cancel_outlined),
-            label: const Text('Annuler la pénalité'),
           ),
-        ],
 
-        // ── Historique encaissements (AMENDE) ──────────────────────────
-        if (ligne.typeSanction == TypeSanctionLigne.amende) ...[
-          const SizedBox(height: 20),
-          Text('Encaissements (${ligne.encaissements.length})',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+        // ── Historique encaissements (AMENDE) ────────────────────────────
+        if (estAmende) ...[
+          const SizedBox(height: 10),
+          PremiumListHeader('Encaissements (${ligne.encaissements.length})'),
           if (ligne.encaissements.isEmpty)
-            const Text('Aucun encaissement enregistré.')
+            const PremiumEmpty('Aucun encaissement enregistré.')
           else
-            ...ligne.encaissements.map((e) => Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: Icon(
-                      e.modeEncaissement == 'ESPECES'
-                          ? Icons.money
-                          : Icons.phone_android,
-                      color: Colors.green,
-                    ),
-                    title: Text(fmt.format(e.montant)),
-                    subtitle: Text(
+            ...ligne.encaissements.map((e) => PremiumEncaissementTile(
+                  montant: fmt.format(e.montant),
+                  especes: e.modeEncaissement == 'ESPECES',
+                  meta:
                       '${e.modeEncaissement} · ${dateFmt.format(e.dateEncaissement)}'
                       '${e.reference != null ? ' · ${e.reference}' : ''}',
-                    ),
-                  ),
+                  commentaire: e.commentaire,
                 )),
         ],
       ],
@@ -179,18 +226,17 @@ class _DetailBody extends ConsumerWidget {
   }
 
   String _typePenaliteLabel(String type) => switch (type) {
-        'RECETTE_NON_VERSEE'      => 'Recette non versée',
+        'RECETTE_NON_VERSEE' => 'Recette non versée',
         'HEURE_FIN_SERVICE_PASSE' => 'Fin de service dépassée',
-        'EXCES_VITESSE'           => 'Excès de vitesse',
-        _                         => type,
+        'EXCES_VITESSE' => 'Excès de vitesse',
+        _ => type,
       };
 
   Future<void> _openEncaissement(
       BuildContext context, WidgetRef ref, LignePenalite l) async {
     final refreshed = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-          builder: (_) => EncaissementPenaliteFormPage(ligne: l)),
+      MaterialPageRoute(builder: (_) => EncaissementPenaliteFormPage(ligne: l)),
     );
     if (refreshed == true) {
       ref.invalidate(lignePenaliteDetailProvider(ligneId));
@@ -224,7 +270,7 @@ class _DetailBody extends ConsumerWidget {
     if (!context.mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error), backgroundColor: Colors.red));
+          SnackBar(content: Text(error), backgroundColor: AppColors.error));
     } else {
       // Actualise immédiatement le détail + les écrans finance impactés.
       ref.invalidate(lignePenaliteDetailProvider(ligneId));
@@ -240,76 +286,10 @@ class _DetailBody extends ConsumerWidget {
     if (!context.mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red),
+        SnackBar(content: Text(error), backgroundColor: AppColors.error),
       );
     } else {
       ref.invalidate(lignePenaliteDetailProvider(ligneId));
     }
-  }
-}
-
-// ── Widgets utilitaires ───────────────────────────────────────────────────────
-
-class _InfoCard extends StatelessWidget {
-  final List<Widget> children;
-  const _InfoCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, children: children),
-      ),
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? valueColor;
-  const _Row(this.label, this.value, {this.valueColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.w500, color: valueColor)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onPressed;
-  const _ActionButton(
-      {required this.label,
-      required this.icon,
-      required this.color,
-      required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: FilledButton.icon(
-        style: FilledButton.styleFrom(backgroundColor: color),
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label),
-      ),
-    );
   }
 }

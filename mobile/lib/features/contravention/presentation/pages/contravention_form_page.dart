@@ -6,6 +6,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
+import '../../../chauffeur/domain/entities/chauffeur.dart';
+import '../../../chauffeur/presentation/providers/chauffeur_provider.dart';
+import '../../../chauffeur/presentation/providers/chauffeur_state.dart';
+import '../../../vehicule/domain/entities/vehicule.dart';
+import '../../../vehicule/presentation/providers/vehicule_provider.dart';
+import '../../../vehicule/presentation/providers/vehicule_state.dart';
 import '../../domain/entities/contravention.dart';
 import '../providers/contravention_provider.dart';
 
@@ -165,8 +171,34 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
     if (picked != null) setState(() => _datePaiement = picked);
   }
 
+  /// Véhicule actuellement lié, retrouvé dans la liste chargée (pour pré-cocher
+  /// le sélecteur lors d'une modification du lien).
+  Vehicule? _currentVehicule() {
+    if (_vehiculeId == null) return null;
+    final st = ref.read(vehiculeNotifierProvider);
+    final list = st is VehiculeLoaded ? st.vehicules : const <Vehicule>[];
+    for (final v in list) {
+      if (v.id == _vehiculeId) return v;
+    }
+    return null;
+  }
+
+  Chauffeur? _currentChauffeur() {
+    if (_chauffeurId == null) return null;
+    final st = ref.read(chauffeurNotifierProvider);
+    final list = st is ChauffeurLoaded ? st.chauffeurs : const <Chauffeur>[];
+    for (final c in list) {
+      if (c.id == _chauffeurId) return c;
+    }
+    return null;
+  }
+
   Future<void> _pickVehiculeChauffeur() async {
-    final res = await showFiltreVehiculeChauffeurDialog(context);
+    final res = await showFiltreVehiculeChauffeurDialog(
+      context,
+      vehiculeInitial: _currentVehicule(),
+      chauffeurInitial: _currentChauffeur(),
+    );
     if (res == null) return;
     setState(() {
       _vehiculeId = res.vehicule?.id;

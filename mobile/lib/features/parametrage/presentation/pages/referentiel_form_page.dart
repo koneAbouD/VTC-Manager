@@ -313,73 +313,239 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
   Widget _champImage(ChampDescriptor c) {
     final preview = _imagePreview[c.nom];
     final uploading = _uploading.contains(c.nom);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _label(c),
-        Container(
-          height: 150,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: AppColors.fieldFill,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          clipBehavior: Clip.antiAlias,
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
           child: uploading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.primary))
+              ? _imageUploading()
               : preview == null
-                  ? const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.image_outlined,
-                              size: 34, color: AppColors.hint),
-                          SizedBox(height: 6),
-                          Text('Aucune image',
-                              style: TextStyle(
-                                  color: AppColors.hint, fontSize: 12)),
-                        ],
-                      ),
-                    )
-                  : GestureDetector(
-                      onTap: () => showImageViewer(context, preview),
-                      child: Image.network(
-                        preview,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        errorBuilder: (_, __, ___) => const Center(
-                            child: Icon(Icons.broken_image_outlined,
-                                color: AppColors.hint)),
-                      ),
-                    ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            TextButton.icon(
-              onPressed: uploading ? null : () => _choisirImage(c.nom),
-              icon: Icon(preview == null
-                  ? Icons.add_photo_alternate_outlined
-                  : Icons.swap_horiz_rounded),
-              label: Text(preview == null ? 'Ajouter une image' : 'Changer'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-            ),
-            if (preview != null && !uploading)
-              TextButton.icon(
-                onPressed: () => setState(() {
-                  _images[c.nom] = null;
-                  _imagePreview[c.nom] = null;
-                }),
-                icon: const Icon(Icons.delete_outline, size: 20),
-                label: const Text('Supprimer'),
-                style: TextButton.styleFrom(foregroundColor: AppColors.error),
-              ),
-          ],
+                  ? _imageDropzone(c)
+                  : _imageRempli(c, preview),
         ),
       ],
+    );
+  }
+
+  /// État vide : zone d'ajout élégante, entièrement cliquable.
+  Widget _imageDropzone(ChampDescriptor c) {
+    return GestureDetector(
+      onTap: () => _choisirImage(c.nom),
+      child: Container(
+        height: 172,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.primaryTint, AppColors.fieldFill],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.28)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.18),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.add_photo_alternate_rounded,
+                  size: 27, color: AppColors.primary),
+            ),
+            const SizedBox(height: 12),
+            const Text('Ajouter une image',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark)),
+            const SizedBox(height: 3),
+            const Text('JPG ou PNG · appuyez pour parcourir',
+                style: TextStyle(fontSize: 12, color: AppColors.label)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Image présente : plein cadre, ombre douce, actions flottantes superposées.
+  Widget _imageRempli(ChampDescriptor c, String preview) {
+    return Container(
+      height: 210,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.dark.withValues(alpha: 0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            GestureDetector(
+              onTap: () => showImageViewer(context, preview, titre: c.label),
+              child: Image.network(
+                preview,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    color: AppColors.fieldFill,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.primary),
+                    ),
+                  );
+                },
+                errorBuilder: (_, __, ___) => Container(
+                  color: AppColors.fieldFill,
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.broken_image_outlined,
+                            color: AppColors.hint, size: 30),
+                        SizedBox(height: 6),
+                        Text('Image indisponible',
+                            style:
+                                TextStyle(color: AppColors.hint, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Voile bas + indice « agrandir ».
+            IgnorePointer(
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(14, 26, 14, 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        AppColors.dark.withValues(alpha: 0.55),
+                      ],
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.zoom_out_map_rounded,
+                          size: 16, color: Colors.white),
+                      SizedBox(width: 6),
+                      Text('Appuyez pour agrandir',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Actions flottantes givrées.
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Row(
+                children: [
+                  _actionFlottante(
+                    icon: Icons.swap_horiz_rounded,
+                    tooltip: 'Changer',
+                    onTap: () => _choisirImage(c.nom),
+                  ),
+                  const SizedBox(width: 8),
+                  _actionFlottante(
+                    icon: Icons.delete_outline_rounded,
+                    tooltip: 'Supprimer',
+                    couleur: AppColors.error,
+                    onTap: () => setState(() {
+                      _images[c.nom] = null;
+                      _imagePreview[c.nom] = null;
+                    }),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Téléversement en cours : cadre neutre avec indicateur centré.
+  Widget _imageUploading() {
+    return Container(
+      height: 210,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.fieldFill,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+            SizedBox(height: 12),
+            Text('Téléversement…',
+                style: TextStyle(color: AppColors.label, fontSize: 12.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Bouton circulaire givré posé sur l'image (changer / supprimer).
+  Widget _actionFlottante({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    Color couleur = AppColors.dark,
+  }) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.92),
+      shape: const CircleBorder(),
+      elevation: 2,
+      shadowColor: AppColors.dark.withValues(alpha: 0.3),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Tooltip(
+          message: tooltip,
+          child: SizedBox(
+            width: 38,
+            height: 38,
+            child: Icon(icon, size: 19, color: couleur),
+          ),
+        ),
+      ),
     );
   }
 

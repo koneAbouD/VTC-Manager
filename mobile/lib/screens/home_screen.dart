@@ -105,6 +105,36 @@ class _FloatingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Android : barre ancrée pleine largeur, collée au bas, prolongée derrière
+    // la barre de navigation système (edge-to-edge). iPhone : pilule flottante.
+    final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+    return isAndroid ? _docked(context) : _floating(context);
+  }
+
+  /// Android — barre ancrée : coins arrondis en haut, ombre portée vers le haut,
+  /// fond blanc qui descend jusqu'au bord de l'écran (au-dessus des boutons
+  /// système grâce au padding = hauteur de la barre système).
+  Widget _docked(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 20,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(8, 8, 8, 8 + bottomInset),
+      child: _items(),
+    );
+  }
+
+  /// iPhone — pilule flottante au-dessus de la zone sûre.
+  Widget _floating(BuildContext context) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -121,49 +151,53 @@ class _FloatingNavBar extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_navItems.length, (i) {
-              final item = _navItems[i];
-              final selected = i == selectedIndex;
-              return GestureDetector(
-                onTap: () => onSelected(i),
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xFF43A047).withValues(alpha: 0.12)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        selected ? item.selectedIcon : item.icon,
-                        size: 22,
-                        color: selected ? const Color(0xFF43A047) : Colors.grey.shade500,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          color: selected ? const Color(0xFF43A047) : Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ),
+          child: _items(),
         ),
       ),
+    );
+  }
+
+  Widget _items() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: List.generate(_navItems.length, (i) {
+        final item = _navItems[i];
+        final selected = i == selectedIndex;
+        return GestureDetector(
+          onTap: () => onSelected(i),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            decoration: BoxDecoration(
+              color: selected
+                  ? const Color(0xFF43A047).withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  selected ? item.selectedIcon : item.icon,
+                  size: 22,
+                  color: selected ? const Color(0xFF43A047) : Colors.grey.shade500,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? const Color(0xFF43A047) : Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 }

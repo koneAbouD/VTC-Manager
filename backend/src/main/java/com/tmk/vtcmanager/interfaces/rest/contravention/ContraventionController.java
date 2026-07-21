@@ -16,6 +16,7 @@ import com.tmk.vtcmanager.application.usecases.contravention.ImporterContraventi
 import com.tmk.vtcmanager.application.usecases.contravention.PayContraventionUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.ReverseContraventionUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.UpdateContraventionUseCase;
+import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ConfirmerImportRequest;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ConfirmerReversementRequest;
@@ -29,6 +30,8 @@ import com.tmk.vtcmanager.interfaces.rest.contravention.dto.response.ResultatRev
 import com.tmk.vtcmanager.interfaces.rest.contravention.mapper.ContraventionRestMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +39,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 @RestController
@@ -54,6 +58,7 @@ public class ContraventionController {
     private final ConfirmerImportContraventionsUseCase confirmerImportContraventionsUseCase;
     private final PreviewReversementQuittanceUseCase previewReversementQuittanceUseCase;
     private final ConfirmerReversementQuittanceUseCase confirmerReversementQuittanceUseCase;
+    private final FileStoragePort fileStoragePort;
     private final ContraventionRestMapper mapper;
 
     @PostMapping
@@ -85,6 +90,24 @@ public class ContraventionController {
     @GetMapping("/{id:\\d+}")
     public ContraventionResponse findById(@PathVariable Long id) {
         return mapper.toResponse(getContraventionByIdUseCase.execute(id));
+    }
+
+    /**
+     * Streame le document source archivé (relevé PDF importé) d'une
+     * contravention. 404 si aucun document n'est rattaché.
+     */
+    @GetMapping("/{id:\\d+}/document")
+    public ResponseEntity<InputStreamResource> document(@PathVariable Long id) {
+        Contravention contravention = getContraventionByIdUseCase.execute(id);
+        String objectName = contravention.getDocumentSourcePath();
+        if (objectName == null || objectName.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        InputStream stream = fileStoragePort.download(objectName);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"contravention-" + id + ".pdf\"")
+                .body(new InputStreamResource(stream));
     }
 
     @PutMapping("/{id}")

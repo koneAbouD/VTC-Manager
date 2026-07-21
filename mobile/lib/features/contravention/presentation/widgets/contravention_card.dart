@@ -70,8 +70,8 @@ class ContraventionCard extends StatelessWidget {
     switch (contravention.statutRattachement) {
       case 'AUTO':
         return ('Auto', _vert, _vertBg, Icons.person_search_outlined);
-      case 'MANUEL':
-        return ('Manuel', _vert, _vertBg, Icons.person_outline);
+      // MANUEL : plus de pastille — le chauffeur rattaché apparaît déjà dans le
+      // titre, l'indicateur « Manuel » est donc redondant.
       case 'A_RATTACHER':
         return ('À rattacher', _ambre, _ambreBg, Icons.help_outline);
       default:
@@ -198,8 +198,9 @@ class ContraventionCard extends StatelessWidget {
 
   Widget _titre(bool aRattacher) {
     final vehicule = contravention.vehiculeNom ?? 'Véhicule';
-    final chauffeur =
-        aRattacher ? 'À rattacher' : (contravention.chauffeurNom ?? '—');
+    // Le nom du chauffeur n'est affiché que si le lien est établi (rattachement
+    // AUTO ou MANUEL). Sinon, on n'affiche que le véhicule.
+    final chauffeur = aRattacher ? null : contravention.chauffeurNom;
     return RichText(
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -207,11 +208,9 @@ class ContraventionCard extends StatelessWidget {
         style: const TextStyle(
             fontSize: 14, fontWeight: FontWeight.w700, color: _ink),
         children: [
-          TextSpan(text: '$vehicule · '),
-          TextSpan(
-            text: chauffeur,
-            style: TextStyle(color: aRattacher ? _ambre : _ink),
-          ),
+          TextSpan(text: vehicule),
+          if (chauffeur != null && chauffeur.isNotEmpty)
+            TextSpan(text: ' · $chauffeur'),
         ],
       ),
     );

@@ -32,10 +32,30 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
   final _searchController = TextEditingController();
   String _search = '';
 
+  // ── En-tête collapsable (KPI + recherche) ────────────────────────────────
+  // Piloté par le défilement de la liste active : `_collapse` = pixels repliés
+  // (0 = déployé, `_headerMax` = totalement escamoté vers le haut).
+  final _headerKey = GlobalKey();
+  double _headerMax = 128; // estimation, affinée après le premier layout
+  double _collapse = 0;
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Mesure la hauteur réelle de l'en-tête après layout pour caler l'amplitude
+  /// de repli sur son contenu exact.
+  void _measureHeader() {
+    final box = _headerKey.currentContext?.findRenderObject() as RenderBox?;
+    final h = box?.size.height;
+    if (h != null && h > 0 && (h - _headerMax).abs() > 0.5) {
+      setState(() {
+        _headerMax = h;
+        if (_collapse > _headerMax) _collapse = _headerMax;
+      });
+    }
   }
 
   void _toggleAdd() => setState(() => _addOpen = !_addOpen);
@@ -48,6 +68,7 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
       _addOpen = false;
       _search = '';
       _searchController.clear();
+      _collapse = 0; // la nouvelle liste repart en haut → en-tête déployé
     });
   }
 
@@ -127,6 +148,8 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
   @override
   Widget build(BuildContext context) {
     final kpi = _kpi();
+    // Recale l'amplitude de repli sur la hauteur réelle de l'en-tête.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureHeader());
 
     return Scaffold(
       backgroundColor: AppColors.scaffold,
@@ -141,23 +164,33 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
                   padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
                   child: _segmented(),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  child: _kpiBar(kpi),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
-                  child: _searchBar(),
-                ),
+                // KPI + recherche : se replient vers le haut au défilement.
+                _collapsingHeader(kpi),
                 Expanded(
-                  child: IndexedStack(
-                    index: _segment,
-                    children: [
-                      LignesPenalitePage(
-                          embedded: true, externalSearch: _search),
-                      ContraventionsPage(
-                          embedded: true, externalSearch: _search),
-                    ],
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (n) {
+                      // Seule la liste la plus proche (depth 0), en défilement
+                      // vertical, pilote le repli de l'en-tête.
+                      if (n is ScrollUpdateNotification &&
+                          n.depth == 0 &&
+                          n.metrics.axis == Axis.vertical) {
+                        final next = (_collapse + (n.scrollDelta ?? 0))
+                            .clamp(0.0, _headerMax);
+                        if (next != _collapse) {
+                          setState(() => _collapse = next);
+                        }
+                      }
+                      return false;
+                    },
+                    child: IndexedStack(
+                      index: _segment,
+                      children: [
+                        LignesPenalitePage(
+                            embedded: true, externalSearch: _search),
+                        ContraventionsPage(
+                            embedded: true, externalSearch: _search),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -273,11 +306,13 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
     );
   }
 
+  // Contrôle segmenté aligné sur le style des onglets de FleetScreen :
+  // conteneur gris clair, indicateur blanc à ombre légère, libellé actif en vert.
   Widget _segmented() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F2F8),
-        borderRadius: BorderRadius.circular(14),
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(4),
       child: Row(
@@ -299,14 +334,23 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
           padding: const EdgeInsets.symmetric(vertical: 9),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: actif ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(11),
+            color: actif ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: actif
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
           ),
           child: Text(label,
               style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: actif ? FontWeight.w700 : FontWeight.w500,
-                  color: actif ? Colors.white : AppColors.label)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: actif ? const Color(0xFF43A047) : Colors.grey.shade600)),
         ),
       ),
     );
@@ -350,6 +394,54 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
               child: const Icon(Icons.close, size: 17, color: AppColors.hint),
             ),
         ],
+      ),
+    );
+  }
+
+  /// En-tête KPI + recherche qui s'escamote vers le haut au défilement.
+  /// La boîte extérieure rétrécit (`SizedBox.height`) pour rendre l'espace à la
+  /// liste, tandis que le contenu (hauteur pleine via `OverflowBox`) glisse vers
+  /// le haut et s'estompe.
+  Widget _collapsingHeader(
+      ({
+        String label1,
+        String value1,
+        String label2,
+        String value2,
+        bool alerte
+      }) kpi) {
+    final content = Column(
+      key: _headerKey,
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: _kpiBar(kpi),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+          child: _searchBar(),
+        ),
+      ],
+    );
+
+    final visible = (_headerMax - _collapse).clamp(0.0, _headerMax);
+    final opacity =
+        _headerMax <= 0 ? 1.0 : (visible / _headerMax).clamp(0.0, 1.0);
+
+    return ClipRect(
+      child: SizedBox(
+        height: visible,
+        child: OverflowBox(
+          alignment: Alignment.topCenter,
+          minHeight: 0,
+          maxHeight: double.infinity,
+          child: Transform.translate(
+            offset: Offset(0, -_collapse),
+            child: Opacity(opacity: opacity, child: content),
+          ),
+        ),
       ),
     );
   }
