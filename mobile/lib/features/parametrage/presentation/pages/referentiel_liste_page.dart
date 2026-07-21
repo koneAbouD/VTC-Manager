@@ -31,6 +31,10 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
   static const int _seuilRecherche = 20;
 
   bool _busy = false;
+  // Vrai pendant une (dés)activation : le switch donne déjà un retour immédiat
+  // (override optimiste), on masque donc la barre de progression pour que le
+  // rechargement reste invisible à l'écran.
+  bool _toggling = false;
   String _query = '';
   final _searchCtrl = TextEditingController();
 
@@ -71,6 +75,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
     setState(() {
       _actifOverride[id] = actif; // feedback immédiat
       _busy = true;
+      _toggling = true; // masque la barre de progression pendant le toggle
     });
     try {
       await ref
@@ -87,6 +92,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
         setState(() {
           _actifOverride.remove(id); // la liste rafraîchie fait foi
           _busy = false;
+          _toggling = false;
         });
       }
     }
@@ -222,7 +228,24 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
     );
   }
 
-  Widget _corps(List<Map<String, dynamic>> liste) {
+  /// Ordre d'affichage **stable** (par identifiant croissant = ordre de
+  /// création). Le backend ne garantit pas d'ordre déterministe : après un
+  /// changement d'activation, la ligne modifiée peut revenir à une position
+  /// différente. On fige donc l'ordre côté client pour qu'une (dés)activation
+  /// ne déplace jamais l'élément dans la liste.
+  List<Map<String, dynamic>> _ordonner(List<Map<String, dynamic>> liste) {
+    final copie = [...liste];
+    copie.sort((a, b) {
+      final ida = a[d.idField];
+      final idb = b[d.idField];
+      if (ida is num && idb is num) return ida.compareTo(idb);
+      return '$ida'.compareTo('$idb');
+    });
+    return copie;
+  }
+
+  Widget _corps(List<Map<String, dynamic>> listeBrute) {
+    final liste = _ordonner(listeBrute);
     final q = _query.trim().toLowerCase();
     final filtree =
         q.isEmpty ? liste : liste.where((it) => _correspond(it, q)).toList();
@@ -230,10 +253,13 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
 
     return Column(
       children: [
-        // Fine barre de progression pendant une mutation (n'efface pas la liste).
+        // Fine barre de progression pendant une mutation (n'efface pas la
+        // liste). Masquée lors d'une (dés)activation : le switch fait déjà foi.
         SizedBox(
           height: 2,
-          child: _busy ? const LinearProgressIndicator(minHeight: 2) : null,
+          child: (_busy && !_toggling)
+              ? const LinearProgressIndicator(minHeight: 2)
+              : null,
         ),
         if (afficherRecherche) _barreRecherche(liste.length),
         Expanded(

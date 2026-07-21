@@ -17,12 +17,16 @@ class ContraventionRemoteDatasource {
     int size = 20,
     int? chauffeurId,
     int? vehiculeId,
+    String? dateDebut,
+    String? dateFin,
   }) async {
     final query = <String, String>{
       'page': '$page',
       'size': '$size',
       if (chauffeurId != null) 'chauffeurId': '$chauffeurId',
       if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
+      if (dateDebut != null) 'dateDebut': dateDebut,
+      if (dateFin != null) 'dateFin': dateFin,
     };
     final data = await _client.get('/contraventions/page', query: query);
     if (data is! Map<String, dynamic>) {

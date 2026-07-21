@@ -31,6 +31,7 @@ import com.tmk.vtcmanager.interfaces.rest.contravention.mapper.ContraventionRest
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -40,6 +41,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -79,10 +81,14 @@ public class ContraventionController {
     public PageResponse<ContraventionResponse> findPage(
             @RequestParam(required = false) Long chauffeurId,
             @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         var result = getAllContraventionsUseCase
-                .executePage(chauffeurId, vehiculeId, page, size)
+                .executePage(chauffeurId, vehiculeId, dateDebut, dateFin, page, size)
                 .map(mapper::toResponse);
         return PageResponse.from(result);
     }

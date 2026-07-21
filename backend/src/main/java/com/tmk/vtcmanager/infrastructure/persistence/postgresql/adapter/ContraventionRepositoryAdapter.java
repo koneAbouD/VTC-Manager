@@ -51,7 +51,9 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
     }
 
     @Override
-    public PageResult<Contravention> findPage(Long chauffeurId, Long vehiculeId, int page, int size) {
+    public PageResult<Contravention> findPage(Long chauffeurId, Long vehiculeId,
+                                              java.time.LocalDate dateDebut, java.time.LocalDate dateFin,
+                                              int page, int size) {
         Specification<ContraventionEntity> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (chauffeurId != null) {
@@ -59,6 +61,12 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
             }
             if (vehiculeId != null) {
                 predicates.add(cb.equal(root.get("vehicule").get("id"), vehiculeId));
+            }
+            if (dateDebut != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("dateInfraction"), dateDebut));
+            }
+            if (dateFin != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("dateInfraction"), dateFin));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

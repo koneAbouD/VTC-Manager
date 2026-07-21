@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.contravention.Contravention;
 import com.tmk.vtcmanager.application.domain.contravention.ContraventionStatus;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,7 +16,9 @@ public interface ContraventionRepository {
 
     List<Contravention> findAll();
 
-    PageResult<Contravention> findPage(Long chauffeurId, Long vehiculeId, int page, int size);
+    PageResult<Contravention> findPage(Long chauffeurId, Long vehiculeId,
+                                       LocalDate dateDebut, LocalDate dateFin,
+                                       int page, int size);
 
     List<Contravention> findByChauffeurId(Long chauffeurId);
 

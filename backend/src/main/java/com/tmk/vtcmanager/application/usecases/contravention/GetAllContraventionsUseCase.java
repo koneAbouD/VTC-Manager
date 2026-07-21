@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.domain.contravention.Contravention;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -18,7 +19,9 @@ public class GetAllContraventionsUseCase {
         return contraventionRepository.findAll();
     }
 
-    public PageResult<Contravention> executePage(Long chauffeurId, Long vehiculeId, int page, int size) {
-        return contraventionRepository.findPage(chauffeurId, vehiculeId, page, size);
+    public PageResult<Contravention> executePage(Long chauffeurId, Long vehiculeId,
+                                                 LocalDate dateDebut, LocalDate dateFin,
+                                                 int page, int size) {
+        return contraventionRepository.findPage(chauffeurId, vehiculeId, dateDebut, dateFin, page, size);
     }
 }

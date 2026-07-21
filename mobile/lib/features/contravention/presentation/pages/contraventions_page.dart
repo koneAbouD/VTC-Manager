@@ -4,12 +4,16 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../domain/entities/contravention.dart';
 import '../providers/contravention_provider.dart';
 import '../widgets/contravention_card.dart';
 import 'contravention_detail_page.dart';
 import 'contravention_form_page.dart';
 import 'contravention_import_page.dart';
+
+/// Modes du filtre par date (identiques à Recettes/Pénalités).
+enum _FiltreMode { mois, semaine, jour, periode }
 
 enum _ToastType { success, error, warning, info }
 
@@ -83,6 +87,18 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
   int _payDone = 0;
   int _payTotal = 0;
 
+  // ── Filtre par date (serveur) ──────────────────────────────────────────
+  // null = aucun filtre par date (toutes périodes) — comportement par défaut.
+  _FiltreMode? _filtreMode;
+  int _moisSelectionne = DateTime.now().month;
+  int _anneeSelectionnee = DateTime.now().year;
+  DateTime _jourSelectionne = DateTime.now();
+  DateTime _semaineDebut = mondayOf(DateTime.now());
+  DateTime _periodeDebut = DateTime.now().subtract(const Duration(days: 30));
+  DateTime _periodeFin = DateTime.now();
+  OverlayEntry? _overlayEntry;
+  final _filtreButtonKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -93,7 +109,175 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _overlayEntry?.remove();
     super.dispose();
+  }
+
+  // ── Logique date ────────────────────────────────────────────────────────
+
+  // (null, null) quand aucun filtre par date n'est actif.
+  (DateTime?, DateTime?) _plageActive() => switch (_filtreMode) {
+        null => (null, null),
+        _FiltreMode.mois => (
+            DateTime(_anneeSelectionnee, _moisSelectionne, 1),
+            DateTime(_anneeSelectionnee, _moisSelectionne + 1, 0),
+          ),
+        _FiltreMode.semaine => (
+            _semaineDebut,
+            _semaineDebut.add(const Duration(days: 6)),
+          ),
+        _FiltreMode.jour => (_jourSelectionne, _jourSelectionne),
+        _FiltreMode.periode => (_periodeDebut, _periodeFin),
+      };
+
+  static String _iso(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+
+  void _showFiltreOverlay() {
+    _removeOverlay();
+    final renderBox =
+        _filtreButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    final offset = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+
+    _overlayEntry = OverlayEntry(
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _removeOverlay,
+        child: Stack(
+          children: [
+            Positioned(
+              left: offset.dx,
+              top: offset.dy + size.height + 4,
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 210,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <_FiltreMode?>[null, ..._FiltreMode.values]
+                        .map((mode) {
+                      final label = switch (mode) {
+                        null => 'Tous',
+                        _FiltreMode.mois => 'Mois',
+                        _FiltreMode.semaine => 'Semaine',
+                        _FiltreMode.jour => 'Jour',
+                        _FiltreMode.periode => 'Période',
+                      };
+                      final sel = _filtreMode == mode;
+                      return InkWell(
+                        onTap: () {
+                          setState(() => _filtreMode = mode);
+                          _removeOverlay();
+                          _load();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                sel
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_off_outlined,
+                                size: 18,
+                                color: sel
+                                    ? const Color(0xFF43A047)
+                                    : Colors.grey.shade400,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight:
+                                      sel ? FontWeight.w600 : FontWeight.w400,
+                                  color: sel
+                                      ? const Color(0xFF43A047)
+                                      : const Color(0xFF1A1A1A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  Future<void> _pickMois() async {
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (_) => MonthPickerDialog(
+        initialYear: _anneeSelectionnee,
+        initialMonth: _moisSelectionne,
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        _moisSelectionne = result.month;
+        _anneeSelectionnee = result.year;
+      });
+      _load();
+    }
+  }
+
+  Future<void> _pickSemaine() async {
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (_) => WeekPickerDialog(initialWeekStart: _semaineDebut),
+    );
+    if (result != null) {
+      setState(() => _semaineDebut = result);
+      _load();
+    }
+  }
+
+  Future<void> _pickJour() async {
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (_) => SingleDatePickerDialog(initialDate: _jourSelectionne),
+    );
+    if (result != null) {
+      setState(() => _jourSelectionne = result);
+      _load();
+    }
+  }
+
+  Future<void> _pickPeriode() async {
+    final result = await showDialog<DateTimeRange>(
+      context: context,
+      builder: (_) => PeriodePickerDialog(
+        initialStart: _periodeDebut,
+        initialEnd: _periodeFin,
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        _periodeDebut = result.start;
+        _periodeFin = result.end;
+      });
+      _load();
+    }
   }
 
   void _onScroll() {
@@ -105,9 +289,15 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
   }
 
   void _load() {
+    final (dateDebut, dateFin) = _plageActive();
     final repo = ref.read(contraventionRepositoryProvider);
     ref.read(contraventionsListeProvider.notifier).load(
-          (page, size) => repo.getContraventionsPage(page: page, size: size),
+          (page, size) => repo.getContraventionsPage(
+            page: page,
+            size: size,
+            dateDebut: dateDebut != null ? _iso(dateDebut) : null,
+            dateFin: dateFin != null ? _iso(dateFin) : null,
+          ),
         );
   }
 
@@ -437,6 +627,22 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
       backgroundColor: AppColors.scaffold,
       body: Column(
         children: [
+          // ── Filtre par date (au-dessus de la liste, comme Recettes) ─────
+          _FiltreDateBar(
+            mode: _filtreMode,
+            filtreKey: _filtreButtonKey,
+            onFiltrePressed: _showFiltreOverlay,
+            moisSelectionne: _moisSelectionne,
+            anneeSelectionnee: _anneeSelectionnee,
+            onPickMois: _pickMois,
+            semaineDebut: _semaineDebut,
+            onPickSemaine: _pickSemaine,
+            jourSelectionne: _jourSelectionne,
+            onPickJour: _pickJour,
+            periodeDebut: _periodeDebut,
+            periodeFin: _periodeFin,
+            onPickPeriode: _pickPeriode,
+          ),
           if (_selectionMode && items.isNotEmpty)
             _ListToolbar(
               count: items.length,
@@ -666,33 +872,186 @@ class _PayingOverlay extends StatelessWidget {
   }
 }
 
+// ── Barre filtre date (identique à Recettes/Pénalités) ─────────────────────
+
+class _FiltreDateBar extends StatelessWidget {
+  final _FiltreMode? mode;
+  final GlobalKey filtreKey;
+  final VoidCallback onFiltrePressed;
+  final int moisSelectionne;
+  final int anneeSelectionnee;
+  final VoidCallback onPickMois;
+  final DateTime semaineDebut;
+  final VoidCallback onPickSemaine;
+  final DateTime jourSelectionne;
+  final VoidCallback onPickJour;
+  final DateTime periodeDebut;
+  final DateTime periodeFin;
+  final VoidCallback onPickPeriode;
+
+  const _FiltreDateBar({
+    required this.mode,
+    required this.filtreKey,
+    required this.onFiltrePressed,
+    required this.moisSelectionne,
+    required this.anneeSelectionnee,
+    required this.onPickMois,
+    required this.semaineDebut,
+    required this.onPickSemaine,
+    required this.jourSelectionne,
+    required this.onPickJour,
+    required this.periodeDebut,
+    required this.periodeFin,
+    required this.onPickPeriode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final modeLabel = switch (mode) {
+      null => 'Tous',
+      _FiltreMode.mois => 'Mois',
+      _FiltreMode.semaine => 'Semaine',
+      _FiltreMode.jour => 'Jour',
+      _FiltreMode.periode => 'Période',
+    };
+
+    final Widget datePill = switch (mode) {
+      null => _DatePill(
+          icon: Icons.calendar_month_outlined,
+          label: 'Toutes les périodes',
+          onTap: onFiltrePressed,
+        ),
+      _FiltreMode.mois => _DatePill(
+          icon: Icons.calendar_month_outlined,
+          label: '${kMoisNoms[moisSelectionne - 1]} $anneeSelectionnee',
+          onTap: onPickMois,
+        ),
+      _FiltreMode.semaine => _DatePill(
+          icon: Icons.date_range_outlined,
+          label:
+              '${DateFormat('dd/MM').format(semaineDebut)} – ${DateFormat('dd/MM/yyyy').format(semaineDebut.add(const Duration(days: 6)))}',
+          onTap: onPickSemaine,
+        ),
+      _FiltreMode.jour => _DatePill(
+          icon: Icons.calendar_today_outlined,
+          label: DateFormat('dd/MM/yyyy').format(jourSelectionne),
+          onTap: onPickJour,
+        ),
+      _FiltreMode.periode => _DatePill(
+          icon: Icons.calendar_month_outlined,
+          label:
+              'Du ${DateFormat('dd/MM/yyyy').format(periodeDebut)} au ${DateFormat('dd/MM/yyyy').format(periodeFin)}',
+          onTap: onPickPeriode,
+        ),
+    };
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(
+        children: [
+          GestureDetector(
+            key: filtreKey,
+            onTap: onFiltrePressed,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.filter_list_rounded,
+                      size: 14, color: Color(0xFF43A047)),
+                  const SizedBox(width: 5),
+                  Text(
+                    modeLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF43A047),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  const Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 14, color: Color(0xFF43A047)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: datePill),
+        ],
+      ),
+    );
+  }
+}
+
+class _DatePill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _DatePill(
+      {required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 13, color: Colors.grey.shade600),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Icon(Icons.keyboard_arrow_down_rounded,
+                size: 14, color: Colors.grey.shade600),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyView extends StatelessWidget {
   final VoidCallback onRetry;
   const _EmptyView({required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.gavel, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              const Text('Aucune contravention',
-                  style: TextStyle(fontSize: 16, color: Colors.grey)),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Rafraîchir'),
-              ),
-            ],
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.gavel, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text('Aucune contravention',
+              style: TextStyle(fontSize: 16, color: Colors.grey)),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Rafraîchir'),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -12,6 +12,8 @@ abstract interface class ContraventionRepository {
     int size,
     int? chauffeurId,
     int? vehiculeId,
+    String? dateDebut,
+    String? dateFin,
   });
   Future<Either<Failure, Contravention>> getContraventionById(int id);
   Future<Either<Failure, Contravention>> createContravention(
