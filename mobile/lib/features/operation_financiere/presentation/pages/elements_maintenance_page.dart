@@ -41,13 +41,23 @@ class _ElementsMaintenancePageState
   bool _searchVisible = true;
   double _lastOffset = 0;
 
+  bool _refRafraichi = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Rafraîchit une seule fois le catalogue d'éléments (édité ailleurs, ex.
+    // ReferentielListePage). Ici et non dans initState : `ref.invalidate`
+    // dépend du ProviderScope, indisponible pendant initState.
+    if (!_refRafraichi) {
+      _refRafraichi = true;
+      ref.invalidate(catalogueElementsMaintenanceProvider);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    // Rafraîchit le catalogue d'éléments (données de référence éditées ailleurs,
-    // ex. ReferentielListePage) pour refléter toute création / modification
-    // récente à chaque ouverture de la page.
-    ref.invalidate(catalogueElementsMaintenanceProvider);
     _scrollCtrl.addListener(_onScroll);
     for (final el in widget.initial) {
       if (el.catalogueElementId != null) {

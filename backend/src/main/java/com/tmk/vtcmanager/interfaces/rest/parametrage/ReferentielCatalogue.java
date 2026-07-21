@@ -27,7 +27,58 @@ public class ReferentielCatalogue {
                 typesVehicules(),
                 typesActivites(),
                 marques(),
+                modeles(),
+                typesDocument(),
+                categoriesOperation(),
                 catalogueElementsMaintenance());
+    }
+
+    private ReferentielDescriptorResponse modeles() {
+        return new ReferentielDescriptorResponse(
+                "modeles",
+                "Modèles",
+                "Modèles de véhicules, rattachés à une marque.",
+                "/api/v1/modeles",
+                true,
+                "id",
+                List.of(
+                        texte("nom", "Nom", true),
+                        reference("marqueId", "Marque", true, "marques"),
+                        booleen("actif", "Actif")));
+    }
+
+    private ReferentielDescriptorResponse typesDocument() {
+        return new ReferentielDescriptorResponse(
+                "types-document",
+                "Types de document",
+                "Types de documents (carte grise, assurance, permis…) par cible.",
+                "/api/v1/types-document",
+                true,
+                "id",
+                List.of(
+                        texte("nom", "Nom", true),
+                        enumeration("cible", "Cible", true, List.of("VEHICULE", "CHAUFFEUR")),
+                        booleen("obligatoire", "Obligatoire"),
+                        booleen("actif", "Actif")));
+    }
+
+    private ReferentielDescriptorResponse categoriesOperation() {
+        return new ReferentielDescriptorResponse(
+                "categories-operation",
+                "Catégories d'opération",
+                "Catégories des opérations financières (produits, charges).",
+                "/api/categories-operation",
+                true,
+                "id",
+                List.of(
+                        texte("libelle", "Libellé", true),
+                        texte("code", "Code", true),
+                        enumeration("typeOperation", "Type d'opération", true,
+                                List.of("REVENU", "DEPENSE")),
+                        enumeration("natureResultat", "Nature de résultat", true,
+                                List.of("PRODUIT_EXPLOITATION", "CHARGE_VARIABLE",
+                                        "CHARGE_FIXE", "HORS_RESULTAT")),
+                        booleen("actif", "Actif")));
     }
 
     private ReferentielDescriptorResponse typesVehicules() {

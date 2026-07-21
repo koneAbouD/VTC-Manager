@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response;
 
+import com.tmk.vtcmanager.application.domain.operation.NatureResultat;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 
 public record CategorieOperationResponse(
@@ -7,6 +8,7 @@ public record CategorieOperationResponse(
         String code,
         String libelle,
         TypeOperation typeOperation,
+        NatureResultat natureResultat,
         boolean actif,
         SousCategorieOperationResponse sousCategorie
 ) {}

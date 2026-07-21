@@ -86,13 +86,24 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
   bool get _isEdit => widget.initial != null;
 
+  bool _refRafraichi = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Rafraîchit une seule fois les types de maintenance (données de référence
+    // éditées ailleurs, ex. ReferentielListePage) pour que le sélecteur reflète
+    // toute création / modification récente. Ici (et non dans initState) car
+    // `ref.invalidate` dépend du ProviderScope, indisponible pendant initState.
+    if (!_refRafraichi) {
+      _refRafraichi = true;
+      ref.invalidate(typeMaintenanceProvider('Maintenances'));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    // Rafraîchit les types de maintenance (données de référence éditées ailleurs,
-    // ex. ReferentielListePage) pour que le sélecteur reflète toute création /
-    // modification récente à chaque ouverture du formulaire.
-    ref.invalidate(typeMaintenanceProvider('Maintenances'));
     final m = widget.initial;
     if (m != null) {
       _datePrevue           = m.datePrevue;

@@ -15,18 +15,24 @@ public class Modele {
     private String nom;
     private TypeVehicule type;
     private Marque marque;
+    private boolean actif;
 
     public static Modele create(String nom, TypeVehicule type, Marque marque) {
         return Modele.builder()
                 .nom(nom)
                 .type(type)
                 .marque(marque)
+                .actif(true)
                 .build();
     }
 
-    public void update(String nom, Marque marque) {
+    public void update(String nom, TypeVehicule type, Marque marque) {
         this.nom = nom;
         this.type = type;
         this.marque = marque;
+    }
+
+    public void changerActivation(boolean actif) {
+        this.actif = actif;
     }
 }

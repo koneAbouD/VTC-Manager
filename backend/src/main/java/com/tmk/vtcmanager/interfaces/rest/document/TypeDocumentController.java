@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/types-document")
@@ -26,6 +27,7 @@ public class TypeDocumentController {
     private final CreateTypeDocumentUseCase createUseCase;
     private final UpdateTypeDocumentUseCase updateUseCase;
     private final DeleteTypeDocumentUseCase deleteUseCase;
+    private final ChangerActivationTypeDocumentUseCase changerActivationUseCase;
     private final DocumentRestMapper mapper;
 
     @GetMapping
@@ -54,6 +56,15 @@ public class TypeDocumentController {
             @PathVariable Long id,
             @Valid @RequestBody TypeDocumentRequest request) {
         return ResponseEntity.ok(mapper.toTypeResponse(updateUseCase.execute(id, mapper.toDomain(request))));
+    }
+
+    @PatchMapping("/{id}/actif")
+    @Operation(summary = "Activer / désactiver un type de document",
+               description = "Corps attendu : { \"actif\": true|false }.")
+    public ResponseEntity<TypeDocumentResponse> changerActivation(
+            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        var maj = changerActivationUseCase.execute(id, Boolean.TRUE.equals(body.get("actif")));
+        return ResponseEntity.ok(mapper.toTypeResponse(maj));
     }
 
     @DeleteMapping("/{id}")

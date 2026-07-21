@@ -57,6 +57,12 @@ public record ChampDescriptorResponse(
         return new ChampDescriptorResponse(nom, label, "reference", obligatoire, true, refKey, null);
     }
 
+    /** Champ énuméré : liste déroulante des valeurs autorisées (codes d'enum). */
+    public static ChampDescriptorResponse enumeration(
+            String nom, String label, boolean obligatoire, java.util.List<String> valeurs) {
+        return new ChampDescriptorResponse(nom, label, "enum", obligatoire, true, null, valeurs);
+    }
+
     /** Champ image : upload d'un fichier via {endpoint}/image, la valeur stockée est le nom d'objet. */
     public static ChampDescriptorResponse image(String nom, String label, boolean obligatoire) {
         return new ChampDescriptorResponse(nom, label, "image", obligatoire, true, null, null);

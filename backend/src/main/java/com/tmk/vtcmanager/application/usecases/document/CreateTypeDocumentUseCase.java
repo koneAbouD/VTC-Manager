@@ -12,6 +12,8 @@ public class CreateTypeDocumentUseCase {
     private final TypeDocumentRepository typeDocumentRepository;
 
     public TypeDocument execute(TypeDocument typeDocument) {
+        // Un type nouvellement créé est actif par défaut.
+        typeDocument.setActif(true);
         return typeDocumentRepository.save(typeDocument);
     }
 }

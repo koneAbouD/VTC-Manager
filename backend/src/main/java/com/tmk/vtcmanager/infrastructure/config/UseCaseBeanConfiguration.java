@@ -618,6 +618,12 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public ChangerActivationCategorieOperationUseCase changerActivationCategorieOperationUseCase(
+            CategorieOperationRepository repo) {
+        return new ChangerActivationCategorieOperationUseCase(repo);
+    }
+
+    @Bean
     public GetCategorieOperationByIdUseCase getCategorieOperationByIdUseCase(
             CategorieOperationRepository repo,
             SousCategorieOperationRepository sousCategorieRepo) {

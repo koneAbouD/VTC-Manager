@@ -7,5 +7,6 @@ import jakarta.validation.constraints.NotNull;
 public record TypeDocumentRequest(
         @NotBlank String nom,
         @NotNull CibleDocument cible,
-        boolean obligatoire
+        boolean obligatoire,
+        boolean actif
 ) {}

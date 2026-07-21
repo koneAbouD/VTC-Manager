@@ -32,13 +32,24 @@ class _EtatParcFiltreSheetState extends ConsumerState<_EtatParcFiltreSheet> {
   int? _activiteId;
   String? _activiteNom;
 
+  bool _refRafraichi = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Rafraîchit une seule fois les activités/groupes (édités ailleurs, ex.
+    // ReferentielListePage). Ici et non dans initState : `ref.invalidate`
+    // dépend du ProviderScope, indisponible pendant initState.
+    if (!_refRafraichi) {
+      _refRafraichi = true;
+      ref.invalidate(typesActivitesProvider);
+      ref.invalidate(groupesProvider);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    // Rafraîchit les activités/groupes (données de référence éditées ailleurs,
-    // ex. ReferentielListePage) à chaque ouverture du filtre.
-    ref.invalidate(typesActivitesProvider);
-    ref.invalidate(groupesProvider);
     final f = ref.read(etatParcFiltreProvider);
     _groupeId = f.groupeId;
     _groupeNom = f.groupeNom;

@@ -180,11 +180,22 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
       _pendingDocuments.isNotEmpty;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Rafraîchit une seule fois les types de document (édités ailleurs, ex.
+    // ReferentielListePage). Ici et non dans initState : `ref.invalidate`
+    // dépend du ProviderScope, indisponible pendant initState.
+    if (!_refRafraichi) {
+      _refRafraichi = true;
+      ref.invalidate(typesDocChauffeurProvider);
+    }
+  }
+
+  bool _refRafraichi = false;
+
+  @override
   void initState() {
     super.initState();
-    // Rafraîchit les types de document (données de référence éditées ailleurs,
-    // ex. ReferentielListePage) à chaque ouverture du formulaire.
-    ref.invalidate(typesDocChauffeurProvider);
     final c = widget.initial;
     _tabCtrl = TabController(length: 2, vsync: this);
     _nom = TextEditingController(text: c?.nom ?? '');

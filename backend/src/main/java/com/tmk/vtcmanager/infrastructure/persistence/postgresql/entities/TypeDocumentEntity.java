@@ -30,4 +30,7 @@ public class TypeDocumentEntity extends AbstractAuditEntity {
 
     @Column(nullable = false)
     private boolean obligatoire;
+
+    @Column(nullable = false)
+    private boolean actif;
 }

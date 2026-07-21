@@ -13,9 +13,7 @@ import java.util.List;
 public interface CategorieOperationRestMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "actif", constant = "true")
     @Mapping(target = "sousCategorie", ignore = true)
-    @Mapping(target = "natureResultat", ignore = true)
     @Mapping(target = "compteComptable", ignore = true)
     CategorieOperation toDomain(CategorieOperationRequest request);
 

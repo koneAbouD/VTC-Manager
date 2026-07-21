@@ -27,13 +27,18 @@ class CategorieOperationSelectorPage extends ConsumerStatefulWidget {
 class _CategorieOperationSelectorPageState
     extends ConsumerState<CategorieOperationSelectorPage> {
   String _query = '';
+  bool _refRafraichi = false;
 
   @override
-  void initState() {
-    super.initState();
-    // Rafraîchit les catégories (données de référence éditées ailleurs, ex.
-    // ReferentielListePage) à chaque ouverture du sélecteur.
-    ref.invalidate(categoriesByTypeProvider(widget.typeOperation));
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Rafraîchit une seule fois les catégories (édités ailleurs, ex.
+    // ReferentielListePage). Ici et non dans initState : `ref.invalidate`
+    // dépend du ProviderScope, indisponible pendant initState.
+    if (!_refRafraichi) {
+      _refRafraichi = true;
+      ref.invalidate(categoriesByTypeProvider(widget.typeOperation));
+    }
   }
 
   @override

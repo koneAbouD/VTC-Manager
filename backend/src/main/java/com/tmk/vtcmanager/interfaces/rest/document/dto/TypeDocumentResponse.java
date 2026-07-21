@@ -6,5 +6,6 @@ public record TypeDocumentResponse(
         Long id,
         String nom,
         CibleDocument cible,
-        boolean obligatoire
+        boolean obligatoire,
+        boolean actif
 ) {}

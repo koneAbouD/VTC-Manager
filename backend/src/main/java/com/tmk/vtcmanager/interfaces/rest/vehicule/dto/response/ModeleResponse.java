@@ -4,5 +4,6 @@ public record ModeleResponse(
         Long id,
         String nom,
         MarqueResponse marque,
-        TypeVehiculeResponse type
+        TypeVehiculeResponse type,
+        boolean actif
 ) {}

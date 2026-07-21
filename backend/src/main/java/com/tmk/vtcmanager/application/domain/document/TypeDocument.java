@@ -15,4 +15,9 @@ public class TypeDocument {
     private String nom;
     private CibleDocument cible;
     private boolean obligatoire;
+    private boolean actif;
+
+    public void changerActivation(boolean actif) {
+        this.actif = actif;
+    }
 }

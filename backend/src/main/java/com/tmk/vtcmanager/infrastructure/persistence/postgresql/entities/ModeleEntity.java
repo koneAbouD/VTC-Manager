@@ -33,4 +33,7 @@ public class ModeleEntity extends AbstractAuditEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "marque_id", nullable = false)
     private MarqueEntity marque;
+
+    @Column(nullable = false)
+    private boolean actif;
 }

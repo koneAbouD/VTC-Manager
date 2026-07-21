@@ -15,8 +15,10 @@ public class UpdateCategorieOperationUseCase {
     public CategorieOperation execute(Long id, CategorieOperation data) {
         CategorieOperation existing = categorieRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Catégorie opération", id));
+        existing.setCode(data.getCode());
         existing.setLibelle(data.getLibelle());
         existing.setTypeOperation(data.getTypeOperation());
+        existing.setNatureResultat(data.getNatureResultat());
         existing.setActif(data.isActif());
         return categorieRepository.save(existing);
     }

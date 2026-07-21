@@ -26,6 +26,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
   final Map<String, TextEditingController> _texts = {};
   final Map<String, Object?> _refs = {}; // champNom -> id sélectionné
   final Map<String, bool> _bools = {};
+  final Map<String, String?> _enums = {}; // champNom -> valeur (code) sélectionnée
   final Map<String, String?> _images = {}; // champNom -> nom d'objet
   final Map<String, String?> _imagePreview = {}; // champNom -> URL d'aperçu
   final Set<String> _uploading = {};
@@ -44,6 +45,9 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           break;
         case 'reference':
           _refs[c.nom] = _valRefId(c);
+          break;
+        case 'enum':
+          _enums[c.nom] = widget.item?[c.nom]?.toString();
           break;
         case 'image':
           _images[c.nom] = widget.item?[c.nom] as String?;
@@ -90,6 +94,12 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         return;
       }
     }
+    for (final c in d.champsSaisis.where((c) => c.type == 'enum')) {
+      if (c.obligatoire && (_enums[c.nom] == null || _enums[c.nom]!.isEmpty)) {
+        _toast('Le champ « ${c.label} » est obligatoire.', erreur: true);
+        return;
+      }
+    }
 
     final body = <String, dynamic>{};
     for (final c in d.champsSaisis) {
@@ -99,6 +109,9 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           break;
         case 'reference':
           body[c.nom] = _refs[c.nom];
+          break;
+        case 'enum':
+          body[c.nom] = _enums[c.nom];
           break;
         case 'number':
           final v = _texts[c.nom]!.text.trim();
@@ -277,6 +290,8 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         return _champBool(c);
       case 'reference':
         return _champReference(c);
+      case 'enum':
+        return _champEnum(c);
       case 'image':
         return _champImage(c);
       default:
@@ -661,6 +676,28 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
                   c.obligatoire && v == null ? 'Champ obligatoire' : null,
             );
           },
+        ),
+      ],
+    );
+  }
+
+  Widget _champEnum(ChampDescriptor c) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(c),
+        DropdownButtonFormField<String>(
+          initialValue: _enums[c.nom],
+          isExpanded: true,
+          decoration: _deco(),
+          hint: const Text('Choisir…', style: TextStyle(color: AppColors.hint)),
+          items: c.options
+              .map((o) => DropdownMenuItem<String>(value: o, child: Text(o)))
+              .toList(),
+          onChanged: (v) => setState(() => _enums[c.nom] = v),
+          validator: (v) => c.obligatoire && (v == null || v.isEmpty)
+              ? 'Champ obligatoire'
+              : null,
         ),
       ],
     );

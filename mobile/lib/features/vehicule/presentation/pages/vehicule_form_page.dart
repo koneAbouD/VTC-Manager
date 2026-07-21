@@ -222,16 +222,26 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       _photos.isNotEmpty ||
       _existingPhotos.length != _initExistingPhotosCount;
 
+  bool _refRafraichi = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Rafraîchit une seule fois les données de référence (types, activités,
+    // marques, types de document) éditées ailleurs (ex. ReferentielListePage).
+    // Ici et non dans initState : `ref.invalidate` dépend du ProviderScope.
+    if (!_refRafraichi) {
+      _refRafraichi = true;
+      ref.invalidate(typesVehiculesProvider);
+      ref.invalidate(typesActivitesProvider);
+      ref.invalidate(marquesByTypeProvider);
+      ref.invalidate(typesDocVehiculeProvider);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    // Rafraîchit les données de référence (types, activités, marques, types de
-    // document) éditées ailleurs (ex. ReferentielListePage) pour que les
-    // sélecteurs reflètent toute création / modification à chaque ouverture.
-    ref.invalidate(typesVehiculesProvider);
-    ref.invalidate(typesActivitesProvider);
-    ref.invalidate(marquesByTypeProvider);
-    ref.invalidate(typesDocVehiculeProvider);
     _tabCtrl = TabController(length: 2, vsync: this);
 
     final v = widget.initial;

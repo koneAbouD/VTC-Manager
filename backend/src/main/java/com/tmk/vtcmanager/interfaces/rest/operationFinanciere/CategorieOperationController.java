@@ -29,6 +29,7 @@ public class CategorieOperationController {
     private final GetCategorieOperationByIdUseCase getByIdUseCase;
     private final GetAllCategoriesOperationUseCase getAllUseCase;
     private final GetCategorieOperationBySousCategorieUseCase getBySousCategorieUseCase;
+    private final ChangerActivationCategorieOperationUseCase changerActivationUseCase;
     private final CategorieOperationRestMapper mapper;
 
     private final CreateSousCategorieOperationUseCase createSousCategorieUseCase;
@@ -66,6 +67,13 @@ public class CategorieOperationController {
     public CategorieOperationResponse update(@PathVariable Long id,
                                               @Valid @RequestBody CategorieOperationRequest request) {
         return mapper.toResponse(updateUseCase.execute(id, mapper.toDomain(request)));
+    }
+
+    @PatchMapping("/{id}/actif")
+    public CategorieOperationResponse changerActivation(
+            @PathVariable Long id, @RequestBody java.util.Map<String, Object> body) {
+        return mapper.toResponse(
+                changerActivationUseCase.execute(id, Boolean.TRUE.equals(body.get("actif"))));
     }
 
     @DeleteMapping("/{id}")
