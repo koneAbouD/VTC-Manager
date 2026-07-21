@@ -292,11 +292,14 @@ class PremiumEmpty extends StatelessWidget {
 }
 
 /// Bouton d'action pleine largeur. `filled` → plein coloré ; sinon contour.
+/// `expanded` : supprime la largeur/marge propres pour l'insérer dans une Row
+/// (via [PremiumButtonRow]).
 class PremiumButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
   final bool filled;
+  final bool expanded;
   final VoidCallback onPressed;
 
   const PremiumButton({
@@ -306,43 +309,67 @@ class PremiumButton extends StatelessWidget {
     required this.onPressed,
     this.color = AppColors.primary,
     this.filled = true,
+    this.expanded = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final button = SizedBox(
+      height: 50,
+      width: expanded ? null : double.infinity,
+      child: filled
+          ? FilledButton.icon(
+              onPressed: onPressed,
+              style: FilledButton.styleFrom(
+                backgroundColor: color,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: Icon(icon, size: 18),
+              label: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700)),
+            )
+          : OutlinedButton.icon(
+              onPressed: onPressed,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: color,
+                side: BorderSide(color: color.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: Icon(icon, size: 18),
+              label: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
+    );
+    if (expanded) return button;
+    return Padding(padding: const EdgeInsets.only(bottom: 10), child: button);
+  }
+}
+
+/// Dispose deux (ou plus) [PremiumButton] `expanded` sur une même ligne, de
+/// largeur égale.
+class PremiumButtonRow extends StatelessWidget {
+  final List<PremiumButton> buttons;
+  const PremiumButtonRow({super.key, required this.buttons});
+
+  @override
+  Widget build(BuildContext context) {
+    final children = <Widget>[];
+    for (var i = 0; i < buttons.length; i++) {
+      if (i > 0) children.add(const SizedBox(width: 12));
+      children.add(Expanded(child: buttons[i]));
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: SizedBox(
-        height: 50,
-        width: double.infinity,
-        child: filled
-            ? FilledButton.icon(
-                onPressed: onPressed,
-                style: FilledButton.styleFrom(
-                  backgroundColor: color,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: Icon(icon, size: 18),
-                label: Text(label,
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700)),
-              )
-            : OutlinedButton.icon(
-                onPressed: onPressed,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: color,
-                  side: BorderSide(color: color.withValues(alpha: 0.4)),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: Icon(icon, size: 18),
-                label: Text(label,
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700)),
-              ),
-      ),
+      child: Row(children: children),
     );
   }
 }

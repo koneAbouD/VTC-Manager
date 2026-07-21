@@ -89,6 +89,10 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   @override
   void initState() {
     super.initState();
+    // Rafraîchit les types de maintenance (données de référence éditées ailleurs,
+    // ex. ReferentielListePage) pour que le sélecteur reflète toute création /
+    // modification récente à chaque ouverture du formulaire.
+    ref.invalidate(typeMaintenanceProvider('Maintenances'));
     final m = widget.initial;
     if (m != null) {
       _datePrevue           = m.datePrevue;

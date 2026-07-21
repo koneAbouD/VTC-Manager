@@ -58,6 +58,9 @@ class CreancesVehiculePage extends ConsumerWidget {
             );
           }
           final total = lignes.fold<double>(0, (s, l) => s + l.restant);
+          // Liste triée par date de référence décroissante (plus récent en tête).
+          final triees = [...lignes]
+            ..sort((a, b) => b.dateReference.compareTo(a.dateReference));
           return RefreshIndicator(
             onRefresh: () =>
                 ref.refresh(creancesVehiculeProvider(vehiculeId).future),
@@ -86,7 +89,7 @@ class CreancesVehiculePage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                for (final ligne in lignes)
+                for (final ligne in triees)
                   _LigneCreanceTile(
                     ligne: ligne,
                     onTap: () => _ouvrirDocument(context, ref, ligne),

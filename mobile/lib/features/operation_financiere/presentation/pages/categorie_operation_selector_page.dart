@@ -29,6 +29,14 @@ class _CategorieOperationSelectorPageState
   String _query = '';
 
   @override
+  void initState() {
+    super.initState();
+    // Rafraîchit les catégories (données de référence éditées ailleurs, ex.
+    // ReferentielListePage) à chaque ouverture du sélecteur.
+    ref.invalidate(categoriesByTypeProvider(widget.typeOperation));
+  }
+
+  @override
   Widget build(BuildContext context) {
     final categoriesAsync =
         ref.watch(categoriesByTypeProvider(widget.typeOperation));

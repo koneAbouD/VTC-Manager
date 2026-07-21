@@ -35,24 +35,7 @@ class LigneCotisationDetailPage extends ConsumerWidget {
                 style: const TextStyle(color: AppColors.error))),
         data: (ligne) => _Body(ligne: ligne, ligneId: ligneId),
       ),
-      floatingActionButton: asyncLigne.valueOrNull?.estActive == true
-          ? FloatingActionButton.extended(
-              backgroundColor: AppColors.primary,
-              onPressed: () => _encaisser(context, ref, asyncLigne.value!),
-              icon: const Icon(Icons.add),
-              label: const Text('Encaisser'))
-          : null,
     );
-  }
-
-  Future<void> _encaisser(
-      BuildContext context, WidgetRef ref, LigneCotisation ligne) async {
-    final ok = await Navigator.push<bool>(context,
-        MaterialPageRoute(builder: (_) => EncaissementCotisationFormPage(ligne: ligne)));
-    if (ok == true) {
-      ref.invalidate(ligneCotisationDetailProvider(ligneId));
-      refreshFinances(ref);
-    }
   }
 }
 
@@ -120,13 +103,22 @@ class _Body extends ConsumerWidget {
         ],
       ),
       if (ligne.estActive)
-        PremiumButton(
-          label: 'Annuler la ligne',
-          icon: Icons.cancel_outlined,
-          color: AppColors.error,
-          filled: false,
-          onPressed: () => _annuler(context, ref),
-        ),
+        PremiumButtonRow(buttons: [
+          PremiumButton(
+            label: 'Annuler',
+            icon: Icons.cancel_outlined,
+            color: AppColors.error,
+            filled: false,
+            expanded: true,
+            onPressed: () => _annuler(context, ref),
+          ),
+          PremiumButton(
+            label: 'Encaisser',
+            icon: Icons.add,
+            expanded: true,
+            onPressed: () => _encaisser(context, ref),
+          ),
+        ]),
       const SizedBox(height: 10),
       PremiumListHeader('Encaissements (${ligne.encaissements.length})'),
       if (ligne.encaissements.isEmpty)
@@ -141,6 +133,17 @@ class _Body extends ConsumerWidget {
               commentaire: e.commentaire,
             )),
     ]);
+  }
+
+  Future<void> _encaisser(BuildContext context, WidgetRef ref) async {
+    final ok = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => EncaissementCotisationFormPage(ligne: ligne)));
+    if (ok == true) {
+      ref.invalidate(ligneCotisationDetailProvider(ligneId));
+      refreshFinances(ref);
+    }
   }
 
   Future<void> _annuler(BuildContext context, WidgetRef ref) async {

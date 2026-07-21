@@ -44,6 +44,10 @@ class _ElementsMaintenancePageState
   @override
   void initState() {
     super.initState();
+    // Rafraîchit le catalogue d'éléments (données de référence éditées ailleurs,
+    // ex. ReferentielListePage) pour refléter toute création / modification
+    // récente à chaque ouverture de la page.
+    ref.invalidate(catalogueElementsMaintenanceProvider);
     _scrollCtrl.addListener(_onScroll);
     for (final el in widget.initial) {
       if (el.catalogueElementId != null) {

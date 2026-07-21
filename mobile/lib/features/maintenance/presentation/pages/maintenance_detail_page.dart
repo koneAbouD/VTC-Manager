@@ -385,30 +385,60 @@ class _MaintenanceDetailPageState
                   const SizedBox(height: 8),
 
                   // ── Actions ───────────────────────────────────────────
+                  // Maintenance planifiée : « Annuler » et « Terminer » sur une
+                  // même ligne. Sinon (déjà terminée, etc.) : « Annuler » seul,
+                  // proposé tant qu'elle n'est pas déjà annulée.
                   if (_m.isPending)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: FilledButton.icon(
-                          onPressed: _complete,
-                          icon: const Icon(Icons.check_circle_outline_rounded),
-                          label: const Text('Terminer la maintenance',
-                              style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w600)),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF2E7D32),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 50,
+                            child: OutlinedButton.icon(
+                              onPressed: _annuler,
+                              icon: const Icon(Icons.cancel_outlined,
+                                  color: Colors.red),
+                              label: const Text('Annuler',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.red)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                    color: Colors.red, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-
-                  // L'annulation n'est proposée que si la maintenance ne l'est
-                  // pas déjà (évite l'erreur « déjà annulée »).
-                  if (_m.statut != 'ANNULEE')
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SizedBox(
+                            height: 50,
+                            child: FilledButton.icon(
+                              onPressed: _complete,
+                              icon: const Icon(
+                                  Icons.check_circle_outline_rounded),
+                              label: const Text('Terminer',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600)),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF2E7D32),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  else if (_m.statut != 'ANNULEE')
                     SizedBox(
                       width: double.infinity,
                       height: 50,

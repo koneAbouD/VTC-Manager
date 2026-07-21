@@ -225,6 +225,13 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   @override
   void initState() {
     super.initState();
+    // Rafraîchit les données de référence (types, activités, marques, types de
+    // document) éditées ailleurs (ex. ReferentielListePage) pour que les
+    // sélecteurs reflètent toute création / modification à chaque ouverture.
+    ref.invalidate(typesVehiculesProvider);
+    ref.invalidate(typesActivitesProvider);
+    ref.invalidate(marquesByTypeProvider);
+    ref.invalidate(typesDocVehiculeProvider);
     _tabCtrl = TabController(length: 2, vsync: this);
 
     final v = widget.initial;

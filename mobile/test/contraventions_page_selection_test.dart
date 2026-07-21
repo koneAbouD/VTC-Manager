@@ -45,6 +45,8 @@ class _FakeRepo implements ContraventionRepository {
     int size = 20,
     int? chauffeurId,
     int? vehiculeId,
+    String? dateDebut,
+    String? dateFin,
   }) async =>
       Right(PageResult<Contravention>(
         content: page == 0 ? _data() : const [],
@@ -72,38 +74,46 @@ Future<void> _pumpPage(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('les 3 lignes se chargent et le compteur s\'affiche',
-      (tester) async {
+  testWidgets('les 3 lignes se chargent', (tester) async {
     await _pumpPage(tester);
+    // Les 3 types d'infraction sont rendus ; aucune barre de sélection tant
+    // qu'on n'a pas activé le mode sélection (appui long).
+    expect(find.text('Excès'), findsOneWidget);
     expect(find.text('Feu rouge'), findsOneWidget);
-    expect(find.text('3 contravention(s)'), findsOneWidget);
-    expect(find.text('Tout cocher'), findsOneWidget);
+    expect(find.text('Stationnement'), findsOneWidget);
+    expect(find.text('Total à reverser'), findsNothing);
   });
 
-  testWidgets('un tap sur une ligne la coche → barre Payer (1) apparaît',
+  testWidgets('un appui long coche la ligne → barre Reverser (1) apparaît',
       (tester) async {
     await _pumpPage(tester);
 
-    // Aucune barre de paiement au départ.
-    expect(find.textContaining('Payer ('), findsNothing);
+    // Aucune barre de reversement au départ.
+    expect(find.textContaining('Reverser ('), findsNothing);
 
-    await tester.tap(find.text('Feu rouge'));
+    // La sélection s'active par appui long (le tap ouvre le détail).
+    await tester.longPress(find.text('Feu rouge'));
     await tester.pump();
 
-    // La barre basse « Total à reverser » + « Payer (1) » doit apparaître.
+    // La barre basse « Total à reverser » + « Reverser (1) » doit apparaître.
     expect(find.text('Total à reverser'), findsOneWidget);
-    expect(find.text('Payer (1)'), findsOneWidget);
+    expect(find.text('Reverser (1)'), findsOneWidget);
   });
 
-  testWidgets('« Tout cocher » sélectionne les 3 lignes → Payer (3)',
+  testWidgets('« Tout sélectionner » coche les 3 lignes → Reverser (3)',
       (tester) async {
     await _pumpPage(tester);
 
-    await tester.tap(find.text('Tout cocher'));
+    // Entre en mode sélection (appui long), puis coche tout.
+    await tester.longPress(find.text('Feu rouge'));
     await tester.pump();
 
-    expect(find.text('Payer (3)'), findsOneWidget);
-    // Le libellé bascule.
-    expect(find.text('Tout décocher'), findsOneWidget);
+    expect(find.text('3 contravention(s)'), findsOneWidget);
+    await tester.tap(find.text('Tout sélectionner'));
+    await tester.pump();
+
+    expect(find.text('Reverser (3)'), findsOneWidget);
+    // Le libellé du bouton de la barre d'outils bascule.
+    expect(find.text('Annuler'), findsOneWidget);
   });
 }

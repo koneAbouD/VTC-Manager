@@ -182,6 +182,9 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
   @override
   void initState() {
     super.initState();
+    // Rafraîchit les types de document (données de référence éditées ailleurs,
+    // ex. ReferentielListePage) à chaque ouverture du formulaire.
+    ref.invalidate(typesDocChauffeurProvider);
     final c = widget.initial;
     _tabCtrl = TabController(length: 2, vsync: this);
     _nom = TextEditingController(text: c?.nom ?? '');

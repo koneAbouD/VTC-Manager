@@ -35,6 +35,10 @@ class _EtatParcFiltreSheetState extends ConsumerState<_EtatParcFiltreSheet> {
   @override
   void initState() {
     super.initState();
+    // Rafraîchit les activités/groupes (données de référence éditées ailleurs,
+    // ex. ReferentielListePage) à chaque ouverture du filtre.
+    ref.invalidate(typesActivitesProvider);
+    ref.invalidate(groupesProvider);
     final f = ref.read(etatParcFiltreProvider);
     _groupeId = f.groupeId;
     _groupeNom = f.groupeNom;

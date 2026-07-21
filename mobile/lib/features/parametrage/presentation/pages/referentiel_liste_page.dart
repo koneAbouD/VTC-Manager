@@ -31,10 +31,6 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
   static const int _seuilRecherche = 20;
 
   bool _busy = false;
-  // Vrai pendant une (dés)activation : le switch donne déjà un retour immédiat
-  // (override optimiste), on masque donc la barre de progression pour que le
-  // rechargement reste invisible à l'écran.
-  bool _toggling = false;
   String _query = '';
   final _searchCtrl = TextEditingController();
 
@@ -72,28 +68,20 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
 
   Future<void> _basculerActif(Map<String, dynamic> item, bool actif) async {
     final id = item[d.idField] as Object;
-    setState(() {
-      _actifOverride[id] = actif; // feedback immédiat
-      _busy = true;
-      _toggling = true; // masque la barre de progression pendant le toggle
-    });
+    // Retour immédiat via l'override optimiste, sans passer par `_busy` : les
+    // autres switches de la liste ne sont pas figés/grisés, et le rechargement
+    // reste invisible. Pas de toast de confirmation.
+    setState(() => _actifOverride[id] = actif);
     try {
       await ref
           .read(parametrageApiProvider)
           .changerActivation(d.endpoint, id, actif);
       await _rafraichir();
-      _toast(actif
-          ? '« ${_titre(item)} » activé.'
-          : '« ${_titre(item)} » désactivé.');
     } catch (e) {
       _toast(_message(e), erreur: true);
     } finally {
       if (mounted) {
-        setState(() {
-          _actifOverride.remove(id); // la liste rafraîchie fait foi
-          _busy = false;
-          _toggling = false;
-        });
+        setState(() => _actifOverride.remove(id)); // la liste rafraîchie fait foi
       }
     }
   }
@@ -253,13 +241,11 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
 
     return Column(
       children: [
-        // Fine barre de progression pendant une mutation (n'efface pas la
-        // liste). Masquée lors d'une (dés)activation : le switch fait déjà foi.
+        // Fine barre de progression pendant une suppression (les (dés)activations
+        // ne passent pas par `_busy`, donc n'affichent aucun chargement).
         SizedBox(
           height: 2,
-          child: (_busy && !_toggling)
-              ? const LinearProgressIndicator(minHeight: 2)
-              : null,
+          child: _busy ? const LinearProgressIndicator(minHeight: 2) : null,
         ),
         if (afficherRecherche) _barreRecherche(liste.length),
         Expanded(

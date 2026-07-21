@@ -48,6 +48,7 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
         entity.setMontantDu(ligne.getMontantDu());
         entity.setMontantEncaisse(ligne.getMontantEncaisse() != null ? ligne.getMontantEncaisse() : BigDecimal.ZERO);
         entity.setStatut(ligne.getStatut());
+        entity.setMotifAnnulation(ligne.getMotifAnnulation());
 
         return mapper.toDomain(jpaRepository.save(entity));
     }

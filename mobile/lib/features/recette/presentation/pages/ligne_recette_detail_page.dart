@@ -38,27 +38,7 @@ class LigneRecetteDetailPage extends ConsumerWidget {
         ),
         data: (ligne) => _DetailBody(ligne: ligne, ligneId: ligneId),
       ),
-      floatingActionButton: asyncLigne.valueOrNull?.estActive == true
-          ? FloatingActionButton.extended(
-              backgroundColor: AppColors.primary,
-              onPressed: () => _openEncaissementForm(context, ref, asyncLigne.value!),
-              icon: const Icon(Icons.add),
-              label: const Text('Encaisser'),
-            )
-          : null,
     );
-  }
-
-  Future<void> _openEncaissementForm(
-      BuildContext context, WidgetRef ref, LigneRecette ligne) async {
-    final refreshed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => EncaissementFormPage(ligne: ligne)),
-    );
-    if (refreshed == true) {
-      ref.invalidate(ligneRecetteDetailProvider(ligneId));
-      refreshFinances(ref);
-    }
   }
 }
 
@@ -140,13 +120,22 @@ class _DetailBody extends ConsumerWidget {
             onPressed: () => _confirmerVersement(context, ref),
           ),
         if (ligne.estActive)
-          PremiumButton(
-            label: 'Annuler la ligne',
-            icon: Icons.cancel_outlined,
-            color: AppColors.error,
-            filled: false,
-            onPressed: () => _annuler(context, ref),
-          ),
+          PremiumButtonRow(buttons: [
+            PremiumButton(
+              label: 'Annuler',
+              icon: Icons.cancel_outlined,
+              color: AppColors.error,
+              filled: false,
+              expanded: true,
+              onPressed: () => _annuler(context, ref),
+            ),
+            PremiumButton(
+              label: 'Encaisser',
+              icon: Icons.add,
+              expanded: true,
+              onPressed: () => _encaisser(context, ref),
+            ),
+          ]),
         const SizedBox(height: 10),
         PremiumListHeader('Encaissements (${ligne.encaissements.length})'),
         if (ligne.encaissements.isEmpty)
@@ -162,6 +151,17 @@ class _DetailBody extends ConsumerWidget {
               )),
       ],
     );
+  }
+
+  Future<void> _encaisser(BuildContext context, WidgetRef ref) async {
+    final refreshed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => EncaissementFormPage(ligne: ligne)),
+    );
+    if (refreshed == true) {
+      ref.invalidate(ligneRecetteDetailProvider(ligneId));
+      refreshFinances(ref);
+    }
   }
 
   Future<void> _confirmerVersement(BuildContext context, WidgetRef ref) async {

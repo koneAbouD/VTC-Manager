@@ -47,6 +47,7 @@ public class LigneRecetteRepositoryAdapter implements LigneRecetteRepository {
         entity.setMontantAttendu(ligne.getMontantAttendu());
         entity.setMontantEncaisse(ligne.getMontantEncaisse() != null ? ligne.getMontantEncaisse() : BigDecimal.ZERO);
         entity.setStatut(ligne.getStatut());
+        entity.setMotifAnnulation(ligne.getMotifAnnulation());
 
         return mapper.toDomain(jpaRepository.save(entity));
     }

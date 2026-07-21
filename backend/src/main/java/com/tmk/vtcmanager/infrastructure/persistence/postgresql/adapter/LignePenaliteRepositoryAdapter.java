@@ -74,6 +74,7 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
                 ? ligneRecetteJpaRepository.getReferenceById(ligne.getLigneRecetteId()) : null);
         entity.setStatut(ligne.getStatut());
         entity.setCommentaire(ligne.getCommentaire());
+        entity.setMotifAnnulation(ligne.getMotifAnnulation());
 
         return mapper.toDomain(jpaRepository.save(entity));
     }

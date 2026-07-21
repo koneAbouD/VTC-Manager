@@ -71,6 +71,26 @@ class _DetailBody extends ConsumerWidget {
     final (statutLabel, statutColor) = _statut;
     final restant = ligne.montantRestant;
 
+    // Action principale du moment (au plus une, selon le type et l'état) :
+    // (libellé, icône, couleur, action).
+    final (String, IconData, Color, VoidCallback)? primaire = ligne.isEncaissable
+        ? ('Encaisser', Icons.payments_outlined, AppColors.primary,
+            () => _openEncaissement(context, ref, ligne))
+        : ligne.isExecutable
+            ? ('Marquer exécuté', Icons.volume_up_outlined, AppColors.warning,
+                () => _executer(context, ref))
+            : ligne.isNotifiable
+                ? ('Marquer notifié', Icons.warning_amber_rounded,
+                    AppColors.warning, () => _notifier(context, ref))
+                : ligne.isDemarrable
+                    ? ('Démarrer', Icons.block_outlined, AppColors.error,
+                        () => _demarrer(context, ref))
+                    : ligne.isLevable
+                        ? ('Lever', Icons.lock_open_outlined, AppColors.info,
+                            () => _lever(context, ref))
+                        : null;
+    final annulable = !ligne.statut.isTerminal;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
@@ -161,42 +181,33 @@ class _DetailBody extends ConsumerWidget {
             ],
           ),
 
-        // ── Boutons d'action ─────────────────────────────────────────────
-        if (ligne.isEncaissable)
+        // ── Boutons d'action (Annuler + action principale sur une ligne) ──
+        if (primaire != null && annulable)
+          PremiumButtonRow(buttons: [
+            PremiumButton(
+              label: 'Annuler',
+              icon: Icons.cancel_outlined,
+              color: AppColors.error,
+              filled: false,
+              expanded: true,
+              onPressed: () => _annuler(context, ref),
+            ),
+            PremiumButton(
+              label: primaire.$1,
+              icon: primaire.$2,
+              color: primaire.$3,
+              expanded: true,
+              onPressed: primaire.$4,
+            ),
+          ])
+        else if (primaire != null)
           PremiumButton(
-            label: 'Encaisser',
-            icon: Icons.payments_outlined,
-            onPressed: () => _openEncaissement(context, ref, ligne),
-          ),
-        if (ligne.isExecutable)
-          PremiumButton(
-            label: 'Marquer comme exécuté',
-            icon: Icons.volume_up_outlined,
-            color: AppColors.warning,
-            onPressed: () => _executer(context, ref),
-          ),
-        if (ligne.isNotifiable)
-          PremiumButton(
-            label: 'Marquer comme notifié',
-            icon: Icons.warning_amber_rounded,
-            color: AppColors.warning,
-            onPressed: () => _notifier(context, ref),
-          ),
-        if (ligne.isDemarrable)
-          PremiumButton(
-            label: 'Démarrer l\'immobilisation',
-            icon: Icons.block_outlined,
-            color: AppColors.error,
-            onPressed: () => _demarrer(context, ref),
-          ),
-        if (ligne.isLevable)
-          PremiumButton(
-            label: 'Lever l\'immobilisation',
-            icon: Icons.lock_open_outlined,
-            color: AppColors.info,
-            onPressed: () => _lever(context, ref),
-          ),
-        if (!ligne.statut.isTerminal)
+            label: primaire.$1,
+            icon: primaire.$2,
+            color: primaire.$3,
+            onPressed: primaire.$4,
+          )
+        else if (annulable)
           PremiumButton(
             label: 'Annuler la pénalité',
             icon: Icons.cancel_outlined,
