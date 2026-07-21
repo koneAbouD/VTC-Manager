@@ -14,6 +14,8 @@ public enum VehiculeStatutMotif {
     PANNE_OU_ACCIDENT,
     /** Au moins une maintenance EN_COURS. */
     MAINTENANCE_EN_COURS,
+    /** Au moins une maintenance planifiée dont l'échéance est proche (état de parc). */
+    MAINTENANCE_PREVUE,
     /** Un chauffeur est affecté au véhicule. */
     CHAUFFEUR_AFFECTE,
     /** Aucun chauffeur affecté : le véhicule ne produit pas. */

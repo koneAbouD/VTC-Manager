@@ -46,6 +46,9 @@ public class GetEtatParcUseCase {
 
     private static final int SEUIL_ALERTE_DOCUMENTS_JOURS = 30;
     private static final int SEUIL_ALERTE_MAINTENANCE_JOURS = 7;
+    /** Échéance sous laquelle une maintenance planifiée fait entrer le véhicule
+     *  dans la liste « demandant une action ». */
+    private static final int SEUIL_ACTION_MAINTENANCE_PREVUE_JOURS = 4;
     private static final int SEUIL_ALERTE_VIDANGE_JOURS = 7;
     /** Km restants sous lesquels une vidange est réputée due (déclenche l'alerte). */
     private static final int SEUIL_ALERTE_VIDANGE_KM = 500;
@@ -94,12 +97,23 @@ public class GetEtatParcUseCase {
         // véhicule). Une seule lecture par statut, sans requête par véhicule (pas de N+1).
         Map<Long, LocalDate> finsPrevues = finsPrevuesParVehicule(today);
 
-        List<VehiculeExceptionDto> exceptions = vehicules.stream()
+        List<VehiculeExceptionDto> exceptionsStatut = vehicules.stream()
                 .filter(v -> demandeUneAction(v.getStatut()))
                 .map(v -> toException(v, periodesEnCours.get(v.getId()), finsPrevues.get(v.getId())))
                 .sorted(Comparator.comparing(VehiculeExceptionDto::joursDansStatut,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
+
+        // Véhicules dont au moins une maintenance planifiée est proche (≤ 4 j) mais
+        // qui ne figurent pas déjà dans la liste au titre de leur statut (pas de doublon).
+        Set<Long> dejaListes = exceptionsStatut.stream()
+                .map(VehiculeExceptionDto::vehiculeId)
+                .collect(Collectors.toSet());
+        List<VehiculeExceptionDto> exceptionsMaintenancePrevue =
+                maintenancesPrevues(vehicules, today, dejaListes);
+
+        List<VehiculeExceptionDto> exceptions = new java.util.ArrayList<>(exceptionsStatut);
+        exceptions.addAll(exceptionsMaintenancePrevue);
 
         return new EtatParcSummaryResponse(
                 vehicules.size(), parcActif,
@@ -143,7 +157,55 @@ public class GetEtatParcUseCase {
                 vehicule.getStatut() != null ? vehicule.getStatut().name() : null,
                 motif != null ? motif.name() : null,
                 jours,
-                finPrevue);
+                finPrevue,
+                null);
+    }
+
+    /**
+     * Véhicules du parc filtré (HORS_PARC exclu) ayant au moins une maintenance
+     * PLANIFIEE dont l'échéance tombe sous {@value #SEUIL_ACTION_MAINTENANCE_PREVUE_JOURS} j
+     * (échéances déjà dépassées incluses). Un véhicule déjà présent dans
+     * {@code dejaListes} (au titre de son statut) est ignoré pour éviter les doublons.
+     * Une seule entrée par véhicule, sur la maintenance la plus proche.
+     */
+    private List<VehiculeExceptionDto> maintenancesPrevues(List<Vehicule> vehicules, LocalDate today,
+                                                           Set<Long> dejaListes) {
+        Map<Long, Vehicule> parcFiltre = vehicules.stream()
+                .filter(v -> v.getStatut() != VehiculeStatus.HORS_PARC)
+                .collect(Collectors.toMap(Vehicule::getId, Function.identity(), (a, b) -> a));
+        if (parcFiltre.isEmpty()) return List.of();
+
+        LocalDate horizon = today.plusDays(SEUIL_ACTION_MAINTENANCE_PREVUE_JOURS);
+
+        // Échéance la plus proche par véhicule éligible.
+        Map<Long, LocalDate> echeances = new java.util.HashMap<>();
+        maintenanceRepository
+                .findByDatePrevueLessThanEqualAndStatut(horizon, MaintenanceStatus.PLANIFIEE)
+                .forEach(m -> {
+                    if (m.getVehicule() == null || m.getDatePrevue() == null) return;
+                    Long vehiculeId = m.getVehicule().getId();
+                    if (!parcFiltre.containsKey(vehiculeId) || dejaListes.contains(vehiculeId)) return;
+                    echeances.merge(vehiculeId, m.getDatePrevue(),
+                            (a, b) -> a.isBefore(b) ? a : b);
+                });
+
+        return echeances.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue())
+                .map(e -> {
+                    Vehicule v = parcFiltre.get(e.getKey());
+                    String libelle = ((v.getMarque() != null ? v.getMarque().getNom() : "") + " "
+                            + (v.getModele() != null ? v.getModele().getNom() : "")).trim();
+                    return new VehiculeExceptionDto(
+                            v.getId(),
+                            v.getImmatriculation(),
+                            libelle,
+                            v.getStatut() != null ? v.getStatut().name() : null,
+                            VehiculeStatutMotif.MAINTENANCE_PREVUE.name(),
+                            null,
+                            null,
+                            e.getValue());
+                })
+                .toList();
     }
 
     /**

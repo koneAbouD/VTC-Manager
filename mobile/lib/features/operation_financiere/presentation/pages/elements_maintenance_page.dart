@@ -117,29 +117,6 @@ class _ElementsMaintenancePageState
     return result;
   }
 
-  // ── Toggle catalogue ──────────────────────────────────────────────────────
-
-  void _toggleCatalogue(CatalogueElementMaintenance el, bool? checked) {
-    setState(() {
-      if (checked == true) {
-        _catalogueSel.putIfAbsent(
-          el.id,
-          () => _CatalogueEntry(
-            libelle: el.libelle,
-            // Pré-remplissage avec le montant par défaut du catalogue.
-            montantCtrl: TextEditingController(
-              text: (el.montantDefaut != null && el.montantDefaut! > 0)
-                  ? el.montantDefaut!.toStringAsFixed(0)
-                  : '',
-            ),
-          ),
-        );
-      } else {
-        _catalogueSel.remove(el.id)?.montantCtrl.dispose();
-      }
-    });
-  }
-
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -244,8 +221,14 @@ class _ElementsMaintenancePageState
                       if (i < _freeItems.length) {
                         return _buildFreeRow(i);
                       }
-                      return _buildCatalogueRow(
-                          filtered[i - _freeItems.length]);
+                      final el = filtered[i - _freeItems.length];
+                      // Widget à état propre : cocher/décocher ne reconstruit que
+                      // cette ligne, pas toute la page (pas de « rechargement »).
+                      return _CatalogueRow(
+                        key: ValueKey('cat_${el.id}'),
+                        el: el,
+                        selection: _catalogueSel,
+                      );
                     },
                   );
                 },
@@ -254,62 +237,6 @@ class _ElementsMaintenancePageState
           ],
         ),
       );
-  }
-
-  // ── Ligne catalogue ───────────────────────────────────────────────────────
-
-  Widget _buildCatalogueRow(CatalogueElementMaintenance el) {
-    final isChecked = _catalogueSel.containsKey(el.id);
-    return Container(
-      decoration: const BoxDecoration(
-        border:
-            Border(bottom: BorderSide(color: Color(0xFFF0F1F4))),
-      ),
-      child: Row(
-        children: [
-          Checkbox(
-            value: isChecked,
-            onChanged: (v) => _toggleCatalogue(el, v),
-            activeColor: _kPrimary,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4)),
-            materialTapTargetSize:
-                MaterialTapTargetSize.shrinkWrap,
-          ),
-          if (el.imageUrl != null) ...[
-            GestureDetector(
-              onTap: () => showImageViewer(context, el.imageUrl!, titre: el.libelle),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  el.imageUrl!,
-                  width: 32,
-                  height: 32,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      const SizedBox(width: 32, height: 32),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-          ],
-          Expanded(
-            child: Text(
-              el.libelle,
-              style: TextStyle(
-                fontSize: 15,
-                color: isChecked ? _kDark : _kHint,
-                fontWeight: isChecked
-                    ? FontWeight.w500
-                    : FontWeight.w400,
-              ),
-            ),
-          ),
-          if (isChecked)
-            _PriceField(ctrl: _catalogueSel[el.id]!.montantCtrl),
-        ],
-      ),
-    );
   }
 
   // ── Ligne libre ───────────────────────────────────────────────────────────
@@ -370,6 +297,101 @@ class _ElementsMaintenancePageState
             ),
           ),
           _PriceField(ctrl: item.montantCtrl),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Ligne catalogue (widget à état propre) ──────────────────────────────────
+// Isolée dans un StatefulWidget : cocher / décocher un élément ne reconstruit
+// QUE cette ligne, pas toute la page (ni ses images) — plus de « rechargement ».
+class _CatalogueRow extends StatefulWidget {
+  final CatalogueElementMaintenance el;
+  final Map<int, _CatalogueEntry> selection;
+
+  const _CatalogueRow({
+    super.key,
+    required this.el,
+    required this.selection,
+  });
+
+  @override
+  State<_CatalogueRow> createState() => _CatalogueRowState();
+}
+
+class _CatalogueRowState extends State<_CatalogueRow> {
+  CatalogueElementMaintenance get _el => widget.el;
+  Map<int, _CatalogueEntry> get _sel => widget.selection;
+
+  void _toggle(bool? checked) {
+    setState(() {
+      if (checked == true) {
+        _sel.putIfAbsent(
+          _el.id,
+          () => _CatalogueEntry(
+            libelle: _el.libelle,
+            // Pré-remplissage avec le montant par défaut du catalogue.
+            montantCtrl: TextEditingController(
+              text: (_el.montantDefaut != null && _el.montantDefaut! > 0)
+                  ? _el.montantDefaut!.toStringAsFixed(0)
+                  : '',
+            ),
+          ),
+        );
+      } else {
+        _sel.remove(_el.id)?.montantCtrl.dispose();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isChecked = _sel.containsKey(_el.id);
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFF0F1F4))),
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            value: isChecked,
+            onChanged: _toggle,
+            activeColor: _kPrimary,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          if (_el.imageUrl != null) ...[
+            GestureDetector(
+              onTap: () =>
+                  showImageViewer(context, _el.imageUrl!, titre: _el.libelle),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  _el.imageUrl!,
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                  cacheWidth: 96, // décodage léger : pas de re-décode coûteux
+                  errorBuilder: (_, __, ___) =>
+                      const SizedBox(width: 32, height: 32),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
+          Expanded(
+            child: Text(
+              _el.libelle,
+              style: TextStyle(
+                fontSize: 15,
+                color: isChecked ? _kDark : _kHint,
+                fontWeight: isChecked ? FontWeight.w500 : FontWeight.w400,
+              ),
+            ),
+          ),
+          if (isChecked) _PriceField(ctrl: _sel[_el.id]!.montantCtrl),
         ],
       ),
     );

@@ -63,6 +63,10 @@ class VehiculeExceptionModel {
   /// Null si le motif n'est pas une indisponibilité ou si elle est ouverte.
   final DateTime? finPrevue;
 
+  /// Échéance de la maintenance planifiée la plus proche (motif
+  /// `MAINTENANCE_PREVUE`). Null pour les autres motifs.
+  final DateTime? dateMaintenancePrevue;
+
   const VehiculeExceptionModel({
     required this.vehiculeId,
     required this.immatriculation,
@@ -71,6 +75,7 @@ class VehiculeExceptionModel {
     required this.motif,
     required this.joursDansStatut,
     this.finPrevue,
+    this.dateMaintenancePrevue,
   });
 
   factory VehiculeExceptionModel.fromJson(Map<String, dynamic> json) =>
@@ -84,6 +89,9 @@ class VehiculeExceptionModel {
         finPrevue: json['finPrevue'] != null
             ? DateTime.tryParse(json['finPrevue'] as String)
             : null,
+        dateMaintenancePrevue: json['dateMaintenancePrevue'] != null
+            ? DateTime.tryParse(json['dateMaintenancePrevue'] as String)
+            : null,
       );
 
   /// Libellé français du motif historisé.
@@ -92,6 +100,7 @@ class VehiculeExceptionModel {
         'IMMOBILISATION_INDISPONIBILITE' => 'Immobilisé (indisponibilité)',
         'PANNE_OU_ACCIDENT' => 'Panne ou accident',
         'MAINTENANCE_EN_COURS' => 'Maintenance en cours',
+        'MAINTENANCE_PREVUE' => 'Maintenance prévue',
         'SANS_CHAUFFEUR' => 'Aucun chauffeur affecté',
         'CHAUFFEUR_AFFECTE' => 'Chauffeur affecté',
         'SORTIE_PARC' => 'Sorti du parc',

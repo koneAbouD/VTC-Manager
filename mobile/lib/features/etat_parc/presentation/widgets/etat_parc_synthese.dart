@@ -472,6 +472,7 @@ class _ExceptionTile extends ConsumerWidget {
         'IMMOBILISATION_INDISPONIBILITE' => Icons.no_transfer_rounded,
         'PANNE_OU_ACCIDENT' => Icons.car_crash_rounded,
         'MAINTENANCE_EN_COURS' => Icons.build_rounded,
+        'MAINTENANCE_PREVUE' => Icons.event_available_rounded,
         'SANS_CHAUFFEUR' => Icons.person_off_rounded,
         'SORTIE_PARC' => Icons.logout_rounded,
         'DECISION_MANUELLE' => Icons.pan_tool_rounded,
@@ -540,6 +541,16 @@ class _ExceptionTile extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Fin prévue le ${DateFormat('dd MMM yyyy', 'fr_FR').format(exception.finPrevue!)}',
+                      style: TextStyle(
+                          fontSize: 11.5, color: Colors.grey.shade500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (exception.dateMaintenancePrevue != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Prévue le ${DateFormat('dd MMM yyyy', 'fr_FR').format(exception.dateMaintenancePrevue!)}',
                       style: TextStyle(
                           fontSize: 11.5, color: Colors.grey.shade500),
                       maxLines: 1,
