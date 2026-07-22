@@ -633,7 +633,7 @@ class _DatePill extends StatelessWidget {
 
 // ── Barre de recherche ─────────────────────────────────────────────────────
 
-class _SearchBarWidget extends StatelessWidget {
+class _SearchBarWidget extends StatefulWidget {
   final TextEditingController controller;
   final void Function(String) onChanged;
   final VoidCallback? onTunePressed;
@@ -647,29 +647,51 @@ class _SearchBarWidget extends StatelessWidget {
   });
 
   @override
+  State<_SearchBarWidget> createState() => _SearchBarWidgetState();
+}
+
+class _SearchBarWidgetState extends State<_SearchBarWidget> {
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // Rebuild pour basculer loupe ↔ croix (ferme le clavier) selon le focus.
+    _focus.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt qu'un
+        // blanc avec ombre portée.
+        color: const Color(0xFFF2F3F5),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          const Icon(Icons.search, color: Color(0xFF8A8A8E), size: 20),
+          _focus.hasFocus
+              ? GestureDetector(
+                  onTap: _focus.unfocus,
+                  child: const Icon(Icons.close,
+                      color: Color(0xFF8A8A8E), size: 20),
+                )
+              : const Icon(Icons.search, color: Color(0xFF8A8A8E), size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
-              controller: controller,
-              onChanged: onChanged,
+              controller: widget.controller,
+              focusNode: _focus,
+              onChanged: widget.onChanged,
               style: const TextStyle(fontSize: 14),
               decoration: const InputDecoration(
                 hintText: 'Rechercher une opération...',
@@ -681,8 +703,8 @@ class _SearchBarWidget extends StatelessWidget {
             ),
           ),
           TuneFilterButton(
-            onTap:  onTunePressed,
-            active: hasActiveFilter,
+            onTap:  widget.onTunePressed,
+            active: widget.hasActiveFilter,
           ),
         ],
       ),

@@ -9,7 +9,7 @@ const kAuthPrimary = Color(0xFF43A047);
 const kAuthPrimaryDark = Color(0xFF2E7D32);
 const kAuthDark = Color(0xFF1A1A2E);
 const kAuthHint = Color(0xFF8A94A6);
-const kAuthFieldFill = Color(0xFFF3F6F4);
+const kAuthFieldFill = Color(0xFFF2F3F5);
 const kAuthBorder = Color(0xFFE4E9EE);
 const kAuthError = Color(0xFFE03131);
 

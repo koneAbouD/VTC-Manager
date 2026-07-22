@@ -6,6 +6,7 @@ import '../../../../core/error/exception.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_error_banner.dart';
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../domain/entities/compte_tresorerie.dart';
 import '../../domain/entities/rapports.dart';
 import '../providers/tresorerie_providers.dart';
@@ -986,22 +987,12 @@ class _StyledDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      initialValue: value,
-      isExpanded: true,
-      icon: const Icon(Icons.expand_more_rounded, color: _kHint),
-      style: const TextStyle(
-          fontSize: 15, color: _kDark, fontWeight: FontWeight.w600),
-      decoration: _fieldDeco('').copyWith(
-        prefixIcon: Icon(icon, size: 18, color: _kHint),
-      ),
-      items: [
-        for (final i in items)
-          DropdownMenuItem<T>(
-            value: i,
-            child: Text(label(i),
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
+    return PremiumSelectField<T>(
+      value: value,
+      isRequired: true,
+      accent: _kPrimary,
+      options: [
+        for (final i in items) SelectOption<T>(value: i, label: label(i)),
       ],
       onChanged: (v) {
         if (v != null) onChanged(v);

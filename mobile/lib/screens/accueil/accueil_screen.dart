@@ -55,7 +55,7 @@ class AccueilScreen extends ConsumerWidget {
       onRefresh: () =>
           ref.read(operationFinanciereNotifierProvider.notifier).loadAll(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+        padding: const EdgeInsets.fromLTRB(16, 2, 16, 80),
         children: [
           // ── Carte solde ─────────────────────────────────────────────────
           _SoldeCard(

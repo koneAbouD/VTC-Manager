@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error/exception.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../core/widgets/app_header.dart';
+import '../../../core/widgets/date_filter_dialogs.dart';
 import '../data/jour_ferie_api.dart';
 
 /// Écran d'administration des jours fériés (Côte d'Ivoire).
@@ -345,11 +346,14 @@ class _AjoutJourFerieSheetState extends State<_AjoutJourFerieSheet> {
   }
 
   Future<void> _pickDate() async {
-    final d = await showDatePicker(
+    final d = await showDialog<DateTime>(
       context: context,
-      initialDate: DateTime(widget.annee, DateTime.now().month, DateTime.now().day),
-      firstDate: DateTime(widget.annee - 1),
-      lastDate: DateTime(widget.annee + 1, 12, 31),
+      builder: (_) => SingleDatePickerDialog(
+        initialDate:
+            DateTime(widget.annee, DateTime.now().month, DateTime.now().day),
+        firstDate: DateTime(widget.annee - 1),
+        lastDate: DateTime(widget.annee + 1, 12, 31),
+      ),
     );
     if (d != null) setState(() => _date = d);
   }

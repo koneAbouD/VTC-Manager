@@ -29,21 +29,14 @@ class ContraventionsHubPage extends ConsumerStatefulWidget {
 class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
   late int _segment = widget.initialSegment;
   bool _addOpen = false;
-  final _searchController = TextEditingController();
-  String _search = '';
 
-  // ── En-tête collapsable (KPI + recherche) ────────────────────────────────
-  // Piloté par le défilement de la liste active : `_collapse` = pixels repliés
-  // (0 = déployé, `_headerMax` = totalement escamoté vers le haut).
+  // ── En-tête collapsable (KPI) ────────────────────────────────────────────
+  // La recherche est désormais propre à chaque page (sous le filtre date, dans
+  // la zone scrollable). Piloté par le défilement de la liste active :
+  // `_collapse` = pixels repliés (0 = déployé, `_headerMax` = escamoté).
   final _headerKey = GlobalKey();
-  double _headerMax = 128; // estimation, affinée après le premier layout
+  double _headerMax = 72; // estimation, affinée après le premier layout
   double _collapse = 0;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   /// Mesure la hauteur réelle de l'en-tête après layout pour caler l'amplitude
   /// de repli sur son contenu exact.
@@ -66,8 +59,6 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
     setState(() {
       _segment = index;
       _addOpen = false;
-      _search = '';
-      _searchController.clear();
       _collapse = 0; // la nouvelle liste repart en haut → en-tête déployé
     });
   }
@@ -184,11 +175,9 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
                     },
                     child: IndexedStack(
                       index: _segment,
-                      children: [
-                        LignesPenalitePage(
-                            embedded: true, externalSearch: _search),
-                        ContraventionsPage(
-                            embedded: true, externalSearch: _search),
+                      children: const [
+                        LignesPenalitePage(embedded: true),
+                        ContraventionsPage(embedded: true),
                       ],
                     ),
                   ),
@@ -317,8 +306,8 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
       padding: const EdgeInsets.all(4),
       child: Row(
         children: [
-          _segment0('Pénalités', 0),
           _segment0("Contrav. État", 1),
+          _segment0('Pénalités', 0),
         ],
       ),
     );
@@ -356,49 +345,7 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
     );
   }
 
-  Widget _searchBar() {
-    final hint = _isEtat
-        ? 'Rechercher un numéro, véhicule…'
-        : 'Rechercher un véhicule, chauffeur…';
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          const Icon(Icons.search, size: 18, color: AppColors.hint),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              onChanged: (v) => setState(() => _search = v),
-              style: const TextStyle(fontSize: 13, color: AppColors.dark),
-              decoration: InputDecoration(
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 11),
-                border: InputBorder.none,
-                hintText: hint,
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.hint),
-              ),
-            ),
-          ),
-          if (_search.isNotEmpty)
-            GestureDetector(
-              onTap: () => setState(() {
-                _search = '';
-                _searchController.clear();
-              }),
-              child: const Icon(Icons.close, size: 17, color: AppColors.hint),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// En-tête KPI + recherche qui s'escamote vers le haut au défilement.
+  /// En-tête KPI qui s'escamote vers le haut au défilement.
   /// La boîte extérieure rétrécit (`SizedBox.height`) pour rendre l'espace à la
   /// liste, tandis que le contenu (hauteur pleine via `OverflowBox`) glisse vers
   /// le haut et s'estompe.
@@ -416,12 +363,8 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
           child: _kpiBar(kpi),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
-          child: _searchBar(),
         ),
       ],
     );

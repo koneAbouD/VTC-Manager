@@ -6,6 +6,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/error/exception.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/app_error_banner.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/app_header.dart';
 import 'condition_travail_models.dart';
 
@@ -207,7 +208,10 @@ class _ConditionTravailWizardPageState
 
   Future<void> _pickTime(
       TimeOfDay initial, ValueChanged<TimeOfDay> onPicked) async {
-    final picked = await showTimePicker(context: context, initialTime: initial);
+    final picked = await showDialog<TimeOfDay>(
+      context: context,
+      builder: (_) => HeurePickerDialog(initialTime: initial),
+    );
     if (picked != null) onPicked(picked);
   }
 
@@ -649,11 +653,13 @@ class _ConditionTravailWizardPageState
               _DateField(
                 date: _dateDebutAlternance,
                 onTap: () async {
-                  final picked = await showDatePicker(
+                  final picked = await showDialog<DateTime>(
                     context: context,
-                    initialDate: _dateDebutAlternance,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2100),
+                    builder: (_) => SingleDatePickerDialog(
+                      initialDate: _dateDebutAlternance,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2100),
+                    ),
                   );
                   if (picked != null) {
                     setState(() => _dateDebutAlternance = picked);

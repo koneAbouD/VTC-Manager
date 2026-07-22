@@ -7,6 +7,8 @@ import '../../domain/entities/ligne_recette.dart';
 import '../providers/ligne_recette_provider.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_error_banner.dart';
+import '../../../../core/widgets/premium_select_field.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 
 class EncaissementFormPage extends ConsumerStatefulWidget {
   final LigneRecette ligne;
@@ -78,17 +80,23 @@ class _EncaissementFormPageState extends ConsumerState<EncaissementFormPage> {
               },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<ModeEncaissement>(
-              initialValue: _mode,
-              decoration: const InputDecoration(
-                labelText: 'Mode d\'encaissement *',
-                border: OutlineInputBorder(),
-              ),
-              items: ModeEncaissement.values
-                  .map((m) => DropdownMenuItem(value: m, child: Text(m.label)))
+            const Text('Mode d\'encaissement *',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280))),
+            const SizedBox(height: 6),
+            PremiumSelectField<ModeEncaissement>(
+              value: _mode,
+              isRequired: true,
+              searchable: false,
+              sheetTitle: 'Mode d\'encaissement',
+              options: ModeEncaissement.values
+                  .map((m) =>
+                      SelectOption<ModeEncaissement>(value: m, label: m.label))
                   .toList(),
               onChanged: (v) => setState(() {
-                _mode = v!;
+                _mode = v ?? _mode;
                 _error = null;
               }),
             ),
@@ -110,11 +118,13 @@ class _EncaissementFormPageState extends ConsumerState<EncaissementFormPage> {
               subtitle: Text(DateFormat('dd/MM/yyyy').format(_date)),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
-                final picked = await showDatePicker(
+                final picked = await showDialog<DateTime>(
                   context: context,
-                  initialDate: _date,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now().add(const Duration(days: 1)),
+                  builder: (_) => SingleDatePickerDialog(
+                    initialDate: _date,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now().add(const Duration(days: 1)),
+                  ),
                 );
                 if (picked != null) setState(() => _date = picked);
               },

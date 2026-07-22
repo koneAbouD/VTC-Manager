@@ -16,7 +16,7 @@ public record ContraventionRequest(
         BigDecimal montantPaye,
         LocalDate datePaiement,
         Long chauffeurId,
-        Long vehiculeId,
+        @NotNull Long vehiculeId,
         // Champs propres aux contraventions de l'État (saisie manuelle possible).
         String numeroContravention,
         LocalTime heureInfraction,

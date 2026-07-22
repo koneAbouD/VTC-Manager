@@ -11,6 +11,8 @@ import '../providers/configuration_recette_provider.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
 import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/premium_select_field.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 
 // ── Toast helpers ──────────────────────────────────────────────────────────────
 enum _ToastType { success, error, warning, info }
@@ -302,27 +304,15 @@ class _ConfigurationRecetteFormPageState
     required String Function(T) labelBuilder,
     required ValueChanged<T?> onChanged,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          isExpanded: true,
-          borderRadius: BorderRadius.circular(14),
-          items: items
-              .map((item) => DropdownMenuItem<T>(
-                    value: item,
-                    child: Text(labelBuilder(item)),
-                  ))
-              .toList(),
-          onChanged: _saving ? null : onChanged,
-        ),
-      ),
+    return PremiumSelectField<T>(
+      value: value,
+      isRequired: true,
+      enabled: !_saving,
+      options: items
+          .map((item) =>
+              SelectOption<T>(value: item, label: labelBuilder(item)))
+          .toList(),
+      onChanged: onChanged,
     );
   }
 
@@ -414,14 +404,9 @@ class _ConfigurationRecetteFormPageState
   // ── Actions ────────────────────────────────────────────────────────────────
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
+    final picked = await showDialog<TimeOfDay>(
       context: context,
-      initialTime: _heureLimiteVersement,
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context)
-            .copyWith(alwaysUse24HourFormat: true),
-        child: child ?? const SizedBox.shrink(),
-      ),
+      builder: (_) => HeurePickerDialog(initialTime: _heureLimiteVersement),
     );
     if (picked == null) return;
     setState(() => _heureLimiteVersement = picked);

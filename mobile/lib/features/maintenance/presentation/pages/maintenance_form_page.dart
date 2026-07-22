@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../../../features/vehicule/domain/entities/vehicule.dart';
 import '../../../../features/vehicule/presentation/pages/vehicule_selector_page.dart';
 import '../../../operation_financiere/domain/entities/detail_maintenance.dart';
@@ -676,63 +677,44 @@ class _TypeDropdownState extends ConsumerState<_TypeDropdown> {
 
     final selectedId = widget.selected?.id;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      decoration: BoxDecoration(
-        color: _kFieldFill,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: isLoading
-            ? SizedBox(
-                height: 50,
-                child: Row(children: [
-                  const Expanded(
-                    child: Text(
-                      'Sélectionner un type',
-                      style: TextStyle(color: _kHint, fontSize: 15),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 15, height: 15,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 1.8, color: Colors.grey.shade400),
-                  ),
-                ]),
-              )
-            : DropdownButton<int?>(
-                value: selectedId != null &&
-                        categories.any((c) => c.id == selectedId)
-                    ? selectedId
-                    : null,
-                isExpanded: true,
-                hint: const Text(
-                  'Sélectionner un type',
-                  style: TextStyle(color: _kHint, fontSize: 15),
-                ),
-                borderRadius: BorderRadius.circular(14),
-                menuMaxHeight: 320,
-                icon: const Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 18,
-                  color: _kHint,
-                ),
-                onChanged: (id) {
-                  final cat =
-                      categories.where((c) => c.id == id).firstOrNull;
-                  widget.onChanged(cat);
-                },
-                items: categories
-                    .map((c) => DropdownMenuItem<int?>(
-                          value: c.id,
-                          child: Text(
-                            c.libelle,
-                            style: const TextStyle(fontSize: 15),
-                          ),
-                        ))
-                    .toList(),
-              ),
-      ),
+    if (isLoading) {
+      return Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: _kFieldFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Row(children: [
+          const Expanded(
+            child: Text('Sélectionner un type',
+                style: TextStyle(color: _kHint, fontSize: 14)),
+          ),
+          SizedBox(
+            width: 15,
+            height: 15,
+            child: CircularProgressIndicator(
+                strokeWidth: 1.8, color: Colors.grey.shade400),
+          ),
+        ]),
+      );
+    }
+
+    return PremiumSelectField<int>(
+      value: selectedId != null && categories.any((c) => c.id == selectedId)
+          ? selectedId
+          : null,
+      hint: 'Sélectionner un type',
+      sheetTitle: 'Type de maintenance',
+      fillColor: _kFieldFill,
+      options: categories
+          .map((c) => SelectOption<int>(value: c.id, label: c.libelle))
+          .toList(),
+      onChanged: (id) {
+        final cat = categories.where((c) => c.id == id).firstOrNull;
+        widget.onChanged(cat);
+      },
     );
   }
 }

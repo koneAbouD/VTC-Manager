@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../domain/entities/ligne_penalite.dart';
 import '../providers/penalite_provider.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/premium_select_field.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 
 class EncaissementPenaliteFormPage extends ConsumerStatefulWidget {
   final LignePenalite ligne;
@@ -71,18 +73,23 @@ class _EncaissementPenaliteFormPageState
               },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _mode,
-              decoration: const InputDecoration(
-                labelText: 'Mode d\'encaissement *',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'ESPECES', child: Text('Espèces')),
-                DropdownMenuItem(
-                    value: 'MOBILE_MONEY', child: Text('Mobile Money')),
+            const Text('Mode d\'encaissement *',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280))),
+            const SizedBox(height: 6),
+            PremiumSelectField<String>(
+              value: _mode,
+              isRequired: true,
+              searchable: false,
+              sheetTitle: 'Mode d\'encaissement',
+              options: const [
+                SelectOption<String>(value: 'ESPECES', label: 'Espèces'),
+                SelectOption<String>(
+                    value: 'MOBILE_MONEY', label: 'Mobile Money'),
               ],
-              onChanged: (v) => setState(() => _mode = v!),
+              onChanged: (v) => setState(() => _mode = v ?? _mode),
             ),
             if (_mode == 'MOBILE_MONEY') ...[
               const SizedBox(height: 16),
@@ -102,11 +109,13 @@ class _EncaissementPenaliteFormPageState
               subtitle: Text(DateFormat('dd/MM/yyyy').format(_date)),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
-                final picked = await showDatePicker(
+                final picked = await showDialog<DateTime>(
                   context: context,
-                  initialDate: _date,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now().add(const Duration(days: 1)),
+                  builder: (_) => SingleDatePickerDialog(
+                    initialDate: _date,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now().add(const Duration(days: 1)),
+                  ),
                 );
                 if (picked != null) setState(() => _date = picked);
               },

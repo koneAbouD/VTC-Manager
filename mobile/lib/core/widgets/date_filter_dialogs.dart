@@ -1,4 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
+import '../theme/app_colors.dart';
 
 // ── Constantes partagées ──────────────────────────────────────────────────────
 
@@ -8,6 +11,118 @@ const kMoisNoms = [
 ];
 
 DateTime mondayOf(DateTime d) => d.subtract(Duration(days: d.weekday - 1));
+
+// ── Chrome premium partagé (feuille ancrée en bas + molette) ──────────────────
+
+/// Style de texte commun aux molettes Cupertino de ce fichier.
+const _kWheelTheme = CupertinoThemeData(
+  textTheme: CupertinoTextThemeData(
+    dateTimePickerTextStyle: TextStyle(fontSize: 20, color: AppColors.dark),
+  ),
+);
+
+/// Feuille ancrée en bas (poignée + contenu), sans titre ni boutons — à l'image
+/// du sélecteur de date. Le [entete] optionnel s'insère entre la poignée et la
+/// molette (ex. libellé de semaine, bascule Début/Fin).
+///
+/// Comme le bottom sheet « marque », on peut la refermer :
+/// - en **tapant la poignée** ;
+/// - en la **faisant glisser vers le bas** ;
+/// - en tapant en dehors (barrière).
+/// Dans tous les cas la valeur courante est appliquée (via `Navigator.maybePop`
+/// → le `PopScope` de chaque dialog renvoie la valeur).
+class _WheelSheet extends StatefulWidget {
+  final Widget child;
+  final Widget? entete;
+
+  const _WheelSheet({required this.child, this.entete});
+
+  @override
+  State<_WheelSheet> createState() => _WheelSheetState();
+}
+
+class _WheelSheetState extends State<_WheelSheet> {
+  double _drag = 0; // déplacement vertical courant pendant le glisser
+
+  void _onDragUpdate(DragUpdateDetails d) {
+    setState(() => _drag = (_drag + d.delta.dy).clamp(0.0, 500.0));
+  }
+
+  void _onDragEnd(DragEndDetails d) {
+    final vitesse = d.velocity.pixelsPerSecond.dy;
+    if (_drag > 90 || vitesse > 700) {
+      Navigator.maybePop(context); // applique la valeur puis ferme
+    } else {
+      setState(() => _drag = 0); // pas assez : on revient en place
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
+
+    // Chrome glissable/tapable (poignée + en-tête éventuel + marge basse) : tout
+    // sauf la molette elle-même, qui doit garder l'exclusivité du glisser
+    // vertical pour faire défiler ses valeurs.
+    final chromeHaut = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.maybePop(context),
+      onVerticalDragUpdate: _onDragUpdate,
+      onVerticalDragEnd: _onDragEnd,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.only(top: 8, bottom: 6),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          if (widget.entete != null) widget.entete!,
+        ],
+      ),
+    );
+    final chromeBas = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.maybePop(context),
+      onVerticalDragUpdate: _onDragUpdate,
+      onVerticalDragEnd: _onDragEnd,
+      child: SizedBox(width: double.infinity, height: 10 + bottomSafe),
+    );
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Transform.translate(
+        offset: Offset(0, _drag),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                chromeHaut,
+                SizedBox(height: 216, child: widget.child),
+                chromeBas,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 // ── Dialog sélection semaine ──────────────────────────────────────────────────
 
@@ -20,162 +135,69 @@ class WeekPickerDialog extends StatefulWidget {
 }
 
 class _WeekPickerDialogState extends State<WeekPickerDialog> {
+  // Chaque cran de la molette = une semaine entière. On indexe les semaines à
+  // partir d'un lundi de référence, si bien que le défilement avance semaine
+  // par semaine (bien plus intuitif qu'une molette de jour).
+  static final DateTime _anchor = mondayOf(DateTime(2000, 1, 1));
+
+  late final int _totalWeeks;
+  late final FixedExtentScrollController _controller;
   late DateTime _weekStart;
-  late DateTime _viewMonth;
-  static const _weekLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+  int _indexFor(DateTime monday) => monday.difference(_anchor).inDays ~/ 7;
+  DateTime _mondayForIndex(int i) => _anchor.add(Duration(days: i * 7));
 
   @override
   void initState() {
     super.initState();
-    _weekStart = widget.initialWeekStart;
-    _viewMonth = DateTime(_weekStart.year, _weekStart.month);
+    final maxMonday = mondayOf(DateTime(DateTime.now().year + 5, 12, 31));
+    _totalWeeks = _indexFor(maxMonday) + 1;
+
+    var idx = _indexFor(mondayOf(widget.initialWeekStart))
+        .clamp(0, _totalWeeks - 1);
+    _weekStart = _mondayForIndex(idx);
+    _controller = FixedExtentScrollController(initialItem: idx);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// « 14 – 20 juillet 2026 », en gérant le débordement de mois / d'année.
+  String _label(DateTime m) {
+    final f = m.add(const Duration(days: 6));
+    final mm = kMoisNoms[m.month - 1];
+    final ff = kMoisNoms[f.month - 1];
+    if (m.month == f.month) return '${m.day} – ${f.day} $mm ${m.year}';
+    if (m.year == f.year) return '${m.day} $mm – ${f.day} $ff ${f.year}';
+    return '${m.day} $mm ${m.year} – ${f.day} $ff ${f.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final today   = DateTime.now();
-    final weekEnd = _weekStart.add(const Duration(days: 6));
-    final firstDay     = DateTime(_viewMonth.year, _viewMonth.month, 1);
-    final lastDay      = DateTime(_viewMonth.year, _viewMonth.month + 1, 0);
-    final startOffset  = firstDay.weekday - 1;
-    final rows         = ((startOffset + lastDay.day) / 7).ceil();
-    final monthLabel   =
-        '${kMoisNoms[_viewMonth.month - 1]} ${_viewMonth.year}';
-
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const SizedBox(height: 16),
-        _CalendarHeader(
-          monthLabel: monthLabel,
-          onPrev: () => setState(() =>
-              _viewMonth = DateTime(_viewMonth.year, _viewMonth.month - 1)),
-          onNext: () => setState(() =>
-              _viewMonth = DateTime(_viewMonth.year, _viewMonth.month + 1)),
-          onPickMonthYear: () =>
-              showMonthYearPicker(context, _viewMonth, (d) {
-            setState(() => _viewMonth = d);
-          }),
+    return PopScope<DateTime>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, _weekStart);
+      },
+      child: _WheelSheet(
+        child: CupertinoPicker.builder(
+          scrollController: _controller,
+          itemExtent: 44,
+          useMagnifier: true,
+          magnification: 1.05,
+          squeeze: 1.1,
+          onSelectedItemChanged: (i) => _weekStart = _mondayForIndex(i),
+          childCount: _totalWeeks,
+          itemBuilder: (context, i) => Center(
+            child: Text(_label(_mondayForIndex(i)),
+                style: const TextStyle(fontSize: 18, color: AppColors.dark)),
+          ),
         ),
-        const SizedBox(height: 10),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Column(children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: _weekLabels
-                  .map((d) => SizedBox(
-                        width: 34,
-                        child: Text(d,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade500,
-                                fontWeight: FontWeight.w500)),
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 4),
-            ...List.generate(rows, (row) => Row(
-                  children: List.generate(7, (col) {
-                    final dayNum = row * 7 + col - startOffset + 1;
-                    if (dayNum < 1 || dayNum > lastDay.day) {
-                      return const Expanded(child: SizedBox(height: 40));
-                    }
-                    final date = DateTime(
-                        _viewMonth.year, _viewMonth.month, dayNum);
-                    final inWeek = !date.isBefore(_weekStart) &&
-                        !date.isAfter(weekEnd);
-                    final isFirst = date.day == _weekStart.day &&
-                        date.month == _weekStart.month &&
-                        date.year == _weekStart.year;
-                    final isLast = date.day == weekEnd.day &&
-                        date.month == weekEnd.month &&
-                        date.year == weekEnd.year;
-                    final isToday = date.day == today.day &&
-                        date.month == today.month &&
-                        date.year == today.year;
-
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () =>
-                            setState(() => _weekStart = mondayOf(date)),
-                        child: SizedBox(
-                          height: 40,
-                          child: Stack(children: [
-                            if (inWeek)
-                              Positioned.fill(
-                                child: Container(
-                                  margin: EdgeInsets.only(
-                                      left: isFirst ? 4 : 0,
-                                      right: isLast ? 4 : 0),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1565C0)
-                                        .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.horizontal(
-                                      left: isFirst
-                                          ? const Radius.circular(20)
-                                          : Radius.zero,
-                                      right: isLast
-                                          ? const Radius.circular(20)
-                                          : Radius.zero,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (inWeek && (isFirst || isLast))
-                              Center(
-                                child: Container(
-                                  width: 32, height: 32,
-                                  decoration: const BoxDecoration(
-                                      color: Color(0xFF1565C0),
-                                      shape: BoxShape.circle),
-                                ),
-                              ),
-                            if (isToday && !inWeek)
-                              Center(
-                                child: Container(
-                                  width: 32, height: 32,
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                          color: const Color(0xFF1565C0),
-                                          width: 1.5)),
-                                ),
-                              ),
-                            Center(
-                              child: Text('$dayNum',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: (inWeek && (isFirst || isLast))
-                                        ? Colors.white
-                                        : isToday
-                                            ? const Color(0xFF1565C0)
-                                            : Colors.black87,
-                                    fontWeight:
-                                        (inWeek && (isFirst || isLast)) ||
-                                                isToday
-                                            ? FontWeight.w600
-                                            : FontWeight.w400,
-                                  )),
-                            ),
-                          ]),
-                        ),
-                      ),
-                    );
-                  }),
-                )),
-          ]),
-        ),
-        const SizedBox(height: 16),
-        _DialogActions(
-          onCancel: () => Navigator.pop(context),
-          onOk:     () => Navigator.pop(context, _weekStart),
-        ),
-      ])),
+      ),
     );
   }
 }
@@ -205,70 +227,26 @@ class _MonthPickerDialogState extends State<MonthPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const SizedBox(height: 16),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          GestureDetector(
-              onTap: () => setState(() => _year--),
-              child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.chevron_left, size: 24))),
-          const SizedBox(width: 24),
-          Text('$_year',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontSize: 17)),
-          const SizedBox(width: 24),
-          GestureDetector(
-              onTap: () => setState(() => _year++),
-              child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.chevron_right, size: 24))),
-        ]),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.4,
-            children: List.generate(12, (i) {
-              final sel = _month == i + 1;
-              return GestureDetector(
-                onTap: () => setState(() => _month = i + 1),
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: sel
-                        ? const Color(0xFF1565C0)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(kMoisNoms[i],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: sel ? Colors.white : Colors.black87,
-                        fontWeight:
-                            sel ? FontWeight.w600 : FontWeight.w400,
-                      )),
-                ),
-              );
+    return PopScope<DateTime>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, DateTime(_year, _month));
+      },
+      child: _WheelSheet(
+        child: CupertinoTheme(
+          data: _kWheelTheme,
+          child: CupertinoDatePicker(
+            mode: CupertinoDatePickerMode.monthYear,
+            initialDateTime: DateTime(_year, _month),
+            minimumDate: DateTime(2000),
+            maximumDate: DateTime(DateTime.now().year + 5, 12),
+            onDateTimeChanged: (d) => setState(() {
+              _year = d.year;
+              _month = d.month;
             }),
           ),
         ),
-        const SizedBox(height: 16),
-        _DialogActions(
-          onCancel: () => Navigator.pop(context),
-          onOk:     () => Navigator.pop(context, DateTime(_year, _month)),
-        ),
-      ]),
       ),
     );
   }
@@ -296,75 +274,102 @@ class SingleDatePickerDialog extends StatefulWidget {
 class _SingleDatePickerDialogState
     extends State<SingleDatePickerDialog> {
   late DateTime _selected;
-  late DateTime _viewMonth;
-  static const _weekLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
-  DateTime get _firstDate => widget.firstDate ?? DateTime(1900);
-  DateTime get _lastDate => widget.lastDate ?? DateTime(2100);
+  // Bornes normalisées au jour (sans composante horaire) pour éviter les
+  // assertions de CupertinoDatePicker (initiale hors intervalle à la minute près).
+  DateTime get _firstDate {
+    final d = widget.firstDate ?? DateTime(1900);
+    return DateTime(d.year, d.month, d.day);
+  }
+
+  DateTime get _lastDate {
+    final d = widget.lastDate ?? DateTime(2100);
+    return DateTime(d.year, d.month, d.day);
+  }
 
   @override
   void initState() {
     super.initState();
-    _selected  = widget.initialDate;
-    _viewMonth = DateTime(_selected.year, _selected.month);
+    var d = DateTime(widget.initialDate.year, widget.initialDate.month,
+        widget.initialDate.day);
+    if (d.isBefore(_firstDate)) d = _firstDate;
+    if (d.isAfter(_lastDate)) d = _lastDate;
+    _selected = d;
   }
 
   @override
   Widget build(BuildContext context) {
-    final today       = DateTime.now();
-    final firstDay    = DateTime(_viewMonth.year, _viewMonth.month, 1);
-    final lastDay     = DateTime(_viewMonth.year, _viewMonth.month + 1, 0);
-    final startOffset = firstDay.weekday - 1;
-    final rows        = ((startOffset + lastDay.day) / 7).ceil();
-    final monthLabel  =
-        '${kMoisNoms[_viewMonth.month - 1]} ${_viewMonth.year}';
+    // Sans boutons ni titre : la date choisie est renvoyée à la fermeture de la
+    // feuille (tap poignée, glisser vers le bas, tap extérieur), via PopScope.
+    return PopScope<DateTime?>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, _selected);
+      },
+      child: _WheelSheet(
+        child: CupertinoTheme(
+          data: _kWheelTheme,
+          child: CupertinoDatePicker(
+            mode: CupertinoDatePickerMode.date,
+            initialDateTime: _selected,
+            minimumDate: _firstDate,
+            maximumDate: _lastDate,
+            dateOrder: DatePickerDateOrder.dmy,
+            onDateTimeChanged: (d) =>
+                _selected = DateTime(d.year, d.month, d.day),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const SizedBox(height: 16),
-        _CalendarHeader(
-          monthLabel: monthLabel,
-          onPrev: () => setState(() =>
-              _viewMonth = DateTime(_viewMonth.year, _viewMonth.month - 1)),
-          onNext: () => setState(() =>
-              _viewMonth = DateTime(_viewMonth.year, _viewMonth.month + 1)),
-          onPickMonthYear: () =>
-              showMonthYearPicker(context, _viewMonth, (d) {
-            setState(() => _viewMonth = d);
-          }),
+// ── Dialog sélection heure ────────────────────────────────────────────────────
+
+/// Sélecteur d'heure premium (molette Cupertino 24h), même chrome que les
+/// sélecteurs de date. Renvoie un [TimeOfDay] via `showDialog`, appliqué à la
+/// fermeture de la feuille (tap extérieur / retour).
+class HeurePickerDialog extends StatefulWidget {
+  final TimeOfDay initialTime;
+  const HeurePickerDialog({super.key, required this.initialTime});
+
+  @override
+  State<HeurePickerDialog> createState() => _HeurePickerDialogState();
+}
+
+class _HeurePickerDialogState extends State<HeurePickerDialog> {
+  late TimeOfDay _heure;
+
+  @override
+  void initState() {
+    super.initState();
+    _heure = widget.initialTime;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final initial =
+        DateTime(now.year, now.month, now.day, _heure.hour, _heure.minute);
+    return PopScope<TimeOfDay>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, _heure);
+      },
+      child: _WheelSheet(
+        child: CupertinoTheme(
+          data: _kWheelTheme,
+          child: CupertinoDatePicker(
+            mode: CupertinoDatePickerMode.time,
+            use24hFormat: true,
+            initialDateTime: initial,
+            onDateTimeChanged: (d) =>
+                _heure = TimeOfDay(hour: d.hour, minute: d.minute),
+          ),
         ),
-        const SizedBox(height: 10),
-        _CalendarGrid(
-          viewMonth:   _viewMonth,
-          weekLabels:  _weekLabels,
-          startOffset: startOffset,
-          lastDay:     lastDay,
-          rows:        rows,
-          today:       today,
-          isSelected:  (d) =>
-              d.year == _selected.year &&
-              d.month == _selected.month &&
-              d.day == _selected.day,
-          isDisabled: (d) =>
-              d.isBefore(DateTime(_firstDate.year, _firstDate.month, _firstDate.day)) ||
-              d.isAfter(DateTime(_lastDate.year, _lastDate.month, _lastDate.day)),
-          onDayTap: (d) {
-            if (!d.isBefore(DateTime(_firstDate.year, _firstDate.month, _firstDate.day)) &&
-                !d.isAfter(DateTime(_lastDate.year, _lastDate.month, _lastDate.day))) {
-              setState(() => _selected = d);
-            }
-          },
-        ),
-        const SizedBox(height: 16),
-        _DialogActions(
-          onCancel: () => Navigator.pop(context),
-          onOk:     () => Navigator.pop(context, _selected),
-        ),
-      ])),
+      ),
     );
   }
 }
@@ -389,410 +394,149 @@ class PeriodePickerDialog extends StatefulWidget {
       _DateRangePickerDialogState();
 }
 
-class _DateRangePickerDialogState extends State<PeriodePickerDialog>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _DateRangePickerDialogState extends State<PeriodePickerDialog> {
   late DateTime _start;
   late DateTime _end;
-  late DateTime _viewMonth;
-  static const _weekLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  int _active = 0; // 0 = début, 1 = fin
 
   @override
   void initState() {
     super.initState();
-    _start     = widget.initialStart;
-    _end       = widget.initialEnd;
-    _viewMonth = DateTime(_start.year, _start.month);
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {
-          _viewMonth = _tabController.index == 0
-              ? DateTime(_start.year, _start.month)
-              : DateTime(_end.year, _end.month);
-        });
-      }
-    });
+    _start = DateTime(widget.initialStart.year, widget.initialStart.month,
+        widget.initialStart.day);
+    _end = DateTime(
+        widget.initialEnd.year, widget.initialEnd.month, widget.initialEnd.day);
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  DateTime get _min {
+    final f = widget.firstDate;
+    return f != null ? DateTime(f.year, f.month, f.day) : DateTime(2000);
   }
 
-  void _onDayTap(DateTime date) {
-    if (widget.firstDate != null && date.isBefore(widget.firstDate!)) return;
-    setState(() {
-      if (_tabController.index == 0) {
-        _start = date;
-        _tabController.animateTo(1);
-        _viewMonth = DateTime(_end.year, _end.month);
-      } else {
-        _end = date;
-      }
-    });
-  }
+  DateTime get _max => DateTime(DateTime.now().year + 5, 12, 31);
 
   @override
   Widget build(BuildContext context) {
-    final today        = DateTime.now();
-    final selectedDate = _tabController.index == 0 ? _start : _end;
-    final firstDay     = DateTime(_viewMonth.year, _viewMonth.month, 1);
-    final lastDay      = DateTime(_viewMonth.year, _viewMonth.month + 1, 0);
-    final startOffset  = firstDay.weekday - 1;
-    final rows         = ((startOffset + lastDay.day) / 7).ceil();
-    final monthLabel   =
-        '${kMoisNoms[_viewMonth.month - 1]} ${_viewMonth.year}';
+    var initial = _active == 0 ? _start : _end;
+    if (initial.isBefore(_min)) initial = _min;
+    if (initial.isAfter(_max)) initial = _max;
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TabBar(
-          controller: _tabController,
-          tabs: const [Tab(text: 'Date de début'), Tab(text: 'Date de fin')],
-          indicatorColor:     const Color(0xFF1565C0),
-          labelColor:         Colors.black87,
-          unselectedLabelColor: Colors.grey,
-          labelStyle: const TextStyle(
-              fontWeight: FontWeight.w600, fontSize: 14),
-          unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w400, fontSize: 14),
-          dividerColor: Colors.transparent,
+    return PopScope<DateTimeRange>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final s = _start.isBefore(_end) ? _start : _end;
+        final e = _start.isBefore(_end) ? _end : _start;
+        Navigator.pop(context, DateTimeRange(start: s, end: e));
+      },
+      child: _WheelSheet(
+        entete: _BasculeDebutFin(
+          active: _active,
+          debut: _start,
+          fin: _end,
+          onChange: (i) => setState(() => _active = i),
         ),
-        const SizedBox(height: 12),
-        _CalendarHeader(
-          monthLabel: monthLabel,
-          onPrev: () => setState(() =>
-              _viewMonth = DateTime(_viewMonth.year, _viewMonth.month - 1)),
-          onNext: () => setState(() =>
-              _viewMonth = DateTime(_viewMonth.year, _viewMonth.month + 1)),
-          onPickMonthYear: () =>
-              showMonthYearPicker(context, _viewMonth, (d) {
-            setState(() => _viewMonth = d);
-          }),
-        ),
-        const SizedBox(height: 10),
-        _CalendarGrid(
-          viewMonth:   _viewMonth,
-          weekLabels:  _weekLabels,
-          startOffset: startOffset,
-          lastDay:     lastDay,
-          rows:        rows,
-          today:       today,
-          isSelected:  (d) =>
-              d.year == selectedDate.year &&
-              d.month == selectedDate.month &&
-              d.day == selectedDate.day,
-          isDisabled: widget.firstDate != null
-              ? (d) => d.isBefore(widget.firstDate!)
-              : null,
-          onDayTap: _onDayTap,
-        ),
-        const SizedBox(height: 16),
-        _DialogActions(
-          onCancel: () => Navigator.pop(context),
-          onOk: () {
-            final s = _start.isBefore(_end) ? _start : _end;
-            final e = _start.isBefore(_end) ? _end : _start;
-            Navigator.pop(context, DateTimeRange(start: s, end: e));
-          },
-        ),
-      ])),
-    );
-  }
-}
-
-// ── Composants internes ───────────────────────────────────────────────────────
-
-class _CalendarHeader extends StatelessWidget {
-  final String monthLabel;
-  final VoidCallback onPrev;
-  final VoidCallback onNext;
-  final VoidCallback onPickMonthYear;
-
-  const _CalendarHeader({
-    required this.monthLabel,
-    required this.onPrev,
-    required this.onNext,
-    required this.onPickMonthYear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(children: [
-        GestureDetector(
-          onTap: onPickMonthYear,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text(monthLabel,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 15)),
-            const SizedBox(width: 2),
-            const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-          ]),
-        ),
-        const Spacer(),
-        GestureDetector(
-            onTap: onPrev,
-            child: const Padding(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.chevron_left, size: 22))),
-        const SizedBox(width: 12),
-        GestureDetector(
-            onTap: onNext,
-            child: const Padding(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.chevron_right, size: 22))),
-      ]),
-    );
-  }
-}
-
-class _CalendarGrid extends StatelessWidget {
-  final DateTime viewMonth;
-  final List<String> weekLabels;
-  final int startOffset;
-  final DateTime lastDay;
-  final int rows;
-  final DateTime today;
-  final bool Function(DateTime) isSelected;
-  final bool Function(DateTime)? isDisabled;
-  final void Function(DateTime) onDayTap;
-
-  const _CalendarGrid({
-    required this.viewMonth,
-    required this.weekLabels,
-    required this.startOffset,
-    required this.lastDay,
-    required this.rows,
-    required this.today,
-    required this.isSelected,
-    required this.onDayTap,
-    this.isDisabled,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Column(children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: weekLabels
-              .map((d) => SizedBox(
-                    width: 34,
-                    child: Text(d,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade500,
-                            fontWeight: FontWeight.w500)),
-                  ))
-              .toList(),
-        ),
-        const SizedBox(height: 4),
-        ...List.generate(rows, (row) => Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(7, (col) {
-                final dayNum = row * 7 + col - startOffset + 1;
-                if (dayNum < 1 || dayNum > lastDay.day) {
-                  return const SizedBox(width: 34, height: 40);
+        child: CupertinoTheme(
+          data: _kWheelTheme,
+          child: CupertinoDatePicker(
+            // Recharge la molette sur la borne active lors du changement d'onglet.
+            key: ValueKey(_active),
+            mode: CupertinoDatePickerMode.date,
+            initialDateTime: initial,
+            minimumDate: _min,
+            maximumDate: _max,
+            dateOrder: DatePickerDateOrder.dmy,
+            onDateTimeChanged: (d) {
+              final picked = DateTime(d.year, d.month, d.day);
+              setState(() {
+                if (_active == 0) {
+                  _start = picked;
+                } else {
+                  _end = picked;
                 }
-                final date =
-                    DateTime(viewMonth.year, viewMonth.month, dayNum);
-                final isSel      = isSelected(date);
-                final isDis      = isDisabled?.call(date) ?? false;
-                final isToday    = date.year == today.year &&
-                    date.month == today.month &&
-                    date.day == today.day;
-
-                return GestureDetector(
-                  onTap: isDis ? null : () => onDayTap(date),
-                  child: Opacity(
-                    opacity: isDis ? 0.3 : 1.0,
-                    child: SizedBox(
-                      width: 34, height: 40,
-                      child: Center(
-                        child: Container(
-                          width: 32, height: 32,
-                          decoration: BoxDecoration(
-                            color: isSel && !isDis
-                                ? const Color(0xFF1565C0)
-                                : Colors.transparent,
-                            shape: BoxShape.circle,
-                            border: isToday && !isSel && !isDis
-                                ? Border.all(
-                                    color: const Color(0xFF1565C0),
-                                    width: 1.5)
-                                : null,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text('$dayNum',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: isSel && !isDis
-                                    ? Colors.white
-                                    : isToday && !isDis
-                                        ? const Color(0xFF1565C0)
-                                        : Colors.black87,
-                                fontWeight: (isSel || isToday) && !isDis
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                              )),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            )),
-      ]),
+              });
+            },
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _DialogActions extends StatelessWidget {
-  final VoidCallback onCancel;
-  final VoidCallback onOk;
-  const _DialogActions({required this.onCancel, required this.onOk});
+/// Bascule segmentée « Début / Fin » affichant les deux bornes de la période.
+class _BasculeDebutFin extends StatelessWidget {
+  final int active;
+  final DateTime debut;
+  final DateTime fin;
+  final ValueChanged<int> onChange;
+
+  const _BasculeDebutFin({
+    required this.active,
+    required this.debut,
+    required this.fin,
+    required this.onChange,
+  });
+
+  String _fmt(DateTime d) =>
+      '${d.day} ${kMoisNoms[d.month - 1].substring(0, 3)}';
 
   @override
   Widget build(BuildContext context) {
+    Widget seg(int i, String label, DateTime d) {
+      final actif = active == i;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => onChange(i),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            decoration: BoxDecoration(
+              color: actif ? AppColors.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(9),
+              boxShadow: actif
+                  ? [
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1))
+                    ]
+                  : null,
+            ),
+            child: Column(
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: actif ? AppColors.primaryDark : AppColors.hint,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 1),
+                Text(_fmt(d),
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.dark,
+                        fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-      child: Row(children: [
-        Expanded(
-          child: TextButton(
-            onPressed: onCancel,
-            child: const Text('Annuler',
-                style: TextStyle(
-                    color: Color(0xFF1565C0),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15)),
-          ),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppColors.fieldFill,
+          borderRadius: BorderRadius.circular(12),
         ),
-        Container(width: 1, height: 24, color: Colors.grey.shade300),
-        Expanded(
-          child: TextButton(
-            onPressed: onOk,
-            child: const Text('OK',
-                style: TextStyle(
-                    color: Color(0xFF1565C0),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15)),
-          ),
+        child: Row(
+          children: [
+            seg(0, 'Début', debut),
+            const SizedBox(width: 4),
+            seg(1, 'Fin', fin),
+          ],
         ),
-      ]),
+      ),
     );
   }
-}
-
-// ── Sélecteur mois/année (bottom sheet) ──────────────────────────────────────
-
-void showMonthYearPicker(
-  BuildContext context,
-  DateTime current,
-  void Function(DateTime) onSelected,
-) {
-  final currentYear = DateTime.now().year;
-  final years       = List.generate(6, (i) => currentYear - 2 + i);
-  int tempYear      = current.year;
-
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setLocal) => SafeArea(
-        top: false,
-        child: SizedBox(
-        height: 380,
-        child: Column(children: [
-          const Padding(
-            padding: EdgeInsets.all(14),
-            child: Text('Choisir mois et année',
-                style: TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 15)),
-          ),
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: years.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final y   = years[i];
-                final sel = tempYear == y;
-                return GestureDetector(
-                  onTap: () => setLocal(() => tempYear = y),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: sel
-                          ? const Color(0xFF1565C0)
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text('$y',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: sel ? Colors.white : Colors.black87,
-                          fontWeight: sel
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        )),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: 3,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 2.5,
-              children: List.generate(12, (i) {
-                final sel =
-                    current.month == i + 1 && current.year == tempYear;
-                return GestureDetector(
-                  onTap: () {
-                    onSelected(DateTime(tempYear, i + 1));
-                    Navigator.pop(ctx);
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: sel
-                          ? const Color(0xFF1565C0)
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(kMoisNoms[i],
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: sel ? Colors.white : Colors.black87,
-                          fontWeight: sel
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        )),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ]),
-      ),
-      ),
-    ),
-  );
 }

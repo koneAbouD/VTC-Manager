@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/error/failure.dart';
 import '../../../../core/widgets/app_error_banner.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../chauffeur/domain/entities/chauffeur.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
@@ -350,12 +351,13 @@ class _ProgrammeTravailFormPageState
   }
 
   Future<void> _pickDateService(ProgrammeChauffeur pc) async {
-    final picked = await showDatePicker(
+    final picked = await showDialog<DateTime>(
       context: context,
-      initialDate: pc.dateService ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(DateTime.now().year + 5),
-      locale: const Locale('fr'),
+      builder: (_) => SingleDatePickerDialog(
+        initialDate: pc.dateService ?? DateTime.now(),
+        firstDate: DateTime(2020),
+        lastDate: DateTime(DateTime.now().year + 5),
+      ),
     );
     if (picked == null) return;
 

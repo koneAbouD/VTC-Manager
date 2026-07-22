@@ -15,6 +15,7 @@ import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/network_photo_viewer.dart';
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../../../core/widgets/responsive_field_row.dart';
 import '../../data/datasources/referentiel_datasource.dart';
 import '../../domain/entities/vehicule.dart';
@@ -1212,63 +1213,20 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     required AsyncValue<List<ReferentielItem>> marquesAsync,
     required AsyncValue<List<ReferentielItem>> modelesAsync,
   }) {
-    final couleurWidget = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      decoration: BoxDecoration(
-        color: _kFieldFill,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          value: _couleur,
-          isExpanded: true,
-          hint: const Text('Sélectionner',
-              style: TextStyle(color: _kHint, fontSize: 15)),
-          borderRadius: BorderRadius.circular(14),
-          menuMaxHeight: 320,
-          icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: _kHint),
-          onChanged: (v) => setState(() => _couleur = v),
-          selectedItemBuilder: (context) => kVehiculeCouleurs.map((c) {
-            final color = kVehiculeCouleurMap[c] ?? Colors.grey;
-            final isLight = color.computeLuminance() > 0.85;
-            return Row(children: [
-              Container(
-                width: 16, height: 16,
-                decoration: BoxDecoration(
-                  color: color, shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isLight ? const Color(0xFFDDE1EA) : Colors.transparent,
-                    width: 1),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: Text(c, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15, color: Colors.black87))),
-            ]);
-          }).toList(),
-          items: kVehiculeCouleurs.map((c) {
-            final color = kVehiculeCouleurMap[c] ?? Colors.grey;
-            final isLight = color.computeLuminance() > 0.85;
-            return DropdownMenuItem<String?>(
-              value: c,
-              child: Row(children: [
-                Container(
-                  width: 18, height: 18,
-                  decoration: BoxDecoration(
-                    color: color, shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isLight ? const Color(0xFFDDE1EA) : Colors.transparent,
-                      width: 1),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(c, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15))),
-              ]),
-            );
-          }).toList(),
-        ),
-      ),
+    final couleurWidget = PremiumSelectField<String>(
+      value: _couleur,
+      hint: 'Sélectionner',
+      sheetTitle: 'Couleur',
+      fillColor: _kFieldFill,
+      searchable: false,
+      options: kVehiculeCouleurs
+          .map((c) => SelectOption<String>(
+                value: c,
+                label: c,
+                couleur: kVehiculeCouleurMap[c] ?? Colors.grey,
+              ))
+          .toList(),
+      onChanged: (v) => setState(() => _couleur = v),
     );
 
     return Form(
@@ -2153,36 +2111,16 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 _LabeledField(
                   label: 'Type de document',
                   isRequired: true,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _kFieldFill,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<TypeDocument?>(
-                        value: _selectedType,
-                        isExpanded: true,
-                        hint: const Text('Sélectionner',
-                            style:
-                                TextStyle(color: _kHint, fontSize: 15)),
-                        borderRadius: BorderRadius.circular(14),
-                        menuMaxHeight: 320,
-                        icon: const Icon(Icons.keyboard_arrow_down,
-                            color: _kHint, size: 18),
-                        onChanged: (t) =>
-                            setState(() => _selectedType = t),
-                        items: widget.types
-                            .map((t) => DropdownMenuItem<TypeDocument?>(
-                                  value: t,
-                                  child: Text(t.nom,
-                                      style: const TextStyle(
-                                          fontSize: 15)),
-                                ))
-                            .toList(),
-                      ),
-                    ),
+                  child: PremiumSelectField<TypeDocument>(
+                    value: _selectedType,
+                    hint: 'Sélectionner',
+                    sheetTitle: 'Type de document',
+                    isRequired: true,
+                    options: widget.types
+                        .map((t) =>
+                            SelectOption<TypeDocument>(value: t, label: t.nom))
+                        .toList(),
+                    onChanged: (t) => setState(() => _selectedType = t),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -2744,52 +2682,40 @@ class _DropdownField extends StatelessWidget {
     final isLoading = asyncValue is AsyncLoading;
     final items = asyncValue.value ?? [];
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      decoration: BoxDecoration(
-        color: disabled ? const Color(0xFFEDEEF1) : _kFieldFill,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: isLoading
-            ? SizedBox(
-                height: 50,
-                child: Row(children: [
-                  Expanded(
-                    child: Text(hint,
-                        style:
-                            const TextStyle(color: _kHint, fontSize: 15)),
-                  ),
-                  SizedBox(
-                    width: 15,
-                    height: 15,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 1.8, color: Colors.grey.shade400),
-                  ),
-                ]),
-              )
-            : DropdownButton<ReferentielItem?>(
-                value: value,
-                isExpanded: true,
-                hint: Text(hint,
-                    style: const TextStyle(color: _kHint, fontSize: 15)),
-                borderRadius: BorderRadius.circular(14),
-                menuMaxHeight: 320,
-                icon: Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 18,
-                  color: disabled ? Colors.grey.shade300 : _kHint,
-                ),
-                onChanged: disabled ? null : onChanged,
-                items: items
-                    .map((item) => DropdownMenuItem<ReferentielItem?>(
-                          value: item,
-                          child: Text(item.nom,
-                              style: const TextStyle(fontSize: 15)),
-                        ))
-                    .toList(),
-              ),
-      ),
+    if (isLoading) {
+      return Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: _kFieldFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Row(children: [
+          Expanded(
+            child:
+                Text(hint, style: const TextStyle(color: _kHint, fontSize: 14)),
+          ),
+          SizedBox(
+            width: 15,
+            height: 15,
+            child: CircularProgressIndicator(
+                strokeWidth: 1.8, color: Colors.grey.shade400),
+          ),
+        ]),
+      );
+    }
+
+    return PremiumSelectField<ReferentielItem>(
+      value: value,
+      hint: hint,
+      sheetTitle: hint,
+      enabled: !disabled,
+      fillColor: _kFieldFill,
+      options: items
+          .map((it) => SelectOption<ReferentielItem>(value: it, label: it.nom))
+          .toList(),
+      onChanged: onChanged,
     );
   }
 }

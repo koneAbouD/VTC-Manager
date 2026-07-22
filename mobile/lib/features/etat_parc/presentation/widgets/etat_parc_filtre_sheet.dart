@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../../vehicule/data/datasources/referentiel_datasource.dart';
 import '../../../vehicule/presentation/providers/referentiel_provider.dart';
 import '../providers/etat_parc_provider.dart';
@@ -95,16 +96,7 @@ class _EtatParcFiltreSheetState extends ConsumerState<_EtatParcFiltreSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Filtrer l\'état de parc',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-                color: Color(0xFF1A1A2E),
-              ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             _RefDropdown(
               label: 'Groupe',
               placeholder: 'Tous',
@@ -194,56 +186,24 @@ class _RefDropdown extends StatelessWidget {
                 color: Colors.grey.shade700)),
         const SizedBox(height: 6),
         items.when(
-          loading: () => const _DropdownShell(
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 10),
-                Text('Chargement…',
-                    style: TextStyle(color: Colors.grey, fontSize: 13)),
-              ],
-            ),
-          ),
-          error: (_, __) => const _DropdownShell(
-            child: Text('Indisponible',
-                style: TextStyle(color: Colors.red, fontSize: 13)),
-          ),
+          loading: () => const _DropdownSquelette(texte: 'Chargement…'),
+          error: (_, __) =>
+              const _DropdownSquelette(texte: 'Indisponible', erreur: true),
           data: (list) {
             // Garde-fou : si l'id sélectionné n'existe plus, on retombe sur null.
             final validId =
                 list.any((e) => e.id == selectedId) ? selectedId : null;
-            return _DropdownShell(
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int?>(
-                  isExpanded: true,
-                  value: validId,
-                  hint: Text(placeholder,
-                      style: TextStyle(
-                          color: Colors.grey.shade600, fontSize: 14)),
-                  items: [
-                    DropdownMenuItem<int?>(
-                      value: null,
-                      child: Text(placeholder,
-                          style: const TextStyle(fontSize: 14)),
-                    ),
-                    for (final item in list)
-                      DropdownMenuItem<int?>(
-                        value: item.id,
-                        child: Text(item.nom,
-                            style: const TextStyle(fontSize: 14),
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                  ],
-                  onChanged: (id) => onChanged(
-                    id == null
-                        ? null
-                        : list.firstWhere((e) => e.id == id),
-                  ),
-                ),
+            return PremiumSelectField<int>(
+              value: validId,
+              hint: placeholder,
+              sheetTitle: label,
+              searchable: false,
+              options: list
+                  .map((item) =>
+                      SelectOption<int>(value: item.id, label: item.nom))
+                  .toList(),
+              onChanged: (id) => onChanged(
+                id == null ? null : list.firstWhere((e) => e.id == id),
               ),
             );
           },
@@ -253,22 +213,36 @@ class _RefDropdown extends StatelessWidget {
   }
 }
 
-class _DropdownShell extends StatelessWidget {
-  final Widget child;
-  const _DropdownShell({required this.child});
+/// Placeholder (chargement / erreur) au même gabarit que le champ premium.
+class _DropdownSquelette extends StatelessWidget {
+  final String texte;
+  final bool erreur;
+  const _DropdownSquelette({required this.texte, this.erreur = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 50,
+      height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF2F3F5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
       ),
-      child: child,
+      child: Row(
+        children: [
+          if (!erreur) ...[
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 10),
+          ],
+          Text(texte,
+              style: TextStyle(
+                  color: erreur ? Colors.red : Colors.grey, fontSize: 13)),
+        ],
+      ),
     );
   }
 }

@@ -1,10 +1,22 @@
 spring:
   flyway:
-    enabled: false
+    enabled: true
     baseline-on-migrate: true
     out-of-order: true
     ignore-migration-patterns: "*:missing"
-    #locations: classpath:db/migration/flyway/schema,classpath:db/migration/flyway/jdd/reference,classpath:db/migration/flyway/jdd/dev
+    # Aligné sur la prod : structure + données de référence uniquement.
+    # Les seeds jdd/dev ne sont volontairement PAS appliqués (données de test gérées à la main).
+    locations: classpath:db/migration/flyway/schema,classpath:db/migration/flyway/jdd/reference
+    # La base dev existante a été construite en partie par Hibernate ddl-auto :
+    # on ne revalide pas les checksums au démarrage (l'intégrité du schéma est
+    # garantie par jpa.hibernate.ddl-auto=validate ci-dessous).
+    validate-on-migrate: false
+
+  # Le schéma est désormais géré par Flyway : Hibernate se contente de vérifier
+  # que la base correspond aux entités (aucune modification de schéma automatique).
+  jpa:
+    hibernate:
+      ddl-auto: validate
 
 logging:
   level:

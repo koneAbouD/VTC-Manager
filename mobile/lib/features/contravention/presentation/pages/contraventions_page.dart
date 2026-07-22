@@ -75,6 +75,15 @@ class ContraventionsPage extends ConsumerStatefulWidget {
 class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
   final _scrollController = ScrollController();
 
+  // ── Recherche interne (sous le filtre date, dans la zone scrollable) ──────
+  // Utilisée quand la page n'est pas pilotée par une recherche externe.
+  final _searchController = TextEditingController();
+  String _recherche = '';
+
+  // ── Filtre par statut (client, sur les éléments chargés) ──────────────────
+  // null = tous. Clés : ATTENTE, PARTIEL, PAYE, REVERSE, ANNULE.
+  String? _statutFiltre;
+
   // ── Sélection multiple (activée par appui long sur une ligne) ──────────
   final Set<int> _selectedIds = {};
 
@@ -109,6 +118,7 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     _overlayEntry?.remove();
     super.dispose();
   }
@@ -546,10 +556,21 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
 
   // ── Filtre recherche ─────────────────────────────────────────────────────
 
+  bool _matchStatut(Contravention c) => switch (_statutFiltre) {
+        'ATTENTE' => !c.isRegle && !c.isPartial,
+        'PARTIEL' => c.isPartial,
+        'PAYE' => c.isPaid,
+        'REVERSE' => c.isReverse,
+        'ANNULE' => c.isCancelled,
+        _ => true,
+      };
+
   List<Contravention> _filtrer(List<Contravention> all) {
-    final query = (widget.externalSearch ?? '').trim().toLowerCase();
-    if (query.isEmpty) return all;
-    return all.where((c) {
+    final base =
+        _statutFiltre == null ? all : all.where(_matchStatut).toList();
+    final query = (widget.externalSearch ?? _recherche).trim().toLowerCase();
+    if (query.isEmpty) return base;
+    return base.where((c) {
       final hay = [
         c.numeroContravention ?? '',
         c.vehiculeNom ?? '',
@@ -577,49 +598,102 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
     final allSelected = selectables.isNotEmpty &&
         selectables.every((c) => _selectedIds.contains(c.id));
 
-    final body = state.initialLoading && items.isEmpty
-        ? const Center(child: CircularProgressIndicator())
+    // En-tête scrollable : filtre date puis recherche, au-dessus de la liste.
+    final headerSlivers = <Widget>[
+      SliverToBoxAdapter(
+        child: _FiltreDateBar(
+          mode: _filtreMode,
+          filtreKey: _filtreButtonKey,
+          onFiltrePressed: _showFiltreOverlay,
+          moisSelectionne: _moisSelectionne,
+          anneeSelectionnee: _anneeSelectionnee,
+          onPickMois: _pickMois,
+          semaineDebut: _semaineDebut,
+          onPickSemaine: _pickSemaine,
+          jourSelectionne: _jourSelectionne,
+          onPickJour: _pickJour,
+          periodeDebut: _periodeDebut,
+          periodeFin: _periodeFin,
+          onPickPeriode: _pickPeriode,
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: _SearchBar(
+          controller: _searchController,
+          onChanged: (v) => setState(() => _recherche = v),
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: _StatutChips(
+            selected: _statutFiltre,
+            onChanged: (k) => setState(() => _statutFiltre = k),
+          ),
+        ),
+      ),
+    ];
+
+    final Widget listSliver = state.initialLoading && items.isEmpty
+        ? const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: CircularProgressIndicator()))
         : (state.error != null && items.isEmpty)
-            ? _ErrorView(message: state.error!, onRetry: _load)
+            ? SliverFillRemaining(
+                hasScrollBody: false,
+                child: _ErrorView(message: state.error!, onRetry: _load))
             : items.isEmpty
-                ? _EmptyView(onRetry: _load)
-                : RefreshIndicator(
-                    onRefresh: () async => _refresh(),
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: items.length + (state.hasMore ? 1 : 0),
-                      itemBuilder: (ctx, i) {
-                        if (i >= items.length) {
-                          return const PagedListLoadMoreTile();
-                        }
-                        final c = items[i];
-                        return ContraventionCard(
-                          contravention: c,
-                          selectable: !c.isRegle,
-                          selectionMode: _selectionMode,
-                          selected:
-                              c.id != null && _selectedIds.contains(c.id),
-                          onSelectChanged: c.id == null
-                              ? null
-                              : (v) => _toggleSelect(c.id!, v),
-                          onEnterSelection: c.id == null
-                              ? null
-                              : () => _enterSelection(c.id!),
-                          onEdit: () async {
-                            final changed = await Navigator.push<bool>(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ContraventionDetailPage(contravention: c),
-                              ),
-                            );
-                            if (mounted && changed == true) _refresh();
-                          },
-                        );
-                      },
+                ? SliverFillRemaining(
+                    hasScrollBody: false, child: _EmptyView(onRetry: _load))
+                : SliverPadding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (ctx, i) {
+                          if (i >= items.length) {
+                            return const PagedListLoadMoreTile();
+                          }
+                          final c = items[i];
+                          return ContraventionCard(
+                            contravention: c,
+                            selectable: !c.isRegle,
+                            selectionMode: _selectionMode,
+                            selected:
+                                c.id != null && _selectedIds.contains(c.id),
+                            onSelectChanged: c.id == null
+                                ? null
+                                : (v) => _toggleSelect(c.id!, v),
+                            onEnterSelection: c.id == null
+                                ? null
+                                : () => _enterSelection(c.id!),
+                            onEdit: () async {
+                              final changed = await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ContraventionDetailPage(
+                                      contravention: c),
+                                ),
+                              );
+                              if (mounted && changed == true) _refresh();
+                            },
+                          );
+                        },
+                        childCount: items.length + (state.hasMore ? 1 : 0),
+                      ),
                     ),
                   );
+
+    final body = RefreshIndicator(
+      onRefresh: () async => _refresh(),
+      child: CustomScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          ...headerSlivers,
+          listSliver,
+        ],
+      ),
+    );
 
     final hasSelection = selected.isNotEmpty;
 
@@ -627,22 +701,6 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
       backgroundColor: AppColors.scaffold,
       body: Column(
         children: [
-          // ── Filtre par date (au-dessus de la liste, comme Recettes) ─────
-          _FiltreDateBar(
-            mode: _filtreMode,
-            filtreKey: _filtreButtonKey,
-            onFiltrePressed: _showFiltreOverlay,
-            moisSelectionne: _moisSelectionne,
-            anneeSelectionnee: _anneeSelectionnee,
-            onPickMois: _pickMois,
-            semaineDebut: _semaineDebut,
-            onPickSemaine: _pickSemaine,
-            jourSelectionne: _jourSelectionne,
-            onPickJour: _pickJour,
-            periodeDebut: _periodeDebut,
-            periodeFin: _periodeFin,
-            onPickPeriode: _pickPeriode,
-          ),
           if (_selectionMode && items.isNotEmpty)
             _ListToolbar(
               count: items.length,
@@ -873,6 +931,149 @@ class _PayingOverlay extends StatelessWidget {
 }
 
 // ── Barre filtre date (identique à Recettes/Pénalités) ─────────────────────
+
+// ── Filtre par statut (chips horizontales) ───────────────────────────────────
+
+class _StatutChips extends StatelessWidget {
+  final String? selected;
+  final ValueChanged<String?> onChanged;
+
+  const _StatutChips({required this.selected, required this.onChanged});
+
+  // Couleurs alignées sur les badges de statut de ContraventionCard.
+  static const _ambre = Color(0xFF854F0B);
+  static const _vert = Color(0xFF2E7D32);
+  static const _hint = Color(0xFF8A94A6);
+
+  static const List<(String?, String, Color)> _options = [
+    (null, 'Toutes', _hint),
+    ('ATTENTE', 'En attente', _hint),
+    ('PARTIEL', 'Partiel', _ambre),
+    ('PAYE', 'Payé', _vert),
+    ('REVERSE', 'Reversé', _vert),
+    ('ANNULE', 'Annulé', _hint),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 34,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _options.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final (key, label, color) = _options[i];
+          final sel = selected == key;
+          return GestureDetector(
+            onTap: () => onChanged(key),
+            child: Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: sel ? color.withValues(alpha: 0.12) : AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color:
+                        sel ? color.withValues(alpha: 0.5) : AppColors.border),
+              ),
+              child: Text(label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: sel ? color : AppColors.label,
+                    fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                  )),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Barre de recherche (sous le filtre date, scrollable) ─────────────────────
+
+class _SearchBar extends StatefulWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  const _SearchBar({required this.controller, required this.onChanged});
+
+  @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // Rebuild pour basculer loupe ↔ croix (ferme le clavier) selon le focus.
+    _focus.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt qu'un
+        // fond blanc bordé.
+        color: const Color(0xFFF2F3F5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _focus.hasFocus
+              ? GestureDetector(
+                  onTap: _focus.unfocus,
+                  child:
+                      const Icon(Icons.close, size: 20, color: AppColors.hint),
+                )
+              : const Icon(Icons.search, size: 20, color: AppColors.hint),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: widget.controller,
+              focusNode: _focus,
+              onChanged: widget.onChanged,
+              style: const TextStyle(fontSize: 14, color: AppColors.dark),
+              decoration: const InputDecoration(
+                hintText: 'Numéro, véhicule, chauffeur…',
+                hintStyle: TextStyle(color: AppColors.hint, fontSize: 14),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 13),
+              ),
+            ),
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: widget.controller,
+            builder: (_, value, __) => value.text.isEmpty
+                ? const SizedBox.shrink()
+                : GestureDetector(
+                    onTap: () {
+                      widget.controller.clear();
+                      widget.onChanged('');
+                    },
+                    child: const Icon(Icons.close,
+                        size: 17, color: AppColors.hint),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _FiltreDateBar extends StatelessWidget {
   final _FiltreMode? mode;

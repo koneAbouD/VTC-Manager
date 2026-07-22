@@ -589,7 +589,7 @@ class _DatePill extends StatelessWidget {
 
 // ── Barre recherche + statuts ─────────────────────────────────────────────────
 
-class _SearchAndStatutBar extends StatelessWidget {
+class _SearchAndStatutBar extends StatefulWidget {
   final TextEditingController controller;
   final void Function(String) onSearchChanged;
   final String? statutSelectionne;
@@ -609,29 +609,51 @@ class _SearchAndStatutBar extends StatelessWidget {
   });
 
   @override
+  State<_SearchAndStatutBar> createState() => _SearchAndStatutBarState();
+}
+
+class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // Rebuild pour basculer loupe ↔ croix (ferme le clavier) selon le focus.
+    _focus.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(children: [
       Container(
         margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt qu'un
+          // blanc avec ombre portée.
+          color: const Color(0xFFF2F3F5),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
         ),
         child: Row(children: [
-          const Icon(Icons.search, color: Color(0xFF8A8A8E), size: 20),
+          _focus.hasFocus
+              ? GestureDetector(
+                  onTap: _focus.unfocus,
+                  child: const Icon(Icons.close,
+                      color: Color(0xFF8A8A8E), size: 20),
+                )
+              : const Icon(Icons.search, color: Color(0xFF8A8A8E), size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
-              controller: controller,
-              onChanged: onSearchChanged,
+              controller: widget.controller,
+              focusNode: _focus,
+              onChanged: widget.onSearchChanged,
               style: const TextStyle(fontSize: 14),
               decoration: const InputDecoration(
                 hintText: 'Rechercher type, véhicule, prestataire…',
@@ -643,8 +665,8 @@ class _SearchAndStatutBar extends StatelessWidget {
             ),
           ),
           TuneFilterButton(
-            onTap:  onTunePressed,
-            active: hasActiveFilter,
+            onTap:  widget.onTunePressed,
+            active: widget.hasActiveFilter,
           ),
         ]),
       ),
@@ -656,15 +678,15 @@ class _SearchAndStatutBar extends StatelessWidget {
           children: [
             _StatutChip(
               label:    'Tous',
-              selected: statutSelectionne == null,
+              selected: widget.statutSelectionne == null,
               color:    Colors.grey.shade600,
-              onTap:    () => onStatutChanged(null),
+              onTap:    () => widget.onStatutChanged(null),
             ),
-            ...statuts.map((s) => _StatutChip(
+            ...widget.statuts.map((s) => _StatutChip(
                   label:    _labelStatut(s),
-                  selected: statutSelectionne == s,
+                  selected: widget.statutSelectionne == s,
                   color:    _couleurStatut(s),
-                  onTap:    () => onStatutChanged(s),
+                  onTap:    () => widget.onStatutChanged(s),
                 )),
           ],
         ),

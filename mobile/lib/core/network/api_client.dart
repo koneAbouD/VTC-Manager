@@ -12,6 +12,14 @@ import '_bytes_io.dart' if (dart.library.html) '_bytes_web.dart';
 import 'api_config.dart';
 import 'session_manager.dart';
 
+/// Messages réseau présentés à l'utilisateur — volontairement clairs et sans
+/// détail technique (type d'exception, hôte, URI…), qui n'aident pas
+/// l'utilisateur et font « bug ».
+const String kMsgServeurTimeout =
+    'Le serveur met trop de temps à répondre. Vérifiez votre connexion, puis réessayez.';
+const String kMsgServeurInjoignable =
+    'Impossible de joindre le serveur. Vérifiez votre connexion internet, puis réessayez.';
+
 /// Client HTTP partagé par tous les datasources.
 /// - Injecte automatiquement le Bearer token.
 /// - Sur un 401, tente un refresh token puis rejoue la requête **une seule fois**.
@@ -74,11 +82,11 @@ class ApiClient {
             : rawBody.trim(),
       );
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
+      throw const NetworkException(kMsgServeurTimeout);
     } on ApiException {
       rethrow;
-    } catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : $e');
+    } catch (_) {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 
@@ -120,9 +128,9 @@ class ApiClient {
         rawBody.trim().isEmpty ? 'Erreur ${streamed.statusCode}' : rawBody.trim(),
       );
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
-    } on http.ClientException catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : ${e.message}');
+      throw const NetworkException(kMsgServeurTimeout);
+    } on http.ClientException {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 
@@ -199,9 +207,9 @@ class ApiClient {
 
       return _handle(response);
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
-    } on http.ClientException catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : ${e.message}');
+      throw const NetworkException(kMsgServeurTimeout);
+    } on http.ClientException {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 
@@ -268,9 +276,9 @@ class ApiClient {
 
       return _handle(response);
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
-    } on http.ClientException catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : ${e.message}');
+      throw const NetworkException(kMsgServeurTimeout);
+    } on http.ClientException {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 
@@ -324,9 +332,9 @@ class ApiClient {
 
       return _handle(response);
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
-    } on http.ClientException catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : ${e.message}');
+      throw const NetworkException(kMsgServeurTimeout);
+    } on http.ClientException {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 
@@ -384,9 +392,9 @@ class ApiClient {
 
       return _handle(response);
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
-    } on http.ClientException catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : ${e.message}');
+      throw const NetworkException(kMsgServeurTimeout);
+    } on http.ClientException {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 
@@ -422,9 +430,9 @@ class ApiClient {
       }
       return _handle(response);
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
-    } on http.ClientException catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : ${e.message}');
+      throw const NetworkException(kMsgServeurTimeout);
+    } on http.ClientException {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 
@@ -457,9 +465,9 @@ class ApiClient {
 
       return _handle(response);
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
-    } on http.ClientException catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : ${e.message}');
+      throw const NetworkException(kMsgServeurTimeout);
+    } on http.ClientException {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 

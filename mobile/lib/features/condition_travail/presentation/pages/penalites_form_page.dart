@@ -7,6 +7,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
 import 'condition_travail_models.dart';
 
@@ -458,30 +459,18 @@ class _PenaliteTypeDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selected,
-          isExpanded: true,
-          borderRadius: BorderRadius.circular(14),
-          items: [
-            for (final t in _typesPenaliteOrdered)
-              DropdownMenuItem(
-                value: t,
-                child: Text(PenaliteGroupLocal(typePenalite: t).label),
-              ),
-          ],
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
-        ),
-      ),
+    return PremiumSelectField<String>(
+      value: selected,
+      isRequired: true,
+      sheetTitle: 'Type de pénalité',
+      options: [
+        for (final t in _typesPenaliteOrdered)
+          SelectOption<String>(
+              value: t, label: PenaliteGroupLocal(typePenalite: t).label),
+      ],
+      onChanged: (v) {
+        if (v != null) onChanged(v);
+      },
     );
   }
 }
@@ -761,28 +750,15 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _dureeImmobilisation,
-                  isExpanded: true,
-                  hint: const Text('Durée avant arrêt'),
-                  borderRadius: BorderRadius.circular(12),
-                  items: _dureeOptions.entries
-                      .map((e) => DropdownMenuItem(
-                            value: e.key,
-                            child: Text(e.value),
-                          ))
-                      .toList(),
-                  onChanged: (v) => setState(() => _dureeImmobilisation = v),
-                ),
-              ),
+            PremiumSelectField<String>(
+              value: _dureeImmobilisation,
+              hint: 'Durée avant arrêt',
+              sheetTitle: 'Durée avant arrêt',
+              searchable: false,
+              options: _dureeOptions.entries
+                  .map((e) => SelectOption<String>(value: e.key, label: e.value))
+                  .toList(),
+              onChanged: (v) => setState(() => _dureeImmobilisation = v),
             ),
           ],
         );

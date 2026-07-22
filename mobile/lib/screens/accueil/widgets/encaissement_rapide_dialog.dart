@@ -348,7 +348,7 @@ class _EncaissementRapideSheetState
             // ── Section : Véhicule ────────────────────────────────────────
             _FormCard(
               icon:   Icons.directions_car_outlined,
-              accent: _kPrimary,
+              accent: _kGreen,
               title:  'Véhicule',
               child: _LabeledField(
                 label:      'Véhicule',

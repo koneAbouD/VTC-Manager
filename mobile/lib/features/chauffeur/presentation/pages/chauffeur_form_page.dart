@@ -28,6 +28,7 @@ import '../../../vehicule/presentation/providers/type_document_provider.dart';
 import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../../../core/widgets/responsive_field_row.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -786,71 +787,39 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                   left: _ChauffeurLabeledField(
                     label: 'Genre',
                     isRequired: true,
-                    child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _kFieldFill,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String?>(
-                              value: _genre?.backend,
-                              isExpanded: true,
-                              hint: const Text('Genre',
-                                  style: TextStyle(color: _kHint, fontSize: 15)),
-                              borderRadius: BorderRadius.circular(14),
-                              menuMaxHeight: 320,
-                              icon: const Icon(Icons.keyboard_arrow_down,
-                                  size: 18, color: _kHint),
-                              onChanged: (v) => setState(() =>
-                                  _genre = v == null ? null : Genre.fromJson(v)),
-                              items: Genre.values
-                                  .map((g) => DropdownMenuItem<String?>(
-                                        value: g.backend,
-                                        child: Text(g.label,
-                                            style: const TextStyle(fontSize: 15)),
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-                        ),
-                      ),
+                    child: PremiumSelectField<String>(
+                      value: _genre?.backend,
+                      hint: 'Genre',
+                      sheetTitle: 'Genre',
+                      isRequired: true,
+                      searchable: false,
+                      fillColor: _kFieldFill,
+                      options: Genre.values
+                          .map((g) =>
+                              SelectOption<String>(value: g.backend, label: g.label))
+                          .toList(),
+                      onChanged: (v) => setState(
+                          () => _genre = v == null ? null : Genre.fromJson(v)),
+                    ),
+                  ),
                   right: _ChauffeurLabeledField(
                     label: 'Type',
                     isRequired: true,
-                    child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _kFieldFill,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String?>(
-                              value: _type?.backend,
-                              isExpanded: true,
-                              hint: const Text('Type',
-                                  style: TextStyle(color: _kHint, fontSize: 15)),
-                              borderRadius: BorderRadius.circular(14),
-                              menuMaxHeight: 320,
-                              icon: const Icon(Icons.keyboard_arrow_down,
-                                  size: 18, color: _kHint),
-                              onChanged: (v) => setState(() =>
-                                  _type = v == null
-                                      ? null
-                                      : TypeChauffeur.fromJson(v)),
-                              items: TypeChauffeur.values
-                                  .map((t) => DropdownMenuItem<String?>(
-                                        value: t.backend,
-                                        child: Text(t.label,
-                                            style: const TextStyle(fontSize: 15)),
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-                        ),
-                      ),
+                    child: PremiumSelectField<String>(
+                      value: _type?.backend,
+                      hint: 'Type',
+                      sheetTitle: 'Type de chauffeur',
+                      isRequired: true,
+                      searchable: false,
+                      fillColor: _kFieldFill,
+                      options: TypeChauffeur.values
+                          .map((t) =>
+                              SelectOption<String>(value: t.backend, label: t.label))
+                          .toList(),
+                      onChanged: (v) => setState(() =>
+                          _type = v == null ? null : TypeChauffeur.fromJson(v)),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -2695,36 +2664,17 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 _DocLabeledField(
                   label: 'Type de document',
                   isRequired: true,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _kFieldFill,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<TypeDocument?>(
-                        value: _selectedType,
-                        isExpanded: true,
-                        hint: const Text('Sélectionner',
-                            style:
-                                TextStyle(color: _kHint, fontSize: 15)),
-                        borderRadius: BorderRadius.circular(14),
-                        menuMaxHeight: 320,
-                        icon: const Icon(Icons.keyboard_arrow_down,
-                            color: _kHint, size: 18),
-                        onChanged: (t) =>
-                            setState(() => _selectedType = t),
-                        items: widget.types
-                            .map((t) => DropdownMenuItem<TypeDocument?>(
-                                  value: t,
-                                  child: Text(t.nom,
-                                      style: const TextStyle(
-                                          fontSize: 15)),
-                                ))
-                            .toList(),
-                      ),
-                    ),
+                  child: PremiumSelectField<TypeDocument>(
+                    value: _selectedType,
+                    hint: 'Sélectionner',
+                    sheetTitle: 'Type de document',
+                    isRequired: true,
+                    fillColor: _kFieldFill,
+                    options: widget.types
+                        .map((t) =>
+                            SelectOption<TypeDocument>(value: t, label: t.nom))
+                        .toList(),
+                    onChanged: (t) => setState(() => _selectedType = t),
                   ),
                 ),
                 // Champs spécifiques au permis de conduire

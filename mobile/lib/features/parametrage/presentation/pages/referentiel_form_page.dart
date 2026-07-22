@@ -5,8 +5,13 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/image_viewer.dart';
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../data/parametrage_api.dart';
 import '../providers/parametrage_providers.dart';
+
+// Fond des champs, aligné sur VehiculeFormPage (au lieu de AppColors.fieldFill,
+// une nuance de gris légèrement différente).
+const _kFieldFill = Color(0xFFF2F3F5);
 
 /// Formulaire générique de création / édition d'une valeur de référentiel.
 /// Les champs sont générés à partir du schéma du référentiel (meta-catalogue).
@@ -358,7 +363,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.primaryTint, AppColors.fieldFill],
+            colors: [AppColors.primaryTint, _kFieldFill],
           ),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.28)),
@@ -426,7 +431,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) return child;
                   return Container(
-                    color: AppColors.fieldFill,
+                    color: _kFieldFill,
                     child: const Center(
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: AppColors.primary),
@@ -434,7 +439,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
                   );
                 },
                 errorBuilder: (_, __, ___) => Container(
-                  color: AppColors.fieldFill,
+                  color: _kFieldFill,
                   child: const Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -519,7 +524,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
       height: 210,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.fieldFill,
+        color: _kFieldFill,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.border),
       ),
@@ -582,7 +587,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
 
   InputDecoration _deco() => InputDecoration(
         filled: true,
-        fillColor: AppColors.fieldFill,
+        fillColor: _kFieldFill,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -618,7 +623,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.fieldFill,
+        color: _kFieldFill,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
@@ -655,25 +660,24 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
       children: [
         _label(c),
         itemsAsync.when(
-          loading: () => const LinearProgressIndicator(minHeight: 2),
+          loading: () => _selecteurSquelette(),
           error: (_, __) => Text('Impossible de charger « ${refDesc.libelle} ».',
               style: const TextStyle(color: AppColors.error, fontSize: 12)),
           data: (items) {
             final titreChamp = refDesc.champTitre?.nom ?? 'nom';
-            return DropdownButtonFormField<Object>(
-              initialValue: _refs[c.nom],
-              isExpanded: true,
-              decoration: _deco(),
-              hint: const Text('Choisir…', style: TextStyle(color: AppColors.hint)),
-              items: items.map((it) {
-                final id = it[refDesc.idField] as Object;
-                final label =
-                    (it[titreChamp] ?? it['nom'] ?? it['libelle'] ?? id).toString();
-                return DropdownMenuItem<Object>(value: id, child: Text(label));
-              }).toList(),
+            final options = items.map((it) {
+              final id = it[refDesc.idField] as Object;
+              final label =
+                  (it[titreChamp] ?? it['nom'] ?? it['libelle'] ?? id).toString();
+              return SelectOption<Object>(value: id, label: label);
+            }).toList();
+            return PremiumSelectField<Object>(
+              value: _refs[c.nom],
+              options: options,
+              sheetTitle: c.label,
+              isRequired: c.obligatoire,
+              fillColor: _kFieldFill,
               onChanged: (v) => setState(() => _refs[c.nom] = v),
-              validator: (v) =>
-                  c.obligatoire && v == null ? 'Champ obligatoire' : null,
             );
           },
         ),
@@ -682,26 +686,44 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
   }
 
   Widget _champEnum(ChampDescriptor c) {
+    final options =
+        c.options.map((o) => SelectOption<String>(value: o, label: o)).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _label(c),
-        DropdownButtonFormField<String>(
-          initialValue: _enums[c.nom],
-          isExpanded: true,
-          decoration: _deco(),
-          hint: const Text('Choisir…', style: TextStyle(color: AppColors.hint)),
-          items: c.options
-              .map((o) => DropdownMenuItem<String>(value: o, child: Text(o)))
-              .toList(),
+        PremiumSelectField<String>(
+          value: _enums[c.nom],
+          options: options,
+          sheetTitle: c.label,
+          isRequired: c.obligatoire,
+          searchable: false,
+          fillColor: _kFieldFill,
           onChanged: (v) => setState(() => _enums[c.nom] = v),
-          validator: (v) => c.obligatoire && (v == null || v.isEmpty)
-              ? 'Champ obligatoire'
-              : null,
         ),
       ],
     );
   }
+
+  /// Placeholder pendant le chargement des valeurs d'un référentiel lié.
+  Widget _selecteurSquelette() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: _kFieldFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Row(children: [
+          SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.primary)),
+          SizedBox(width: 12),
+          Text('Chargement…',
+              style: TextStyle(color: AppColors.hint, fontSize: 14)),
+        ]),
+      );
 
   Widget _lectureSeule(ChampDescriptor c) {
     return Column(

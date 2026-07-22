@@ -111,15 +111,14 @@ class _FloatingNavBar extends StatelessWidget {
     return isAndroid ? _docked(context) : _floating(context);
   }
 
-  /// Android — barre ancrée : coins arrondis en haut, ombre portée vers le haut,
-  /// fond blanc qui descend jusqu'au bord de l'écran (au-dessus des boutons
-  /// système grâce au padding = hauteur de la barre système).
+  /// Android — barre ancrée : coins droits (pas d'arrondi), ombre portée vers le
+  /// haut, fond blanc qui descend jusqu'au bord de l'écran (au-dessus des
+  /// boutons système grâce au padding = hauteur de la barre système).
   Widget _docked(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.10),

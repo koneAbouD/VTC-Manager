@@ -152,9 +152,9 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
   }
 
   Future<void> _pickHeure() async {
-    final picked = await showTimePicker(
+    final picked = await showDialog<TimeOfDay>(
       context: context,
-      initialTime: _heure ?? TimeOfDay.now(),
+      builder: (_) => HeurePickerDialog(initialTime: _heure ?? TimeOfDay.now()),
     );
     if (picked != null) setState(() => _heure = picked);
   }
@@ -220,6 +220,11 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_vehiculeId == null) {
+      _appToast(context, 'Sélectionnez un véhicule',
+          type: _ToastType.warning);
+      return;
+    }
     if (_dateInfraction == null) {
       _appToast(context, "Sélectionnez une date d'infraction",
           type: _ToastType.warning);
@@ -282,7 +287,7 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
           children: [
             _section('Véhicule et chauffeur', Icons.directions_car_outlined, [
               _selector(),
-            ]),
+            ], obligatoire: true),
             _section('Infraction', Icons.gavel_outlined, [
               Row(children: [
                 Expanded(child: _dateTile()),
@@ -370,7 +375,8 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
 
   // ── Composants ──────────────────────────────────────────────────────────
 
-  Widget _section(String title, IconData icon, List<Widget> children) {
+  Widget _section(String title, IconData icon, List<Widget> children,
+      {bool obligatoire = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -385,11 +391,22 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
           Row(children: [
             Icon(icon, size: 18, color: AppColors.primary),
             const SizedBox(width: 8),
-            Text(title,
+            RichText(
+              text: TextSpan(
+                text: title,
                 style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.dark)),
+                    color: AppColors.dark),
+                children: obligatoire
+                    ? const [
+                        TextSpan(
+                            text: ' *',
+                            style: TextStyle(color: AppColors.error))
+                      ]
+                    : null,
+              ),
+            ),
           ]),
           const SizedBox(height: 14),
           ...children,

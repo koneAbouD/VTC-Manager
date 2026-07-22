@@ -6,6 +6,8 @@ import '../../domain/entities/encaissement_cotisation.dart';
 import '../../domain/entities/ligne_cotisation.dart';
 import '../providers/ligne_cotisation_provider.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/premium_select_field.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 
 class EncaissementCotisationFormPage extends ConsumerStatefulWidget {
   final LigneCotisation ligne;
@@ -59,12 +61,22 @@ class _State extends ConsumerState<EncaissementCotisationFormPage> {
             },
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<ModePaiementCotisation>(
-            initialValue: _mode,
-            decoration: const InputDecoration(labelText: "Mode d'encaissement *", border: OutlineInputBorder()),
-            items: ModePaiementCotisation.values
-                .map((m) => DropdownMenuItem(value: m, child: Text(m.label))).toList(),
-            onChanged: (v) => setState(() => _mode = v!),
+          const Text("Mode d'encaissement *",
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280))),
+          const SizedBox(height: 6),
+          PremiumSelectField<ModePaiementCotisation>(
+            value: _mode,
+            isRequired: true,
+            searchable: false,
+            sheetTitle: "Mode d'encaissement",
+            options: ModePaiementCotisation.values
+                .map((m) => SelectOption<ModePaiementCotisation>(
+                    value: m, label: m.label))
+                .toList(),
+            onChanged: (v) => setState(() => _mode = v ?? _mode),
           ),
           if (_mode == ModePaiementCotisation.mobileMoney) ...[
             const SizedBox(height: 16),
@@ -78,9 +90,14 @@ class _State extends ConsumerState<EncaissementCotisationFormPage> {
             subtitle: Text(DateFormat('dd/MM/yyyy').format(_date)),
             trailing: const Icon(Icons.calendar_today),
             onTap: () async {
-              final p = await showDatePicker(
-                  context: context, initialDate: _date,
-                  firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 1)));
+              final p = await showDialog<DateTime>(
+                context: context,
+                builder: (_) => SingleDatePickerDialog(
+                  initialDate: _date,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now().add(const Duration(days: 1)),
+                ),
+              );
               if (p != null) setState(() => _date = p);
             },
           ),

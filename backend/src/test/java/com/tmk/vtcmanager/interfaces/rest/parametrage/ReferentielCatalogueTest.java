@@ -20,6 +20,9 @@ class ReferentielCatalogueTest {
                         "types-vehicules",
                         "types-activites",
                         "marques",
+                        "modeles",
+                        "types-document",
+                        "categories-operation",
                         "catalogue-elements-maintenance");
     }
 

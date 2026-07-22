@@ -33,7 +33,8 @@ class VtcManagerApp extends ConsumerWidget {
     final authState = ref.watch(authNotifierProvider);
 
     // Déconnexion (volontaire ou subie) : revenir à la racine en vidant la pile
-    // de navigation, et afficher le message d'expiration le cas échéant.
+    // de navigation. On n'affiche PAS d'alerte d'expiration de session : la
+    // redirection vers la page de connexion suffit.
     ref.listen<AuthState>(authNotifierProvider, (prev, next) {
       if (next is AuthUnauthenticated) {
         // Après le frame courant (le home est déjà devenu LoginPage) : on retire
@@ -41,15 +42,6 @@ class VtcManagerApp extends ConsumerWidget {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _navigatorKey.currentState?.popUntil((route) => route.isFirst);
         });
-        if (next.message != null) {
-          _scaffoldMessengerKey.currentState
-            ?..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(next.message!),
-              backgroundColor: const Color(0xFFB71C1C),
-              behavior: SnackBarBehavior.floating,
-            ));
-        }
       }
     });
 
