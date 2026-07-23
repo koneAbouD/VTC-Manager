@@ -119,7 +119,9 @@
             <version>8.5.11</version>
         </dependency>
 
-        <!-- Extraction de texte des relevés de contraventions PDF (natifs, pas d'OCR) -->
+        <!-- Extraction PDF : couche texte des relevés + rendu image des quittances
+             scannées/photographiées, océrisées ensuite par Tesseract (binaire
+             système : apt-get install -y tesseract-ocr tesseract-ocr-fra). -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>

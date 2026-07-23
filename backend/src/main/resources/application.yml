@@ -50,6 +50,18 @@ app:
   cors:
     allowed-origins: "*"
 
+  # OCR des quittances de paiement scannées / photographiées (Phase 2).
+  # Le backend rend la page en image (PDFBox) puis l'envoie au service OCR
+  # HTTP « tesseract » (conteneur hertzg/tesseract-server, port 8884).
+  #   - Local (backend hors conteneur) : http://localhost:8884
+  #   - Prod (backend en conteneur)     : http://tesseract:8884 (réseau infra)
+  ocr:
+    enabled: ${OCR_ENABLED:true}
+    url: ${OCR_URL:http://localhost:8884}
+    langs: ${OCR_LANGS:fra+eng}
+    dpi: ${OCR_DPI:200}
+    max-pages: ${OCR_MAX_PAGES:10}
+
   # Paiement Mobile Money (V2 app chauffeur)
   payment:
     # Agrégateur actif : "simulation" (défaut) ou un fournisseur réel à brancher.

@@ -41,11 +41,11 @@ class LignesCotisationPage extends ConsumerStatefulWidget {
 
 class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
   // ── Filtres serveur ────────────────────────────────────────────────────
-  // null = aucun filtre par date (toutes périodes) — comportement par défaut.
-  _FiltreMode? _filtreMode;
+  // J-1 par défaut : les cotisations du jour sont généralement consultées le lendemain.
+  _FiltreMode? _filtreMode = _FiltreMode.jour;
   int         _moisSelectionne    = DateTime.now().month;
   int         _anneeSelectionnee  = DateTime.now().year;
-  DateTime    _jourSelectionne    = DateTime.now();
+  DateTime    _jourSelectionne    = DateTime.now().subtract(const Duration(days: 1));
   DateTime    _semaineDebut       = mondayOf(DateTime.now());
   DateTime    _periodeDebut       = DateTime.now().subtract(const Duration(days: 30));
   DateTime    _periodeFin         = DateTime.now();
@@ -941,4 +941,3 @@ class _EmptyState extends StatelessWidget {
         ),
       );
 }
-

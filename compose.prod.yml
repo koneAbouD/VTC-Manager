@@ -42,16 +42,30 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET:-vtc-documents}
+
+      # --- OCR des quittances (service Tesseract ci-dessous) ---
+      OCR_URL: ${OCR_URL:-http://tesseract:8884}
     ports:
       - "${APP_PORT:-8081}:8081"
     networks:
       - infra
+    depends_on:
+      - tesseract
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 60s
+
+  # Service OCR (Tesseract HTTP) : lit les quittances de paiement scannées /
+  # photographiées. Le backend l'appelle sur http://tesseract:8884 (réseau infra).
+  tesseract:
+    image: hertzg/tesseract-server:latest
+    container_name: tesseract
+    restart: unless-stopped
+    networks:
+      - infra
 
 # Réseau de l'infra déjà existante sur le VPS.
 # Récupère le nom exact via : docker network ls

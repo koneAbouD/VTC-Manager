@@ -9,8 +9,16 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.junit.jupiter.api.Test;
 
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
@@ -19,15 +27,21 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Vérifie l'extraction d'une quittance PDF <b>native</b>. Le document de test est
- * généré à la volée par PDFBox (on ne dispose pas de quittance native réelle — le
- * spécimen fourni est un scan/photo, hors périmètre Phase 1).
+ * Vérifie l'extraction d'une quittance PDF. Les cas « natifs » (couche texte)
+ * tournent avec l'OCR désactivé, donc sans dépendance externe. Le cas OCR
+ * (image sans couche texte) n'est joué que si le service OCR HTTP est joignable
+ * (sauté en CI le cas échéant).
  */
 class PdfBoxQuittanceReversementExtractorTest {
 
-    private final PdfBoxQuittanceReversementExtractor extractor = new PdfBoxQuittanceReversementExtractor();
+    private static final String OCR_URL = "http://localhost:8884";
+
+    /** Extracteur « Phase 1 » : natif uniquement (OCR off) pour des tests déterministes. */
+    private final PdfBoxQuittanceReversementExtractor extractor =
+            new PdfBoxQuittanceReversementExtractor(false, OCR_URL, "fra+eng", 200, 10);
 
     private static final List<String> QUITTANCE = List.of(
             "Numero de liquidation: LIQ-4221283 Numero de demande: SOL42822489 03-07-2026",
@@ -89,8 +103,20 @@ class PdfBoxQuittanceReversementExtractorTest {
     }
 
     @Test
-    void leve_quittance_illisible_si_pdf_sans_couche_texte() {
-        // PDF natif mais sans aucun texte (simule un scan/photo non océrisé).
+    void ne_confond_pas_le_numero_de_compte_bancaire_de_l_entete() {
+        // Le numéro de compte de l'en-tête (« CI… », lu « C1… » par l'OCR) a ≥15
+        // chiffres mais N'EST PAS suivi d'une date : il ne doit pas créer de ligne.
+        QuittanceReversement q = extractor.extraire(new ByteArrayInputStream(genererPdf(List.of(
+                "Comptes Bancaires BBG-C1131010010110277 1000211 - BACI : CI0340100101136382000149",
+                "AA-991-SJ-01 C0000000000014584852 26/12/2025 29/01/2026 - 045 exces - 0 5000 0 5.000"))));
+
+        assertThat(q.lignes()).extracting(LigneQuittanceReversement::numeroContravention)
+                .containsExactly("C0000000000014584852");
+    }
+
+    @Test
+    void leve_quittance_illisible_si_pdf_sans_couche_texte_et_ocr_off() {
+        // PDF natif mais sans aucun texte (simule un scan/photo non océrisé), OCR off.
         byte[] pdfSansTexte = genererPdf(List.of());
 
         assertThatThrownBy(() -> extractor.extraire(new ByteArrayInputStream(pdfSansTexte)))
@@ -107,6 +133,34 @@ class PdfBoxQuittanceReversementExtractorTest {
 
         assertThatThrownBy(() -> extractor.extraire(new ByteArrayInputStream(autreDocument)))
                 .isInstanceOf(FormatQuittanceNonReconnuException.class);
+    }
+
+    // ── Cas OCR : image sans couche texte, joué si le service OCR est joignable ──
+
+    @Test
+    void ocr_lit_une_quittance_image_sans_couche_texte() {
+        assumeTrue(serviceOcrDisponible(), "Service OCR injoignable (" + OCR_URL + ") : test OCR ignoré");
+
+        PdfBoxQuittanceReversementExtractor ocrExtractor =
+                new PdfBoxQuittanceReversementExtractor(true, OCR_URL, "fra+eng", 200, 10);
+        byte[] pdfImage = genererPdfImage(QUITTANCE);
+
+        QuittanceReversement q = ocrExtractor.extraire(new ByteArrayInputStream(pdfImage));
+
+        assertThat(q.numeroLiquidation()).isEqualTo("LIQ-4221283");
+        assertThat(q.numeroDemande()).isEqualTo("SOL42822489");
+        assertThat(q.lignes()).hasSize(5);
+        assertThat(q.lignes()).extracting(LigneQuittanceReversement::numeroContravention)
+                .contains("C0000000000014584852", "C0000000000145042534");
+    }
+
+    private static boolean serviceOcrDisponible() {
+        try (java.net.Socket s = new java.net.Socket()) {
+            s.connect(new java.net.InetSocketAddress("localhost", 8884), 500);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // ── Génération d'un PDF natif à couche texte ────────────────────────────────
@@ -130,6 +184,43 @@ class PdfBoxQuittanceReversementExtractorTest {
             return out.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Génération du PDF de test impossible", e);
+        }
+    }
+
+    // ── Génération d'un PDF « image » (aucune couche texte, force l'OCR) ─────────
+    private static byte[] genererPdfImage(List<String> lignes) {
+        try {
+            // 1. Rendu des lignes dans une image (texte net, grande taille).
+            int largeur = 1700, hauteur = 60 + lignes.size() * 40;
+            BufferedImage img = new BufferedImage(largeur, hauteur, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = img.createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, largeur, hauteur);
+            g.setColor(Color.BLACK);
+            g.setFont(new Font("SansSerif", Font.PLAIN, 22));
+            int y = 40;
+            for (String ligne : lignes) {
+                g.drawString(ligne, 20, y);
+                y += 40;
+            }
+            g.dispose();
+
+            // 2. Image intégrée dans un PDF (aucune couche texte).
+            try (PDDocument doc = new PDDocument()) {
+                PDPage page = new PDPage(new PDRectangle(largeur, hauteur));
+                doc.addPage(page);
+                PDImageXObject pdImage = LosslessFactory.createFromImage(doc, img);
+                try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
+                    cs.drawImage(pdImage, 0, 0, largeur, hauteur);
+                }
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                doc.save(out);
+                return out.toByteArray();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Génération du PDF image de test impossible", e);
         }
     }
 }
