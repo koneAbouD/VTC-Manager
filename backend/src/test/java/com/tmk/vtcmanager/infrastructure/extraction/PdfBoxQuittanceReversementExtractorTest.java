@@ -39,9 +39,10 @@ class PdfBoxQuittanceReversementExtractorTest {
 
     private static final String OCR_URL = "http://localhost:8884";
 
-    /** Extracteur « Phase 1 » : natif uniquement (OCR off) pour des tests déterministes. */
+    /** Extracteur avec OCR désactivé (texte natif uniquement) pour des tests déterministes. */
     private final PdfBoxQuittanceReversementExtractor extractor =
-            new PdfBoxQuittanceReversementExtractor(false, OCR_URL, "fra+eng", 200, 10);
+            new PdfBoxQuittanceReversementExtractor(
+                    new PdfOcrTextSource(false, OCR_URL, "fra+eng", 200, 10));
 
     private static final List<String> QUITTANCE = List.of(
             "Numero de liquidation: LIQ-4221283 Numero de demande: SOL42822489 03-07-2026",
@@ -142,7 +143,8 @@ class PdfBoxQuittanceReversementExtractorTest {
         assumeTrue(serviceOcrDisponible(), "Service OCR injoignable (" + OCR_URL + ") : test OCR ignoré");
 
         PdfBoxQuittanceReversementExtractor ocrExtractor =
-                new PdfBoxQuittanceReversementExtractor(true, OCR_URL, "fra+eng", 200, 10);
+                new PdfBoxQuittanceReversementExtractor(
+                        new PdfOcrTextSource(true, OCR_URL, "fra+eng", 200, 10));
         byte[] pdfImage = genererPdfImage(QUITTANCE);
 
         QuittanceReversement q = ocrExtractor.extraire(new ByteArrayInputStream(pdfImage));
@@ -152,6 +154,22 @@ class PdfBoxQuittanceReversementExtractorTest {
         assertThat(q.lignes()).hasSize(5);
         assertThat(q.lignes()).extracting(LigneQuittanceReversement::numeroContravention)
                 .contains("C0000000000014584852", "C0000000000145042534");
+    }
+
+    @Test
+    void ocr_lit_une_image_brute_photo_sans_pdf() {
+        assumeTrue(serviceOcrDisponible(), "Service OCR injoignable (" + OCR_URL + ") : test OCR ignoré");
+
+        PdfBoxQuittanceReversementExtractor ocrExtractor =
+                new PdfBoxQuittanceReversementExtractor(
+                        new PdfOcrTextSource(true, OCR_URL, "fra+eng", 200, 10));
+
+        // Octets d'une image PNG brute (une photo), sans enveloppe PDF.
+        QuittanceReversement q =
+                ocrExtractor.extraire(new ByteArrayInputStream(genererPngBrut(QUITTANCE)));
+
+        assertThat(q.numeroLiquidation()).isEqualTo("LIQ-4221283");
+        assertThat(q.lignes()).hasSize(5);
     }
 
     private static boolean serviceOcrDisponible() {
@@ -221,6 +239,32 @@ class PdfBoxQuittanceReversementExtractorTest {
             }
         } catch (Exception e) {
             throw new RuntimeException("Génération du PDF image de test impossible", e);
+        }
+    }
+
+    /** Génère une image PNG brute (une « photo »), sans enveloppe PDF. */
+    private static byte[] genererPngBrut(List<String> lignes) {
+        try {
+            int largeur = 1700, hauteur = 60 + lignes.size() * 40;
+            BufferedImage img = new BufferedImage(largeur, hauteur, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = img.createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, largeur, hauteur);
+            g.setColor(Color.BLACK);
+            g.setFont(new Font("SansSerif", Font.PLAIN, 22));
+            int y = 40;
+            for (String ligne : lignes) {
+                g.drawString(ligne, 20, y);
+                y += 40;
+            }
+            g.dispose();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ImageIO.write(img, "png", out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Génération du PNG de test impossible", e);
         }
     }
 }

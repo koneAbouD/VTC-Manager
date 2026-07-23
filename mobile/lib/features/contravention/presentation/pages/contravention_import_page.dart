@@ -25,9 +25,10 @@ class _ContraventionImportPageState
   bool _loading = false;
 
   Future<void> _pickPdf() async {
+    // PDF téléchargé (couche texte) OU photo/scan (jpg/png → OCR côté serveur).
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['pdf'],
+      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
       withData: true,
     );
     if (result != null && result.files.isNotEmpty) {
@@ -114,7 +115,7 @@ class _ContraventionImportPageState
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      aUnFichier ? _fileName! : 'Choisir un fichier PDF',
+                      aUnFichier ? _fileName! : 'Choisir un PDF ou une photo',
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),

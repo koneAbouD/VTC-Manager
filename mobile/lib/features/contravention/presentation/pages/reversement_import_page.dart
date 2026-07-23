@@ -26,9 +26,10 @@ class _ReversementImportPageState extends ConsumerState<ReversementImportPage> {
   bool _loading = false;
 
   Future<void> _pickPdf() async {
+    // PDF téléchargé (couche texte) OU photo/scan (jpg/png → OCR côté serveur).
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['pdf'],
+      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
       withData: true,
     );
     if (result != null && result.files.isNotEmpty) {
@@ -137,7 +138,7 @@ class _ReversementImportPageState extends ConsumerState<ReversementImportPage> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      aUnFichier ? _fileName! : 'Choisir un fichier PDF',
+                      aUnFichier ? _fileName! : 'Choisir un PDF ou une photo',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                           fontSize: 14,
@@ -146,7 +147,7 @@ class _ReversementImportPageState extends ConsumerState<ReversementImportPage> {
                     ),
                     if (!aUnFichier) ...[
                       const SizedBox(height: 4),
-                      const Text('Quittance QuiPux / DGI',
+                      const Text('Quittance QuiPux / DGI (PDF ou photo)',
                           style:
                               TextStyle(fontSize: 12, color: AppColors.hint)),
                     ],

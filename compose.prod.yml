@@ -58,10 +58,15 @@ services:
       retries: 3
       start_period: 60s
 
-  # Service OCR (Tesseract HTTP) : lit les quittances de paiement scannées /
-  # photographiées. Le backend l'appelle sur http://tesseract:8884 (réseau infra).
+  # Service OCR (Tesseract, psm 6) : lit les relevés et quittances scannés /
+  # photographiés. Le backend l'appelle sur http://tesseract:8884 (réseau infra).
+  # Image construite depuis ./ocr (voir ocr/Dockerfile) — bâtie avec le backend :
+  #   docker compose -f compose.prod.yml --env-file .env up -d --build
   tesseract:
-    image: hertzg/tesseract-server:latest
+    build:
+      context: ./ocr
+      dockerfile: Dockerfile
+    image: tmk/ocr-tesseract:${OCR_VERSION:-latest}
     container_name: tesseract
     restart: unless-stopped
     networks:
