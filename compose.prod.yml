@@ -60,17 +60,18 @@ services:
 
   # Service OCR (Tesseract, psm 6) : lit les relevés et quittances scannés /
   # photographiés. Le backend l'appelle sur http://tesseract:8884 (réseau infra).
-  # Image construite depuis ./ocr (voir ocr/Dockerfile) — bâtie avec le backend :
-  #   docker compose -f compose.prod.yml --env-file .env up -d --build
+  # Image construite et poussée sur GHCR par le workflow .github/workflows/ocr-docker.yml
+  # (source : dossier ocr/). Déploiement : `docker compose -f compose.prod.yml pull tesseract && up -d`.
   tesseract:
-    build:
-      context: ./ocr
-      dockerfile: Dockerfile
-    image: tmk/ocr-tesseract:${OCR_VERSION:-latest}
+    image: ${OCR_IMAGE:-ghcr.io/koneaboud/vtc-manager-ocr:latest}
     container_name: tesseract
     restart: unless-stopped
     networks:
       - infra
+    deploy:
+      resources:
+        limits:
+          memory: ${OCR_MEM_LIMIT:-512m}
 
 # Réseau de l'infra déjà existante sur le VPS.
 # Récupère le nom exact via : docker network ls

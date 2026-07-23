@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.application.ports.extraction.LigneQuittanceReversement
 import com.tmk.vtcmanager.application.ports.extraction.QuittanceReversement;
 import com.tmk.vtcmanager.application.ports.extraction.QuittanceReversementExtractorPort;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
+import com.tmk.vtcmanager.application.ports.storage.DocumentCompressorPort;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ class PreviewReversementQuittanceUseCaseTest {
     private QuittanceReversementExtractorPort extractor;
     private ContraventionRepository contraventionRepository;
     private FileStoragePort fileStoragePort;
+    private DocumentCompressorPort documentCompressor;
     private PreviewReversementQuittanceUseCase useCase;
 
     @BeforeEach
@@ -40,8 +42,12 @@ class PreviewReversementQuittanceUseCaseTest {
         extractor = mock(QuittanceReversementExtractorPort.class);
         contraventionRepository = mock(ContraventionRepository.class);
         fileStoragePort = mock(FileStoragePort.class);
+        documentCompressor = mock(DocumentCompressorPort.class);
+        // Compresseur neutre : renvoie les octets/type d'origine.
+        when(documentCompressor.compresser(any(), anyString())).thenAnswer(inv ->
+                new DocumentCompressorPort.DocumentCompresse(inv.getArgument(0), inv.getArgument(1)));
         useCase = new PreviewReversementQuittanceUseCase(
-                extractor, contraventionRepository, fileStoragePort);
+                extractor, contraventionRepository, fileStoragePort, documentCompressor);
     }
 
     private static Contravention contravention(Long id, String montant, ContraventionStatus statut) {

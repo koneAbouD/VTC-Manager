@@ -13,6 +13,7 @@ import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
+import com.tmk.vtcmanager.application.ports.storage.DocumentCompressorPort;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import lombok.RequiredArgsConstructor;
 
@@ -38,16 +39,22 @@ public class ImporterContraventionsUseCase {
     private final ProgrammeTravailRepository programmeTravailRepository;
     private final ContraventionRepository contraventionRepository;
     private final FileStoragePort fileStoragePort;
+    private final DocumentCompressorPort documentCompressor;
 
     public ApercuImportContraventions previsualiser(InputStream pdf, String nomFichier, String contentType) {
-        // 1. Archivage du PDF source (traçabilité) — la clé est renvoyée à la confirmation.
         byte[] octets = lireTout(pdf);
+
+        // 1. Archivage du document source (traçabilité) — la clé est renvoyée à la
+        //    confirmation. Compressé pour l'espace disque ; l'extraction (étape 2)
+        //    reste faite sur les octets d'origine.
+        DocumentCompressorPort.DocumentCompresse archive =
+                documentCompressor.compresser(octets, contentType != null ? contentType : "application/pdf");
         String objectName = "contraventions/" + UUID.randomUUID() + "/"
                 + (nomFichier != null ? nomFichier : "releve.pdf");
-        fileStoragePort.upload(objectName, new ByteArrayInputStream(octets),
-                octets.length, contentType != null ? contentType : "application/pdf");
+        fileStoragePort.upload(objectName, new ByteArrayInputStream(archive.octets()),
+                archive.octets().length, archive.contentType());
 
-        // 2. Extraction du relevé.
+        // 2. Extraction du relevé (sur l'original, non dégradé).
         ReleveContraventions releve = extractor.extraire(new ByteArrayInputStream(octets));
 
         // 3. Résolution du véhicule par la plaque.

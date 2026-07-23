@@ -9,6 +9,7 @@ import com.tmk.vtcmanager.application.ports.extraction.LigneQuittanceReversement
 import com.tmk.vtcmanager.application.ports.extraction.QuittanceReversement;
 import com.tmk.vtcmanager.application.ports.extraction.QuittanceReversementExtractorPort;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
+import com.tmk.vtcmanager.application.ports.storage.DocumentCompressorPort;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import lombok.RequiredArgsConstructor;
 
@@ -33,16 +34,21 @@ public class PreviewReversementQuittanceUseCase {
     private final QuittanceReversementExtractorPort extractor;
     private final ContraventionRepository contraventionRepository;
     private final FileStoragePort fileStoragePort;
+    private final DocumentCompressorPort documentCompressor;
 
     public ApercuReversementQuittance previsualiser(InputStream fichier, String nomFichier, String contentType) {
-        // 1. Archivage du document source (traçabilité).
         byte[] octets = lireTout(fichier);
+
+        // 1. Archivage du document (traçabilité), compressé pour l'espace disque.
+        //    L'extraction (étape 2) reste faite sur les octets d'origine.
+        DocumentCompressorPort.DocumentCompresse archive =
+                documentCompressor.compresser(octets, contentType != null ? contentType : "application/pdf");
         String objectName = "reversements/" + UUID.randomUUID() + "/"
                 + (nomFichier != null ? nomFichier : "quittance.pdf");
-        fileStoragePort.upload(objectName, new ByteArrayInputStream(octets),
-                octets.length, contentType != null ? contentType : "application/pdf");
+        fileStoragePort.upload(objectName, new ByteArrayInputStream(archive.octets()),
+                archive.octets().length, archive.contentType());
 
-        // 2. Extraction de la quittance.
+        // 2. Extraction de la quittance (sur l'original, non dégradé).
         QuittanceReversement quittance = extractor.extraire(new ByteArrayInputStream(octets));
 
         ApercuReversementQuittance apercu = ApercuReversementQuittance.builder()

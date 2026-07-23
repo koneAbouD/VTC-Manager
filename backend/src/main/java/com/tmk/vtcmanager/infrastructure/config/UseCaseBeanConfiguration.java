@@ -35,6 +35,7 @@ import com.tmk.vtcmanager.application.ports.persistence.VehiculePhotoRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VidangeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
+import com.tmk.vtcmanager.application.ports.storage.DocumentCompressorPort;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import com.tmk.vtcmanager.application.usecases.auth.*;
 import com.tmk.vtcmanager.application.usecases.admin.*;
@@ -895,9 +896,11 @@ public class UseCaseBeanConfiguration {
             ChauffeurRepository chauffeurRepository,
             ProgrammeTravailRepository programmeTravailRepository,
             ContraventionRepository contraventionRepository,
-            FileStoragePort fileStoragePort) {
+            FileStoragePort fileStoragePort,
+            DocumentCompressorPort documentCompressor) {
         return new ImporterContraventionsUseCase(contraventionExtractorPort, vehiculeRepository,
-                chauffeurRepository, programmeTravailRepository, contraventionRepository, fileStoragePort);
+                chauffeurRepository, programmeTravailRepository, contraventionRepository, fileStoragePort,
+                documentCompressor);
     }
 
     @Bean
@@ -911,9 +914,11 @@ public class UseCaseBeanConfiguration {
     public PreviewReversementQuittanceUseCase previewReversementQuittanceUseCase(
             QuittanceReversementExtractorPort quittanceReversementExtractorPort,
             ContraventionRepository contraventionRepository,
-            FileStoragePort fileStoragePort) {
+            FileStoragePort fileStoragePort,
+            DocumentCompressorPort documentCompressor) {
         return new PreviewReversementQuittanceUseCase(
-                quittanceReversementExtractorPort, contraventionRepository, fileStoragePort);
+                quittanceReversementExtractorPort, contraventionRepository, fileStoragePort,
+                documentCompressor);
     }
 
     @Bean

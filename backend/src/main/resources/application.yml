@@ -62,6 +62,17 @@ app:
     dpi: ${OCR_DPI:200}
     max-pages: ${OCR_MAX_PAGES:10}
 
+  # Compression des documents (relevés/quittances) avant archivage MinIO :
+  # image → JPEG redimensionné ; PDF scanné → pages ré-encodées en JPEG ;
+  # PDF natif (couche texte) conservé. L'extraction reste faite sur l'original.
+  storage:
+    compress:
+      enabled: ${STORAGE_COMPRESS_ENABLED:true}
+      max-dimension: ${STORAGE_COMPRESS_MAX_DIM:2200}
+      jpeg-quality: ${STORAGE_COMPRESS_JPEG_QUALITY:0.75}
+      pdf-dpi: ${STORAGE_COMPRESS_PDF_DPI:150}
+      max-pages: ${STORAGE_COMPRESS_MAX_PAGES:20}
+
   # Paiement Mobile Money (V2 app chauffeur)
   payment:
     # Agrégateur actif : "simulation" (défaut) ou un fournisseur réel à brancher.
