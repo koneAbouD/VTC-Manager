@@ -120,9 +120,24 @@ public class GetRapportFinancierUseCase {
                 : nomChauffeurOuDefaut(op, "Sans chauffeur");
     }
 
+    /**
+     * Codes des catégories de dépense « documents » (famille comptable
+     * Documents), regroupées sous une seule entrée « Document » dans la
+     * répartition. Miroir des sous-catégories seedées (groupe « Documents »).
+     */
+    private static final java.util.Set<String> CODES_DOCUMENT = java.util.Set.of(
+            "ASSURANCE", "VISITE_TECHNIQUE", "PATENTE", "CARTE_STATIONNEMENT",
+            "VIGNETTE", "TAXE");
+
     private String labelDepense(OperationFinanciere op) {
         CategorieOperation categorie = op.getCategorie();
-        if (categorie != null && categorie.getLibelle() != null && !categorie.getLibelle().isBlank()) {
+        if (categorie == null) {
+            return "Autres";
+        }
+        if (categorie.getCode() != null && CODES_DOCUMENT.contains(categorie.getCode())) {
+            return "Document";
+        }
+        if (categorie.getLibelle() != null && !categorie.getLibelle().isBlank()) {
             return categorie.getLibelle();
         }
         return "Autres";

@@ -294,7 +294,8 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
     if (result != null && mounted) {
       setState(() {
         _vehiculeId = result.id;
-        _vehiculeNom = result.displayName;
+        // Afficher l'immatriculation plutôt que « marque modèle ».
+        _vehiculeNom = result.immatriculation;
       });
     }
   }

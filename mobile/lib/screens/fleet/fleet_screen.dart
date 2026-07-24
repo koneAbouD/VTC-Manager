@@ -1326,6 +1326,23 @@ class _Bone extends StatelessWidget {
 
 // ── États communs ────────────────────────────────────────────────────────────
 
+/// Centre son enfant, mais le rend défilable quand la hauteur disponible est
+/// insuffisante (ex. clavier ouvert) pour éviter tout débordement (RenderFlex).
+class _ScrollableCenter extends StatelessWidget {
+  final Widget child;
+  const _ScrollableCenter({required this.child});
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(child: child),
+          ),
+        ),
+      );
+}
+
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1344,7 +1361,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
-    return Center(
+    return _ScrollableCenter(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -1388,7 +1405,7 @@ class _NoResultState extends StatelessWidget {
   const _NoResultState({required this.onClear});
 
   @override
-  Widget build(BuildContext context) => Center(
+  Widget build(BuildContext context) => _ScrollableCenter(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
@@ -1430,7 +1447,7 @@ class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});
 
   @override
-  Widget build(BuildContext context) => Center(
+  Widget build(BuildContext context) => _ScrollableCenter(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(

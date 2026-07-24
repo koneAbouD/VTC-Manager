@@ -33,7 +33,10 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
       backgroundColor: AppColors.scaffold,
       appBar: const AppHeader(title: 'Compte de résultat'),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        // Padding bas incluant l'inset de la barre de navigation Android
+        // (gestes / 3 boutons) pour que le dernier contenu ne passe pas dessous.
+        padding: EdgeInsets.fromLTRB(
+            16, 8, 16, 32 + MediaQuery.of(context).padding.bottom),
         children: [
           _buildFiltres(),
           const SizedBox(height: 12),

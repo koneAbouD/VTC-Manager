@@ -8,6 +8,7 @@ import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/month_filter_pill.dart';
+import '../../core/widgets/responsive_field_row.dart' show kFormPhoneBreakpoint;
 import '../home_nav_provider.dart';
 
 // ── Modèles ──────────────────────────────────────────────────────────────────
@@ -170,7 +171,10 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                 onRefresh: () async =>
                     ref.invalidate(rapportFinancierProvider(params)),
                 child: ListView(
-                  padding: const EdgeInsets.all(16),
+                  // Padding bas incluant l'inset de la barre de navigation
+                  // Android pour que la liste ne passe pas dessous.
+                  padding: EdgeInsets.fromLTRB(
+                      16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
                   children: [
                     _buildTotalCard(rapport),
                     const SizedBox(height: 16),
@@ -467,59 +471,86 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
             ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            // 5 lignes visibles par défaut, le reste accessible au scroll.
-            height: (items.length < 5 ? items.length : 5) * _pieRowHeight,
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              physics: const BouncingScrollPhysics(),
-              itemExtent: _pieRowHeight,
-              itemCount: items.length,
-              itemBuilder: (context, i) {
-                final item = items[i];
-                final color = pieColors[i % pieColors.length];
-                return _PieItemBubble(
-                  item: item,
-                  color: color,
-                  money: _money,
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: color, width: 4),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${item.pourcentage.toStringAsFixed(0)}%',
-                            style: const TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(item.label,
-                            style: const TextStyle(fontSize: 13),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                    ],
+          const SizedBox(height: 16),
+          // Tablette : défilement horizontal des bulles.
+          // Téléphone : défilement vertical (hauteur bornée à ~3 bulles).
+          Builder(
+            builder: (context) {
+              final isTablet =
+                  MediaQuery.of(context).size.width >= kFormPhoneBreakpoint;
+              if (isTablet) {
+                return SizedBox(
+                  height: 100,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 18),
+                    itemBuilder: (context, i) => _pieBubble(
+                        items[i], pieColors[i % pieColors.length],
+                        fixedWidth: 68),
                   ),
                 );
-              },
-            ),
+              }
+              final visibles = items.length < 3 ? items.length : 3;
+              return SizedBox(
+                height: visibles * 96,
+                child: ListView.separated(
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, i) => _pieBubble(
+                      items[i], pieColors[i % pieColors.length]),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  /// Hauteur d'une ligne du camembert (utilisée pour caler 5 lignes visibles).
-  static const double _pieRowHeight = 58;
+  /// Une bulle « catégorie » : cercle % + libellé, appui maintenu = info-bulle.
+  /// [fixedWidth] pour le Wrap (téléphone) ; null en tablette (largeur = slot
+  /// Expanded).
+  Widget _pieBubble(BreakdownItem item, Color color, {double? fixedWidth}) {
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 4),
+          ),
+          child: Center(
+            child: Text(
+              '${item.pourcentage.toStringAsFixed(0)}%',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          item.label,
+          style: const TextStyle(fontSize: 11),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+    return _PieItemBubble(
+      item: item,
+      color: color,
+      money: _money,
+      child: fixedWidth != null
+          ? SizedBox(width: fixedWidth, child: content)
+          : content,
+    );
+  }
 
   Widget _buildListeOperations(RapportFinancierData rapport) {
     return Column(
