@@ -23,6 +23,7 @@ class ReferentielCatalogueTest {
                         "modeles",
                         "types-document",
                         "categories-operation",
+                        "balises",
                         "catalogue-elements-maintenance");
     }
 

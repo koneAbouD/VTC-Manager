@@ -30,7 +30,22 @@ public class ReferentielCatalogue {
                 modeles(),
                 typesDocument(),
                 categoriesOperation(),
+                balises(),
                 catalogueElementsMaintenance());
+    }
+
+    private ReferentielDescriptorResponse balises() {
+        return new ReferentielDescriptorResponse(
+                "balises",
+                "Balises GPS",
+                "Balises GPS installées sur les véhicules (identifiant + n° de téléphone).",
+                "/api/v1/balises",
+                true,
+                "id",
+                List.of(
+                        texte("identifiant", "Identifiant", true),
+                        texte("numeroTelephone", "N° de téléphone", false),
+                        booleen("actif", "Actif")));
     }
 
     private ReferentielDescriptorResponse modeles() {

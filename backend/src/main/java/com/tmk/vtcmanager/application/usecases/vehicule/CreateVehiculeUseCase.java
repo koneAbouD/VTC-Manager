@@ -17,6 +17,7 @@ public class CreateVehiculeUseCase {
     private final TypeVehiculeRepository typeVehiculeRepository;
     private final TypeActiviteRepository typeActiviteRepository;
     private final GroupeVehiculeRepository groupeVehiculeRepository;
+    private final BaliseRepository baliseRepository;
     private final VehiculeStatutHistoriqueService statutHistoriqueService;
 
     @Transactional
@@ -54,6 +55,11 @@ public class CreateVehiculeUseCase {
                     .orElseThrow(() -> ResourceNotFoundException.of("GroupeVehicule", command.groupeId()))
                 : null;
 
+        var balise = command.baliseId() != null
+                ? baliseRepository.findById(command.baliseId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Balise", command.baliseId()))
+                : null;
+
         Vehicule vehiculeToCreate = Vehicule.builder()
                 .immatriculation(command.immatriculation())
                 .marque(marque)
@@ -62,12 +68,13 @@ public class CreateVehiculeUseCase {
                 .activite(typeActivite)
                 .groupe(groupe)
                 .numeroChassis(command.numeroChassis())
-                .numeroTelephoneBalise(command.numeroTelephoneBalise())
-                .identifiantBalise(command.identifiantBalise())
+                .balise(balise)
                 .couleur(command.couleur())
                 .kilometrage(command.kilometrage())
                 .statut(command.statut() != null ? command.statut() : VehiculeStatus.DISPONIBLE)
                 .dateAchat(command.dateAchat())
+                .prixAchat(command.prixAchat())
+                .dureeAmortissementMois(command.dureeAmortissementMois())
                 .dateProchaineMaintenance(command.dateProchaineMaintenance())
                 .dateMiseEnCirculation(command.dateMiseEnCirculation())
                 .dateEntreeFlotte(command.dateEntreeFlotte())

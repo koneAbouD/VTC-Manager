@@ -77,17 +77,19 @@ public class VehiculeController {
 
     @GetMapping("/{id:\\d+}")
     public VehiculeDetailResponse findById(@PathVariable Long id) {
-        VehiculeResponse base = mapper.toResponse(getVehiculeByIdUseCase.execute(id));
+        Vehicule vehicule = getVehiculeByIdUseCase.execute(id);
+        VehiculeResponse base = mapper.toResponse(vehicule);
         List<DocumentResponse> documents = documentMapper
                 .toResponseList(getDocumentsByVehiculeUseCase.execute(id));
         return new VehiculeDetailResponse(
                 base.id(), base.immatriculation(),
                 base.marque(), base.modele(),
                 base.numeroChassis(),
-                base.numeroTelephoneBalise(), base.identifiantBalise(),
+                base.balise(),
                 base.couleur(), base.kilometrage(), base.statut(),
                 base.type(), base.activite(), base.groupe(),
-                base.dateAchat(), base.dateProchaineMaintenance(),
+                base.dateAchat(), base.prixAchat(), vehicule.getDureeAmortissementMois(),
+                base.dateProchaineMaintenance(),
                 base.dateMiseEnCirculation(), base.dateEntreeFlotte(),
                 base.photos(), documents);
     }

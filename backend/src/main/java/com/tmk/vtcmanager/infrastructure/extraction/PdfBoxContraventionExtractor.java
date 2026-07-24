@@ -1,5 +1,7 @@
 package com.tmk.vtcmanager.infrastructure.extraction;
 
+import com.tmk.vtcmanager.application.exception.FormatReleveNonReconnuException;
+import com.tmk.vtcmanager.application.exception.ReleveIllisibleException;
 import com.tmk.vtcmanager.application.ports.extraction.ContraventionExtractorPort;
 import com.tmk.vtcmanager.application.ports.extraction.ContraventionExtraite;
 import com.tmk.vtcmanager.application.ports.extraction.ReleveContraventions;
@@ -80,7 +82,13 @@ public class PdfBoxContraventionExtractor implements ContraventionExtractorPort 
 
     @Override
     public ReleveContraventions extraire(InputStream contenu) {
-        String texte = normaliser(texteSource.texte(lireTout(contenu)));
+        String brut = texteSource.texte(lireTout(contenu));
+        // Aucun texte extrait (ni couche PDF, ni OCR) : document illisible.
+        if (brut == null || brut.isBlank()) {
+            log.warn("Relevé illisible : aucun texte extrait du document importé");
+            throw new ReleveIllisibleException();
+        }
+        String texte = normaliser(brut);
         String plaque = premier(PLAQUE, texte);
 
         // On ignore le pied de page (« Total à payer », mentions légales) pour ne
@@ -95,6 +103,12 @@ public class PdfBoxContraventionExtractor implements ContraventionExtractorPort 
             if (c != null) {
                 contraventions.add(c);
             }
+        }
+        // Texte lisible mais aucun numéro de contravention détecté : le document
+        // n'est pas un relevé (facture, quittance, PDF quelconque…).
+        if (contraventions.isEmpty()) {
+            log.warn("Format de relevé non reconnu : aucune contravention détectée (plaque={})", plaque);
+            throw new FormatReleveNonReconnuException();
         }
         log.info("Relevé de contraventions extrait : plaque={}, {} ligne(s)", plaque, contraventions.size());
         return new ReleveContraventions(plaque, contraventions);

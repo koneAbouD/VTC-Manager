@@ -15,4 +15,24 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/splash_background</item>
     </style>
+
+    <!-- Thème de l'écran de rognage uCrop (image_cropper).
+         - Barres système opaques et distinctes (l'app cible SDK 36 → l'edge-to-edge
+           est forcé ; on l'annule pour cette activité afin que l'écran ne se
+           confonde plus avec la barre de statut et la barre de navigation).
+         - Animation d'entrée/sortie standard, plus fluide que le thème par défaut. -->
+    <style name="Theme.VtcUcrop" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/ucrop_toolbar</item>
+        <item name="colorPrimaryDark">@color/ucrop_status_bar</item>
+        <item name="colorAccent">@color/ucrop_accent</item>
+        <item name="android:statusBarColor">@color/ucrop_status_bar</item>
+        <item name="android:navigationBarColor">@color/ucrop_nav_bar</item>
+        <!-- Chrome sombre (#20242F) en haut comme en bas → icônes système claires. -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Activity</item>
+        <!-- Android 15+ (API 35) : rétablit les barres système opaques pour cette
+             activité au lieu de l'edge-to-edge imposé par la plateforme. -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
 </resources>

@@ -25,7 +25,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../vehicule/presentation/pages/vehicule_detail_page.dart';
 
-export '../providers/chauffeur_provider.dart' show chauffeurPhotoVersionProvider;
+export '../providers/chauffeur_provider.dart'
+    show chauffeurPhotoVersionProvider;
 
 /// Écran de détail d'un chauffeur.
 ///
@@ -35,7 +36,11 @@ class ChauffeurDetailPage extends ConsumerStatefulWidget {
   final int chauffeurId;
   final int initialTabIndex;
   final bool canPopToVehicule;
-  const ChauffeurDetailPage({super.key, required this.chauffeurId, this.initialTabIndex = 0, this.canPopToVehicule = false});
+  const ChauffeurDetailPage(
+      {super.key,
+      required this.chauffeurId,
+      this.initialTabIndex = 0,
+      this.canPopToVehicule = false});
 
   @override
   ConsumerState<ChauffeurDetailPage> createState() =>
@@ -49,7 +54,8 @@ class _ChauffeurDetailPageState extends ConsumerState<ChauffeurDetailPage>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 4, vsync: this, initialIndex: widget.initialTabIndex);
+    _tab = TabController(
+        length: 4, vsync: this, initialIndex: widget.initialTabIndex);
   }
 
   @override
@@ -86,15 +92,23 @@ class _ChauffeurDetailPageState extends ConsumerState<ChauffeurDetailPage>
                 ),
               ),
       ),
-      body: asyncChauffeur.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text('Erreur : $e', textAlign: TextAlign.center),
+      // top: false → l'en-tête gère déjà le haut ; on protège le bas pour ne pas
+      // que le contenu passe sous la barre de navigation système Android.
+      body: SafeArea(
+        top: false,
+        child: asyncChauffeur.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Erreur : $e', textAlign: TextAlign.center),
+            ),
           ),
+          data: (c) => _DetailBody(
+              chauffeur: c,
+              tabController: _tab,
+              canPopToVehicule: widget.canPopToVehicule),
         ),
-        data: (c) => _DetailBody(chauffeur: c, tabController: _tab, canPopToVehicule: widget.canPopToVehicule),
       ),
     );
   }
@@ -107,7 +121,10 @@ class _DetailBody extends StatelessWidget {
   final TabController tabController;
   final bool canPopToVehicule;
 
-  const _DetailBody({required this.chauffeur, required this.tabController, this.canPopToVehicule = false});
+  const _DetailBody(
+      {required this.chauffeur,
+      required this.tabController,
+      this.canPopToVehicule = false});
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +146,8 @@ class _DetailBody extends StatelessWidget {
             children: [
               _InfoGeneralesTab(chauffeur: chauffeur),
               _DocumentsTab(chauffeur: chauffeur),
-              _ProgrammesTab(chauffeur: chauffeur, canPopToVehicule: canPopToVehicule),
+              _ProgrammesTab(
+                  chauffeur: chauffeur, canPopToVehicule: canPopToVehicule),
               const _PlaceholderTab(label: 'Recettes à venir'),
             ],
           ),
@@ -232,9 +250,8 @@ class _HeaderCard extends StatelessWidget {
           _StatChip(
             icon: Icons.directions_car_outlined,
             label: chauffeur.vehiculeMatricule ?? 'Aucun véhicule',
-            accent: chauffeur.vehiculeMatricule != null
-                ? AppColors.primary
-                : null,
+            accent:
+                chauffeur.vehiculeMatricule != null ? AppColors.primary : null,
           ),
         ],
       ),
@@ -399,10 +416,9 @@ class _PillTabBar extends StatelessWidget {
         ),
         labelColor: Colors.white,
         unselectedLabelColor: const Color(0xFF6B7794),
-        labelStyle: const TextStyle(
-            fontWeight: FontWeight.w600, fontSize: 13),
-        unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500, fontSize: 13),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        unselectedLabelStyle:
+            const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
         labelPadding: const EdgeInsets.symmetric(horizontal: 14),
         tabs: tabs
             .map((t) => Tab(
@@ -502,8 +518,18 @@ class _InfoGeneralesTab extends StatelessWidget {
   static String? _formatDate(DateTime? d) {
     if (d == null) return null;
     final months = [
-      'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+      'janvier',
+      'février',
+      'mars',
+      'avril',
+      'mai',
+      'juin',
+      'juillet',
+      'août',
+      'septembre',
+      'octobre',
+      'novembre',
+      'décembre',
     ];
     return '${d.day} ${months[d.month - 1]} ${d.year}';
   }
@@ -514,7 +540,8 @@ class _InfoGeneralesTab extends StatelessWidget {
 class _ProgrammesTab extends ConsumerStatefulWidget {
   final Chauffeur chauffeur;
   final bool canPopToVehicule;
-  const _ProgrammesTab({required this.chauffeur, this.canPopToVehicule = false});
+  const _ProgrammesTab(
+      {required this.chauffeur, this.canPopToVehicule = false});
 
   @override
   ConsumerState<_ProgrammesTab> createState() => _ProgrammesTabState();
@@ -524,7 +551,13 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
   /// Overlay des indisponibilités (recalculé à chaque build).
   IndisponibiliteOverlay _overlay = const IndisponibiliteOverlay([]);
   static const _weekdayLabels = [
-    'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim',
+    'Lun',
+    'Mar',
+    'Mer',
+    'Jeu',
+    'Ven',
+    'Sam',
+    'Dim',
   ];
 
   late DateTime _focusedMonth;
@@ -542,7 +575,8 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
     final pc = _findPc(programme);
     if (programme != null && pc != null) {
       _selectedDate =
-          ChauffeurProgrammeCalculator.scheduleForDate(programme, pc, now) != null
+          ChauffeurProgrammeCalculator.scheduleForDate(programme, pc, now) !=
+                  null
               ? now
               : null;
     }
@@ -564,7 +598,9 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
     _overlay = IndisponibiliteOverlay(
         ref.watch(toutesIndisponibilitesProvider).valueOrNull ?? const []);
 
-    if (programme == null || programme.id == null || programme.chauffeurs.isEmpty) {
+    if (programme == null ||
+        programme.id == null ||
+        programme.chauffeurs.isEmpty) {
       return _ProgrammeEmptyState(
         icon: chauffeur.vehiculeId == null
             ? Icons.no_transfer_rounded
@@ -633,7 +669,8 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
             children: [
               Row(
                 children: [
-                  _monthArrow(Icons.chevron_left_rounded, () => _changeMonth(-1)),
+                  _monthArrow(
+                      Icons.chevron_left_rounded, () => _changeMonth(-1)),
                   Expanded(
                     child: Text(
                       DateFormat('MMMM yyyy', 'fr_FR').format(_focusedMonth),
@@ -645,7 +682,8 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
                       ),
                     ),
                   ),
-                  _monthArrow(Icons.chevron_right_rounded, () => _changeMonth(1)),
+                  _monthArrow(
+                      Icons.chevron_right_rounded, () => _changeMonth(1)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -669,8 +707,7 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: calendarDays.length,
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
                   mainAxisSpacing: 1,
                   crossAxisSpacing: 1,
@@ -746,15 +783,13 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
     return Material(
       color: background,
       child: InkWell(
-        onTap: !isEnabled
-            ? null
-            : () => setState(() => _selectedDate = day.date),
+        onTap:
+            !isEnabled ? null : () => setState(() => _selectedDate = day.date),
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(
-              color: isToday
-                  ? const Color(0xFF8BA4E8)
-                  : const Color(0xFFEEEEEE),
+              color:
+                  isToday ? const Color(0xFF8BA4E8) : const Color(0xFFEEEEEE),
               width: 0.5,
             ),
           ),
@@ -799,7 +834,8 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
     );
   }
 
-  Widget _buildVehiculeCard(ProgrammeTravail programme, ChauffeurProgrammeDay? day,
+  Widget _buildVehiculeCard(
+      ProgrammeTravail programme, ChauffeurProgrammeDay? day,
       {String? remplacePar, ({String vehicule, String titulaireNom})? borrow}) {
     final timeRange = ChauffeurProgrammeCalculator.timeRange(programme);
     final isSalaryDay = day?.isSalaryDay ?? false;
@@ -827,17 +863,23 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
         ? const Color(0xFFC62828)
         : estRemplacant
             ? const Color(0xFFE65100)
-            : isSalaryDay ? const Color(0xFF2E7D32) : const Color(0xFF3158B6);
+            : isSalaryDay
+                ? const Color(0xFF2E7D32)
+                : const Color(0xFF3158B6);
     final rowBg = estIndisponible
         ? const Color(0xFFFFE0E0)
         : estRemplacant
             ? const Color(0xFFFFF3E0)
-            : isSalaryDay ? const Color(0xFFE8F5E9) : const Color(0xFFEAF1FF);
+            : isSalaryDay
+                ? const Color(0xFFE8F5E9)
+                : const Color(0xFFEAF1FF);
     final borderColor = estIndisponible
         ? const Color(0xFFF5C2C2)
         : estRemplacant
             ? const Color(0xFFF5D6B0)
-            : isSalaryDay ? const Color(0xFFC8E6C9) : const Color(0xFFE4E9F5);
+            : isSalaryDay
+                ? const Color(0xFFC8E6C9)
+                : const Color(0xFFE4E9F5);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -945,7 +987,8 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
             ),
           ),
           if (onTap != null)
-            Icon(Icons.chevron_right, size: 16, color: color.withValues(alpha: 0.5)),
+            Icon(Icons.chevron_right,
+                size: 16, color: color.withValues(alpha: 0.5)),
         ],
       ),
     );
@@ -982,8 +1025,7 @@ class _ProgrammesTabState extends ConsumerState<_ProgrammesTab> {
         // (a) Pendant son indisponibilité, le titulaire ne travaille pas.
         schedule: indispo != null
             ? null
-            : ChauffeurProgrammeCalculator.scheduleForDate(
-                programme, pc, date),
+            : ChauffeurProgrammeCalculator.scheduleForDate(programme, pc, date),
         indisponible: indispo != null,
         remplacantNom: indispo?.chauffeurRemplacantNom,
         remplaceVehicule: borrow?.vehicule,
@@ -1311,7 +1353,8 @@ class _ChauffeurProgrammeCalendarSheetState
                           ),
                           Expanded(
                             child: Text(
-                              DateFormat('MMMM yyyy', 'fr_FR').format(_focusedMonth),
+                              DateFormat('MMMM yyyy', 'fr_FR')
+                                  .format(_focusedMonth),
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 16,
@@ -1349,7 +1392,8 @@ class _ChauffeurProgrammeCalendarSheetState
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: calendarDays.length,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 7,
                           mainAxisSpacing: 2,
                           crossAxisSpacing: 2,
@@ -1370,7 +1414,8 @@ class _ChauffeurProgrammeCalendarSheetState
                   _selectedDate == null
                       ? DateFormat('d MMMM yyyy', 'fr_FR')
                           .format(_dateOnly(DateTime.now()))
-                      : DateFormat('d MMMM yyyy', 'fr_FR').format(_selectedDate!),
+                      : DateFormat('d MMMM yyyy', 'fr_FR')
+                          .format(_selectedDate!),
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -1393,7 +1438,8 @@ class _ChauffeurProgrammeCalendarSheetState
 
   List<_ChauffeurCalendarCell> _buildCalendarDays(DateTime focusedMonth) {
     final monthStart = DateTime(focusedMonth.year, focusedMonth.month);
-    final gridStart = monthStart.subtract(Duration(days: monthStart.weekday - 1));
+    final gridStart =
+        monthStart.subtract(Duration(days: monthStart.weekday - 1));
     return List.generate(42, (index) {
       final date = _dateOnly(gridStart.add(Duration(days: index)));
       return _ChauffeurCalendarCell(
@@ -1459,9 +1505,8 @@ class _ChauffeurProgrammeCalendarSheetState
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(
-              color: isToday
-                  ? const Color(0xFF8BA4E8)
-                  : const Color(0xFFE6EAF2),
+              color:
+                  isToday ? const Color(0xFF8BA4E8) : const Color(0xFFE6EAF2),
             ),
           ),
           alignment: Alignment.center,
@@ -1469,7 +1514,8 @@ class _ChauffeurProgrammeCalendarSheetState
             '${day.date.day}',
             style: TextStyle(
               fontSize: 15,
-              fontWeight: isSelected || isToday ? FontWeight.w800 : FontWeight.w500,
+              fontWeight:
+                  isSelected || isToday ? FontWeight.w800 : FontWeight.w500,
               color: textColor,
             ),
           ),
@@ -1584,7 +1630,8 @@ class _ChauffeurProgrammeCalendarSheetState
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (chauffeur.vehiculeNom != null && chauffeur.vehiculeNom!.isNotEmpty)
+                if (chauffeur.vehiculeNom != null &&
+                    chauffeur.vehiculeNom!.isNotEmpty)
                   _MiniBadge(
                     label: chauffeur.vehiculeNom!,
                     color: const Color(0xFF3158B6),
@@ -1615,7 +1662,8 @@ class _ChauffeurProgrammeCalendarSheetState
 
   void _changeMonth(int offset) {
     setState(() {
-      _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + offset);
+      _focusedMonth =
+          DateTime(_focusedMonth.year, _focusedMonth.month + offset);
     });
   }
 
@@ -1625,7 +1673,8 @@ class _ChauffeurProgrammeCalendarSheetState
     return (p + n).toUpperCase();
   }
 
-  DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+  DateTime _dateOnly(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
 
   bool _isSameDate(DateTime first, DateTime second) =>
       first.year == second.year &&
@@ -1737,7 +1786,8 @@ class ChauffeurProgrammeCalculator {
       return readyDrivers.first;
     }
 
-    final serviceDays = _countWorkingDaysInclusive(programme, alternanceStart, date);
+    final serviceDays =
+        _countWorkingDaysInclusive(programme, alternanceStart, date);
     final slot = (serviceDays - 1) ~/ programme.joursAlternance!;
     return readyDrivers[slot % readyDrivers.length];
   }
@@ -1753,8 +1803,7 @@ class ChauffeurProgrammeCalculator {
       return null;
     }
 
-    final readyDrivers = [...programme.chauffeurs]
-      ..sort((a, b) {
+    final readyDrivers = [...programme.chauffeurs]..sort((a, b) {
         final first = a.ordreJourSalaire ?? a.ordreAlternance;
         final second = b.ordreJourSalaire ?? b.ordreAlternance;
         return first.compareTo(second);
@@ -1945,8 +1994,7 @@ class _DocumentsTab extends ConsumerWidget {
           _sectionLabel('Documents'),
           const SizedBox(height: 8),
           ...allDocs.map((d) {
-            final hasFile =
-                d.fichierUrl != null && d.fichierUrl!.isNotEmpty;
+            final hasFile = d.fichierUrl != null && d.fichierUrl!.isNotEmpty;
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Material(
@@ -1957,8 +2005,7 @@ class _DocumentsTab extends ConsumerWidget {
                   onTap: hasFile
                       ? () => showDialog(
                             context: context,
-                            barrierColor:
-                                Colors.black.withValues(alpha: 0.85),
+                            barrierColor: Colors.black.withValues(alpha: 0.85),
                             builder: (_) => _DocViewerDialog(doc: d),
                           )
                       : null,
@@ -1995,8 +2042,7 @@ class _RegularDocCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isExpired = doc.statut == 'EXPIRE';
-    final accentColor =
-        isExpired ? const Color(0xFFC62828) : AppColors.primary;
+    final accentColor = isExpired ? const Color(0xFFC62828) : AppColors.primary;
 
     return Container(
       decoration: BoxDecoration(
@@ -2017,13 +2063,12 @@ class _RegularDocCard extends StatelessWidget {
                 bottomLeft: Radius.circular(13),
               ),
             ),
-            child: Icon(Icons.description_outlined,
-                color: accentColor, size: 24),
+            child:
+                Icon(Icons.description_outlined, color: accentColor, size: 24),
           ),
           Expanded(
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2134,15 +2179,20 @@ class _DocViewerDialogState extends ConsumerState<_DocViewerDialog> {
   static bool _isBytesImage(Uint8List b) {
     if (b.length < 4) return false;
     if (b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF) return true;
-    if (b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) return true;
-    if (b[0] == 0x47 && b[1] == 0x49 && b[2] == 0x46 && b[3] == 0x38) return true;
+    if (b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47)
+      return true;
+    if (b[0] == 0x47 && b[1] == 0x49 && b[2] == 0x46 && b[3] == 0x38)
+      return true;
     if (b[0] == 0x42 && b[1] == 0x4D) return true;
     return false;
   }
 
   static bool _isBytesPdf(Uint8List b) =>
       b.length >= 4 &&
-      b[0] == 0x25 && b[1] == 0x50 && b[2] == 0x44 && b[3] == 0x46;
+      b[0] == 0x25 &&
+      b[1] == 0x50 &&
+      b[2] == 0x44 &&
+      b[3] == 0x46;
 
   bool get _fileIsPdf {
     final ft = widget.doc.fichierType ?? '';
@@ -2280,7 +2330,10 @@ class _PermisPdfViewerState extends State<_PermisPdfViewer> {
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() { _error = true; _loading = false; });
+      setState(() {
+        _error = true;
+        _loading = false;
+      });
     }
   }
 
@@ -2330,8 +2383,7 @@ class _PermisNoPreview extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(fichierNom!,
-                  style: const TextStyle(
-                      color: Colors.white24, fontSize: 11)),
+                  style: const TextStyle(color: Colors.white24, fontSize: 11)),
             ),
         ],
       ),
@@ -2361,8 +2413,7 @@ class _PermisViewerError extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(message!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: Colors.white24, fontSize: 11),
+                  style: const TextStyle(color: Colors.white24, fontSize: 11),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis),
             ),
@@ -2371,8 +2422,7 @@ class _PermisViewerError extends StatelessWidget {
             const SizedBox(height: 16),
             TextButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh,
-                  color: Colors.white54, size: 18),
+              icon: const Icon(Icons.refresh, color: Colors.white54, size: 18),
               label: const Text('Réessayer',
                   style: TextStyle(color: Colors.white54)),
             ),
@@ -2492,7 +2542,8 @@ class _InfoRow extends StatelessWidget {
               style: TextStyle(
                 fontWeight: hasValue ? FontWeight.w700 : FontWeight.normal,
                 fontSize: 14,
-                color: hasValue ? const Color(0xFF1A1A2E) : Colors.grey.shade400,
+                color:
+                    hasValue ? const Color(0xFF1A1A2E) : Colors.grey.shade400,
               ),
             ),
           ),
@@ -2676,8 +2727,7 @@ class _PhotoFullscreenViewerState extends State<_PhotoFullscreenViewer> {
                 : const SizedBox(
                     height: 200,
                     child: Center(
-                        child:
-                            CircularProgressIndicator(color: Colors.white))),
+                        child: CircularProgressIndicator(color: Colors.white))),
           );
         },
       );
@@ -2685,8 +2735,7 @@ class _PhotoFullscreenViewerState extends State<_PhotoFullscreenViewer> {
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(

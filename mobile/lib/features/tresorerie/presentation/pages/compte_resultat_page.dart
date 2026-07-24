@@ -42,7 +42,8 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
               padding: EdgeInsets.symmetric(vertical: 48),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, _) => _erreur('Impossible de charger le compte de résultat',
+            error: (e, _) => _erreur(
+                'Impossible de charger le compte de résultat',
                 () => ref.invalidate(compteResultatProvider(crParams))),
             data: (cr) => _CascadeCard(cr: cr, base: _base),
           ),
@@ -65,7 +66,8 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
             data: (marges) => marges.isEmpty
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text('Aucune opération rattachée à un véhicule sur la période',
+                    child: Text(
+                        'Aucune opération rattachée à un véhicule sur la période',
                         style: TextStyle(fontSize: 13, color: AppColors.label)),
                   )
                 : Column(
@@ -150,7 +152,8 @@ class _CascadeCard extends StatelessWidget {
           _ligne('− Charges fixes', -cr.chargesFixes,
               sousTitre: 'Assurance, patente, frais de structure',
               secondaire: true),
-          _solde('= Excédent brut d\'exploitation', cr.excedentBrutExploitation),
+          _solde(
+              '= Excédent brut d\'exploitation', cr.excedentBrutExploitation),
           _ligne('− Amortissements véhicules', -cr.amortissements,
               sousTitre: 'Dotation linéaire (prix d\'achat / durée)',
               secondaire: true),
@@ -230,8 +233,7 @@ class _CascadeCard extends StatelessWidget {
           ),
           if (sousTitre != null)
             Text(sousTitre,
-                style:
-                    const TextStyle(fontSize: 11, color: AppColors.hint)),
+                style: const TextStyle(fontSize: 11, color: AppColors.hint)),
         ],
       ),
     );
@@ -254,8 +256,8 @@ class _CascadeCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(CurrencyFormatter.format(montant),
-              style: const TextStyle(
-                  fontSize: 13.5, fontWeight: FontWeight.w700)),
+              style:
+                  const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -268,7 +270,11 @@ class _MargeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final negative = marge.marge < 0;
+    // Rentabilité affichée = marge nette (après amortissement) dès qu'un
+    // amortissement s'applique ; sinon la marge sur coûts variables.
+    final aAmortissement = marge.dotationAmortissement > 0;
+    final valeurPrincipale = aAmortissement ? marge.margeNette : marge.marge;
+    final negative = valeurPrincipale < 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -294,6 +300,13 @@ class _MargeTile extends StatelessWidget {
                   '${CurrencyFormatter.format(marge.chargesVariables)}',
                   style: const TextStyle(fontSize: 11, color: AppColors.label),
                 ),
+                if (aAmortissement)
+                  Text(
+                    '− Amortissement '
+                    '${CurrencyFormatter.format(marge.dotationAmortissement)}',
+                    style:
+                        const TextStyle(fontSize: 11, color: AppColors.label),
+                  ),
                 if (marge.joursImmobilisation > 0)
                   Text(
                     'Immobilisé ${marge.joursImmobilisation} j sur la période',
@@ -305,11 +318,12 @@ class _MargeTile extends StatelessWidget {
               ],
             ),
           ),
-          Text(CurrencyFormatter.format(marge.marge),
+          Text(CurrencyFormatter.format(valeurPrincipale),
               style: TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w700,
-                  color: negative ? Colors.red.shade900 : AppColors.primaryDark)),
+                  color:
+                      negative ? Colors.red.shade900 : AppColors.primaryDark)),
         ],
       ),
     );

@@ -14,6 +14,7 @@ public interface ModeleRestMapper {
     @Mapping(target = "nom", ignore = true)
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "marque", ignore = true)
+    @Mapping(target = "actif", constant = "true")
     Modele toModele(String modeleId);
 
     ModeleResponse toResponse(Modele domain);

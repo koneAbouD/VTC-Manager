@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.domain.vehicule;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record CreateVehiculeCommand(
@@ -10,12 +11,13 @@ public record CreateVehiculeCommand(
         Long typeActiviteId,
         Long groupeId,
         String numeroChassis,
-        String numeroTelephoneBalise,
-        String identifiantBalise,
+        Long baliseId,
         String couleur,
         Integer kilometrage,
         VehiculeStatus statut,
         LocalDate dateAchat,
+        BigDecimal prixAchat,
+        Integer dureeAmortissementMois,
         LocalDate dateProchaineMaintenance,
         LocalDate dateMiseEnCirculation,
         LocalDate dateEntreeFlotte

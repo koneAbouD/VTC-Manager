@@ -18,6 +18,7 @@ public interface ProgrammeTravailRestMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "vehiculeId", ignore = true)
     @Mapping(target = "joursTravailSemaine", ignore = true)
+    @Mapping(target = "feriesActif", ignore = true)
     @Mapping(target = "chauffeurs", source = "chauffeurs")
     ProgrammeTravail toDomain(ProgrammeTravailRequest request);
 

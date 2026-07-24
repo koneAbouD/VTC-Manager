@@ -22,8 +22,7 @@ public class Vehicule {
     private Marque marque;
     private Modele modele;
     private String numeroChassis;
-    private String numeroTelephoneBalise;
-    private String identifiantBalise;
+    private Balise balise;
     private String couleur;
     private Integer kilometrage;
     private VehiculeStatus statut;
@@ -36,9 +35,9 @@ public class Vehicule {
     private LocalDate dateAchat;
     /** Prix d'acquisition : base de l'amortissement et du bilan de gestion. */
     private java.math.BigDecimal prixAchat;
-    /** Durée d'amortissement linéaire en mois (60 par défaut). */
-    @Builder.Default
-    private int dureeAmortissementMois = 60;
+    /** Durée d'amortissement linéaire en mois (override) ; null = suit le
+     *  paramètre global DUREE_AMORTISSEMENT_MOIS. */
+    private Integer dureeAmortissementMois;
     private LocalDate dateProchaineMaintenance;
     private LocalDate dateMiseEnCirculation;
     private LocalDate dateEntreeFlotte;
@@ -137,6 +136,10 @@ public class Vehicule {
 
     public Long getGroupeId() {
         return groupe != null ? groupe.getId() : null;
+    }
+
+    public Long getBaliseId() {
+        return balise != null ? balise.getId() : null;
     }
 
     public Long getConditionTravailId() {

@@ -91,16 +91,29 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
       appBar: const AppHeader(title: 'Reverser une quittance'),
       body: Column(
         children: [
-          _entete(a),
+          // L'en-tête est intégré à la zone scrollable (et non fixe) : sur une
+          // hauteur réduite — pliage/dépliage du Fold, multi-fenêtre — le contenu
+          // défile au lieu de déborder. Seule la barre de confirmation reste fixe.
           Expanded(
-            child: _lignes.isEmpty
-                ? const _VideEtat()
-                : ListView.separated(
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _entete(a)),
+                if (_lignes.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _VideEtat(),
+                  )
+                else
+                  SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    itemCount: _lignes.length,
-                    itemBuilder: (_, i) => _ligneTile(_lignes[i]),
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    sliver: SliverList.separated(
+                      itemCount: _lignes.length,
+                      itemBuilder: (_, i) => _ligneTile(_lignes[i]),
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    ),
                   ),
+              ],
+            ),
           ),
           // Barre de confirmation intégrée au flux (et non en bottomNavigationBar) :
           // cette page est un Scaffold imbriqué dans le hub ; un bottomNavigationBar

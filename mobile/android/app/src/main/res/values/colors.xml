@@ -3,4 +3,13 @@
     <color name="ic_launcher_background">#FFFFFF</color>
     <!-- Fond de l'écran de démarrage : identique au fond des pages (AppColors.scaffold) -->
     <color name="splash_background">#F8F9FB</color>
+
+    <!-- Écran de rognage uCrop (image_cropper) : chrome unifié sur la couleur de
+         la barre de contrôles « Rogner / Pivoter / Zoom »
+         (ucrop_color_ebony_clay = #20242F), accent vert. -->
+    <color name="ucrop_status_bar">#20242F</color>   <!-- = fond barre de contrôles -->
+    <color name="ucrop_toolbar">#20242F</color>      <!-- en-tête = barre du bas -->
+    <color name="ucrop_background">#1A1A2E</color>   <!-- zone image (dark) -->
+    <color name="ucrop_nav_bar">#20242F</color>      <!-- = fond barre de contrôles -->
+    <color name="ucrop_accent">#43A047</color>       <!-- primary (accent des contrôles) -->
 </resources>

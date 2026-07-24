@@ -21,14 +21,14 @@ import '../../../etat_parc/presentation/providers/etat_parc_provider.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const _kPrimary   = AppColors.primary;
-const _kAccent    = Color(0xFFE65100);
+const _kPrimary = AppColors.primary;
+const _kAccent = Color(0xFFE65100);
 const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint      = Color(0xFF9AA0AE);
-const _kLabel     = Color(0xFF6B7280);
-const _kBorder    = Color(0xFFE3E6EE);
-const _kDark      = Color(0xFF1A1A2E);
-const _kError     = Color(0xFFE03131);
+const _kHint = Color(0xFF9AA0AE);
+const _kLabel = Color(0xFF6B7280);
+const _kBorder = Color(0xFFE3E6EE);
+const _kDark = Color(0xFF1A1A2E);
+const _kError = Color(0xFFE03131);
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -38,7 +38,9 @@ void _showToast(BuildContext context, String message, {bool error = false}) {
     ..showSnackBar(SnackBar(
       content: Row(children: [
         Icon(
-          error ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+          error
+              ? Icons.error_outline_rounded
+              : Icons.check_circle_outline_rounded,
           color: Colors.white,
           size: 20,
         ),
@@ -46,10 +48,13 @@ void _showToast(BuildContext context, String message, {bool error = false}) {
         Expanded(
           child: Text(message,
               style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white)),
         ),
       ]),
-      backgroundColor: error ? const Color(0xFFB71C1C) : const Color(0xFF1B5E20),
+      backgroundColor:
+          error ? const Color(0xFFB71C1C) : const Color(0xFF1B5E20),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -65,7 +70,8 @@ class MaintenanceFormPage extends ConsumerStatefulWidget {
   const MaintenanceFormPage({super.key, this.initial});
 
   @override
-  ConsumerState<MaintenanceFormPage> createState() => _MaintenanceFormPageState();
+  ConsumerState<MaintenanceFormPage> createState() =>
+      _MaintenanceFormPageState();
 }
 
 class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
@@ -75,11 +81,11 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
   CategorieOperation? _categorieType;
   DateTime? _datePrevue;
-  final _dureeCtrl       = TextEditingController();
+  final _dureeCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
   final _prestataireCtrl = TextEditingController();
 
-  int?    _vehiculeId;
+  int? _vehiculeId;
   String? _vehiculeNom;
 
   bool _elementsExpanded = true;
@@ -107,12 +113,12 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     super.initState();
     final m = widget.initial;
     if (m != null) {
-      _datePrevue           = m.datePrevue;
-      _dureeCtrl.text       = m.dureeHeures?.toString() ?? '';
+      _datePrevue = m.datePrevue;
+      _dureeCtrl.text = m.dureeHeures?.toString() ?? '';
       _descriptionCtrl.text = m.description ?? '';
       _prestataireCtrl.text = m.prestataire ?? '';
-      _vehiculeId           = m.vehiculeId;
-      _vehiculeNom          = m.vehiculeNom;
+      _vehiculeId = m.vehiculeId;
+      _vehiculeNom = m.vehiculeNom;
       if (m.detailMaintenance != null) {
         _elements = List.from(m.detailMaintenance!.elements);
       }
@@ -150,7 +156,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     );
     if (result != null && mounted) {
       setState(() {
-        _vehiculeId  = result.id;
+        _vehiculeId = result.id;
         _vehiculeNom = result.immatriculation;
       });
     }
@@ -185,23 +191,24 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     }
 
     final maintenance = Maintenance(
-      id:                   widget.initial?.id,
-      type:                 _categorieType!.code,
-      datePrevue:           _datePrevue!,
-      dureeHeures:          int.tryParse(_dureeCtrl.text),
-      description:          _descriptionCtrl.text.trim().isEmpty
-                                ? null : _descriptionCtrl.text.trim(),
+      id: widget.initial?.id,
+      type: _categorieType!.code,
+      datePrevue: _datePrevue!,
+      dureeHeures: int.tryParse(_dureeCtrl.text),
+      description: _descriptionCtrl.text.trim().isEmpty
+          ? null
+          : _descriptionCtrl.text.trim(),
       // Champ kilométrage retiré du formulaire : on conserve la valeur
       // existante en édition pour ne pas l'écraser.
-      kilometrageAuMoment:  widget.initial?.kilometrageAuMoment,
-      prestataire:          _prestataireCtrl.text.trim().isEmpty
-                                ? null : _prestataireCtrl.text.trim(),
-      vehiculeId:           _vehiculeId,
-      categorieTypeId:      _categorieType!.id,
+      kilometrageAuMoment: widget.initial?.kilometrageAuMoment,
+      prestataire: _prestataireCtrl.text.trim().isEmpty
+          ? null
+          : _prestataireCtrl.text.trim(),
+      vehiculeId: _vehiculeId,
+      categorieTypeId: _categorieType!.id,
       categorieTypeLibelle: _categorieType!.libelle,
-      detailMaintenance:    _elements.isNotEmpty
-                                ? DetailMaintenance(elements: _elements)
-                                : null,
+      detailMaintenance:
+          _elements.isNotEmpty ? DetailMaintenance(elements: _elements) : null,
     );
 
     final notifier = ref.read(maintenanceNotifierProvider.notifier);
@@ -227,14 +234,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       // service) : rafraîchir la photo de l'État de parc.
       ref.invalidate(etatParcSummaryProvider);
 
-      _showToast(
-        context,
-        _isEdit
-            ? 'Maintenance modifiée !'
-            : estPassee
-                ? 'Maintenance enregistrée et terminée !'
-                : 'Maintenance programmée !',
-      );
+      // Pas d'alerte de succès : la fermeture + le refresh de la liste suffisent.
       Navigator.pop(context, true);
     }
   }
@@ -257,202 +257,192 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  children: [
-                    if (_submitError != null) ...[
-                      AppErrorBanner(
-                        message: _submitError!,
-                        onClose: () => setState(() => _submitError = null),
+          children: [
+            if (_submitError != null) ...[
+              AppErrorBanner(
+                message: _submitError!,
+                onClose: () => setState(() => _submitError = null),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // ── Planification ────────────────────────────────────
+            _FormCard(
+              icon: Icons.event_note_outlined,
+              accent: _kPrimary,
+              title: 'Planification',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _LabeledField(
+                    label: 'Type de maintenance',
+                    isRequired: true,
+                    child: _TypeDropdown(
+                      selected: _categorieType,
+                      onChanged: (cat) => setState(() => _categorieType = cat),
+                      initial: widget.initial,
+                      onInitResolved: (cat) {
+                        if (_categorieType == null && cat != null) {
+                          setState(() => _categorieType = cat);
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: _LabeledField(
+                          label: 'Date prévue',
+                          isRequired: true,
+                          child: _buildDateField(),
+                        ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _LabeledField(
+                          label: 'Durée (h)',
+                          child: TextFormField(
+                            controller: _dureeCtrl,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(fontSize: 15, color: _kDark),
+                            decoration: _fieldDeco('ex: 3'),
+                          ),
+                        ),
+                      ),
                     ],
+                  ),
+                ],
+              ),
+            ),
 
-                    // ── Planification ────────────────────────────────────
-                    _FormCard(
-                      icon: Icons.event_note_outlined,
-                      accent: _kPrimary,
-                      title: 'Planification',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _LabeledField(
-                            label: 'Type de maintenance',
-                            isRequired: true,
-                            child: _TypeDropdown(
-                              selected:  _categorieType,
-                              onChanged: (cat) =>
-                                  setState(() => _categorieType = cat),
-                              initial: widget.initial,
-                              onInitResolved: (cat) {
-                                if (_categorieType == null && cat != null) {
-                                  setState(() => _categorieType = cat);
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: _LabeledField(
-                                  label: 'Date prévue',
-                                  isRequired: true,
-                                  child: _buildDateField(),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: _LabeledField(
-                                  label: 'Durée (h)',
-                                  child: TextFormField(
-                                    controller: _dureeCtrl,
-                                    keyboardType: TextInputType.number,
-                                    style: const TextStyle(
-                                        fontSize: 15, color: _kDark),
-                                    decoration: _fieldDeco('ex: 3'),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ── Véhicule ─────────────────────────────────────────
-                    _FormCard(
-                      icon: Icons.directions_car_outlined,
-                      accent: _kPrimary,
-                      title: 'Véhicule',
-                      child: _LabeledField(
-                        label: 'Véhicule concerné',
-                        child: _buildSelectorField(
-                          hint: 'Sélectionner un véhicule',
-                          value: _vehiculeNom,
-                          onTap: _openVehiculeSelector,
-                          onClear: _vehiculeNom != null
-                              ? () => setState(() {
-                                    _vehiculeId  = null;
-                                    _vehiculeNom = null;
-                                  })
-                              : null,
-                        ),
-                      ),
-                    ),
-
-                    // ── Éléments concernés ───────────────────────────────
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _kBorder),
-                      ),
-                      child: Column(children: [
-                        GestureDetector(
-                          onTap: () => setState(
-                              () => _elementsExpanded = !_elementsExpanded),
-                          behavior: HitTestBehavior.opaque,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Row(children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: _kAccent.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Icons.checklist_rounded,
-                                    size: 18, color: _kAccent),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Éléments concernés',
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: _kDark,
-                                          letterSpacing: -0.2),
-                                    ),
-                                    if (_elements.isNotEmpty)
-                                      Text(
-                                        '${_elements.length} élément${_elements.length > 1 ? 's' : ''} · '
-                                        '${_elements.fold(0.0, (s, e) => s + e.montant).toStringAsFixed(0)} XOF',
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: _kAccent,
-                                            fontWeight: FontWeight.w500),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              AnimatedRotation(
-                                turns: _elementsExpanded ? 0.5 : 0.0,
-                                duration: const Duration(milliseconds: 250),
-                                child: const Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    size: 20,
-                                    color: _kHint),
-                              ),
-                            ]),
-                          ),
-                        ),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeInOut,
-                          child: _elementsExpanded
-                              ? Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16, 0, 16, 16),
-                                  child: _buildElementsSelector(),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                      ]),
-                    ),
-
-                    // ── Détails ──────────────────────────────────────────
-                    _FormCard(
-                      icon: Icons.notes_outlined,
-                      accent: _kPrimary,
-                      title: 'Détails',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _LabeledField(
-                            label: 'Prestataire',
-                            child: TextFormField(
-                              controller: _prestataireCtrl,
-                              style: const TextStyle(
-                                  fontSize: 15, color: _kDark),
-                              decoration:
-                                  _fieldDeco('Garage, atelier…'),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _LabeledField(
-                            label: 'Description',
-                            child: TextFormField(
-                              controller: _descriptionCtrl,
-                              maxLines: 3,
-                              style: const TextStyle(
-                                  fontSize: 15, color: _kDark),
-                              decoration:
-                                  _fieldDeco('Travaux prévus…'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+            // ── Véhicule ─────────────────────────────────────────
+            _FormCard(
+              icon: Icons.directions_car_outlined,
+              accent: _kPrimary,
+              title: 'Véhicule',
+              child: _LabeledField(
+                label: 'Véhicule concerné',
+                child: _buildSelectorField(
+                  hint: 'Sélectionner un véhicule',
+                  value: _vehiculeNom,
+                  onTap: _openVehiculeSelector,
+                  onClear: _vehiculeNom != null
+                      ? () => setState(() {
+                            _vehiculeId = null;
+                            _vehiculeNom = null;
+                          })
+                      : null,
                 ),
               ),
+            ),
+
+            // ── Éléments concernés ───────────────────────────────
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _kBorder),
+              ),
+              child: Column(children: [
+                GestureDetector(
+                  onTap: () =>
+                      setState(() => _elementsExpanded = !_elementsExpanded),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: _kAccent.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.checklist_rounded,
+                            size: 18, color: _kAccent),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Éléments concernés',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: _kDark,
+                                  letterSpacing: -0.2),
+                            ),
+                            if (_elements.isNotEmpty)
+                              Text(
+                                '${_elements.length} élément${_elements.length > 1 ? 's' : ''} · '
+                                '${_elements.fold(0.0, (s, e) => s + e.montant).toStringAsFixed(0)} XOF',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: _kAccent,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                          ],
+                        ),
+                      ),
+                      AnimatedRotation(
+                        turns: _elementsExpanded ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 250),
+                        child: const Icon(Icons.keyboard_arrow_down_rounded,
+                            size: 20, color: _kHint),
+                      ),
+                    ]),
+                  ),
+                ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  child: _elementsExpanded
+                      ? Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: _buildElementsSelector(),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ]),
+            ),
+
+            // ── Détails ──────────────────────────────────────────
+            _FormCard(
+              icon: Icons.notes_outlined,
+              accent: _kPrimary,
+              title: 'Détails',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _LabeledField(
+                    label: 'Prestataire',
+                    child: TextFormField(
+                      controller: _prestataireCtrl,
+                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      decoration: _fieldDeco('Garage, atelier…'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _LabeledField(
+                    label: 'Description',
+                    child: TextFormField(
+                      controller: _descriptionCtrl,
+                      maxLines: 3,
+                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      decoration: _fieldDeco('Travaux prévus…'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -476,8 +466,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                   ? DateFormat('dd MMM yyyy', 'fr_FR').format(_datePrevue!)
                   : 'Sélectionner',
               style: TextStyle(
-                  fontSize: 15,
-                  color: _datePrevue != null ? _kDark : _kHint),
+                  fontSize: 15, color: _datePrevue != null ? _kDark : _kHint),
             ),
           ),
           const Icon(Icons.keyboard_arrow_down, size: 18, color: _kHint),
@@ -528,13 +517,12 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         if (_elements.isNotEmpty) ...[
           ..._elements.map((el) => Container(
                 margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 9),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF3EB),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: _kAccent.withValues(alpha: 0.20)),
+                  border: Border.all(color: _kAccent.withValues(alpha: 0.20)),
                 ),
                 child: Row(children: [
                   const Icon(Icons.build_circle_outlined,
@@ -563,15 +551,13 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         GestureDetector(
           onTap: _openElementsPage,
           child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
               color: _kFieldFill,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(children: [
-              const Icon(Icons.checklist_rounded,
-                  size: 17, color: _kPrimary),
+              const Icon(Icons.checklist_rounded, size: 17, color: _kPrimary),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -579,14 +565,13 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                       ? 'Sélectionner les éléments'
                       : 'Modifier la sélection',
                   style: TextStyle(
-                      fontSize: 15,
-                      color: _elements.isEmpty ? _kHint : _kDark),
+                      fontSize: 15, color: _elements.isEmpty ? _kHint : _kDark),
                 ),
               ),
               if (_elements.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: _kAccent.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(10),
@@ -791,16 +776,12 @@ class _LabeledField extends StatelessWidget {
         Row(children: [
           Text(label,
               style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: _kLabel)),
+                  fontSize: 12.5, fontWeight: FontWeight.w600, color: _kLabel)),
           if (isRequired) ...[
             const SizedBox(width: 3),
             const Text('*',
                 style: TextStyle(
-                    color: _kError,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700)),
+                    color: _kError, fontSize: 13, fontWeight: FontWeight.w700)),
           ],
         ]),
         const SizedBox(height: 6),

@@ -13,6 +13,7 @@ public interface TypeActiviteRestMapper {
     @Mapping(target = "id", source = "typeActiviteId")
     @Mapping(target = "nom", ignore = true)
     @Mapping(target = "description", ignore = true)
+    @Mapping(target = "actif", constant = "true")
     TypeActivite toTypeActivite(String typeActiviteId);
 
     TypeActiviteResponse toResponse(TypeActivite domain);

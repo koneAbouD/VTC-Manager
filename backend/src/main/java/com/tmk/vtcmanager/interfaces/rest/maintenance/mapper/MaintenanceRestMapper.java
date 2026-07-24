@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.application.domain.operation.ElementMaintenance;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.request.MaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.response.MaintenanceResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.DetailMaintenanceRequest;
+import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.CatalogueElementMaintenanceResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.mapper.CategorieOperationRestMapper;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.mapper.VehiculeRestMapper;
 import org.mapstruct.Mapper;
@@ -30,6 +31,9 @@ public interface MaintenanceRestMapper {
     MaintenanceResponse toResponse(Maintenance domain);
 
     List<MaintenanceResponse> toResponseList(List<Maintenance> domains);
+
+    @Mapping(target = "imageUrl", ignore = true)
+    CatalogueElementMaintenanceResponse toCatalogueElementResponse(CatalogueElementMaintenance domain);
 
     @Named("categorieTypeRef")
     default CategorieOperation categorieTypeRef(Long id) {

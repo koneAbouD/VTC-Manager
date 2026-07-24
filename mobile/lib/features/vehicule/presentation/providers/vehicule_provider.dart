@@ -133,7 +133,8 @@ final vehiculeByIdProvider =
 // ── Provider photos ─────────────────────────────────────────────────────────
 
 final vehiculePhotosProvider =
-    FutureProvider.family<List<VehiculePhotoModel>, int>((ref, vehiculeId) async {
+    FutureProvider.family<List<VehiculePhotoModel>, int>(
+        (ref, vehiculeId) async {
   final ds = ref.watch(vehiculeDatasourceProvider);
   return ds.getPhotos(vehiculeId);
 });

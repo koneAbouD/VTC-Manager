@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>L'application utilise la caméra pour photographier vos documents (quittances, relevés, pièces jointes).</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>L'application accède à vos photos pour joindre des documents (quittances, relevés, pièces jointes).</string>
 </dict>
 </plist>

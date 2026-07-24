@@ -83,9 +83,28 @@ class ContraventionRemoteDatasource {
     return ContraventionModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Déduit le type MIME à partir de l'extension du fichier téléversé.
+  /// Nécessaire depuis l'ajout de la prise de photo : une image caméra ne doit
+  /// pas être annoncée comme `application/pdf` (sinon OCR/validation serveur KO).
+  static String _contentTypeFor(String filename) {
+    final ext = filename.toLowerCase().split('.').last;
+    switch (ext) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
   // ── Import PDF (Mode 1) ────────────────────────────────────────────────────
 
-  /// Téléverse un relevé PDF et récupère l'aperçu (rien n'est persisté).
+  /// Téléverse un relevé (PDF ou photo/scan) et récupère l'aperçu (rien n'est
+  /// persisté).
   Future<ApercuImportModel> importerReleve(
       Uint8List pdfBytes, String filename) async {
     final data = await _client.postMultipartSingle(
@@ -94,7 +113,7 @@ class ContraventionRemoteDatasource {
       fileField: 'fichier',
       fileBytes: pdfBytes,
       fileFilename: filename,
-      fileContentType: 'application/pdf',
+      fileContentType: _contentTypeFor(filename),
     );
     return ApercuImportModel.fromJson(data as Map<String, dynamic>);
   }
@@ -120,7 +139,7 @@ class ContraventionRemoteDatasource {
       fileField: 'fichier',
       fileBytes: fileBytes,
       fileFilename: filename,
-      fileContentType: 'application/pdf',
+      fileContentType: _contentTypeFor(filename),
     );
     return ApercuReversementModel.fromJson(data as Map<String, dynamic>);
   }

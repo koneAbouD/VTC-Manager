@@ -6,7 +6,9 @@ import com.tmk.vtcmanager.application.exception.ChauffeurPermisExpireException;
 import com.tmk.vtcmanager.application.exception.ChauffeurSuspenduException;
 import com.tmk.vtcmanager.application.exception.EncaissementPenaliteDepasseMontantException;
 import com.tmk.vtcmanager.application.exception.FormatQuittanceNonReconnuException;
+import com.tmk.vtcmanager.application.exception.FormatReleveNonReconnuException;
 import com.tmk.vtcmanager.application.exception.QuittanceIllisibleException;
+import com.tmk.vtcmanager.application.exception.ReleveIllisibleException;
 import com.tmk.vtcmanager.application.exception.LignePenaliteDejaTermineeException;
 import com.tmk.vtcmanager.application.exception.LignePenaliteNonDemarrableException;
 import com.tmk.vtcmanager.application.exception.LignePenaliteNonEncaissableException;
@@ -195,6 +197,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(FormatQuittanceNonReconnuException.class)
     public ResponseEntity<ApiError> handleFormatQuittanceNonReconnu(FormatQuittanceNonReconnuException ex, HttpServletRequest request) {
         return respond(HttpStatus.UNPROCESSABLE_ENTITY, "FORMAT_QUITTANCE_NON_RECONNU", ex.getMessage(), request, ex);
+    }
+
+    // ── Import de relevé : document illisible ou format non reconnu ─────────
+
+    @ExceptionHandler(ReleveIllisibleException.class)
+    public ResponseEntity<ApiError> handleReleveIllisible(ReleveIllisibleException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "RELEVE_ILLISIBLE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(FormatReleveNonReconnuException.class)
+    public ResponseEntity<ApiError> handleFormatReleveNonReconnu(FormatReleveNonReconnuException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "FORMAT_RELEVE_NON_RECONNU", ex.getMessage(), request, ex);
     }
 
     // ── Conflits / ressources ──────────────────────────────────────────────

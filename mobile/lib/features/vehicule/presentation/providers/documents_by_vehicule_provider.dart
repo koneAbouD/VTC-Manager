@@ -63,11 +63,10 @@ class DocumentVehiculeLocal {
   }
 }
 
-final _docSecureStorage =
-    Provider<SecureStorage>((_) => const SecureStorage());
+final _docSecureStorage = Provider<SecureStorage>((_) => const SecureStorage());
 
-final docApiClientProvider = Provider<ApiClient>(
-    (ref) => ApiClient(ref.watch(_docSecureStorage)));
+final docApiClientProvider =
+    Provider<ApiClient>((ref) => ApiClient(ref.watch(_docSecureStorage)));
 
 final documentsByVehiculeIdProvider =
     FutureProvider.family<List<DocumentVehiculeLocal>, int>(

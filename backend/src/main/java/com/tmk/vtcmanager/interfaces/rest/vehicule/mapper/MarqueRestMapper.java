@@ -14,6 +14,7 @@ public interface MarqueRestMapper {
     @Mapping(target = "nom", ignore = true)
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "paysOrigine", ignore = true)
+    @Mapping(target = "actif", constant = "true")
     Marque toMarque(String marqueId);
 
     MarqueResponse toResponse(Marque domain);

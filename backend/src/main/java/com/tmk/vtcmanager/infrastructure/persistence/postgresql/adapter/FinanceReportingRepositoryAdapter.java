@@ -18,6 +18,16 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
 
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * Durée d'amortissement effective d'un véhicule (alias {@code v}) : override
+     * du véhicule s'il existe, sinon le paramètre global DUREE_AMORTISSEMENT_MOIS,
+     * sinon 60 en dernier recours. Injecté via {@code replace("{{DUREE}}", …)}.
+     */
+    private static final String DUREE_EFFECTIVE =
+            "COALESCE(v.duree_amortissement_mois, "
+            + "(SELECT NULLIF(p.valeur, '')::int FROM parametres_generaux p "
+            + "WHERE p.cle = 'DUREE_AMORTISSEMENT_MOIS'), 60)";
+
     @Override
     public Map<String, BigDecimal> totauxCaisseParNature(LocalDate debut, LocalDate fin) {
         Map<String, BigDecimal> totaux = new HashMap<>();
@@ -56,15 +66,18 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
         // l'amortissement (départ = date d'achat, à défaut entrée flotte /
         // mise en circulation) couvre la période et n'est pas achevé.
         BigDecimal total = jdbcTemplate.queryForObject("""
-                SELECT COALESCE(SUM(v.prix_achat / v.duree_amortissement_mois), 0)
+                SELECT COALESCE(SUM(v.prix_achat / d.duree), 0)
                 FROM vehicules v
+                CROSS JOIN LATERAL (
+                    SELECT {{DUREE}} AS duree,
+                           COALESCE(v.date_achat, v.date_entree_flotte, v.date_mise_en_circulation) AS depart
+                ) d
                 WHERE v.prix_achat IS NOT NULL
-                  AND v.duree_amortissement_mois > 0
-                  AND COALESCE(v.date_achat, v.date_entree_flotte, v.date_mise_en_circulation) IS NOT NULL
-                  AND COALESCE(v.date_achat, v.date_entree_flotte, v.date_mise_en_circulation) <= ?
-                  AND COALESCE(v.date_achat, v.date_entree_flotte, v.date_mise_en_circulation)
-                      + (v.duree_amortissement_mois || ' months')::interval > ?
-                """, BigDecimal.class, fin, debut);
+                  AND d.duree > 0
+                  AND d.depart IS NOT NULL
+                  AND d.depart <= ?
+                  AND d.depart + (d.duree || ' months')::interval > ?
+                """.replace("{{DUREE}}", DUREE_EFFECTIVE), BigDecimal.class, fin, debut);
         return total == null ? BigDecimal.ZERO : total;
     }
 
@@ -76,15 +89,17 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                            v.prix_achat * (1 - (
                                EXTRACT(YEAR FROM age(?::date, d.depart)) * 12
                              + EXTRACT(MONTH FROM age(?::date, d.depart))
-                           ) / v.duree_amortissement_mois))), 0)
+                           ) / d.duree))), 0)
                 FROM vehicules v
-                CROSS JOIN LATERAL (SELECT COALESCE(v.date_achat, v.date_entree_flotte,
-                                                    v.date_mise_en_circulation) AS depart) d
+                CROSS JOIN LATERAL (
+                    SELECT {{DUREE}} AS duree,
+                           COALESCE(v.date_achat, v.date_entree_flotte, v.date_mise_en_circulation) AS depart
+                ) d
                 WHERE v.prix_achat IS NOT NULL
-                  AND v.duree_amortissement_mois > 0
+                  AND d.duree > 0
                   AND d.depart IS NOT NULL
                   AND d.depart <= ?::date
-                """, BigDecimal.class, date, date, date);
+                """.replace("{{DUREE}}", DUREE_EFFECTIVE), BigDecimal.class, date, date, date);
         return total == null ? BigDecimal.ZERO : total;
     }
 
@@ -95,7 +110,7 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
         // on garde une ligne dès qu'il y a une opération produit/charge OU des jours
         // d'immobilisation. Les véhicules sans activité ni immobilisation sont exclus.
         return jdbcTemplate.query("""
-                SELECT t.id, t.immatriculation, t.produits, t.charges, t.jours_immo
+                SELECT t.id, t.immatriculation, t.produits, t.charges, t.jours_immo, t.dotation
                 FROM (
                     SELECT v.id AS id, v.immatriculation AS immatriculation,
                            COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'PRODUIT_EXPLOITATION'), 0) AS produits,
@@ -109,7 +124,15 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                                  AND iv.statut <> 'ANNULEE'
                                  AND iv.date_debut <= ?
                                  AND (iv.date_fin IS NULL OR iv.date_fin >= ?)
-                           ), 0) AS jours_immo
+                           ), 0) AS jours_immo,
+                           -- Dotation mensuelle pleine (prix/durée effective), cohérente
+                           -- avec le compte de résultat, si l'amortissement couvre la période.
+                           CASE WHEN v.prix_achat IS NOT NULL AND {{DUREE}} > 0
+                                 AND COALESCE(v.date_achat, v.date_entree_flotte, v.date_mise_en_circulation) IS NOT NULL
+                                 AND COALESCE(v.date_achat, v.date_entree_flotte, v.date_mise_en_circulation) <= ?
+                                 AND COALESCE(v.date_achat, v.date_entree_flotte, v.date_mise_en_circulation)
+                                     + ({{DUREE}} || ' months')::interval > ?
+                                THEN v.prix_achat / {{DUREE}} ELSE 0 END                                AS dotation
                     FROM vehicules v
                     LEFT JOIN operations_financieres o
                            ON o.vehicule_id = v.id
@@ -121,22 +144,27 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                     GROUP BY v.id, v.immatriculation
                 ) t
                 WHERE t.nb_ops > 0 OR t.jours_immo > 0
-                ORDER BY (t.produits - t.charges) DESC
-                """,
+                ORDER BY (t.produits - t.charges - t.dotation) DESC
+                """.replace("{{DUREE}}", DUREE_EFFECTIVE),
                 (rs, i) -> {
                     BigDecimal produits = rs.getBigDecimal("produits");
                     BigDecimal charges = rs.getBigDecimal("charges");
+                    BigDecimal dotation = rs.getBigDecimal("dotation");
+                    BigDecimal marge = produits.subtract(charges);
                     return MargeVehicule.builder()
                             .vehiculeId(rs.getLong("id"))
                             .immatriculation(rs.getString("immatriculation"))
                             .joursImmobilisation(rs.getLong("jours_immo"))
                             .produits(produits)
                             .chargesVariables(charges)
-                            .marge(produits.subtract(charges))
+                            .marge(marge)
+                            .dotationAmortissement(dotation)
+                            .margeNette(marge.subtract(dotation))
                             .build();
                 },
                 // Sous-requête jours_immo : fin (LEAST/COALESCE), fin (LEAST), debut (GREATEST),
-                // fin (date_debut <=), debut (date_fin >=) ; puis JOIN opérations : debut, fin.
-                fin, fin, debut, fin, debut, debut, fin);
+                // fin (date_debut <=), debut (date_fin >=) ; dotation : fin (achat <=), debut
+                // (fin d'amortissement >) ; puis JOIN opérations : debut, fin.
+                fin, fin, debut, fin, debut, fin, debut, debut, fin);
     }
 }

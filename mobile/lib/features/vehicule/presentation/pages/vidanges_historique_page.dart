@@ -7,8 +7,9 @@ import '../../../../core/widgets/app_header.dart';
 import '../providers/vidanges_provider.dart';
 import '../widgets/vidange_form_dialog.dart';
 
-String _grouped(int n) => n.toString().replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]} ');
+String _grouped(int n) => n
+    .toString()
+    .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]} ');
 
 String _fmtKm(int? km) => km == null ? '—' : '${_grouped(km)} km';
 String _fmtDate(DateTime? d) =>
@@ -292,8 +293,7 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                _footLabel(
-                    Icons.flag_rounded, 'Prochaine · ${_fmtKm(cible)}'),
+                _footLabel(Icons.flag_rounded, 'Prochaine · ${_fmtKm(cible)}'),
                 const Spacer(),
                 if (reste != null)
                   Text(
@@ -444,9 +444,7 @@ class _TimelineTile extends StatelessWidget {
                 Container(
                   width: 2,
                   height: 6,
-                  color: isFirst
-                      ? Colors.transparent
-                      : const Color(0xFFDBE3EC),
+                  color: isFirst ? Colors.transparent : const Color(0xFFDBE3EC),
                 ),
                 Container(
                   width: derniere ? 16 : 12,
@@ -455,13 +453,11 @@ class _TimelineTile extends StatelessWidget {
                     color: derniere ? AppColors.primary : Colors.white,
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color: derniere ? AppColors.primary : accent,
-                        width: 2),
+                        color: derniere ? AppColors.primary : accent, width: 2),
                     boxShadow: derniere
                         ? [
                             BoxShadow(
-                              color:
-                                  AppColors.primary.withValues(alpha: 0.35),
+                              color: AppColors.primary.withValues(alpha: 0.35),
                               blurRadius: 8,
                             )
                           ]
@@ -471,9 +467,8 @@ class _TimelineTile extends StatelessWidget {
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: isLast
-                        ? Colors.transparent
-                        : const Color(0xFFDBE3EC),
+                    color:
+                        isLast ? Colors.transparent : const Color(0xFFDBE3EC),
                   ),
                 ),
               ],
@@ -637,8 +632,8 @@ class _ErrorView extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
             side: const BorderSide(color: AppColors.primary),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           label: const Text('Réessayer'),
         ),

@@ -12,7 +12,8 @@ class VehiculeRemoteDatasource {
 
   Future<List<VehiculeModel>> getVehicules() async {
     final data = await _client.get('/vehicules');
-    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    if (data is! List)
+      throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => VehiculeModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -94,7 +95,8 @@ class VehiculeRemoteDatasource {
       'cibleId': vehiculeId,
       if (reference != null && reference.isNotEmpty) 'reference': reference,
       if (dateEmission != null) 'dateEmission': dateEmission,
-      if (!permanent && dateExpiration != null) 'dateExpiration': dateExpiration,
+      if (!permanent && dateExpiration != null)
+        'dateExpiration': dateExpiration,
       'permanence': permanent,
     };
     await _client.postMultipartSingle(
@@ -122,7 +124,6 @@ class VehiculeRemoteDatasource {
   Future<void> deleteDocument(int documentId) =>
       _client.delete('/v1/documents/$documentId');
 
-  Future<void> archiverDocument(int documentId, String raison) =>
-      _client.post('/v1/documents/$documentId/archiver',
-          {'raisonArchivage': raison});
+  Future<void> archiverDocument(int documentId, String raison) => _client
+      .post('/v1/documents/$documentId/archiver', {'raisonArchivage': raison});
 }

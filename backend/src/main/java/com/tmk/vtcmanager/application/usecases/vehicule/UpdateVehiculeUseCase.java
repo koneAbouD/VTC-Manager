@@ -17,6 +17,7 @@ public class UpdateVehiculeUseCase {
     private final VehiculeRepository vehiculeRepository;
     private final TypeActiviteRepository typeActiviteRepository;
     private final GroupeVehiculeRepository groupeVehiculeRepository;
+    private final BaliseRepository baliseRepository;
     private final ConditionTravailRepository conditionTravailRepository;
     private final ProgrammeTravailRepository programmeTravailRepository;
     private final ConfigurationRecetteSynchronizer configurationRecetteSynchronizer;
@@ -34,13 +35,13 @@ public class UpdateVehiculeUseCase {
             existing.setImmatriculation(cmd.immatriculation());
         }
         if (cmd.numeroChassis() != null) existing.setNumeroChassis(cmd.numeroChassis());
-        if (cmd.numeroTelephoneBalise() != null) existing.setNumeroTelephoneBalise(cmd.numeroTelephoneBalise());
-        if (cmd.identifiantBalise() != null) existing.setIdentifiantBalise(cmd.identifiantBalise());
         if (cmd.couleur() != null) existing.setCouleur(cmd.couleur());
         if (cmd.kilometrage() != null) existing.setKilometrage(cmd.kilometrage());
         VehiculeStatus statutAvant = existing.getStatut();
         if (cmd.statut() != null) existing.appliquerStatutManuel(cmd.statut());
         if (cmd.dateAchat() != null) existing.setDateAchat(cmd.dateAchat());
+        if (cmd.prixAchat() != null) existing.setPrixAchat(cmd.prixAchat());
+        if (cmd.dureeAmortissementMois() != null) existing.setDureeAmortissementMois(cmd.dureeAmortissementMois());
         if (cmd.dateProchaineMaintenance() != null) existing.setDateProchaineMaintenance(cmd.dateProchaineMaintenance());
         if (cmd.dateMiseEnCirculation() != null) existing.setDateMiseEnCirculation(cmd.dateMiseEnCirculation());
         if (cmd.dateEntreeFlotte() != null) existing.setDateEntreeFlotte(cmd.dateEntreeFlotte());
@@ -55,6 +56,12 @@ public class UpdateVehiculeUseCase {
             var groupe = groupeVehiculeRepository.findById(cmd.groupeId())
                     .orElseThrow(() -> ResourceNotFoundException.of("GroupeVehicule", cmd.groupeId()));
             existing.setGroupe(groupe);
+        }
+
+        if (cmd.baliseId() != null) {
+            var balise = baliseRepository.findById(cmd.baliseId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Balise", cmd.baliseId()));
+            existing.setBalise(balise);
         }
 
         boolean conditionChanged = false;

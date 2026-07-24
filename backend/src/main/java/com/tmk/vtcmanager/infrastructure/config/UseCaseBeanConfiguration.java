@@ -28,6 +28,7 @@ import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MarqueRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ModeleRepository;
 import com.tmk.vtcmanager.application.ports.persistence.TypeDocumentRepository;
+import com.tmk.vtcmanager.application.ports.persistence.BaliseRepository;
 import com.tmk.vtcmanager.application.ports.persistence.GroupeVehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.TypeActiviteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.TypeVehiculeRepository;
@@ -142,10 +143,11 @@ public class UseCaseBeanConfiguration {
             TypeVehiculeRepository typeVehiculeRepository,
             TypeActiviteRepository typeActiviteRepository,
             GroupeVehiculeRepository groupeVehiculeRepository,
+            BaliseRepository baliseRepository,
             VehiculeStatutHistoriqueService vehiculeStatutHistoriqueService) {
         return new CreateVehiculeUseCase(repo, marqueRepository, modeleRepository,
                 typeVehiculeRepository, typeActiviteRepository, groupeVehiculeRepository,
-                vehiculeStatutHistoriqueService);
+                baliseRepository, vehiculeStatutHistoriqueService);
     }
 
     @Bean
@@ -159,13 +161,14 @@ public class UseCaseBeanConfiguration {
             VehiculeRepository repo,
             TypeActiviteRepository typeActiviteRepository,
             GroupeVehiculeRepository groupeVehiculeRepository,
+            BaliseRepository baliseRepository,
             ConditionTravailRepository conditionTravailRepository,
             ProgrammeTravailRepository programmeTravailRepository,
             ConfigurationRecetteSynchronizer configurationRecetteSynchronizer,
             VehiculeStatutHistoriqueService vehiculeStatutHistoriqueService) {
         return new UpdateVehiculeUseCase(repo, typeActiviteRepository, groupeVehiculeRepository,
-                conditionTravailRepository, programmeTravailRepository, configurationRecetteSynchronizer,
-                vehiculeStatutHistoriqueService);
+                baliseRepository, conditionTravailRepository, programmeTravailRepository,
+                configurationRecetteSynchronizer, vehiculeStatutHistoriqueService);
     }
 
     @Bean
@@ -200,6 +203,18 @@ public class UseCaseBeanConfiguration {
             VehiculePhotoRepository photoRepository,
             FileStoragePort fileStoragePort) {
         return new GetAllVehiculesUseCase(repo, photoRepository, fileStoragePort);
+    }
+
+    @Bean
+    public com.tmk.vtcmanager.application.usecases.parametre.GetParametresUseCase getParametresUseCase(
+            com.tmk.vtcmanager.application.ports.persistence.ParametreGeneralRepository parametreGeneralRepository) {
+        return new com.tmk.vtcmanager.application.usecases.parametre.GetParametresUseCase(parametreGeneralRepository);
+    }
+
+    @Bean
+    public com.tmk.vtcmanager.application.usecases.parametre.UpdateParametreUseCase updateParametreUseCase(
+            com.tmk.vtcmanager.application.ports.persistence.ParametreGeneralRepository parametreGeneralRepository) {
+        return new com.tmk.vtcmanager.application.usecases.parametre.UpdateParametreUseCase(parametreGeneralRepository);
     }
 
     @Bean

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Traduction française des libellés natifs de l'écran de rognage uCrop
+         (image_cropper). On surcharge les identifiants de la bibliothèque : les
+         ressources de l'app priment sur celles de la dépendance.
+         Défaut (values/) volontairement en français : l'app est francophone
+         quelle que soit la langue du téléphone. -->
+    <string name="ucrop_crop">Rogner</string>
+    <string name="ucrop_menu_crop">Rogner</string>
+    <string name="ucrop_rotate">Pivoter</string>
+    <string name="ucrop_scale">Zoom</string>
+    <string name="ucrop_label_edit_photo">Recadrer le document</string>
+    <string name="ucrop_label_original">Original</string>
+</resources>

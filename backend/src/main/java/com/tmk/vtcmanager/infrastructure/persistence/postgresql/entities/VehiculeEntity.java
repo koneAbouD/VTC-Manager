@@ -53,11 +53,9 @@ public class VehiculeEntity extends AbstractAuditEntity {
     @Column(name = "numero_chassis", length = 50)
     private String numeroChassis;
 
-    @Column(name = "numero_telephone_balise", length = 30)
-    private String numeroTelephoneBalise;
-
-    @Column(name = "identifiant_balise", length = 100)
-    private String identifiantBalise;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "balise_id")
+    private BaliseEntity balise;
 
     private String couleur;
     private Integer kilometrage;
@@ -76,10 +74,9 @@ public class VehiculeEntity extends AbstractAuditEntity {
     @Column(name = "prix_achat", precision = 19, scale = 2)
     private java.math.BigDecimal prixAchat;
 
-    /** Durée d'amortissement linéaire (60 mois par défaut). */
-    @Builder.Default
-    @Column(name = "duree_amortissement_mois", nullable = false)
-    private int dureeAmortissementMois = 60;
+    /** Durée d'amortissement linéaire (override) ; null = suit le paramètre global. */
+    @Column(name = "duree_amortissement_mois")
+    private Integer dureeAmortissementMois;
 
     @Column(name = "date_prochaine_maintenance")
     private LocalDate dateProchaineMaintenance;

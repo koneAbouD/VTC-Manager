@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../data/parametrage_api.dart';
 import '../providers/parametrage_providers.dart';
+import 'parametres_generaux_page.dart';
 import 'referentiel_liste_page.dart';
 
 /// Écran d'accueil du paramétrage des données de référence.
@@ -27,35 +28,58 @@ class ParametrageHubPage extends ConsumerWidget {
           message: 'Impossible de charger les référentiels.',
           onRetry: () => ref.invalidate(catalogueProvider),
         ),
-        data: (referentiels) => referentiels.isEmpty
-            ? const Center(
-                child: Text('Aucun référentiel disponible.',
-                    style: TextStyle(color: AppColors.label)))
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                itemCount: referentiels.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _ReferentielTile(
-                  descriptor: referentiels[i],
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          ReferentielListePage(descriptor: referentiels[i]),
-                    ),
+        data: (referentiels) => ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          // Index 0 = carte fixe « Paramètres généraux » (réglages globaux) ;
+          // le reste = référentiels dynamiques du méta-catalogue.
+          itemCount: referentiels.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (_, i) {
+            if (i == 0) {
+              return _HubTile(
+                icon: Icons.settings_suggest_outlined,
+                libelle: 'Paramètres généraux',
+                description:
+                    "Réglages globaux : durée d'amortissement des véhicules…",
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ParametresGenerauxPage(),
                   ),
                 ),
+              );
+            }
+            final descriptor = referentiels[i - 1];
+            return _HubTile(
+              icon: Icons.tune_rounded,
+              libelle: descriptor.libelle,
+              description: descriptor.description,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ReferentielListePage(descriptor: descriptor),
+                ),
               ),
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-class _ReferentielTile extends StatelessWidget {
-  final ReferentielDescriptor descriptor;
+class _HubTile extends StatelessWidget {
+  final IconData icon;
+  final String libelle;
+  final String description;
   final VoidCallback onTap;
 
-  const _ReferentielTile({required this.descriptor, required this.onTap});
+  const _HubTile({
+    required this.icon,
+    required this.libelle,
+    required this.description,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -80,26 +104,27 @@ class _ReferentielTile extends StatelessWidget {
                   color: AppColors.primaryTint,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.tune_rounded,
-                    color: AppColors.primaryDark, size: 22),
+                child: Icon(icon, color: AppColors.primaryDark, size: 22),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(descriptor.libelle,
+                    Text(libelle,
                         style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color: AppColors.dark)),
-                    if (descriptor.description.isNotEmpty) ...[
+                    if (description.isNotEmpty) ...[
                       const SizedBox(height: 3),
-                      Text(descriptor.description,
+                      Text(description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              fontSize: 12, height: 1.3, color: AppColors.label)),
+                              fontSize: 12,
+                              height: 1.3,
+                              color: AppColors.label)),
                     ],
                   ],
                 ),
@@ -127,7 +152,8 @@ class _Erreur extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.hint),
+            const Icon(Icons.cloud_off_rounded,
+                size: 48, color: AppColors.hint),
             const SizedBox(height: 12),
             Text(message,
                 textAlign: TextAlign.center,

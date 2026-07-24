@@ -56,6 +56,12 @@ class MargeVehiculeData {
   final double chargesVariables;
   final double marge;
 
+  /// Dotation d'amortissement du véhicule sur la période (prix d'achat / durée).
+  final double dotationAmortissement;
+
+  /// Marge nette = marge sur coûts variables − dotation d'amortissement.
+  final double margeNette;
+
   /// Nombre de jours d'immobilisation (indisponibilité véhicule) sur la période.
   final int joursImmobilisation;
 
@@ -65,6 +71,8 @@ class MargeVehiculeData {
     required this.produits,
     required this.chargesVariables,
     required this.marge,
+    this.dotationAmortissement = 0,
+    this.margeNette = 0,
     this.joursImmobilisation = 0,
   });
 
@@ -75,6 +83,9 @@ class MargeVehiculeData {
         produits: (j['produits'] as num?)?.toDouble() ?? 0,
         chargesVariables: (j['chargesVariables'] as num?)?.toDouble() ?? 0,
         marge: (j['marge'] as num?)?.toDouble() ?? 0,
+        dotationAmortissement:
+            (j['dotationAmortissement'] as num?)?.toDouble() ?? 0,
+        margeNette: (j['margeNette'] as num?)?.toDouble() ?? 0,
         joursImmobilisation: (j['joursImmobilisation'] as num?)?.toInt() ?? 0,
       );
 }

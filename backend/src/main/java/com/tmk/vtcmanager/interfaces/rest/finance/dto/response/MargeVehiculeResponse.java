@@ -8,5 +8,7 @@ public record MargeVehiculeResponse(
         BigDecimal produits,
         BigDecimal chargesVariables,
         BigDecimal marge,
+        BigDecimal dotationAmortissement,
+        BigDecimal margeNette,
         long joursImmobilisation
 ) {}

@@ -46,8 +46,8 @@ class VehiculeCard extends ConsumerWidget {
                 Container(width: 4, color: const Color(0xFF2E7D32)),
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      isDisponible ? 12 : 16, 14, 16, 14),
+                  padding:
+                      EdgeInsets.fromLTRB(isDisponible ? 12 : 16, 14, 16, 14),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -133,7 +133,9 @@ class _StatusPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDisponible ? color : color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: isDisponible ? null : Border.all(color: color.withValues(alpha: 0.3)),
+        border: isDisponible
+            ? null
+            : Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

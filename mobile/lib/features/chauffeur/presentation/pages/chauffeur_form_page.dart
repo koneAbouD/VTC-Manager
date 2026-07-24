@@ -37,7 +37,7 @@ const _kFieldFill = Color(0xFFF2F3F5);
 const _kHint = Color(0xFF9AA0AE);
 const _kLabel = Color(0xFF6B7280);
 const _kBorder = Color(0xFFE3E6EE);
-const _kDark  = Color(0xFF1A1A2E);
+const _kDark = Color(0xFF1A1A2E);
 
 // ── Toast helpers ─────────────────────────────────────────────────────────────
 
@@ -50,10 +50,16 @@ void _appToast(
   Duration? duration,
 }) {
   final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.success => (
+        const Color(0xFF1B5E20),
+        Icons.check_circle_outline_rounded
+      ),
+    _ToastType.error => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
+    _ToastType.warning => (
+        const Color(0xFFE65100),
+        Icons.warning_amber_rounded
+      ),
+    _ToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -89,29 +95,42 @@ void _appToast(
 class _InlineToastBanner extends StatelessWidget {
   final String? message;
   final _ToastType type;
-  const _InlineToastBanner({super.key, this.message, this.type = _ToastType.error});
+  const _InlineToastBanner(
+      {super.key, this.message, this.type = _ToastType.error});
 
   @override
   Widget build(BuildContext context) {
     if (message == null) return const SizedBox.shrink();
     final (Color bg, IconData icon) = switch (type) {
-      _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-      _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-      _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-      _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+      _ToastType.success => (
+          const Color(0xFF1B5E20),
+          Icons.check_circle_outline_rounded
+        ),
+      _ToastType.error => (
+          const Color(0xFFB71C1C),
+          Icons.error_outline_rounded
+        ),
+      _ToastType.warning => (
+          const Color(0xFFE65100),
+          Icons.warning_amber_rounded
+        ),
+      _ToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
     };
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
       child: Row(children: [
         Icon(icon, color: Colors.white, size: 18),
         const SizedBox(width: 10),
         Expanded(
           child: Text(message!,
               style: const TextStyle(
-                  fontSize: 13.5, fontWeight: FontWeight.w500, color: Colors.white)),
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white)),
         ),
       ]),
     );
@@ -281,7 +300,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     }
     if (_type == null) {
       _tabCtrl.animateTo(0);
-      _toast('Veuillez sélectionner un type de chauffeur.', type: _ToastType.error);
+      _toast('Veuillez sélectionner un type de chauffeur.',
+          type: _ToastType.error);
       return;
     }
     _PendingDocument? permisDoc;
@@ -291,7 +311,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
           .firstOrNull;
       if (permisDoc == null) {
         _tabCtrl.animateTo(1);
-        _toast('Veuillez ajouter un permis de conduire.', type: _ToastType.error);
+        _toast('Veuillez ajouter un permis de conduire.',
+            type: _ToastType.error);
         return;
       }
     }
@@ -389,8 +410,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
       int? createdId;
       if (state is ChauffeurLoaded && state.chauffeurs.isNotEmpty) {
         final match = state.chauffeurs
-            .where((c) =>
-                c.nom == chauffeur.nom && c.prenom == chauffeur.prenom)
+            .where(
+                (c) => c.nom == chauffeur.nom && c.prenom == chauffeur.prenom)
             .lastOrNull;
         createdId = match?.id;
       }
@@ -410,8 +431,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
               dateExpiration: doc.permanent
                   ? null
                   : doc.dateExpiration?.toIso8601String().substring(0, 10),
-              categorie:
-                  doc.typesPermis.isEmpty ? null : doc.typesPermis,
+              categorie: doc.typesPermis.isEmpty ? null : doc.typesPermis,
               permanent: doc.permanent,
             );
           } catch (e) {
@@ -425,15 +445,12 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     }
 
     if (!mounted) return;
-    if (_isEditing) {
-      _toast('Chauffeur modifié avec succès.');
-      Navigator.pop(context);
-    } else {
-      if (docUploadError != null) {
-        _toast(docUploadError, type: _ToastType.warning);
-      }
-      _showChauffeurCreatedDialog();
+    // Pas d'alerte de succès : la fermeture + le refresh de la liste suffisent.
+    // Un éventuel échec d'upload de document reste signalé (avertissement).
+    if (!_isEditing && docUploadError != null) {
+      _toast(docUploadError, type: _ToastType.warning);
     }
+    Navigator.pop(context);
   }
 
   void _openPhotoViewer() {
@@ -473,68 +490,6 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
 
   void _toast(String msg, {_ToastType type = _ToastType.success}) =>
       _appToast(context, msg, type: type);
-
-  void _showChauffeurCreatedDialog() {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                color: Color(0xFFEEF2FF),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_circle_outline,
-                  color: _kPrimary, size: 40),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Chauffeur créé !',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1A2E)),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Le chauffeur a bien été ajouté à la flotte.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF6B7280),
-                  height: 1.4),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: _kPrimary,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                },
-                child: const Text('Retour à la liste',
-                    style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ── Image picker ───────────────────────────────────────────────────────
   Future<void> _pickPhoto() async {
@@ -579,19 +534,19 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
               ),
             ),
           Expanded(
-              child: TabBarView(
-                controller: _tabCtrl,
-                children: [
-                  _KeepAliveWrapper(child: _buildStep1()),
-                  _KeepAliveWrapper(
-                    child: _buildDocumentsTab(
-                        existingDocsAsync: existingDocsAsync),
-                  ),
-                ],
-              ),
+            child: TabBarView(
+              controller: _tabCtrl,
+              children: [
+                _KeepAliveWrapper(child: _buildStep1()),
+                _KeepAliveWrapper(
+                  child:
+                      _buildDocumentsTab(existingDocsAsync: existingDocsAsync),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -665,7 +620,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
         future: _photo!.readAsBytes(),
         builder: (_, snap) {
           if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+            return const Center(
+                child: CircularProgressIndicator(strokeWidth: 2));
           }
           return Image.memory(snap.data!, fit: BoxFit.cover);
         },
@@ -676,13 +632,15 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
           ? Image.memory(base64Decode(photoBase64), fit: BoxFit.cover)
           : _RemoteChauffeurPhoto(chauffeurId: chauffeurId);
     } else if (photoDoc != null) {
-      _photoDocBytesFuture ??=
-          ref.read(docChauffeurApiClientProvider).getBytes(photoDoc.fichierUrl!);
+      _photoDocBytesFuture ??= ref
+          .read(docChauffeurApiClientProvider)
+          .getBytes(photoDoc.fichierUrl!);
       avatarContent = FutureBuilder<Uint8List>(
         future: _photoDocBytesFuture,
         builder: (_, snap) {
           if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+            return const Center(
+                child: CircularProgressIndicator(strokeWidth: 2));
           }
           return Image.memory(snap.data!, fit: BoxFit.cover);
         },
@@ -690,7 +648,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     } else {
       avatarContent = Container(
         color: const Color(0xFFEEF2FF),
-        child: const Icon(Icons.person_rounded, color: Color(0xFFBBC4E8), size: 52),
+        child: const Icon(Icons.person_rounded,
+            color: Color(0xFFBBC4E8), size: 52),
       );
     }
 
@@ -734,7 +693,9 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
           ),
           const SizedBox(height: 10),
           Text(
-            hasPhoto ? 'Appuyez pour voir ou modifier' : 'Appuyez pour ajouter une photo',
+            hasPhoto
+                ? 'Appuyez pour voir ou modifier'
+                : 'Appuyez pour ajouter une photo',
             style: const TextStyle(fontSize: 12, color: _kHint),
           ),
         ],
@@ -795,8 +756,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                       searchable: false,
                       fillColor: _kFieldFill,
                       options: Genre.values
-                          .map((g) =>
-                              SelectOption<String>(value: g.backend, label: g.label))
+                          .map((g) => SelectOption<String>(
+                              value: g.backend, label: g.label))
                           .toList(),
                       onChanged: (v) => setState(
                           () => _genre = v == null ? null : Genre.fromJson(v)),
@@ -813,8 +774,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                       searchable: false,
                       fillColor: _kFieldFill,
                       options: TypeChauffeur.values
-                          .map((t) =>
-                              SelectOption<String>(value: t.backend, label: t.label))
+                          .map((t) => SelectOption<String>(
+                              value: t.backend, label: t.label))
                           .toList(),
                       onChanged: (v) => setState(() =>
                           _type = v == null ? null : TypeChauffeur.fromJson(v)),
@@ -898,8 +859,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
             error: (_, __) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text('Impossible de charger les documents.',
-                  style:
-                      TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
             ),
             data: (docs) {
               // Filtrer seulement la photo d'identité (le permis est maintenant un doc)
@@ -915,8 +875,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text('Aucune pièce enregistrée.',
-                      style: TextStyle(
-                          color: Colors.grey.shade500, fontSize: 13)),
+                      style:
+                          TextStyle(color: Colors.grey.shade500, fontSize: 13)),
                 );
               }
               return Column(
@@ -956,8 +916,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
             side: const BorderSide(color: _kPrimary),
             padding: const EdgeInsets.symmetric(vertical: 14),
             minimumSize: const Size(double.infinity, 0),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             textStyle:
                 const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
@@ -969,8 +929,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
   // ── Méthodes de gestion des documents ─────────────────────────────────────
 
   Future<void> _showAddDocumentSheet() async {
-    final types =
-        ref.read(typesDocChauffeurProvider).valueOrNull ?? [];
+    final types = ref.read(typesDocChauffeurProvider).valueOrNull ?? [];
     if (types.isEmpty) {
       _toast('Aucun type de document disponible.', type: _ToastType.warning);
       return;
@@ -1003,8 +962,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
         bytes: doc.bytes,
         filename: doc.filename,
         reference: doc.reference,
-        dateEmission:
-            doc.dateEmission?.toIso8601String().substring(0, 10),
+        dateEmission: doc.dateEmission?.toIso8601String().substring(0, 10),
         dateExpiration: doc.permanent
             ? null
             : doc.dateExpiration?.toIso8601String().substring(0, 10),
@@ -1036,8 +994,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
           title: Row(
             children: [
@@ -1054,8 +1012,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
               const Expanded(
                 child: Text(
                   'Supprimer le document',
-                  style: TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -1067,9 +1024,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
               Text(
                 'Le document sera définitivement supprimé. Cette action est irréversible.',
                 style: TextStyle(
-                    fontSize: 13.5,
-                    color: Colors.grey.shade600,
-                    height: 1.4),
+                    fontSize: 13.5, color: Colors.grey.shade600, height: 1.4),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -1087,16 +1042,15 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                 style: const TextStyle(fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Ex : Document expiré, remplacé…',
-                  hintStyle:
-                      const TextStyle(color: _kHint, fontSize: 14),
+                  hintStyle: const TextStyle(color: _kHint, fontSize: 14),
                   filled: true,
                   fillColor: _kFieldFill,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
                 onChanged: (_) => setLocal(() {}),
               ),
@@ -1107,16 +1061,15 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
             OutlinedButton(
               onPressed: () => Navigator.pop(ctx),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 side: const BorderSide(color: _kBorder),
                 foregroundColor: Colors.black87,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Annuler',
-                  style: TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ),
             FilledButton(
               onPressed: motifCtrl.text.trim().isEmpty
@@ -1129,14 +1082,13 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                 backgroundColor: const Color(0xFFE03131),
                 disabledBackgroundColor:
                     const Color(0xFFE03131).withValues(alpha: 0.35),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Supprimer',
-                  style: TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -1148,8 +1100,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     try {
       await ds.archiverDocumentChauffeur(docId, motif!);
       if (mounted) {
-        ref.invalidate(
-            documentsByChauffeurIdProvider(widget.initial!.id!));
+        ref.invalidate(documentsByChauffeurIdProvider(widget.initial!.id!));
         _toast('Document archivé.');
       }
     } catch (_) {
@@ -1159,10 +1110,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     }
   }
 
-  Future<void> _showPendingDocDetail(
-      int index, _PendingDocument doc) async {
-    final types =
-        ref.read(typesDocChauffeurProvider).valueOrNull ?? [];
+  Future<void> _showPendingDocDetail(int index, _PendingDocument doc) async {
+    final types = ref.read(typesDocChauffeurProvider).valueOrNull ?? [];
     final result = await showModalBottomSheet<_PendingDocument>(
       context: context,
       isScrollControlled: true,
@@ -1183,8 +1132,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
   }
 
   Future<void> _showExistingDocDetail(DocumentChauffeurLocal doc) async {
-    final types =
-        ref.read(typesDocChauffeurProvider).valueOrNull ?? [];
+    final types = ref.read(typesDocChauffeurProvider).valueOrNull ?? [];
 
     // Pré-charger les bytes du fichier existant pour les afficher dans le sheet.
     Uint8List? existingBytes;
@@ -1223,8 +1171,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
         bytes: result.bytes,
         filename: result.filename,
         reference: result.reference,
-        dateEmission:
-            result.dateEmission?.toIso8601String().substring(0, 10),
+        dateEmission: result.dateEmission?.toIso8601String().substring(0, 10),
         dateExpiration: result.permanent
             ? null
             : result.dateExpiration?.toIso8601String().substring(0, 10),
@@ -1325,7 +1272,6 @@ class _ChauffeurSectionTitle extends StatelessWidget {
     );
   }
 }
-
 
 // ═════════════════════════════════════════════════════════════════════════
 //  WIDGETS COMMUNS
@@ -1662,9 +1608,6 @@ class _ChauffeurLabeledField extends StatelessWidget {
     );
   }
 }
-
-
-
 
 class _ChauffeurPhotoViewer extends StatelessWidget {
   final Widget photo;
@@ -2174,8 +2117,8 @@ class _EmptyDocState extends StatelessWidget {
               color: Color(0xFFF2F3F5),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.description_outlined,
-                size: 32, color: _kHint),
+            child:
+                const Icon(Icons.description_outlined, size: 32, color: _kHint),
           ),
           const SizedBox(height: 14),
           const Text(
@@ -2242,8 +2185,7 @@ class _PendingDocCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF1A1A2E)),
                   ),
-                  if (doc.reference != null &&
-                      doc.reference!.isNotEmpty) ...[
+                  if (doc.reference != null && doc.reference!.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text('Réf : ${doc.reference}',
                         style: TextStyle(
@@ -2253,8 +2195,8 @@ class _PendingDocCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Exp : ${doc.dateExpiration!.day.toString().padLeft(2, '0')}/${doc.dateExpiration!.month.toString().padLeft(2, '0')}/${doc.dateExpiration!.year}',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                   ],
                   const SizedBox(height: 4),
@@ -2297,8 +2239,7 @@ class _ExistingDocCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
 
-  const _ExistingDocCard(
-      {required this.doc, this.onDelete, this.onTap});
+  const _ExistingDocCard({required this.doc, this.onDelete, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -2432,10 +2373,17 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
 
   void _showInline(String msg, {_ToastType type = _ToastType.error}) {
     _inlineTimer?.cancel();
-    setState(() { _inlineMsg = msg; _inlineType = type; });
+    setState(() {
+      _inlineMsg = msg;
+      _inlineType = type;
+    });
     _inlineTimer = Timer(
-      Duration(seconds: type == _ToastType.error || type == _ToastType.warning ? 4 : 2),
-      () { if (mounted) setState(() => _inlineMsg = null); },
+      Duration(
+          seconds:
+              type == _ToastType.error || type == _ToastType.warning ? 4 : 2),
+      () {
+        if (mounted) setState(() => _inlineMsg = null);
+      },
     );
   }
 
@@ -2529,16 +2477,14 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
               leading: const Icon(Icons.photo_camera_outlined,
                   color: Colors.black87),
               title: const Text('Appareil photo',
-                  style:
-                      TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(ctx, 0),
             ),
             ListTile(
-              leading: const Icon(Icons.folder_open_outlined,
-                  color: Colors.black87),
+              leading:
+                  const Icon(Icons.folder_open_outlined, color: Colors.black87),
               title: const Text('Fichier (PDF, image)',
-                  style:
-                      TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(ctx, 1),
             ),
             const SizedBox(height: 8),
@@ -2704,18 +2650,15 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                               borderRadius: BorderRadius.circular(10),
                               border: sel
                                   ? null
-                                  : Border.all(
-                                      color: const Color(0xFFE3E6EE)),
+                                  : Border.all(color: const Color(0xFFE3E6EE)),
                             ),
                             child: Text(
                               cat,
                               style: TextStyle(
                                 fontSize: 15,
-                                fontWeight: sel
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color:
-                                    sel ? Colors.white : Colors.black87,
+                                fontWeight:
+                                    sel ? FontWeight.w600 : FontWeight.w400,
+                                color: sel ? Colors.white : Colors.black87,
                               ),
                             ),
                           ),
@@ -2797,8 +2740,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                   label: 'Fichier',
                   isRequired: true,
                   child: GestureDetector(
-                    onTap:
-                        _fileBytes == null ? _pickFile : _previewFile,
+                    onTap: _fileBytes == null ? _pickFile : _previewFile,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 16),
@@ -2828,9 +2770,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 15,
-                                color: _fileBytes != null
-                                    ? _kPrimary
-                                    : _kHint,
+                                color: _fileBytes != null ? _kPrimary : _kHint,
                               ),
                             ),
                           ),
@@ -2838,8 +2778,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                             GestureDetector(
                               onTap: _pickFile,
                               child: Icon(Icons.edit_outlined,
-                                  size: 16,
-                                  color: Colors.grey.shade400),
+                                  size: 16, color: Colors.grey.shade400),
                             ),
                         ],
                       ),
@@ -2859,8 +2798,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                           borderRadius: BorderRadius.circular(14)),
                     ),
                     child: Text(
-                      (widget.initialDoc != null ||
-                              widget.existingDoc != null)
+                      (widget.initialDoc != null || widget.existingDoc != null)
                           ? 'Modifier'
                           : 'Ajouter',
                       style: const TextStyle(
@@ -2883,8 +2821,7 @@ class _FilePreviewDialog extends StatefulWidget {
   final Uint8List bytes;
   final String filename;
 
-  const _FilePreviewDialog(
-      {required this.bytes, required this.filename});
+  const _FilePreviewDialog({required this.bytes, required this.filename});
 
   @override
   State<_FilePreviewDialog> createState() => _FilePreviewDialogState();
@@ -2992,8 +2929,8 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
                             : (_pdfError || _pdfController == null)
                                 ? const Center(
                                     child: Text('Impossible de lire le PDF.',
-                                        style: TextStyle(
-                                            color: Colors.white38)),
+                                        style:
+                                            TextStyle(color: Colors.white38)),
                                   )
                                 : PdfView(
                                     controller: _pdfController!,
@@ -3074,9 +3011,7 @@ class _DocPlainField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
 
-  const _DocPlainField(
-      {required this.controller,
-      required this.hint});
+  const _DocPlainField({required this.controller, required this.hint});
 
   @override
   Widget build(BuildContext context) {
@@ -3101,8 +3036,7 @@ class _DocPlainField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: _kPrimary, width: 1.2),
+          borderSide: const BorderSide(color: _kPrimary, width: 1.2),
         ),
       ),
     );
@@ -3127,8 +3061,7 @@ class _DocDateField extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: _kFieldFill,
           borderRadius: BorderRadius.circular(12),
@@ -3144,8 +3077,7 @@ class _DocDateField extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(Icons.calendar_today_outlined,
-                size: 16, color: _kHint),
+            const Icon(Icons.calendar_today_outlined, size: 16, color: _kHint),
           ],
         ),
       ),
@@ -3176,5 +3108,3 @@ class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
     return widget.child;
   }
 }
-
-

@@ -23,10 +23,13 @@ void _appToast(
   _ToastType type = _ToastType.success,
 }) {
   final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (AppColors.success, Icons.check_circle_outline_rounded),
-    _ToastType.error   => (AppColors.error, Icons.error_outline_rounded),
+    _ToastType.success => (
+        AppColors.success,
+        Icons.check_circle_outline_rounded
+      ),
+    _ToastType.error => (AppColors.error, Icons.error_outline_rounded),
     _ToastType.warning => (AppColors.warning, Icons.warning_amber_rounded),
-    _ToastType.info    => (AppColors.info, Icons.info_outline_rounded),
+    _ToastType.info => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -37,7 +40,9 @@ void _appToast(
         Expanded(
           child: Text(message,
               style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white)),
         ),
       ]),
       backgroundColor: bg,
@@ -94,12 +99,11 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
     _numero = TextEditingController(text: c?.numeroContravention ?? '');
     _code = TextEditingController(text: c?.codeInfraction ?? '');
     _typeInfraction = TextEditingController(text: c?.typeInfraction ?? '');
-    _vitesse =
-        TextEditingController(text: c?.vitesseRelevee?.toString() ?? '');
+    _vitesse = TextEditingController(text: c?.vitesseRelevee?.toString() ?? '');
     _lieu = TextEditingController(text: c?.lieu ?? '');
     _description = TextEditingController(text: c?.description ?? '');
-    _montant = TextEditingController(
-        text: c != null ? _trimNum(c.montant) : '');
+    _montant =
+        TextEditingController(text: c != null ? _trimNum(c.montant) : '');
     _cotisation = TextEditingController(
         text: c?.cotisation != null ? _trimNum(c!.cotisation!) : '');
     _montantPaye = TextEditingController(
@@ -129,8 +133,15 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
   @override
   void dispose() {
     for (final c in [
-      _numero, _code, _typeInfraction, _vitesse, _lieu,
-      _description, _montant, _cotisation, _montantPaye
+      _numero,
+      _code,
+      _typeInfraction,
+      _vitesse,
+      _lieu,
+      _description,
+      _montant,
+      _cotisation,
+      _montantPaye
     ]) {
       c.dispose();
     }
@@ -212,8 +223,9 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
 
   // ── Enregistrement ──────────────────────────────────────────────────────
 
-  double? _parseMontant(TextEditingController c) =>
-      c.text.trim().isEmpty ? null : double.tryParse(c.text.replaceAll(',', '.'));
+  double? _parseMontant(TextEditingController c) => c.text.trim().isEmpty
+      ? null
+      : double.tryParse(c.text.replaceAll(',', '.'));
 
   String? _text(TextEditingController c) =>
       c.text.trim().isEmpty ? null : c.text.trim();
@@ -221,8 +233,7 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_vehiculeId == null) {
-      _appToast(context, 'Sélectionnez un véhicule',
-          type: _ToastType.warning);
+      _appToast(context, 'Sélectionnez un véhicule', type: _ToastType.warning);
       return;
     }
     if (_dateInfraction == null) {
@@ -244,8 +255,9 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
       numeroContravention: _text(_numero),
       codeInfraction: _text(_code),
       typeInfraction: _text(_typeInfraction),
-      vitesseRelevee:
-          _vitesse.text.trim().isEmpty ? null : int.tryParse(_vitesse.text.trim()),
+      vitesseRelevee: _vitesse.text.trim().isEmpty
+          ? null
+          : int.tryParse(_vitesse.text.trim()),
       lieu: _text(_lieu),
       description: _text(_description),
       montant: double.parse(_montant.text.replaceAll(',', '.')),
@@ -266,8 +278,7 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
     if (error != null) {
       _appToast(context, error, type: _ToastType.error);
     } else {
-      _appToast(context,
-          _isEditing ? 'Contravention modifiée' : 'Contravention créée');
+      // Pas d'alerte de succès : la fermeture + le refresh de la liste suffisent.
       Navigator.pop(context, true);
     }
   }
@@ -279,15 +290,21 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
     return Scaffold(
       backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
-          title: _isEditing ? 'Modifier la contravention' : 'Nouvelle contravention'),
+          title: _isEditing
+              ? 'Modifier la contravention'
+              : 'Nouvelle contravention'),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
-            _section('Véhicule et chauffeur', Icons.directions_car_outlined, [
-              _selector(),
-            ], obligatoire: true),
+            _section(
+                'Véhicule et chauffeur',
+                Icons.directions_car_outlined,
+                [
+                  _selector(),
+                ],
+                obligatoire: true),
             _section('Infraction', Icons.gavel_outlined, [
               Row(children: [
                 Expanded(child: _dateTile()),
@@ -300,46 +317,55 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
               const SizedBox(height: 14),
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
-                    child: _labeled('Code',
-                        _input(_code, '046', icon: Icons.qr_code_2))),
+                    child: _labeled(
+                        'Code', _input(_code, '046', icon: Icons.qr_code_2))),
                 const SizedBox(width: 12),
                 Expanded(
                     child: _labeled(
                         'Vitesse (km/h)',
                         _input(_vitesse, '90',
                             icon: Icons.speed_outlined,
-                            number: true, digitsOnly: true))),
+                            number: true,
+                            digitsOnly: true))),
               ]),
               const SizedBox(height: 14),
-              _labeled("Type d'infraction",
-                  _input(_typeInfraction, 'Excès de vitesse', icon: Icons.category_outlined)),
+              _labeled(
+                  "Type d'infraction",
+                  _input(_typeInfraction, 'Excès de vitesse',
+                      icon: Icons.category_outlined)),
               const SizedBox(height: 14),
-              _labeled('Lieu',
-                  _input(_lieu, "Lieu de l'infraction", icon: Icons.location_on_outlined)),
+              _labeled(
+                  'Lieu',
+                  _input(_lieu, "Lieu de l'infraction",
+                      icon: Icons.location_on_outlined)),
               const SizedBox(height: 14),
-              _labeled('Description',
+              _labeled(
+                  'Description',
                   _input(_description, 'Précisions…',
                       icon: Icons.notes_outlined, maxLines: 3)),
             ]),
             _section('Montants', Icons.payments_outlined, [
-              _labeled('Montant *',
-                  _input(_montant, '0', icon: Icons.attach_money,
-                      number: true, validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Requis';
-                if (double.tryParse(v.replaceAll(',', '.')) == null) {
-                  return 'Montant invalide';
-                }
-                return null;
-              })),
+              _labeled(
+                  'Montant *',
+                  _input(_montant, '0', icon: Icons.attach_money, number: true,
+                      validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Requis';
+                    if (double.tryParse(v.replaceAll(',', '.')) == null) {
+                      return 'Montant invalide';
+                    }
+                    return null;
+                  })),
               const SizedBox(height: 14),
               Row(children: [
                 Expanded(
-                    child: _labeled('Cotisation',
+                    child: _labeled(
+                        'Cotisation',
                         _input(_cotisation, '0',
                             icon: Icons.savings_outlined, number: true))),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _labeled('Montant payé',
+                    child: _labeled(
+                        'Montant payé',
                         _input(_montantPaye, '0',
                             icon: Icons.price_check, number: true))),
               ]),
@@ -358,11 +384,13 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
                 ),
                 icon: _loading
                     ? const SizedBox(
-                        height: 18, width: 18,
+                        height: 18,
+                        width: 18,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.check_rounded),
-                label: Text(_isEditing ? 'Enregistrer' : 'Créer la contravention',
+                label: Text(
+                    _isEditing ? 'Enregistrer' : 'Créer la contravention',
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w700)),
               ),
@@ -454,11 +482,11 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
         hintStyle: const TextStyle(color: AppColors.hint, fontSize: 14),
         filled: true,
         fillColor: AppColors.fieldFill,
-        prefixIcon: icon != null
-            ? Icon(icon, size: 18, color: AppColors.hint)
-            : null,
+        prefixIcon:
+            icon != null ? Icon(icon, size: 18, color: AppColors.hint) : null,
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none),
@@ -531,7 +559,8 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(children: [
-          Icon(icon, size: 18, color: filled ? AppColors.primary : AppColors.hint),
+          Icon(icon,
+              size: 18, color: filled ? AppColors.primary : AppColors.hint),
           const SizedBox(width: 10),
           Expanded(
             child: Text(value,
@@ -548,9 +577,8 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
         "Date *",
         _pickerTile(
           icon: Icons.calendar_today_outlined,
-          value: _dateInfraction != null
-              ? _fmtDate(_dateInfraction!)
-              : 'Choisir',
+          value:
+              _dateInfraction != null ? _fmtDate(_dateInfraction!) : 'Choisir',
           filled: _dateInfraction != null,
           onTap: _pickDate,
         ),
@@ -573,7 +601,6 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
         onTap: _pickDatePaiement,
       );
 
-  static String _fmtDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/'
+  static String _fmtDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}/'
       '${d.month.toString().padLeft(2, '0')}/${d.year}';
 }

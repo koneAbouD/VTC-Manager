@@ -77,9 +77,7 @@ class ApiClient {
       final rawBody = utf8.decode(result.bytes);
       throw ApiException(
         result.statusCode,
-        rawBody.trim().isEmpty
-            ? 'Erreur ${result.statusCode}'
-            : rawBody.trim(),
+        _messageErreurHttp(result.statusCode, null, rawBody),
       );
     } on TimeoutException {
       throw const NetworkException(kMsgServeurTimeout);
@@ -125,7 +123,7 @@ class ApiClient {
       final rawBody = utf8.decode(bodyBytes);
       throw ApiException(
         streamed.statusCode,
-        rawBody.trim().isEmpty ? 'Erreur ${streamed.statusCode}' : rawBody.trim(),
+        _messageErreurHttp(streamed.statusCode, null, rawBody),
       );
     } on TimeoutException {
       throw const NetworkException(kMsgServeurTimeout);
@@ -138,8 +136,7 @@ class ApiClient {
           {Map<String, String>? query}) =>
       _send('POST', path, body: body, query: query);
 
-  Future<dynamic> put(String path, Object body,
-          {Map<String, String>? query}) =>
+  Future<dynamic> put(String path, Object body, {Map<String, String>? query}) =>
       _send('PUT', path, body: body, query: query);
 
   Future<dynamic> delete(String path) => _send('DELETE', path);
@@ -425,7 +422,8 @@ class ApiClient {
       if (response.statusCode == 401) {
         final refreshed = await _tryRefresh();
         if (refreshed) {
-          return postFile(path, bytes: bytes, filename: filename, contentType: contentType);
+          return postFile(path,
+              bytes: bytes, filename: filename, contentType: contentType);
         }
       }
       return _handle(response);
@@ -493,15 +491,28 @@ class ApiClient {
       parsedBody = jsonDecode(rawBody) as Map<String, dynamic>?;
     } catch (_) {}
 
-    String message = _extractMessage(parsedBody, rawBody) ??
+    throw ApiException(status, _messageErreurHttp(status, parsedBody, rawBody),
+        body: parsedBody);
+  }
+
+  /// Construit un message d'erreur lisible : message applicatif du backend s'il
+  /// est présent, sinon message générique par code HTTP. Ne renvoie jamais un
+  /// corps HTML brut.
+  String _messageErreurHttp(
+    int status,
+    Map<String, dynamic>? parsed,
+    String rawBody,
+  ) {
+    return _extractMessage(parsed, rawBody) ??
         switch (status) {
+          400 => 'Requête invalide.',
           401 => 'Session expirée, veuillez vous reconnecter.',
           403 => 'Action non autorisée.',
           404 => 'Ressource introuvable.',
+          413 => 'Le document est trop volumineux.',
           >= 500 => 'Erreur serveur ($status).',
           _ => 'Erreur serveur ($status)',
         };
-    throw ApiException(status, message, body: parsedBody);
   }
 
   String? _extractMessage(Map<String, dynamic>? parsed, String rawBody) {
@@ -509,7 +520,24 @@ class ApiClient {
       final msg = parsed['message'] ?? parsed['error'] ?? parsed['detail'];
       if (msg is String && msg.trim().isNotEmpty) return msg.trim();
     }
-    return rawBody.trim().isNotEmpty ? rawBody.trim() : null;
+    final body = rawBody.trim();
+    if (body.isEmpty) return null;
+    // Corps HTML (page d'erreur Spring Whitelabel, nginx, proxy…) : ne jamais
+    // le montrer tel quel à l'utilisateur — on laisse le message générique par
+    // code HTTP prendre le relais.
+    if (_ressembleAHtml(body)) return null;
+    return body;
+  }
+
+  /// Heuristique simple : le corps commence par une balise et ressemble à un
+  /// document HTML plutôt qu'à un message texte lisible.
+  bool _ressembleAHtml(String body) {
+    if (!body.startsWith('<')) return false;
+    final debut = body.toLowerCase();
+    return debut.startsWith('<!doctype') ||
+        debut.startsWith('<html') ||
+        debut.contains('<body') ||
+        debut.contains('</');
   }
 
   Uri _buildUri(String path, Map<String, String>? query) {

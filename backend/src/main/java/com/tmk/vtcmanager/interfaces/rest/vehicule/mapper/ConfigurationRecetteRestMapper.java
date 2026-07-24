@@ -16,6 +16,7 @@ public interface ConfigurationRecetteRestMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "vehiculeId", ignore = true)
+    @Mapping(target = "montantJourFerie", ignore = true)
     @Mapping(target = "cotisations", source = "cotisations")
     ConfigurationRecette toDomain(ConfigurationRecetteRequest request);
 

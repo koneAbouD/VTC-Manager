@@ -13,6 +13,7 @@ import com.tmk.vtcmanager.interfaces.rest.chauffeur.mapper.ChauffeurRestMapper;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.DetailMaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.ElementMaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.OperationFinanciereRequest;
+import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.CatalogueElementMaintenanceResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.OperationFinanciereResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.SoldePeriodeResponse;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.mapper.VehiculeRestMapper;
@@ -47,6 +48,9 @@ public interface OperationFinanciereRestMapper {
     OperationFinanciereResponse toResponse(OperationFinanciere domain);
 
     List<OperationFinanciereResponse> toResponseList(List<OperationFinanciere> domains);
+
+    @Mapping(target = "imageUrl", ignore = true)
+    CatalogueElementMaintenanceResponse toCatalogueElementResponse(CatalogueElementMaintenance domain);
 
     default SoldePeriodeResponse toSoldeResponse(SoldePeriode solde) {
         return new SoldePeriodeResponse(solde.revenus(), solde.depenses(), solde.solde());

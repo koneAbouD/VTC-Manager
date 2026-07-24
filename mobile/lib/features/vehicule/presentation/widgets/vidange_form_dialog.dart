@@ -10,17 +10,18 @@ import '../providers/vidanges_provider.dart';
 
 // ── Palette (cohérente avec EncaissementLigneDialog / MaintenanceFormPage) ────
 
-const _kPrimary   = Color(0xFF3B5BDB);
-const _kGreen     = Color(0xFF2E7D32);
+const _kPrimary = Color(0xFF3B5BDB);
+const _kGreen = Color(0xFF2E7D32);
 const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint      = Color(0xFF9AA0AE);
-const _kLabel     = Color(0xFF6B7280);
-const _kBorder    = Color(0xFFE3E6EE);
-const _kDark      = Color(0xFF1A1A2E);
-const _kError     = Color(0xFFE03131);
+const _kHint = Color(0xFF9AA0AE);
+const _kLabel = Color(0xFF6B7280);
+const _kBorder = Color(0xFFE3E6EE);
+const _kDark = Color(0xFF1A1A2E);
+const _kError = Color(0xFFE03131);
 
-String _grouped(int n) => n.toString().replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]} ');
+String _grouped(int n) => n
+    .toString()
+    .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]} ');
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -51,8 +52,7 @@ void _showToast(BuildContext context, String message, {bool error = false}) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      duration:
-          error ? const Duration(seconds: 4) : const Duration(seconds: 2),
+      duration: error ? const Duration(seconds: 4) : const Duration(seconds: 2),
     ));
 }
 
@@ -110,7 +110,8 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
   void initState() {
     super.initState();
     _kmVidangeCtrl = TextEditingController(
-      text: widget.kilometrageActuel != null ? '${widget.kilometrageActuel}' : '',
+      text:
+          widget.kilometrageActuel != null ? '${widget.kilometrageActuel}' : '',
     );
   }
 
@@ -195,7 +196,6 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-
             // ── Indicateur ────────────────────────────────────────────
             Center(
               child: Container(
@@ -258,9 +258,7 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
                     child: TextFormField(
                       controller: _kmVidangeCtrl,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       style: const TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco('0').copyWith(
                         suffixText: 'km',
@@ -309,9 +307,7 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
                     child: TextFormField(
                       controller: _kmProchaineCtrl,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       style: const TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco('Ex. 150 000').copyWith(
                         suffixText: 'km',
@@ -498,9 +494,7 @@ class _InfoCard extends StatelessWidget {
             child: Text(
               badge!,
               style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: couleur),
+                  fontSize: 12, fontWeight: FontWeight.w700, color: couleur),
             ),
           ),
         ],
@@ -583,16 +577,12 @@ class _LabeledField extends StatelessWidget {
         Row(children: [
           Text(label,
               style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: _kLabel)),
+                  fontSize: 12.5, fontWeight: FontWeight.w600, color: _kLabel)),
           if (isRequired) ...[
             const SizedBox(width: 3),
             const Text('*',
                 style: TextStyle(
-                    color: _kError,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700)),
+                    color: _kError, fontSize: 13, fontWeight: FontWeight.w700)),
           ],
         ]),
         const SizedBox(height: 6),
@@ -607,8 +597,7 @@ InputDecoration _fieldDeco(String hint) => InputDecoration(
       hintStyle: const TextStyle(color: _kHint, fontSize: 15),
       filled: true,
       fillColor: _kFieldFill,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,

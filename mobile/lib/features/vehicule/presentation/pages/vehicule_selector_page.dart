@@ -56,8 +56,8 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
             ),
           ),
@@ -80,8 +80,8 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                     ],
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     itemCount: filtered.length,
                     itemBuilder: (_, i) {
                       final v = filtered[i];
@@ -94,12 +94,10 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
-                            border:
-                                Border.all(color: const Color(0xFFE4E7EC)),
+                            border: Border.all(color: const Color(0xFFE4E7EC)),
                             boxShadow: [
                               BoxShadow(
-                                color:
-                                    Colors.black.withValues(alpha: 0.03),
+                                color: Colors.black.withValues(alpha: 0.03),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -109,8 +107,7 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                             children: [
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       v.immatriculation,

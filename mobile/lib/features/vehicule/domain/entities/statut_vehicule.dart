@@ -22,8 +22,8 @@ class StatutVehicule {
         code: (json['code'] ?? '').toString(),
         libelle: (json['libelle'] ?? json['code'] ?? '').toString(),
         signification: json['signification'] as String?,
-        couleur:
-            _parseHexColor(json['couleur'] as String?) ?? const Color(0xFF9E9E9E),
+        couleur: _parseHexColor(json['couleur'] as String?) ??
+            const Color(0xFF9E9E9E),
         ordre: (json['ordre'] as num?)?.toInt() ?? 0,
       );
 

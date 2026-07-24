@@ -14,12 +14,15 @@ class VehiculeModel extends Vehicule {
     super.typeActiviteId,
     super.typeActiviteNom,
     super.numeroChassis,
-    super.numeroTelephoneBalise,
-    super.identifiantBalise,
+    super.baliseId,
+    super.baliseIdentifiant,
+    super.baliseNumeroTelephone,
     super.couleur,
     super.kilometrage,
     super.statut,
     super.dateAchat,
+    super.prixAchat,
+    super.dureeAmortissementMois,
     super.dateProchaineMaintenance,
     super.dateMiseEnCirculation,
     super.dateEntreeFlotte,
@@ -57,14 +60,21 @@ class VehiculeModel extends Vehicule {
         typeActiviteId: _id(json['activite']) ?? json['typeActiviteId'] as int?,
         typeActiviteNom: _str(json['activite']),
         numeroChassis: json['numeroChassis'] as String?,
-        numeroTelephoneBalise: json['numeroTelephoneBalise'] as String?,
-        identifiantBalise: json['identifiantBalise'] as String?,
+        baliseId: _id(json['balise']),
+        baliseIdentifiant: json['balise'] is Map
+            ? (json['balise']['identifiant'])?.toString()
+            : null,
+        baliseNumeroTelephone: json['balise'] is Map
+            ? (json['balise']['numeroTelephone'])?.toString()
+            : null,
         couleur: _str(json['couleur']),
         kilometrage: json['kilometrage'] as int?,
         statut: _str(json['statut']),
         dateAchat: json['dateAchat'] != null
             ? DateTime.parse(json['dateAchat'] as String)
             : null,
+        prixAchat: (json['prixAchat'] as num?)?.toDouble(),
+        dureeAmortissementMois: json['dureeAmortissementMois'] as int?,
         dateProchaineMaintenance: json['dateProchaineMaintenance'] != null
             ? DateTime.parse(json['dateProchaineMaintenance'] as String)
             : null,
@@ -96,12 +106,15 @@ class VehiculeModel extends Vehicule {
         typeActiviteId: v.typeActiviteId,
         typeActiviteNom: v.typeActiviteNom,
         numeroChassis: v.numeroChassis,
-        numeroTelephoneBalise: v.numeroTelephoneBalise,
-        identifiantBalise: v.identifiantBalise,
+        baliseId: v.baliseId,
+        baliseIdentifiant: v.baliseIdentifiant,
+        baliseNumeroTelephone: v.baliseNumeroTelephone,
         couleur: v.couleur,
         kilometrage: v.kilometrage,
         statut: v.statut,
         dateAchat: v.dateAchat,
+        prixAchat: v.prixAchat,
+        dureeAmortissementMois: v.dureeAmortissementMois,
         dateProchaineMaintenance: v.dateProchaineMaintenance,
         dateMiseEnCirculation: v.dateMiseEnCirculation,
         dateEntreeFlotte: v.dateEntreeFlotte,
@@ -120,15 +133,15 @@ class VehiculeModel extends Vehicule {
         if (typeActiviteId != null) 'typeActiviteId': typeActiviteId,
         if (numeroChassis != null && numeroChassis!.isNotEmpty)
           'numeroChassis': numeroChassis,
-        if (numeroTelephoneBalise != null && numeroTelephoneBalise!.isNotEmpty)
-          'numeroTelephoneBalise': numeroTelephoneBalise,
-        if (identifiantBalise != null && identifiantBalise!.isNotEmpty)
-          'identifiantBalise': identifiantBalise,
+        if (baliseId != null) 'baliseId': baliseId,
         if (couleur != null) 'couleur': couleur,
         if (kilometrage != null) 'kilometrage': kilometrage,
         if (statut != null) 'statut': statut,
         if (dateAchat != null)
           'dateAchat': dateAchat!.toIso8601String().substring(0, 10),
+        if (prixAchat != null) 'prixAchat': prixAchat,
+        if (dureeAmortissementMois != null)
+          'dureeAmortissementMois': dureeAmortissementMois,
         if (dateProchaineMaintenance != null)
           'dateProchaineMaintenance':
               dateProchaineMaintenance!.toIso8601String().substring(0, 10),

@@ -15,16 +15,15 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {TypeActiviteRestMapper.class, TypeVehiculeRestMapper.class, ModeleRestMapper.class, MarqueRestMapper.class})
+@Mapper(componentModel = "spring", uses = {TypeActiviteRestMapper.class, TypeVehiculeRestMapper.class, ModeleRestMapper.class, MarqueRestMapper.class, BaliseRestMapper.class})
 public interface VehiculeRestMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "groupe", ignore = true)
+    @Mapping(target = "balise", source = "baliseId")
     @Mapping(target = "conditionTravail", ignore = true)
     @Mapping(target = "photos", ignore = true)
     @Mapping(target = "statutManuel", ignore = true)
-    @Mapping(target = "prixAchat", ignore = true)
-    @Mapping(target = "dureeAmortissementMois", ignore = true)
     @Mapping(target = "marque", source = "marqueId")
     @Mapping(target = "modele", source = "modeleId")
     @Mapping(target = "type", source = "typeVehiculeId")

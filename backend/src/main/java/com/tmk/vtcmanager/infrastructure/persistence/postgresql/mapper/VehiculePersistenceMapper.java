@@ -7,7 +7,7 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {TypeVehiculePersistenceMapper.class, TypeActivitePersistenceMapper.class, MarquePersistenceMapper.class, ModelePersistenceMapper.class, GroupeVehiculePersistenceMapper.class, ConditionTravailPersistenceMapper.class})
+@Mapper(componentModel = "spring", uses = {TypeVehiculePersistenceMapper.class, TypeActivitePersistenceMapper.class, MarquePersistenceMapper.class, ModelePersistenceMapper.class, GroupeVehiculePersistenceMapper.class, BalisePersistenceMapper.class, ConditionTravailPersistenceMapper.class})
 public interface VehiculePersistenceMapper {
 
     @Mapping(target = "conditionTravail", ignore = true)

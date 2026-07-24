@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.domain.vehicule;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record UpdateVehiculeCommand(
@@ -9,14 +10,15 @@ public record UpdateVehiculeCommand(
         Long typeVehiculeId,
         Long typeActiviteId,
         String numeroChassis,
-        String numeroTelephoneBalise,
-        String identifiantBalise,
+        Long baliseId,
         String couleur,
         Integer kilometrage,
         VehiculeStatus statut,
         Long groupeId,
         Long conditionTravailId,
         LocalDate dateAchat,
+        BigDecimal prixAchat,
+        Integer dureeAmortissementMois,
         LocalDate dateProchaineMaintenance,
         LocalDate dateMiseEnCirculation,
         LocalDate dateEntreeFlotte

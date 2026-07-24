@@ -31,7 +31,8 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
   final Map<String, TextEditingController> _texts = {};
   final Map<String, Object?> _refs = {}; // champNom -> id sélectionné
   final Map<String, bool> _bools = {};
-  final Map<String, String?> _enums = {}; // champNom -> valeur (code) sélectionnée
+  final Map<String, String?> _enums =
+      {}; // champNom -> valeur (code) sélectionnée
   final Map<String, String?> _images = {}; // champNom -> nom d'objet
   final Map<String, String?> _imagePreview = {}; // champNom -> URL d'aperçu
   final Set<String> _uploading = {};
@@ -83,9 +84,8 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
     final item = widget.item;
     if (item == null) return null;
     if (item[c.nom] != null) return item[c.nom]; // ex. typeId à plat
-    final nested = c.nom.endsWith('Id')
-        ? c.nom.substring(0, c.nom.length - 2)
-        : c.nom;
+    final nested =
+        c.nom.endsWith('Id') ? c.nom.substring(0, c.nom.length - 2) : c.nom;
     final obj = item[nested];
     return obj is Map ? obj['id'] : null;
   }
@@ -173,7 +173,8 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
     return Scaffold(
       backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
-          title: _edition ? 'Modifier — ${d.libelle}' : 'Nouveau — ${d.libelle}'),
+          title:
+              _edition ? 'Modifier — ${d.libelle}' : 'Nouveau — ${d.libelle}'),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -575,10 +576,13 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           text: TextSpan(
             text: c.label,
             style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.dark),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark),
             children: c.obligatoire
                 ? const [
-                    TextSpan(text: ' *', style: TextStyle(color: AppColors.error))
+                    TextSpan(
+                        text: ' *', style: TextStyle(color: AppColors.error))
                   ]
                 : null,
           ),
@@ -588,7 +592,8 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
   InputDecoration _deco() => InputDecoration(
         filled: true,
         fillColor: _kFieldFill,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.border),
@@ -661,14 +666,15 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         _label(c),
         itemsAsync.when(
           loading: () => _selecteurSquelette(),
-          error: (_, __) => Text('Impossible de charger « ${refDesc.libelle} ».',
+          error: (_, __) => Text(
+              'Impossible de charger « ${refDesc.libelle} ».',
               style: const TextStyle(color: AppColors.error, fontSize: 12)),
           data: (items) {
             final titreChamp = refDesc.champTitre?.nom ?? 'nom';
             final options = items.map((it) {
               final id = it[refDesc.idField] as Object;
-              final label =
-                  (it[titreChamp] ?? it['nom'] ?? it['libelle'] ?? id).toString();
+              final label = (it[titreChamp] ?? it['nom'] ?? it['libelle'] ?? id)
+                  .toString();
               return SelectOption<Object>(value: id, label: label);
             }).toList();
             return PremiumSelectField<Object>(

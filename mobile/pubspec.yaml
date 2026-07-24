@@ -49,6 +49,9 @@ dependencies:
   # Sélection d'image (caméra / galerie)
   image_picker: ^1.1.2
 
+  # Rognage / recadrage d'une image (après prise de photo)
+  image_cropper: ^8.1.0
+
   # Sélection de fichiers (PDF, images) pour les documents
   file_picker: ^8.1.2
 

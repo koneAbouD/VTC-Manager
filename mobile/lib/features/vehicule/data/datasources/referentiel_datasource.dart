@@ -40,8 +40,7 @@ class ReferentielDatasource {
   }
 
   Future<List<ReferentielItem>> getMarquesByType(int typeId) async {
-    final data =
-        await _api.get('/v1/marques/by-type/$typeId') as List;
+    final data = await _api.get('/v1/marques/by-type/$typeId') as List;
     return data
         .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -63,6 +62,19 @@ class ReferentielDatasource {
     return data
         .map((e) => ReferentielItem.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Balises GPS actives, pour la sélection dans le formulaire véhicule.
+  /// Le libellé affiché est l'identifiant (+ n° de téléphone s'il existe).
+  Future<List<ReferentielItem>> getBalises() async {
+    final data = await _api.get('/v1/balises/actifs') as List;
+    return data.map((e) {
+      final m = e as Map<String, dynamic>;
+      final identifiant = (m['identifiant'] ?? '').toString();
+      final tel = (m['numeroTelephone'] ?? '').toString();
+      final nom = tel.isNotEmpty ? '$identifiant · $tel' : identifiant;
+      return ReferentielItem(id: m['id'] as int, nom: nom);
+    }).toList();
   }
 
   Future<List<StatutVehicule>> getStatutsVehicule() async {

@@ -56,8 +56,7 @@ class Vidange {
           'commentaire': commentaire!.trim(),
       };
 
-  static String _fmtDate(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-'
+  static String _fmtDate(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 }
@@ -68,9 +67,7 @@ final vidangesByVehiculeProvider =
   final client = ref.watch(apiClientProvider);
   final data = await client.get('/vehicules/$vehiculeId/vidanges');
   if (data is! List) return [];
-  return data
-      .map((e) => Vidange.fromJson(e as Map<String, dynamic>))
-      .toList();
+  return data.map((e) => Vidange.fromJson(e as Map<String, dynamic>)).toList();
 });
 
 /// Enregistre une nouvelle vidange puis invalide le provider d'historique.

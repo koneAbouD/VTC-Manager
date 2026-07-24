@@ -13,6 +13,7 @@ public interface TypeVehiculeRestMapper {
     @Mapping(target = "id", source = "typeVehiculeId")
     @Mapping(target = "nom", ignore = true)
     @Mapping(target = "description", ignore = true)
+    @Mapping(target = "actif", constant = "true")
     TypeVehicule toTypeVehicule(String typeVehiculeId);
 
     TypeVehiculeResponse toResponse(TypeVehicule domain);

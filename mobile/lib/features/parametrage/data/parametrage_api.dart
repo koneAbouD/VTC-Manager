@@ -2,6 +2,9 @@ import 'dart:typed_data';
 
 import '../../../core/network/api_client.dart';
 
+/// Clé du paramètre de durée d'amortissement (miroir du backend).
+const String kCleDureeAmortissement = 'DUREE_AMORTISSEMENT_MOIS';
+
 /// Description d'un champ d'un référentiel (issue du meta-catalogue backend).
 class ChampDescriptor {
   final String nom;
@@ -84,6 +87,29 @@ class ReferentielDescriptor {
   bool get gereActif => champs.any((c) => c.isActif);
 }
 
+/// Réglage global de l'application (paramètre clé-valeur). Seule la valeur est
+/// modifiable ; le libellé et la description décrivent le rôle du paramètre.
+class ParametreGeneral {
+  final String cle;
+  final String valeur;
+  final String libelle;
+  final String description;
+
+  const ParametreGeneral({
+    required this.cle,
+    required this.valeur,
+    required this.libelle,
+    required this.description,
+  });
+
+  factory ParametreGeneral.fromJson(Map<String, dynamic> j) => ParametreGeneral(
+        cle: j['cle'] as String,
+        valeur: (j['valeur'] ?? '').toString(),
+        libelle: j['libelle'] as String? ?? j['cle'] as String,
+        description: j['description'] as String? ?? '',
+      );
+}
+
 /// Accès REST générique aux données de référence et au meta-catalogue.
 ///
 /// Les endpoints du catalogue sont des chemins complets préfixés « /api » ; le
@@ -92,6 +118,19 @@ class ParametrageApi {
   final ApiClient _client;
 
   const ParametrageApi(this._client);
+
+  Future<List<ParametreGeneral>> parametres() async {
+    final res = await _client.get('/parametres');
+    return (res as List<dynamic>)
+        .map((e) => ParametreGeneral.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ParametreGeneral> mettreAJourParametre(
+      String cle, String valeur) async {
+    final res = await _client.put('/parametres/$cle', {'valeur': valeur});
+    return ParametreGeneral.fromJson(res as Map<String, dynamic>);
+  }
 
   static String _p(String endpoint) =>
       endpoint.startsWith('/api') ? endpoint.substring(4) : endpoint;

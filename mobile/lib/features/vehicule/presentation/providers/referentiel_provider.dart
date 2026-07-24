@@ -38,17 +38,20 @@ final marquesByTypeProvider =
 
 // Modèles filtrés par type + marque
 final modelesByTypeAndMarqueProvider =
-    FutureProvider.family<List<ReferentielItem>, (int, int)>(
-        (ref, args) async {
+    FutureProvider.family<List<ReferentielItem>, (int, int)>((ref, args) async {
   final (typeId, marqueId) = args;
   return ref
       .watch(_referentielDatasourceProvider)
       .getModelesByTypeAndMarque(typeId, marqueId);
 });
 
-final groupesProvider =
-    FutureProvider<List<ReferentielItem>>((ref) async {
+final groupesProvider = FutureProvider<List<ReferentielItem>>((ref) async {
   return ref.watch(_referentielDatasourceProvider).getGroupes();
+});
+
+// Balises GPS actives (référentiel) pour la sélection dans le formulaire.
+final balisesProvider = FutureProvider<List<ReferentielItem>>((ref) async {
+  return ref.watch(_referentielDatasourceProvider).getBalises();
 });
 
 // ── Statuts de véhicule (libellés + couleurs pilotés par la base) ───────────

@@ -139,8 +139,8 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
                     : null,
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide.none,
@@ -162,9 +162,7 @@ class _VehiculesPageState extends ConsumerState<VehiculesPage> {
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
-              color: hasFilter
-                  ? primary.withValues(alpha: 0.08)
-                  : Colors.white,
+              color: hasFilter ? primary.withValues(alpha: 0.08) : Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: hasFilter ? primary : Colors.grey.shade200,
@@ -343,7 +341,8 @@ class _VehiculeCard extends ConsumerWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (vehicule.kilometrage != null || vehicule.numeroChassis != null) ...[
+                      if (vehicule.kilometrage != null ||
+                          vehicule.numeroChassis != null) ...[
                         const SizedBox(height: 10),
                         Wrap(
                           spacing: 8,
@@ -397,8 +396,8 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w700, color: color),
+        style:
+            TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }
@@ -420,8 +419,8 @@ class _MetaChip extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style:
-              TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500),
+          style: TextStyle(
+              fontSize: 12, color: color, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -461,8 +460,8 @@ class _SkeletonCardState extends State<_SkeletonCard>
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.4, end: 0.9).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.4, end: 0.9)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -555,7 +554,8 @@ class _EmptyState extends StatelessWidget {
                 color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.directions_car_outlined, size: 36, color: color),
+              child:
+                  Icon(Icons.directions_car_outlined, size: 36, color: color),
             ),
             const SizedBox(height: 20),
             Text('Aucun véhicule',
@@ -604,8 +604,7 @@ class _NoResultState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text('Aucun résultat',
-                style:
-                    TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 8),
             Text('Essayez un autre terme ou réinitialisez les filtres.',
                 textAlign: TextAlign.center,
@@ -648,8 +647,7 @@ class _ErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text('Erreur de chargement',
-                style:
-                    TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 8),
             Text(message,
                 textAlign: TextAlign.center,

@@ -46,10 +46,16 @@ void _appToast(
   Duration? duration,
 }) {
   final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.success => (
+        const Color(0xFF1B5E20),
+        Icons.check_circle_outline_rounded
+      ),
+    _ToastType.error => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
+    _ToastType.warning => (
+        const Color(0xFFE65100),
+        Icons.warning_amber_rounded
+      ),
+    _ToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -87,29 +93,42 @@ void _appToast(
 class _InlineToastBanner extends StatelessWidget {
   final String? message;
   final _ToastType type;
-  const _InlineToastBanner({super.key, this.message, this.type = _ToastType.error});
+  const _InlineToastBanner(
+      {super.key, this.message, this.type = _ToastType.error});
 
   @override
   Widget build(BuildContext context) {
     if (message == null) return const SizedBox.shrink();
     final (Color bg, IconData icon) = switch (type) {
-      _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-      _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-      _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-      _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+      _ToastType.success => (
+          const Color(0xFF1B5E20),
+          Icons.check_circle_outline_rounded
+        ),
+      _ToastType.error => (
+          const Color(0xFFB71C1C),
+          Icons.error_outline_rounded
+        ),
+      _ToastType.warning => (
+          const Color(0xFFE65100),
+          Icons.warning_amber_rounded
+        ),
+      _ToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
     };
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
       child: Row(children: [
         Icon(icon, color: Colors.white, size: 18),
         const SizedBox(width: 10),
         Expanded(
           child: Text(message!,
               style: const TextStyle(
-                  fontSize: 13.5, fontWeight: FontWeight.w500, color: Colors.white)),
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white)),
         ),
       ]),
     );
@@ -167,14 +186,15 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   final _formKey = GlobalKey<FormState>();
   final _immatCtrl = TextEditingController();
   final _chassisCtrl = TextEditingController();
-  final _telBaliseCtrl = TextEditingController();
-  final _idBaliseCtrl = TextEditingController();
+  final _prixAchatCtrl = TextEditingController();
+  final _dureeAmortCtrl = TextEditingController();
 
   ReferentielItem? _typeVehicule;
   ReferentielItem? _typeActivite;
   ReferentielItem? _marque;
   ReferentielItem? _modele;
   ReferentielItem? _groupe;
+  ReferentielItem? _balise;
   String? _couleur;
   DateTime? _dateMiseEnCirculation;
   DateTime? _dateEntreeFlotte;
@@ -193,13 +213,14 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   // Snapshot initial pour détecter les modifications
   late final String _initImmat;
   late final String _initChassis;
-  late final String _initTelBalise;
-  late final String _initIdBalise;
+  late final String _initPrixAchat;
+  late final String _initDureeAmort;
   late final ReferentielItem? _initTypeVehicule;
   late final ReferentielItem? _initTypeActivite;
   late final ReferentielItem? _initMarque;
   late final ReferentielItem? _initModele;
   late final ReferentielItem? _initGroupe;
+  late final ReferentielItem? _initBalise;
   late final String? _initCouleur;
   late final DateTime? _initDateMEC;
   late final DateTime? _initDateFlotte;
@@ -210,13 +231,14 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   bool get _hasChanges =>
       _immatCtrl.text != _initImmat ||
       _chassisCtrl.text != _initChassis ||
-      _telBaliseCtrl.text != _initTelBalise ||
-      _idBaliseCtrl.text != _initIdBalise ||
+      _prixAchatCtrl.text != _initPrixAchat ||
+      _dureeAmortCtrl.text != _initDureeAmort ||
       _typeVehicule?.id != _initTypeVehicule?.id ||
       _typeActivite?.id != _initTypeActivite?.id ||
       _marque?.id != _initMarque?.id ||
       _modele?.id != _initModele?.id ||
       _groupe?.id != _initGroupe?.id ||
+      _balise?.id != _initBalise?.id ||
       _couleur != _initCouleur ||
       _dateMiseEnCirculation != _initDateMEC ||
       _dateEntreeFlotte != _initDateFlotte ||
@@ -236,6 +258,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       ref.invalidate(typesVehiculesProvider);
       ref.invalidate(typesActivitesProvider);
       ref.invalidate(marquesByTypeProvider);
+      ref.invalidate(balisesProvider);
       ref.invalidate(typesDocVehiculeProvider);
     }
   }
@@ -249,8 +272,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     if (v != null) {
       _immatCtrl.text = v.immatriculation;
       _chassisCtrl.text = v.numeroChassis ?? '';
-      _telBaliseCtrl.text = v.numeroTelephoneBalise ?? '';
-      _idBaliseCtrl.text = v.identifiantBalise ?? '';
+      _prixAchatCtrl.text = _formatPrixInitial(v.prixAchat);
+      _dureeAmortCtrl.text = v.dureeAmortissementMois?.toString() ?? '';
       _couleur = v.couleur;
       _dateMiseEnCirculation = v.dateMiseEnCirculation;
       _dateEntreeFlotte = v.dateEntreeFlotte;
@@ -271,19 +294,27 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       if (v.groupeId != null) {
         _groupe = ReferentielItem(id: v.groupeId!, nom: v.groupe ?? '—');
       }
+      if (v.baliseId != null) {
+        final tel = v.baliseNumeroTelephone;
+        final ident = v.baliseIdentifiant ?? '—';
+        _balise = ReferentielItem(
+            id: v.baliseId!,
+            nom: (tel != null && tel.isNotEmpty) ? '$ident · $tel' : ident);
+      }
       if (v.photos != null) _existingPhotos = List.from(v.photos!);
     }
 
     // Snapshot après hydratation des champs
     _initImmat = _immatCtrl.text;
     _initChassis = _chassisCtrl.text;
-    _initTelBalise = _telBaliseCtrl.text;
-    _initIdBalise = _idBaliseCtrl.text;
+    _initPrixAchat = _prixAchatCtrl.text;
+    _initDureeAmort = _dureeAmortCtrl.text;
     _initTypeVehicule = _typeVehicule;
     _initTypeActivite = _typeActivite;
     _initMarque = _marque;
     _initModele = _modele;
     _initGroupe = _groupe;
+    _initBalise = _balise;
     _initCouleur = _couleur;
     _initDateMEC = _dateMiseEnCirculation;
     _initDateFlotte = _dateEntreeFlotte;
@@ -291,8 +322,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
 
     _immatCtrl.addListener(_onTextChanged);
     _chassisCtrl.addListener(_onTextChanged);
-    _telBaliseCtrl.addListener(_onTextChanged);
-    _idBaliseCtrl.addListener(_onTextChanged);
+    _prixAchatCtrl.addListener(_onTextChanged);
+    _dureeAmortCtrl.addListener(_onTextChanged);
 
     // En mode édition : section 0 reste ouverte, les autres fermées
     if (_isEditing) {
@@ -303,17 +334,30 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
 
   void _onTextChanged() => setState(() {});
 
+  /// Pré-remplit le champ prix : montant XOF sans décimales si entier.
+  String _formatPrixInitial(double? prix) {
+    if (prix == null) return '';
+    return prix == prix.roundToDouble()
+        ? prix.toInt().toString()
+        : prix.toString();
+  }
+
+  /// Parse la saisie (espaces / séparateurs de milliers tolérés) en montant.
+  double? _parsePrix(String text) {
+    final clean = text.replaceAll(RegExp(r'[^0-9.,]'), '').replaceAll(',', '.');
+    if (clean.isEmpty) return null;
+    return double.tryParse(clean);
+  }
+
   @override
   void dispose() {
     _immatCtrl.removeListener(_onTextChanged);
     _chassisCtrl.removeListener(_onTextChanged);
-    _telBaliseCtrl.removeListener(_onTextChanged);
-    _idBaliseCtrl.removeListener(_onTextChanged);
     _tabCtrl.dispose();
     _immatCtrl.dispose();
     _chassisCtrl.dispose();
-    _telBaliseCtrl.dispose();
-    _idBaliseCtrl.dispose();
+    _prixAchatCtrl.dispose();
+    _dureeAmortCtrl.dispose();
     super.dispose();
   }
 
@@ -338,7 +382,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     ];
     if (parts.isEmpty) {
       final base = [_typeActivite?.nom, _typeVehicule?.nom]
-          .where((s) => s != null).join(' · ');
+          .where((s) => s != null)
+          .join(' · ');
       return base.isEmpty ? null : base;
     }
     return parts.join(' · ');
@@ -346,21 +391,19 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
 
   String? get _infosSuppSummary {
     final datePart = _datesSummary;
-    final optCount = [
-      _telBaliseCtrl.text.trim(),
-      _idBaliseCtrl.text.trim(),
-    ].where((s) => s.isNotEmpty).length + (_groupe != null ? 1 : 0);
+    final optCount =
+        (_balise != null ? 1 : 0) + (_groupe != null ? 1 : 0);
     if (datePart == null && optCount == 0) return null;
     final parts = <String>[
       if (datePart != null) datePart,
-      if (optCount > 0)
-        '+ $optCount option${optCount > 1 ? "s" : ""}',
+      if (optCount > 0) '+ $optCount option${optCount > 1 ? "s" : ""}',
     ];
     return parts.join(' · ');
   }
 
   String? get _datesSummary {
-    if (_dateMiseEnCirculation == null && _dateEntreeFlotte == null) return null;
+    if (_dateMiseEnCirculation == null && _dateEntreeFlotte == null)
+      return null;
     return [
       if (_dateMiseEnCirculation != null) _formatDate(_dateMiseEnCirculation!),
       if (_dateEntreeFlotte != null) _formatDate(_dateEntreeFlotte!),
@@ -490,20 +533,17 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       kilometrage: initial?.kilometrage,
       statut: initial?.statut ?? 'DISPONIBLE',
       dateAchat: initial?.dateAchat,
+      prixAchat: _parsePrix(_prixAchatCtrl.text),
+      dureeAmortissementMois: int.tryParse(_dureeAmortCtrl.text.trim()),
       dateProchaineMaintenance: initial?.dateProchaineMaintenance,
       dateMiseEnCirculation: _dateMiseEnCirculation,
       dateEntreeFlotte: _dateEntreeFlotte,
       groupeId: _groupe?.id ?? initial?.groupeId,
       groupe: _groupe?.nom ?? initial?.groupe,
-      numeroChassis: _chassisCtrl.text.trim().isEmpty
-          ? null
-          : _chassisCtrl.text.trim(),
-      numeroTelephoneBalise: _telBaliseCtrl.text.trim().isEmpty
-          ? null
-          : _telBaliseCtrl.text.trim(),
-      identifiantBalise: _idBaliseCtrl.text.trim().isEmpty
-          ? null
-          : _idBaliseCtrl.text.trim(),
+      numeroChassis:
+          _chassisCtrl.text.trim().isEmpty ? null : _chassisCtrl.text.trim(),
+      baliseId: _balise?.id ?? initial?.baliseId,
+      baliseIdentifiant: _balise?.nom ?? initial?.baliseIdentifiant,
     );
 
     final notifier = ref.read(vehiculeNotifierProvider.notifier);
@@ -597,7 +637,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     if (!mounted) return;
 
     if (_isEditing) {
-      _appToast(context, 'Véhicule modifié avec succès.');
+      // Pas d'alerte de succès : la fermeture + le refresh de la liste suffisent.
       navigator.pop();
     } else {
       _showSuccessDialog(
@@ -659,7 +699,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     );
   }
 
-  void _showSuccessDialog({required int? vehiculeId, required String vehiculeLabel}) {
+  void _showSuccessDialog(
+      {required int? vehiculeId, required String vehiculeLabel}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -753,8 +794,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setLocal) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
             title: Row(
               children: [
@@ -771,8 +812,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 const Expanded(
                   child: Text(
                     'Supprimer le document',
-                    style: TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
@@ -802,8 +842,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                   style: const TextStyle(fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Ex : Document expiré, remplacé…',
-                    hintStyle:
-                        const TextStyle(color: _kHint, fontSize: 14),
+                    hintStyle: const TextStyle(color: _kHint, fontSize: 14),
                     filled: true,
                     fillColor: _kFieldFill,
                     border: OutlineInputBorder(
@@ -817,22 +856,21 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 ),
               ],
             ),
-            actionsPadding:
-                const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             actions: [
               OutlinedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   side: const BorderSide(color: _kBorder),
                   foregroundColor: Colors.black87,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Annuler',
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                    style:
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               ),
               FilledButton(
                 onPressed: motifCtrl.text.trim().isEmpty
@@ -842,14 +880,14 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                   backgroundColor: const Color(0xFFE03131),
                   disabledBackgroundColor:
                       const Color(0xFFE03131).withValues(alpha: 0.35),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Supprimer',
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                    style:
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               ),
             ],
           );
@@ -891,8 +929,11 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
         reference: doc.reference,
         dateEmission:
             doc.dateEmission != null ? _isoDate(doc.dateEmission!) : null,
-        dateExpiration:
-            doc.permanent ? null : (doc.dateExpiration != null ? _isoDate(doc.dateExpiration!) : null),
+        dateExpiration: doc.permanent
+            ? null
+            : (doc.dateExpiration != null
+                ? _isoDate(doc.dateExpiration!)
+                : null),
         permanent: doc.permanent,
       );
       if (mounted) {
@@ -948,10 +989,10 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => _AddDocumentSheet(
-            types: types,
-            existingDoc: doc,
-            apiClient: ref.read(_vehiculeFormApiClientProvider),
-          ),
+        types: types,
+        existingDoc: doc,
+        apiClient: ref.read(_vehiculeFormApiClientProvider),
+      ),
     );
     if (result == null || !mounted) return;
     if (_isEditing && widget.initial?.id != null) {
@@ -965,10 +1006,12 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
           bytes: result.bytes,
           filename: result.filename,
           reference: result.reference,
-          dateEmission:
-              result.dateEmission != null ? _isoDate(result.dateEmission!) : null,
-          dateExpiration:
-              result.dateExpiration != null ? _isoDate(result.dateExpiration!) : null,
+          dateEmission: result.dateEmission != null
+              ? _isoDate(result.dateEmission!)
+              : null,
+          dateExpiration: result.dateExpiration != null
+              ? _isoDate(result.dateExpiration!)
+              : null,
         );
         await ds.deleteDocument(doc.id);
         if (mounted) {
@@ -1185,8 +1228,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                   const SizedBox(height: 4),
                   Text(
                     '${i + 1}',
-                    style:
-                        TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
                   ),
                 ],
               ),
@@ -1212,6 +1254,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     required AsyncValue<List<ReferentielItem>> typesActivitesAsync,
     required AsyncValue<List<ReferentielItem>> marquesAsync,
     required AsyncValue<List<ReferentielItem>> modelesAsync,
+    required AsyncValue<List<ReferentielItem>> balisesAsync,
   }) {
     final couleurWidget = PremiumSelectField<String>(
       value: _couleur,
@@ -1247,21 +1290,27 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
               // Type activité / Type véhicule
               ResponsiveFieldRow(
                 left: _LabeledField(
-                  label: "Type d'activité", isRequired: true,
+                  label: "Type d'activité",
+                  isRequired: true,
                   child: _DropdownField(
-                    value: _typeActivite, hint: 'Activité',
+                    value: _typeActivite,
+                    hint: 'Activité',
                     asyncValue: typesActivitesAsync,
                     onChanged: (v) => setState(() => _typeActivite = v),
                   ),
                 ),
                 right: _LabeledField(
-                  label: 'Type de véhicule', isRequired: true,
+                  label: 'Type de véhicule',
+                  isRequired: true,
                   child: _DropdownField(
-                    value: _typeVehicule, hint: 'Type',
+                    value: _typeVehicule,
+                    hint: 'Type',
                     asyncValue: typesVehiculesAsync,
                     disabled: _isEditing,
                     onChanged: (v) => setState(() {
-                      _typeVehicule = v; _marque = null; _modele = null;
+                      _typeVehicule = v;
+                      _marque = null;
+                      _modele = null;
                     }),
                   ),
                 ),
@@ -1270,20 +1319,28 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
               // Marque / Modèle
               ResponsiveFieldRow(
                 left: _LabeledField(
-                  label: 'Marque', isRequired: true,
+                  label: 'Marque',
+                  isRequired: true,
                   child: _DropdownField(
-                    value: _marque, hint: 'Marque',
+                    value: _marque,
+                    hint: 'Marque',
                     asyncValue: marquesAsync,
                     disabled: _isEditing || _typeVehicule == null,
-                    onChanged: (v) => setState(() { _marque = v; _modele = null; }),
+                    onChanged: (v) => setState(() {
+                      _marque = v;
+                      _modele = null;
+                    }),
                   ),
                 ),
                 right: _LabeledField(
-                  label: 'Modèle', isRequired: true,
+                  label: 'Modèle',
+                  isRequired: true,
                   child: _DropdownField(
-                    value: _modele, hint: 'Modèle',
+                    value: _modele,
+                    hint: 'Modèle',
                     asyncValue: modelesAsync,
-                    disabled: _isEditing || _typeVehicule == null || _marque == null,
+                    disabled:
+                        _isEditing || _typeVehicule == null || _marque == null,
                     onChanged: (v) => setState(() => _modele = v),
                   ),
                 ),
@@ -1292,13 +1349,15 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
               // Immatriculation / Couleur
               ResponsiveFieldRow(
                 left: _LabeledField(
-                  label: 'Immatriculation', isRequired: true,
+                  label: 'Immatriculation',
+                  isRequired: true,
                   child: _PlainField(
                     controller: _immatCtrl,
                     hint: 'AB-123-CD',
                     textCapitalization: TextCapitalization.characters,
                     onChanged: (_) {
-                      if (_immatError != null) setState(() => _immatError = null);
+                      if (_immatError != null)
+                        setState(() => _immatError = null);
                     },
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Requis';
@@ -1308,7 +1367,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                   ),
                 ),
                 right: _LabeledField(
-                  label: 'Couleur', isRequired: true,
+                  label: 'Couleur',
+                  isRequired: true,
                   child: couleurWidget,
                 ),
               ),
@@ -1339,7 +1399,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
               // Dates
               ResponsiveFieldRow(
                 left: _LabeledField(
-                  label: 'Mise en circulation', isRequired: true,
+                  label: 'Mise en circulation',
+                  isRequired: true,
                   child: _DateField(
                     label: 'JJ/MM/AAAA',
                     value: _dateMiseEnCirculation,
@@ -1347,12 +1408,14 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                     onTap: () => _pickDate(
                       initial: _dateMiseEnCirculation,
                       maxDate: _dateEntreeFlotte ?? DateTime.now(),
-                      onPicked: (d) => setState(() => _dateMiseEnCirculation = d),
+                      onPicked: (d) =>
+                          setState(() => _dateMiseEnCirculation = d),
                     ),
                   ),
                 ),
                 right: _LabeledField(
-                  label: "Entrée dans la flotte", isRequired: true,
+                  label: "Entrée dans la flotte",
+                  isRequired: true,
                   child: _DateField(
                     label: 'JJ/MM/AAAA',
                     value: _dateEntreeFlotte,
@@ -1367,32 +1430,60 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 ),
               ),
               const SizedBox(height: 12),
-              // Tél. balise / ID balise
+              // Balise GPS (référentiel) + Groupe : côte à côte sur tablette,
+              // empilés sur téléphone via ResponsiveFieldRow.
               ResponsiveFieldRow(
                 left: _LabeledField(
-                  label: 'Tél. balise',
-                  child: _PlainField(
-                    controller: _telBaliseCtrl,
-                    hint: '06 12 34 56 78',
-                    keyboardType: TextInputType.phone,
+                  label: 'Balise GPS',
+                  child: _DropdownField(
+                    value: _balise,
+                    hint: 'Sélectionner une balise',
+                    asyncValue: balisesAsync,
+                    onChanged: (v) => setState(() => _balise = v),
                   ),
                 ),
                 right: _LabeledField(
-                  label: 'ID balise GPS',
-                  child: _PlainField(
-                    controller: _idBaliseCtrl,
-                    hint: 'BAL-00123',
+                  label: 'Groupe du véhicule',
+                  child: _GroupePickerField(
+                    groupe: _groupe,
+                    onPick: _pickGroupe,
+                    onClear: () => setState(() => _groupe = null),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-              // Groupe
-              _LabeledField(
-                label: 'Groupe du véhicule',
-                child: _GroupePickerField(
-                  groupe: _groupe,
-                  onPick: _pickGroupe,
-                  onClear: () => setState(() => _groupe = null),
+              // Prix d'achat + Durée d'amortissement : côte à côte sur tablette,
+              // empilés sur téléphone.
+              ResponsiveFieldRow(
+                left: _LabeledField(
+                  label: "Prix d'achat (XOF)",
+                  child: _PlainField(
+                    controller: _prixAchatCtrl,
+                    hint: 'Ex. 7 500 000',
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      final parsed = _parsePrix(v);
+                      if (parsed == null) return 'Montant invalide';
+                      if (parsed < 0) return 'Doit être positif';
+                      return null;
+                    },
+                  ),
+                ),
+                right: _LabeledField(
+                  label: "Durée d'amortissement (mois)",
+                  child: _PlainField(
+                    controller: _dureeAmortCtrl,
+                    hint: 'Défaut : durée globale',
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      final n = int.tryParse(v.trim());
+                      if (n == null || n < 1) return 'Durée invalide (≥ 1 mois)';
+                      return null;
+                    },
+                  ),
                 ),
               ),
             ]),
@@ -1437,8 +1528,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text('Aucune pièce enregistrée.',
-                      style: TextStyle(
-                          color: Colors.grey.shade500, fontSize: 13)),
+                      style:
+                          TextStyle(color: Colors.grey.shade500, fontSize: 13)),
                 );
               }
               return Column(
@@ -1487,8 +1578,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            textStyle: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w600),
+            textStyle:
+                const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ),
       ],
@@ -1501,6 +1592,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
   Widget build(BuildContext context) {
     final typesVehiculesAsync = ref.watch(typesVehiculesProvider);
     final typesActivitesAsync = ref.watch(typesActivitesProvider);
+    final balisesAsync = ref.watch(balisesProvider);
     final marquesAsync = _typeVehicule != null
         ? ref.watch(marquesByTypeProvider(_typeVehicule!.id))
         : const AsyncValue<List<ReferentielItem>>.data([]);
@@ -1549,6 +1641,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                       typesActivitesAsync: typesActivitesAsync,
                       marquesAsync: marquesAsync,
                       modelesAsync: modelesAsync,
+                      balisesAsync: balisesAsync,
                     ),
                   ),
                   _buildDocumentsTab(existingDocsAsync: existingDocsAsync),
@@ -1623,8 +1716,8 @@ class _EmptyDocState extends StatelessWidget {
               color: Color(0xFFF2F3F5),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.description_outlined,
-                size: 32, color: _kHint),
+            child:
+                const Icon(Icons.description_outlined, size: 32, color: _kHint),
           ),
           const SizedBox(height: 14),
           const Text(
@@ -1652,86 +1745,88 @@ class _PendingDocCard extends StatelessWidget {
   final VoidCallback onRemove;
   final VoidCallback? onTap;
 
-  const _PendingDocCard({required this.doc, required this.onRemove, this.onTap});
+  const _PendingDocCard(
+      {required this.doc, required this.onRemove, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E6EE)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF2FF),
-              borderRadius: BorderRadius.circular(10),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E6EE)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF2FF),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.description_outlined,
+                  color: _kPrimary, size: 20),
             ),
-            child:
-                const Icon(Icons.description_outlined, color: _kPrimary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  doc.typeNom,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A2E)),
-                ),
-                if (doc.reference != null && doc.reference!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text('Réf : ${doc.reference}',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade600)),
-                ],
-                if (doc.dateExpiration != null) ...[
-                  const SizedBox(height: 2),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'Exp : ${doc.dateExpiration!.day.toString().padLeft(2, '0')}/${doc.dateExpiration!.month.toString().padLeft(2, '0')}/${doc.dateExpiration!.year}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    doc.typeNom,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A2E)),
                   ),
-                ],
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.attach_file,
-                        size: 12, color: Colors.grey.shade400),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        doc.filename,
+                  if (doc.reference != null && doc.reference!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text('Réf : ${doc.reference}',
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade400),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                            fontSize: 12, color: Colors.grey.shade600)),
+                  ],
+                  if (doc.dateExpiration != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Exp : ${doc.dateExpiration!.day.toString().padLeft(2, '0')}/${doc.dateExpiration!.month.toString().padLeft(2, '0')}/${doc.dateExpiration!.year}',
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                   ],
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.attach_file,
+                          size: 12, color: Colors.grey.shade400),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          doc.filename,
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey.shade400),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          IconButton(
-            onPressed: onRemove,
-            icon: const Icon(Icons.close, size: 18),
-            color: Colors.grey.shade400,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
+            IconButton(
+              onPressed: onRemove,
+              icon: const Icon(Icons.close, size: 18),
+              color: Colors.grey.shade400,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -1751,98 +1846,99 @@ class _ExistingDocCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E6EE)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2F3F5),
-              borderRadius: BorderRadius.circular(10),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E6EE)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2F3F5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.description_outlined,
+                  color: _kHint, size: 20),
             ),
-            child: const Icon(Icons.description_outlined,
-                color: _kHint, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        doc.displayName,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A2E)),
-                      ),
-                    ),
-                  ],
-                ),
-                if (doc.dateEmission != null || doc.dateExpiration != null) ...[
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 12,
-                    children: [
-                      if (doc.dateEmission != null)
-                        Text(
-                          'Ém : ${doc.dateEmission!.day.toString().padLeft(2, '0')}/${doc.dateEmission!.month.toString().padLeft(2, '0')}/${doc.dateEmission!.year}',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey.shade600),
-                        ),
-                      if (doc.dateExpiration != null)
-                        Text(
-                          'Exp : ${doc.dateExpiration!.day.toString().padLeft(2, '0')}/${doc.dateExpiration!.month.toString().padLeft(2, '0')}/${doc.dateExpiration!.year}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: (doc.statut == 'EXPIRE')
-                                ? const Color(0xFFE03131)
-                                : Colors.grey.shade600,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-                if (doc.fichierNom != null) ...[
-                  const SizedBox(height: 4),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     children: [
-                      Icon(Icons.attach_file,
-                          size: 12, color: Colors.grey.shade400),
-                      const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          doc.fichierNom!,
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade400),
-                          overflow: TextOverflow.ellipsis,
+                          doc.displayName,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A2E)),
                         ),
                       ),
                     ],
                   ),
+                  if (doc.dateEmission != null ||
+                      doc.dateExpiration != null) ...[
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 12,
+                      children: [
+                        if (doc.dateEmission != null)
+                          Text(
+                            'Ém : ${doc.dateEmission!.day.toString().padLeft(2, '0')}/${doc.dateEmission!.month.toString().padLeft(2, '0')}/${doc.dateEmission!.year}',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey.shade600),
+                          ),
+                        if (doc.dateExpiration != null)
+                          Text(
+                            'Exp : ${doc.dateExpiration!.day.toString().padLeft(2, '0')}/${doc.dateExpiration!.month.toString().padLeft(2, '0')}/${doc.dateExpiration!.year}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: (doc.statut == 'EXPIRE')
+                                  ? const Color(0xFFE03131)
+                                  : Colors.grey.shade600,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                  if (doc.fichierNom != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.attach_file,
+                            size: 12, color: Colors.grey.shade400),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            doc.fichierNom!,
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.grey.shade400),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline, size: 18),
-            color: Colors.red.shade300,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline, size: 18),
+              color: Colors.red.shade300,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -1878,10 +1974,17 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
 
   void _showInline(String msg, {_ToastType type = _ToastType.error}) {
     _inlineTimer?.cancel();
-    setState(() { _inlineMsg = msg; _inlineType = type; });
+    setState(() {
+      _inlineMsg = msg;
+      _inlineType = type;
+    });
     _inlineTimer = Timer(
-      Duration(seconds: type == _ToastType.error || type == _ToastType.warning ? 4 : 2),
-      () { if (mounted) setState(() => _inlineMsg = null); },
+      Duration(
+          seconds:
+              type == _ToastType.error || type == _ToastType.warning ? 4 : 2),
+      () {
+        if (mounted) setState(() => _inlineMsg = null);
+      },
     );
   }
 
@@ -1916,7 +2019,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
       _dateExpiration = existing.dateExpiration;
       _permanent = existing.permanent;
       if (widget.apiClient != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _loadExistingFile());
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _loadExistingFile());
       }
     }
   }
@@ -1925,8 +2029,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
     final doc = widget.existingDoc!;
     setState(() => _loadingFile = true);
     try {
-      final bytes = await widget.apiClient!
-          .getBytes('/v1/documents/${doc.id}/download');
+      final bytes =
+          await widget.apiClient!.getBytes('/v1/documents/${doc.id}/download');
       if (mounted) {
         setState(() {
           _fileBytes = bytes;
@@ -1978,7 +2082,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
           children: [
             const SizedBox(height: 8),
             Container(
-              width: 36, height: 4,
+              width: 36,
+              height: 4,
               decoration: BoxDecoration(
                 color: const Color(0xFFE3E6EE),
                 borderRadius: BorderRadius.circular(2),
@@ -1986,13 +2091,15 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
             ),
             const SizedBox(height: 4),
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined, color: Colors.black87),
+              leading: const Icon(Icons.photo_camera_outlined,
+                  color: Colors.black87),
               title: const Text('Appareil photo',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(ctx, 0),
             ),
             ListTile(
-              leading: const Icon(Icons.folder_open_outlined, color: Colors.black87),
+              leading:
+                  const Icon(Icons.folder_open_outlined, color: Colors.black87),
               title: const Text('Fichier (PDF, image)',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(ctx, 1),
@@ -2028,7 +2135,10 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
     }
 
     if (bytes != null && name != null && mounted) {
-      setState(() { _fileBytes = bytes; _fileName = name; });
+      setState(() {
+        _fileBytes = bytes;
+        _fileName = name;
+      });
     }
   }
 
@@ -2036,7 +2146,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
     if (_fileBytes == null) return;
     showDialog(
       context: context,
-      builder: (_) => _FilePreviewDialog(bytes: _fileBytes!, filename: _fileName!),
+      builder: (_) =>
+          _FilePreviewDialog(bytes: _fileBytes!, filename: _fileName!),
     );
   }
 
@@ -2226,8 +2337,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                                 SizedBox(width: 10),
                                 Text(
                                   'Chargement du fichier…',
-                                  style: TextStyle(
-                                      fontSize: 15, color: _kHint),
+                                  style: TextStyle(fontSize: 15, color: _kHint),
                                 ),
                               ],
                             )
@@ -2258,8 +2368,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                                   GestureDetector(
                                     onTap: _pickFile,
                                     child: Icon(Icons.edit_outlined,
-                                        size: 16,
-                                        color: Colors.grey.shade400),
+                                        size: 16, color: Colors.grey.shade400),
                                   )
                                 ],
                               ],
@@ -2280,7 +2389,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                           borderRadius: BorderRadius.circular(14)),
                     ),
                     child: Text(
-                        (widget.initialDoc != null || widget.existingDoc != null)
+                        (widget.initialDoc != null ||
+                                widget.existingDoc != null)
                             ? 'Modifier'
                             : 'Ajouter',
                         style: const TextStyle(
@@ -2541,7 +2651,10 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
 
   static bool _isBytesPdf(Uint8List b) =>
       b.length >= 4 &&
-      b[0] == 0x25 && b[1] == 0x50 && b[2] == 0x44 && b[3] == 0x46;
+      b[0] == 0x25 &&
+      b[1] == 0x50 &&
+      b[2] == 0x44 &&
+      b[3] == 0x46;
 
   bool get _isPdf =>
       _isBytesPdf(widget.bytes) ||
@@ -2618,8 +2731,8 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
                 ),
               ),
               ConstrainedBox(
-                constraints: const BoxConstraints(
-                    minHeight: 180, maxHeight: 420),
+                constraints:
+                    const BoxConstraints(minHeight: 180, maxHeight: 420),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: ClipRRect(
@@ -2633,7 +2746,8 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
                             : (_pdfError || _pdfController == null)
                                 ? const Center(
                                     child: Text('Impossible de lire le PDF.',
-                                        style: TextStyle(color: Colors.white38)),
+                                        style:
+                                            TextStyle(color: Colors.white38)),
                                   )
                                 : PdfView(
                                     controller: _pdfController!,
@@ -2680,7 +2794,9 @@ class _DropdownField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLoading = asyncValue is AsyncLoading;
-    final items = asyncValue.value ?? [];
+    // valueOrNull (et non .value) : en cas d'erreur du provider, .value relance
+    // l'exception et ferait planter tout le formulaire. On dégrade en liste vide.
+    final items = asyncValue.valueOrNull ?? [];
 
     if (isLoading) {
       return Container(
@@ -2771,7 +2887,8 @@ class _PlainField extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.red, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         errorStyle: const TextStyle(fontSize: 11),
       ),
     );
@@ -2906,7 +3023,8 @@ class _FormSectionCard extends StatelessWidget {
                             const SizedBox(width: 6),
                             if (isRequired)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFFF0F0),
                                   borderRadius: BorderRadius.circular(6),
@@ -2923,7 +3041,8 @@ class _FormSectionCard extends StatelessWidget {
                               )
                             else if (!isRequired)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF3F4F6),
                                   borderRadius: BorderRadius.circular(6),
@@ -3089,8 +3208,7 @@ class _GroupePickerField extends StatelessWidget {
             if (groupe != null)
               GestureDetector(
                 onTap: onClear,
-                child: const Icon(Icons.close_rounded,
-                    size: 18, color: _kHint),
+                child: const Icon(Icons.close_rounded, size: 18, color: _kHint),
               )
             else
               const Icon(Icons.chevron_right_rounded, size: 20, color: _kHint),

@@ -20,6 +20,7 @@ public interface ChauffeurRestMapper {
     @Mapping(target = "photoUrl", ignore = true)
     @Mapping(target = "photoPresignedUrl", ignore = true)
     @Mapping(target = "statutManuel", ignore = true)
+    @Mapping(target = "keycloakUserId", ignore = true)
     @Mapping(target = "dateSuspension", ignore = true)
     Chauffeur toDomain(ChauffeurRequest request);
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+// `hide TextDirection` : intl exporte une classe TextDirection qui entre en
+// conflit avec celle de Flutter (dart:ui), requise par ShapeBorder.
+import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
@@ -388,16 +390,6 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                 style: TextStyle(color: Colors.grey))),
       );
     }
-    final maxMontant =
-        items.map((e) => e.montant).reduce((a, b) => a > b ? a : b);
-    final barColors = [
-      Colors.blue.shade400,
-      Colors.indigo.shade400,
-      Colors.purple.shade400,
-      Colors.teal.shade400,
-      Colors.cyan.shade400,
-    ];
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -413,55 +405,17 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Répartition',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 160,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: items.take(5).toList().asMap().entries.map((entry) {
-                final i = entry.key;
-                final item = entry.value;
-                final ratio = maxMontant > 0 ? item.montant / maxMontant : 0.0;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          _money.format(item.montant),
-                          style: const TextStyle(fontSize: 9),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 600),
-                          height: 120 * ratio.clamp(0.05, 1.0),
-                          decoration: BoxDecoration(
-                            color: barColors[i % barColors.length],
-                            borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(6)),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          item.label.split(' ').first,
-                          style: const TextStyle(fontSize: 10),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
+          Row(
+            children: [
+              const Text('Répartition',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              const Spacer(),
+              Text('${items.length} au total',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            ],
           ),
+          const SizedBox(height: 16),
+          _LoopingBarChart(items: items, money: _money),
         ],
       ),
     );
@@ -504,52 +458,68 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Répartition par catégorie',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: items.take(5).toList().asMap().entries.map((entry) {
-              final i = entry.key;
-              final item = entry.value;
-              final color = pieColors[i % pieColors.length];
-              return SizedBox(
-                width: 160,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: color, width: 5),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${item.pourcentage.toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              const Text('Répartition par catégorie',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              const Spacer(),
+              Text('${items.length} catégories',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            // 5 lignes visibles par défaut, le reste accessible au scroll.
+            height: (items.length < 5 ? items.length : 5) * _pieRowHeight,
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              physics: const BouncingScrollPhysics(),
+              itemExtent: _pieRowHeight,
+              itemCount: items.length,
+              itemBuilder: (context, i) {
+                final item = items[i];
+                final color = pieColors[i % pieColors.length];
+                return _PieItemBubble(
+                  item: item,
+                  color: color,
+                  money: _money,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: color, width: 4),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${item.pourcentage.toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(item.label,
-                          style: const TextStyle(fontSize: 12),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(item.label,
+                            style: const TextStyle(fontSize: 13),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
+
+  /// Hauteur d'une ligne du camembert (utilisée pour caler 5 lignes visibles).
+  static const double _pieRowHeight = 58;
 
   Widget _buildListeOperations(RapportFinancierData rapport) {
     return Column(
@@ -703,6 +673,315 @@ class _OperationTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Info-bulle catégorie (appui maintenu) ────────────────────────────────────
+
+/// Enveloppe un élément du camembert « Répartition par catégorie ». Un appui
+/// maintenu affiche une info-bulle (montant + pourcentage) juste au-dessus de
+/// l'élément ; elle disparaît dès que l'on relâche.
+class _PieItemBubble extends StatefulWidget {
+  final BreakdownItem item;
+  final Color color;
+  final NumberFormat money;
+  final Widget child;
+
+  const _PieItemBubble({
+    required this.item,
+    required this.color,
+    required this.money,
+    required this.child,
+  });
+
+  @override
+  State<_PieItemBubble> createState() => _PieItemBubbleState();
+}
+
+class _PieItemBubbleState extends State<_PieItemBubble> {
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _entry;
+
+  void _show() {
+    if (_entry != null) return;
+    _entry = OverlayEntry(
+      builder: (context) => Positioned(
+        // Au moins une contrainte de position (left/top) est nécessaire pour
+        // que l'Overlay traite l'enfant comme « positionné » : sinon il est
+        // étiré à la taille de l'écran et la bulle remplit tout l'écran.
+        left: 0,
+        top: 0,
+        child: CompositedTransformFollower(
+          link: _link,
+          showWhenUnlinked: false,
+          // Ancrée à gauche, juste au-dessus du cercle de la catégorie.
+          targetAnchor: Alignment.topLeft,
+          followerAnchor: Alignment.bottomLeft,
+          offset: const Offset(4, -2),
+          child: Material(
+            color: Colors.transparent,
+            // Échelle de texte figée à 1 : la taille de police du téléphone
+            // ne peut pas gonfler la bulle.
+            child: MediaQuery.withNoTextScaling(
+              child: _buildBubble(),
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_entry!);
+  }
+
+  void _hide() {
+    _entry?.remove();
+    _entry = null;
+  }
+
+  @override
+  void dispose() {
+    _hide();
+    super.dispose();
+  }
+
+  static const double _tailHeight = 7;
+
+  Widget _buildBubble() {
+    return Container(
+      // Espace supplémentaire en bas pour la pointe (le texte reste dans le
+      // corps de la bulle).
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6 + _tailHeight),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: _BubbleWithTail(
+          color: widget.color,
+          radius: 9,
+          tailWidth: 13,
+          tailHeight: _tailHeight,
+          tailCenterFromLeft: 20,
+          strokeWidth: 1.2,
+        ),
+        shadows: [
+          BoxShadow(
+            color: widget.color.withValues(alpha: 0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Text(
+        widget.money.format(widget.item.montant),
+        style: TextStyle(
+            color: widget.color,
+            fontSize: 13,
+            fontWeight: FontWeight.bold),
+        maxLines: 1,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CompositedTransformTarget(
+      link: _link,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _show(),
+        onTapUp: (_) => _hide(),
+        onTapCancel: _hide,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Forme de bulle : corps arrondi surmonté d'une pointe vers le bas (façon
+/// accolade renversée) qui désigne la catégorie sous elle. La bordure et la
+/// pointe forment un tracé continu à la couleur de la catégorie.
+class _BubbleWithTail extends ShapeBorder {
+  final Color color;
+  final double radius;
+  final double tailWidth;
+  final double tailHeight;
+  final double tailCenterFromLeft;
+  final double strokeWidth;
+
+  const _BubbleWithTail({
+    required this.color,
+    required this.radius,
+    required this.tailWidth,
+    required this.tailHeight,
+    required this.tailCenterFromLeft,
+    required this.strokeWidth,
+  });
+
+  Path _buildPath(Rect rect) {
+    // Corps de la bulle : le rectangle sans la bande basse réservée à la pointe.
+    final body = Rect.fromLTRB(
+        rect.left, rect.top, rect.right, rect.bottom - tailHeight);
+    final r = Radius.circular(radius);
+    final tailCenter = rect.left + tailCenterFromLeft;
+    final tailLeft = tailCenter - tailWidth / 2;
+    final tailRight = tailCenter + tailWidth / 2;
+
+    return Path()
+      ..moveTo(body.left + radius, body.top)
+      ..lineTo(body.right - radius, body.top)
+      ..arcToPoint(Offset(body.right, body.top + radius), radius: r)
+      ..lineTo(body.right, body.bottom - radius)
+      ..arcToPoint(Offset(body.right - radius, body.bottom), radius: r)
+      // Bord bas jusqu'à la base droite de la pointe.
+      ..lineTo(tailRight, body.bottom)
+      // Descente vers la pointe, avec un sommet légèrement arrondi.
+      ..lineTo(tailCenter + 1.5, body.bottom + tailHeight - 1.5)
+      ..quadraticBezierTo(tailCenter, body.bottom + tailHeight,
+          tailCenter - 1.5, body.bottom + tailHeight - 1.5)
+      ..lineTo(tailLeft, body.bottom)
+      // Retour au coin bas gauche.
+      ..lineTo(body.left + radius, body.bottom)
+      ..arcToPoint(Offset(body.left, body.bottom - radius), radius: r)
+      ..lineTo(body.left, body.top + radius)
+      ..arcToPoint(Offset(body.left + radius, body.top), radius: r)
+      ..close();
+  }
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      _buildPath(rect);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
+      _buildPath(rect);
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+    canvas.drawPath(_buildPath(rect), paint);
+  }
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.only(bottom: tailHeight);
+
+  @override
+  ShapeBorder scale(double t) => _BubbleWithTail(
+        color: color,
+        radius: radius * t,
+        tailWidth: tailWidth * t,
+        tailHeight: tailHeight * t,
+        tailCenterFromLeft: tailCenterFromLeft * t,
+        strokeWidth: strokeWidth * t,
+      );
+}
+
+// ── Graphique de répartition à défilement horizontal en boucle ────────────────
+
+/// Affiche les barres de répartition (par véhicule ou chauffeur) dans une liste
+/// horizontale que l'on peut faire défiler à l'infini, en boucle dans les deux
+/// sens. Toutes les entrées sont visibles (plus de limite à 5).
+class _LoopingBarChart extends StatefulWidget {
+  final List<BreakdownItem> items;
+  final NumberFormat money;
+
+  const _LoopingBarChart({required this.items, required this.money});
+
+  @override
+  State<_LoopingBarChart> createState() => _LoopingBarChartState();
+}
+
+class _LoopingBarChartState extends State<_LoopingBarChart> {
+  static const _barColors = [
+    Color(0xFF42A5F5), // blue.400
+    Color(0xFF5C6BC0), // indigo.400
+    Color(0xFFAB47BC), // purple.400
+    Color(0xFF26A69A), // teal.400
+    Color(0xFF26C6DA), // cyan.400
+  ];
+  static const double _barWidth = 76;
+  // Nombre de répétitions virtuelles pour simuler un défilement infini : on
+  // démarre au milieu pour pouvoir scroller librement dans les deux sens.
+  static const int _loopFactor = 1000;
+
+  late final ScrollController _controller;
+  late final bool _canLoop;
+
+  @override
+  void initState() {
+    super.initState();
+    _canLoop = widget.items.length > 1;
+    final initialOffset = _canLoop
+        ? _barWidth * widget.items.length * (_loopFactor ~/ 2)
+        : 0.0;
+    _controller = ScrollController(initialScrollOffset: initialOffset);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.items;
+    final maxMontant =
+        items.map((e) => e.montant).reduce((a, b) => a > b ? a : b);
+    final count = _canLoop ? items.length * _loopFactor : items.length;
+
+    return SizedBox(
+      height: 172,
+      child: ListView.builder(
+        controller: _controller,
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        // Largeur fixe connue à l'avance : la liste n'a plus à mesurer chaque
+        // barre, ce qui allège nettement le défilement sur le compte virtuel.
+        itemExtent: _barWidth,
+        itemCount: count,
+        itemBuilder: (context, index) {
+          final i = index % items.length;
+          final item = items[i];
+          final ratio = maxMontant > 0 ? item.montant / maxMontant : 0.0;
+          return SizedBox(
+            width: _barWidth,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    widget.money.format(item.montant),
+                    style: const TextStyle(fontSize: 9),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 120 * ratio.clamp(0.05, 1.0),
+                    decoration: BoxDecoration(
+                      color: _barColors[i % _barColors.length],
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(6)),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.label,
+                    style: const TextStyle(fontSize: 10),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

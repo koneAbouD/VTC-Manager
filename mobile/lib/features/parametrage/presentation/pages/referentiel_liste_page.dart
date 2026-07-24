@@ -81,7 +81,8 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
       _toast(_message(e), erreur: true);
     } finally {
       if (mounted) {
-        setState(() => _actifOverride.remove(id)); // la liste rafraîchie fait foi
+        setState(
+            () => _actifOverride.remove(id)); // la liste rafraîchie fait foi
       }
     }
   }
@@ -125,7 +126,8 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
   // ── Helpers d'affichage ────────────────────────────────────────────────────
   bool _estActif(Map<String, dynamic> item) {
     final id = item[d.idField] as Object?;
-    if (id != null && _actifOverride.containsKey(id)) return _actifOverride[id]!;
+    if (id != null && _actifOverride.containsKey(id))
+      return _actifOverride[id]!;
     return item['actif'] as bool? ?? true;
   }
 
@@ -343,7 +345,8 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.hint),
+            const Icon(Icons.cloud_off_rounded,
+                size: 48, color: AppColors.hint),
             const SizedBox(height: 12),
             const Text('Chargement impossible.',
                 style: TextStyle(color: AppColors.label)),
@@ -401,7 +404,8 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
               color: Colors.black54,
               borderRadius: BorderRadius.circular(4),
             ),
-            child: const Icon(Icons.zoom_in_rounded, size: 11, color: Colors.white),
+            child: const Icon(Icons.zoom_in_rounded,
+                size: 11, color: Colors.white),
           ),
         ],
       ),
@@ -412,8 +416,9 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
     final actif = _estActif(item);
     final sousTitre = _sousTitre(item);
     final titre = _titre(item);
-    final initiale =
-        titre.isNotEmpty && titre != '#${item[d.idField]}' ? titre[0].toUpperCase() : '•';
+    final initiale = titre.isNotEmpty && titre != '#${item[d.idField]}'
+        ? titre[0].toUpperCase()
+        : '•';
 
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 180),
@@ -465,8 +470,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
                       value: actif,
                       activeThumbColor: AppColors.primary,
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      onChanged:
-                          _busy ? null : (v) => _basculerActif(item, v),
+                      onChanged: _busy ? null : (v) => _basculerActif(item, v),
                     ),
                   ),
                 if (d.editable)
@@ -490,5 +494,4 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
       ),
     );
   }
-
 }
