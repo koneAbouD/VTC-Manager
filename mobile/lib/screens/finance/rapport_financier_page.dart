@@ -492,14 +492,16 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                   ),
                 );
               }
-              final visibles = items.length < 3 ? items.length : 3;
+              // Téléphone : bulle à gauche + libellé sur la même ligne,
+              // liste verticale scrollable (hauteur bornée à ~4 lignes).
+              final visibles = items.length < 4 ? items.length : 4;
               return SizedBox(
-                height: visibles * 96,
+                height: visibles * 60,
                 child: ListView.separated(
                   physics: const BouncingScrollPhysics(),
                   itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) => _pieBubble(
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) => _pieRow(
                       items[i], pieColors[i % pieColors.length]),
                 ),
               );
@@ -549,6 +551,43 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
       child: fixedWidth != null
           ? SizedBox(width: fixedWidth, child: content)
           : content,
+    );
+  }
+
+  /// Variante ligne (téléphone) : cercle % à gauche, libellé sur la même ligne.
+  /// Appui maintenu = info-bulle du montant.
+  Widget _pieRow(BreakdownItem item, Color color) {
+    return _PieItemBubble(
+      item: item,
+      color: color,
+      money: _money,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: color, width: 4),
+            ),
+            child: Center(
+              child: Text(
+                '${item.pourcentage.toStringAsFixed(0)}%',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              item.label,
+              style: const TextStyle(fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

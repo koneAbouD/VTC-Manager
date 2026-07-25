@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.interfaces.rest.operationFinanciere;
 
+import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.SousCategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.application.usecases.categorieOperation.*;
@@ -43,7 +44,9 @@ public class CategorieOperationController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CategorieOperationResponse create(@Valid @RequestBody CategorieOperationRequest request) {
-        return mapper.toResponse(createUseCase.execute(mapper.toDomain(request)));
+        CategorieOperation cree = createUseCase.execute(mapper.toDomain(request));
+        appliquerSousCategorie(cree, request.sousCategorieLibelle());
+        return mapper.toResponse(getByIdUseCase.execute(cree.getId(), true));
     }
 
     @GetMapping
@@ -51,7 +54,7 @@ public class CategorieOperationController {
             @RequestParam(required = false) TypeOperation typeOperation,
             @RequestParam(required = false) String sousCategorieCode,
             @RequestParam(required = false) String sousCategorieLibelle,
-            @RequestParam(defaultValue = "false") boolean includeSousCategorie) {
+            @RequestParam(defaultValue = "true") boolean includeSousCategorie) {
         return mapper.toResponseList(
                 getAllUseCase.execute(typeOperation, sousCategorieCode, sousCategorieLibelle, includeSousCategorie));
     }
@@ -66,7 +69,35 @@ public class CategorieOperationController {
     @PutMapping("/{id}")
     public CategorieOperationResponse update(@PathVariable Long id,
                                               @Valid @RequestBody CategorieOperationRequest request) {
-        return mapper.toResponse(updateUseCase.execute(id, mapper.toDomain(request)));
+        CategorieOperation maj = updateUseCase.execute(id, mapper.toDomain(request));
+        appliquerSousCategorie(maj, request.sousCategorieLibelle());
+        return mapper.toResponse(getByIdUseCase.execute(id, true));
+    }
+
+    /**
+     * Crée ou met à jour la sous-catégorie 1-1 liée à la catégorie à partir du
+     * groupe choisi. Le code de la sous-catégorie est dérivé du code (unique) de
+     * la catégorie (« SC_<code> ») pour garantir l'unicité.
+     */
+    private void appliquerSousCategorie(CategorieOperation categorie, String libelleGroupe) {
+        if (libelleGroupe == null || libelleGroupe.isBlank()) {
+            return;
+        }
+        getSousCategorieUseCase.execute(categorie.getId())
+                .ifPresentOrElse(
+                        existante -> updateSousCategorieUseCase.execute(existante.getId(),
+                                SousCategorieOperation.builder()
+                                        .libelle(libelleGroupe)
+                                        .categorieId(categorie.getId())
+                                        .actif(true)
+                                        .build()),
+                        () -> createSousCategorieUseCase.execute(
+                                SousCategorieOperation.builder()
+                                        .code("SC_" + categorie.getCode())
+                                        .libelle(libelleGroupe)
+                                        .categorieId(categorie.getId())
+                                        .actif(true)
+                                        .build()));
     }
 
     @PatchMapping("/{id}/actif")

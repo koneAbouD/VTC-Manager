@@ -230,16 +230,6 @@ class _MaintenanceDetailPageState
                                     color: _kDark,
                                     letterSpacing: -0.3),
                               ),
-                              if (_m.type.isNotEmpty &&
-                                  _m.categorieTypeLibelle != null &&
-                                  _m.type != _m.categorieTypeLibelle) ...[
-                                const SizedBox(height: 2),
-                                Text(_m.type,
-                                    style: const TextStyle(
-                                        fontSize: 11,
-                                        color: _kLabel,
-                                        letterSpacing: 0.2)),
-                              ],
                               const SizedBox(height: 10),
                               Container(
                                 padding: const EdgeInsets.symmetric(

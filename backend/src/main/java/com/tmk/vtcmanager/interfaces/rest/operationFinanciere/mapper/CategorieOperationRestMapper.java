@@ -17,6 +17,7 @@ public interface CategorieOperationRestMapper {
     @Mapping(target = "compteComptable", ignore = true)
     CategorieOperation toDomain(CategorieOperationRequest request);
 
+    @Mapping(target = "sousCategorieLibelle", source = "sousCategorie.libelle")
     CategorieOperationResponse toResponse(CategorieOperation domain);
 
     List<CategorieOperationResponse> toResponseList(List<CategorieOperation> domains);

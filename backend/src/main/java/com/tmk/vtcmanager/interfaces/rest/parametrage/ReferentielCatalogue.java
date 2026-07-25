@@ -1,7 +1,10 @@
 package com.tmk.vtcmanager.interfaces.rest.parametrage;
 
+import com.tmk.vtcmanager.application.domain.operation.SousCategorieOperation;
+import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.interfaces.rest.parametrage.dto.ChampDescriptorResponse;
 import com.tmk.vtcmanager.interfaces.rest.parametrage.dto.ReferentielDescriptorResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -20,7 +23,10 @@ import static com.tmk.vtcmanager.interfaces.rest.parametrage.dto.ChampDescriptor
  * enums de code (statuts / machines à états) ne figurent pas : non éditables.</p>
  */
 @Component
+@RequiredArgsConstructor
 public class ReferentielCatalogue {
+
+    private final SousCategorieOperationRepository sousCategorieRepository;
 
     public List<ReferentielDescriptorResponse> descripteurs() {
         return List.of(
@@ -87,13 +93,27 @@ public class ReferentielCatalogue {
                 "id",
                 List.of(
                         texte("libelle", "Libellé", true),
-                        texte("code", "Code", true),
+                        // Groupe / famille comptable : choix parmi les sous-catégories
+                        // (groupes) déjà existantes. Options calculées à la volée.
+                        enumeration("sousCategorieLibelle", "Sous-catégorie", true,
+                                groupesSousCategorie()),
                         enumeration("typeOperation", "Type d'opération", true,
                                 List.of("REVENU", "DEPENSE")),
                         enumeration("natureResultat", "Nature de résultat", true,
                                 List.of("PRODUIT_EXPLOITATION", "CHARGE_VARIABLE",
                                         "CHARGE_FIXE", "HORS_RESULTAT")),
                         booleen("actif", "Actif")));
+    }
+
+    /** Libellés distincts des sous-catégories existantes (groupes comptables),
+     *  triés — servent d'options à la liste déroulante « Sous-catégorie ». */
+    private List<String> groupesSousCategorie() {
+        return sousCategorieRepository.findAll().stream()
+                .map(SousCategorieOperation::getLibelle)
+                .filter(l -> l != null && !l.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     private ReferentielDescriptorResponse typesVehicules() {

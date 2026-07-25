@@ -1,15 +1,19 @@
 package com.tmk.vtcmanager.interfaces.rest.parametrage;
 
+import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.interfaces.rest.parametrage.dto.ReferentielDescriptorResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class ReferentielCatalogueTest {
 
-    private final ReferentielCatalogue catalogue = new ReferentielCatalogue();
+    // findAll() du mock renvoie une liste vide par défaut → options « sous-catégorie » vides.
+    private final ReferentielCatalogue catalogue =
+            new ReferentielCatalogue(mock(SousCategorieOperationRepository.class));
 
     @Test
     void expose_les_referentiels_livres() {

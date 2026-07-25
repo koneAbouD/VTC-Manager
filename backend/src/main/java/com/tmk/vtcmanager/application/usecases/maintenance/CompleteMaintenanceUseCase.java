@@ -28,6 +28,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CompleteMaintenanceUseCase {
 
+    /** Catégorie de dépense par défaut si le type de maintenance n'est pas
+     *  résolu en catégorie (garantit qu'aucune dépense ne reste sans catégorie
+     *  — évite la bulle « Autres » de la répartition). */
+    private static final String CODE_CATEGORIE_MAINTENANCE_DEFAUT = "REPARATION";
+
     private final MaintenanceRepository maintenanceRepository;
     private final OperationFinanciereRepository operationRepository;
     private final CategorieOperationRepository categorieRepository;
@@ -57,6 +62,16 @@ public class CompleteMaintenanceUseCase {
             CategorieOperation categorie = categorieId != null
                     ? categorieRepository.findById(categorieId).orElse(null)
                     : saved.getCategorieType();
+
+            // Repli : ne jamais créer une dépense sans catégorie (bulle « Autres »).
+            // 1) déduire la catégorie du type de maintenance (VIDANGE, PEINTURE…),
+            // 2) à défaut, une catégorie maintenance générique (Réparation).
+            if (categorie == null && saved.getType() != null && !saved.getType().isBlank()) {
+                categorie = categorieRepository.findByCode(saved.getType()).orElse(null);
+            }
+            if (categorie == null) {
+                categorie = categorieRepository.findByCode(CODE_CATEGORIE_MAINTENANCE_DEFAUT).orElse(null);
+            }
 
             // La sous-catégorie n'est jamais chargée avec la catégorie
             // (CategorieOperationPersistenceMapper l'ignore) : on la résout via le

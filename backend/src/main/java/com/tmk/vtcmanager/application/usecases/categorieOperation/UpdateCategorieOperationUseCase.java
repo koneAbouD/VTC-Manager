@@ -15,7 +15,11 @@ public class UpdateCategorieOperationUseCase {
     public CategorieOperation execute(Long id, CategorieOperation data) {
         CategorieOperation existing = categorieRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Catégorie opération", id));
-        existing.setCode(data.getCode());
+        // Le code n'est plus saisi et reste immuable : on ne l'écrase que si un
+        // code explicite est fourni (compat), sinon on conserve l'existant.
+        if (data.getCode() != null && !data.getCode().isBlank()) {
+            existing.setCode(data.getCode());
+        }
         existing.setLibelle(data.getLibelle());
         existing.setTypeOperation(data.getTypeOperation());
         existing.setNatureResultat(data.getNatureResultat());
