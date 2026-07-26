@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.application.usecases.operationFinanciere.*;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.OperationFinanciereRequest;
+import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.MontantsCategoriesResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.OperationFinanciereResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.SoldePeriodeResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.mapper.OperationFinanciereRestMapper;
@@ -87,6 +88,39 @@ public class OperationFinanciereController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
         return mapper.toSoldeResponse(calculerSoldeUseCase.execute(debut, fin));
+    }
+
+    /**
+     * Montant total par « catégorie » (buckets UI de la page Opérations) pour les
+     * filtres courants <b>sans</b> le filtre catégorie : permet aux info-bulles
+     * des chips d'afficher toujours leur propre montant, même quand une catégorie
+     * est sélectionnée. La classification reprend celle des filtres serveur.
+     */
+    @GetMapping("/montants-categories")
+    public MontantsCategoriesResponse montantsCategories(
+            @RequestParam(required = false) TypeOperation typeOperation,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
+            @RequestParam(required = false) StatutOperation statut,
+            @RequestParam(required = false) String recherche,
+            @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(required = false) Long chauffeurId) {
+        var filtres = new OperationFinanciereFiltres(
+                typeOperation, debut, fin, statut, recherche, null, vehiculeId, chauffeurId, null);
+
+        double total = 0, recette = 0, cotisation = 0, penalite = 0, maintenance = 0, document = 0;
+        for (var op : getAllUseCase.execute(filtres)) {
+            double m = op.getMontant() == null ? 0 : op.getMontant().abs().doubleValue();
+            total += m;
+            String code = op.getCategorie() == null ? null : op.getCategorie().getCode();
+            String sousCat = op.getSousCategorie() == null ? null : op.getSousCategorie().getLibelle();
+            if ("ENCAISSEMENT_RECETTES".equalsIgnoreCase(code)) recette += m;
+            else if ("ENCAISSEMENT_COTISATIONS".equalsIgnoreCase(code)) cotisation += m;
+            else if ("ENCAISSEMENT_PENALITES".equalsIgnoreCase(code)) penalite += m;
+            if ("maintenances".equalsIgnoreCase(sousCat)) maintenance += m;
+            else if ("documents".equalsIgnoreCase(sousCat)) document += m;
+        }
+        return new MontantsCategoriesResponse(total, recette, cotisation, penalite, maintenance, document);
     }
 
     // {id} contraint aux chiffres : évite qu'un sous-chemin littéral (ex. /page)

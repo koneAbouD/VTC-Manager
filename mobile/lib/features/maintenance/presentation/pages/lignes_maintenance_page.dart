@@ -12,6 +12,7 @@ import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'maintenance_detail_page.dart';
 import 'maintenance_form_page.dart';
+import '../../../../core/widgets/long_press_info_bubble.dart';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -292,6 +293,15 @@ class _LignesMaintenancePageState
     final state = ref.watch(maintenancesListeProvider);
     final filtered = _filtrerRecherche(state.items);
 
+    // Montant (coût) par statut sur les items filtrés (date + recherche), null = total.
+    double sommeCout(bool Function(Maintenance) test) =>
+        filtered.where(test).fold(0.0, (s, m) => s + (m.cout ?? 0));
+    final montantsStatut = <String?, double>{
+      null: sommeCout((_) => true),
+      for (final s in _statuts)
+        s: sommeCout((m) => (m.statut ?? 'PLANIFIEE') == s),
+    };
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -390,6 +400,8 @@ class _LignesMaintenancePageState
                               statuts: _statuts,
                               onTunePressed:    _showFiltreAvance,
                               hasActiveFilter:  _vehiculeFiltre != null,
+                              montantsStatut:   montantsStatut,
+                              money:            money,
                             ),
                           ),
                           if (filtered.isEmpty)
@@ -597,6 +609,8 @@ class _SearchAndStatutBar extends StatefulWidget {
   final List<String> statuts;
   final VoidCallback? onTunePressed;
   final bool hasActiveFilter;
+  final Map<String?, double> montantsStatut;
+  final NumberFormat money;
 
   const _SearchAndStatutBar({
     required this.controller,
@@ -606,6 +620,8 @@ class _SearchAndStatutBar extends StatefulWidget {
     required this.statuts,
     this.onTunePressed,
     this.hasActiveFilter = false,
+    required this.montantsStatut,
+    required this.money,
   });
 
   @override
@@ -681,12 +697,14 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
               selected: widget.statutSelectionne == null,
               color:    Colors.grey.shade600,
               onTap:    () => widget.onStatutChanged(null),
+              infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
             ),
             ...widget.statuts.map((s) => _StatutChip(
                   label:    _labelStatut(s),
                   selected: widget.statutSelectionne == s,
                   color:    _couleurStatut(s),
                   onTap:    () => widget.onStatutChanged(s),
+                  infoText: widget.money.format(widget.montantsStatut[s] ?? 0),
                 )),
           ],
         ),
@@ -715,32 +733,43 @@ class _StatutChip extends StatelessWidget {
   final bool selected;
   final Color color;
   final VoidCallback onTap;
+
+  /// Montant à afficher dans l'info-bulle au long-press (montant du statut).
+  final String? infoText;
+
   const _StatutChip({
     required this.label,
     required this.selected,
     required this.color,
     required this.onTap,
+    this.infoText,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color:  selected ? color : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: selected ? color : Colors.grey.shade300),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: selected ? Colors.white : Colors.grey.shade600)),
+    final chip = Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: selected ? color : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: selected ? color : Colors.grey.shade300),
       ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: selected ? Colors.white : Colors.grey.shade600)),
+    );
+
+    if (infoText == null) {
+      return GestureDetector(onTap: onTap, child: chip);
+    }
+    return LongPressInfoBubble(
+      onTap: onTap,
+      infoText: infoText!,
+      color: color,
+      child: chip,
     );
   }
 }

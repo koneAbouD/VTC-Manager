@@ -18,6 +18,14 @@ import 'api_config.dart';
 ///    via un timer tant que l'app est ouverte/au premier plan).
 ///  • Émettre [onSessionExpired] quand le refresh token est invalide/expiré
 ///    afin que la couche présentation déconnecte l'utilisateur.
+enum LockReason {
+  /// Aucune interaction pendant [SessionManager._inactivityTimeout].
+  inactivite,
+
+  /// Retour au premier plan après un séjour prolongé en arrière-plan.
+  arrierePlan,
+}
+
 class SessionManager with WidgetsBindingObserver {
   SessionManager._();
   static final SessionManager instance = SessionManager._();
@@ -33,14 +41,16 @@ class SessionManager with WidgetsBindingObserver {
   static const _minLeadTime = Duration(seconds: 30);
   static const _minTimer = Duration(seconds: 5);
 
-  /// Durée d'inactivité (premier plan) au-delà de laquelle l'utilisateur est
-  /// déconnecté automatiquement.
+  /// Durée d'inactivité (premier plan) au-delà de laquelle la session est
+  /// remise sous clé (code d'accès) ou fermée (à défaut de code).
   static const _inactivityTimeout = Duration(minutes: 15);
+
+  /// Tolérance sur un aller-retour en arrière-plan : consulter une notification
+  /// ou une pièce jointe ne doit pas redemander le code.
+  static const _backgroundGrace = Duration(seconds: 60);
 
   static const _msgSessionExpiree =
       'Votre session a expiré. Veuillez vous reconnecter.';
-  static const _msgInactivite =
-      'Vous avez été déconnecté pour inactivité.';
 
   /// Verrou : mutualise un refresh en cours entre tous les appelants.
   Completer<bool>? _refreshing;
@@ -48,12 +58,27 @@ class SessionManager with WidgetsBindingObserver {
   Timer? _inactivityTimer;
   bool _started = false;
 
+  /// Horodatage du passage en arrière-plan, pour mesurer le délai de grâce.
+  DateTime? _backgroundedAt;
+
   final StreamController<String> _expiredCtrl =
       StreamController<String>.broadcast();
+  final StreamController<LockReason> _lockCtrl =
+      StreamController<LockReason>.broadcast();
 
-  /// Émis (une fois) quand la session est perdue (refresh impossible ou
-  /// inactivité). La valeur est le message à présenter à l'utilisateur.
+  /// Émis (une fois) quand la session est perdue côté serveur (refresh
+  /// impossible). La valeur est le message à présenter à l'utilisateur.
   Stream<String> get onSessionExpired => _expiredCtrl.stream;
+
+  /// Émis quand la session doit être remise sous clé. La couche présentation
+  /// décide : verrouillage par code si l'appareil en a un, déconnexion sinon.
+  /// Rien n'est purgé ici, pour ne pas détruire un refresh token encore utile
+  /// au déverrouillage.
+  Stream<LockReason> get onLockRequested => _lockCtrl.stream;
+
+  /// Appelé après chaque renouvellement réussi des tokens, avec le refresh
+  /// token neuf, afin que le code d'accès rechiffre son coffre.
+  void Function(String refreshToken)? onTokensRenewed;
 
   /// Permet l'injection d'un client HTTP en test.
   @visibleForTesting
@@ -97,16 +122,26 @@ class SessionManager with WidgetsBindingObserver {
     _inactivityTimer = Timer(_inactivityTimeout, _onInactivityTimeout);
   }
 
-  Future<void> _onInactivityTimeout() async {
-    // Inactivité prolongée au premier plan → déconnexion.
-    await _storage.clearTokens();
-    _emitExpired(_msgInactivite);
+  void _onInactivityTimeout() {
+    // Inactivité prolongée au premier plan → la session repasse sous clé.
+    stop();
+    _emitLock(LockReason.inactivite);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        final backgroundedAt = _backgroundedAt;
+        _backgroundedAt = null;
+        if (backgroundedAt != null &&
+            DateTime.now().difference(backgroundedAt) > _backgroundGrace) {
+          // Absence prolongée : inutile de rafraîchir, la session doit d'abord
+          // être rouverte par l'utilisateur.
+          stop();
+          _emitLock(LockReason.arrierePlan);
+          return;
+        }
         // Retour au premier plan : refresh FORCÉ systématique (même si le token
         // n'est pas proche d'expirer) + réarmement du compteur d'inactivité.
         unawaited(refresh());
@@ -114,12 +149,16 @@ class SessionManager with WidgetsBindingObserver {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
-        // Arrière-plan : on suspend les timers (pas de travail en fond).
+        // Arrière-plan : on suspend les timers (pas de travail en fond) et on
+        // note l'heure pour mesurer la durée de l'absence au retour.
+        _backgroundedAt ??= DateTime.now();
         _proactiveTimer?.cancel();
         _inactivityTimer?.cancel();
       case AppLifecycleState.detached:
-        // Fermeture de l'app : on purge les tokens (reconnexion au prochain
-        // lancement). Note : non garanti si l'OS tue brutalement le process.
+        // Fermeture de l'app : on purge les tokens **en clair**. Avec un code
+        // d'accès, le coffre chiffré subsiste et rouvrira la session au
+        // prochain lancement ; sans code, il faudra se reconnecter.
+        // Note : non garanti si l'OS tue brutalement le process.
         _proactiveTimer?.cancel();
         _inactivityTimer?.cancel();
         unawaited(_storage.clearTokens());
@@ -203,6 +242,9 @@ class SessionManager with WidgetsBindingObserver {
               refreshToken: newRefresh,
               expiresInSeconds: expiresIn,
             );
+            if (newRefresh != null && newRefresh.isNotEmpty) {
+              onTokensRenewed?.call(newRefresh);
+            }
             _scheduleProactiveRefresh();
             return true;
           }
@@ -227,5 +269,9 @@ class SessionManager with WidgetsBindingObserver {
   void _emitExpired(String message) {
     stop();
     if (!_expiredCtrl.isClosed) _expiredCtrl.add(message);
+  }
+
+  void _emitLock(LockReason reason) {
+    if (!_lockCtrl.isClosed) _lockCtrl.add(reason);
   }
 }

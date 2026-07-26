@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/exception.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../auth/presentation/pages/pin_settings_page.dart';
 import '../../../auth/presentation/pages/set_password_page.dart';
 import '../../../auth/presentation/providers/auth_controller.dart';
 import '../../../contravention/presentation/pages/infractions_page.dart';
@@ -42,6 +43,8 @@ class HomePage extends ConsumerWidget {
               switch (value) {
                 case 'mot-de-passe':
                   _push(context, const SetPasswordPage());
+                case 'code-acces':
+                  _push(context, const PinSettingsPage());
                 case 'logout':
                   ref.read(authControllerProvider.notifier).logout();
               }
@@ -52,6 +55,14 @@ class HomePage extends ConsumerWidget {
                 child: ListTile(
                   leading: Icon(Icons.password_rounded),
                   title: Text('Définir un mot de passe'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'code-acces',
+                child: ListTile(
+                  leading: Icon(Icons.lock_outline_rounded),
+                  title: Text('Code d\'accès'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),

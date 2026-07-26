@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/operation_financiere_remote_datasource.dart';
+import '../../domain/entities/montants_categories.dart';
 import '../../domain/entities/solde_periode.dart';
 import '../../data/repositories_impl/operation_financiere_repository_impl.dart';
 import '../../domain/repositories/operation_financiere_repository.dart';
@@ -149,3 +150,38 @@ final soldePeriodeProvider = FutureProvider.autoDispose
       .watch(_opDatasourceProvider)
       .getSolde(debut: plage.debut, fin: plage.fin);
 });
+
+// ── Montants par catégorie (info-bulles des chips de la page Opérations) ─────
+// Chargé impérativement avec les mêmes filtres que la liste (hors catégorie),
+// pour que chaque chip affiche toujours son montant même filtre catégorie actif.
+
+class MontantsCategoriesNotifier extends StateNotifier<MontantsCategories> {
+  final OperationFinanciereRemoteDatasource _ds;
+  MontantsCategoriesNotifier(this._ds) : super(MontantsCategories.zero);
+
+  Future<void> charger({
+    String? typeOperation,
+    String? debut,
+    String? fin,
+    int? vehiculeId,
+    int? chauffeurId,
+    String? recherche,
+  }) async {
+    try {
+      state = await _ds.getMontantsCategories(
+        typeOperation: typeOperation,
+        debut: debut,
+        fin: fin,
+        vehiculeId: vehiculeId,
+        chauffeurId: chauffeurId,
+        recherche: recherche,
+      );
+    } catch (_) {
+      // Échec réseau : on conserve la dernière valeur connue (repli UI).
+    }
+  }
+}
+
+final montantsCategoriesProvider =
+    StateNotifierProvider<MontantsCategoriesNotifier, MontantsCategories>(
+        (ref) => MontantsCategoriesNotifier(ref.watch(_opDatasourceProvider)));

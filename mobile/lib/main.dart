@@ -6,6 +6,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'core/network/session_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
+import 'features/auth/presentation/pages/pin_lock_page.dart';
+import 'features/auth/presentation/pages/pin_setup_page.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/providers/auth_state.dart';
 import 'screens/home_screen.dart';
@@ -32,11 +34,11 @@ class VtcManagerApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
 
-    // Déconnexion (volontaire ou subie) : revenir à la racine en vidant la pile
-    // de navigation. On n'affiche PAS d'alerte d'expiration de session : la
-    // redirection vers la page de connexion suffit.
+    // Déconnexion (volontaire ou subie) ou verrouillage par code : revenir à la
+    // racine en vidant la pile de navigation. On n'affiche PAS d'alerte
+    // d'expiration de session : la redirection vers la page d'accès suffit.
     ref.listen<AuthState>(authNotifierProvider, (prev, next) {
-      if (next is AuthUnauthenticated) {
+      if (next is AuthUnauthenticated || next is AuthLocked) {
         // Après le frame courant (le home est déjà devenu LoginPage) : on retire
         // tous les écrans empilés pour révéler la page de connexion aussitôt.
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -44,8 +46,6 @@ class VtcManagerApp extends ConsumerWidget {
         });
       }
     });
-
-    final isAuthenticated = authState is AuthAuthenticated;
 
     // Capte les interactions utilisateur (sans les intercepter) pour réarmer
     // le compteur d'inactivité du SessionManager.
@@ -68,9 +68,14 @@ class VtcManagerApp extends ConsumerWidget {
       ],
       locale: const Locale('fr', 'FR'),
       theme: AppTheme.light,
-        home: authState is AuthInitial
-            ? const _SplashScreen()
-            : (isAuthenticated ? const HomeScreen() : const LoginPage()),
+        home: switch (authState) {
+          AuthInitial() => const _SplashScreen(),
+          AuthAuthenticated() => const HomeScreen(),
+          AuthLocked() => const PinLockPage(),
+          AuthPinSetup(:final displayName) =>
+            PinSetupPage(displayName: displayName),
+          _ => const LoginPage(),
+        },
       ),
     );
   }

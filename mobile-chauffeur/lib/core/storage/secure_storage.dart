@@ -40,6 +40,16 @@ class SecureStorage {
     }
   }
 
+  /// Réinstalle le seul refresh token, sans toucher à l'access token.
+  ///
+  /// Utilisé au déverrouillage par code : le token sort du coffre chiffré et
+  /// redevient exploitable par [SessionManager] le temps de la session.
+  Future<void> saveRefreshToken(String refreshToken) =>
+      _storage.write(key: _kRefreshToken, value: refreshToken);
+
+  /// Efface les tokens **en clair**. Le coffre du code d'accès, qui vit sous
+  /// d'autres clés, n'est pas concerné : c'est lui qui permettra de rouvrir la
+  /// session au prochain lancement.
   Future<void> clearTokens() async {
     await _storage.delete(key: _kAccessToken);
     await _storage.delete(key: _kRefreshToken);

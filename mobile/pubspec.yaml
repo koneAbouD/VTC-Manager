@@ -26,6 +26,10 @@ dependencies:
   # Auth (stockage sécurisé des tokens)
   flutter_secure_storage: ^9.2.2
 
+  # Code d'accès local (verrou d'application), partagé avec l'app chauffeur
+  tmk_pin:
+    path: ../packages/tmk_pin
+
   # Cartes
   google_maps_flutter: ^2.6.1
   geolocator: ^12.0.0

@@ -1,0 +1,23 @@
+name: tmk_pin
+description: "Code d'accès local (verrou d'application) partagé par les applications TMK : dérivation de clé, chiffrement du refresh token, pavé numérique."
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # PBKDF2-HMAC-SHA256 (dérivation de clé) + AES-GCM (chiffrement authentifié).
+  cryptography: ^2.7.0
+
+  # Persistance du sel, du coffre chiffré et du compteur de tentatives.
+  flutter_secure_storage: ^9.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0

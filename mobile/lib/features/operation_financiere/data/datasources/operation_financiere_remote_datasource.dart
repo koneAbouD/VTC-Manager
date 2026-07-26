@@ -1,6 +1,7 @@
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/page_result.dart';
+import '../../domain/entities/montants_categories.dart';
 import '../../domain/entities/solde_periode.dart';
 import '../models/operation_financiere_model.dart';
 
@@ -82,6 +83,33 @@ class OperationFinanciereRemoteDatasource {
       throw const ApiException(500, 'Format de réponse inattendu');
     }
     return SoldePeriode.fromJson(data);
+  }
+
+  /// Montant par catégorie (buckets UI) pour les filtres courants hors filtre
+  /// catégorie, via `GET /operations-financieres/montants-categories`.
+  Future<MontantsCategories> getMontantsCategories({
+    String? typeOperation,
+    String? debut,
+    String? fin,
+    int? vehiculeId,
+    int? chauffeurId,
+    String? recherche,
+  }) async {
+    final query = <String, String>{
+      if (typeOperation != null) 'typeOperation': typeOperation,
+      if (debut != null) 'debut': debut,
+      if (fin != null) 'fin': fin,
+      if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
+      if (chauffeurId != null) 'chauffeurId': '$chauffeurId',
+      if (recherche != null && recherche.isNotEmpty) 'recherche': recherche,
+    };
+    final data = await _client.get(
+        '/operations-financieres/montants-categories',
+        query: query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return MontantsCategories.fromJson(data);
   }
 
   Future<OperationFinanciereModel> getById(int id) async {

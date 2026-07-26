@@ -29,7 +29,10 @@ class ParametrageHubPage extends ConsumerWidget {
           onRetry: () => ref.invalidate(catalogueProvider),
         ),
         data: (referentiels) => ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          // Padding bas incluant l'inset de la barre de navigation Android pour
+          // que la dernière carte ne passe pas sous la barre système.
+          padding: EdgeInsets.fromLTRB(
+              16, 16, 16, 32 + MediaQuery.of(context).padding.bottom),
           // Index 0 = carte fixe « Paramètres généraux » (réglages globaux) ;
           // le reste = référentiels dynamiques du méta-catalogue.
           itemCount: referentiels.length + 1,

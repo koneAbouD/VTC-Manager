@@ -362,10 +362,13 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-          child: _kpiBar(kpi),
-        ),
+        // Onglet Contraventions : plus de carte KPI (« Total impayé » /
+        // « À rattacher »). L'onglet Pénalités conserve la sienne.
+        if (!_isEtat)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            child: _kpiBar(kpi),
+          ),
       ],
     );
 

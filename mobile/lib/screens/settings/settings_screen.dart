@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/auth/presentation/pages/pin_settings_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import '../../features/vehicule/presentation/providers/referentiel_provider.dart';
@@ -31,6 +32,13 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.person_outline,
                 label: 'Mon profil',
                 onTap: () {},
+              ),
+              _MenuItem(
+                icon: Icons.lock_outline_rounded,
+                label: 'Code d\'accès',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PinSettingsPage()),
+                ),
               ),
               _MenuItem(
                 icon: Icons.notifications_outlined,

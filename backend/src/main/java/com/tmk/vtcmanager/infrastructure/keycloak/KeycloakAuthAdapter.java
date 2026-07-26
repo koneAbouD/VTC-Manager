@@ -23,6 +23,19 @@ import java.util.Map;
 @Component
 public class KeycloakAuthAdapter implements KeycloakAuthPort {
 
+    /**
+     * Demandé à l'émission des tokens : la session devient « offline », donc le
+     * refresh token survit aux timeouts SSO du realm (30 min d'inactivité,
+     * 10 h de durée de vie) et ne dépend plus que de
+     * {@code offlineSessionIdleTimeout} (30 jours glissants).
+     * <p>
+     * Indispensable au code d'accès des applications mobiles : sans lui, le
+     * déverrouillage par code échouerait dès le lendemain, faute de refresh
+     * token encore valide. Le {@code /logout} révoque la session offline comme
+     * une session classique — la déconnexion reste immédiate et complète.
+     */
+    private static final String SCOPE_OFFLINE = "offline_access";
+
     private final RestTemplate restTemplate;
     private final String tokenUrl;
     private final String clientId;
@@ -54,6 +67,7 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
         form.add("client_secret", clientSecret);
         form.add("username", username);
         form.add("password", password);
+        form.add("scope", SCOPE_OFFLINE);
 
         return exchangeToken(form, false);
     }
@@ -71,6 +85,7 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
         form.add("requested_subject", userId);
         form.add("audience", clientId);
         form.add("requested_token_type", "urn:ietf:params:oauth:token-type:refresh_token");
+        form.add("scope", SCOPE_OFFLINE);
 
         return exchangeToken(form, false);
     }
@@ -107,6 +122,12 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
         }
     }
 
+    /** Durée en secondes lue dans la réponse Keycloak ({@code null} si absente). */
+    private static Long dureeSecondes(Map<String, Object> body, String cle) {
+        Object valeur = body.get(cle);
+        return valeur instanceof Number nombre ? nombre.longValue() : null;
+    }
+
     @SuppressWarnings("unchecked")
     private TokenResponse exchangeToken(MultiValueMap<String, String> form, boolean isRefresh) {
         HttpHeaders headers = new HttpHeaders();
@@ -124,8 +145,11 @@ public class KeycloakAuthAdapter implements KeycloakAuthPort {
             return TokenResponse.builder()
                     .accessToken((String) body.get("access_token"))
                     .refreshToken((String) body.get("refresh_token"))
-                    .expiresIn(((Number) body.get("expires_in")).longValue())
-                    .refreshExpiresIn(((Number) body.get("refresh_expires_in")).longValue())
+                    .expiresIn(dureeSecondes(body, "expires_in"))
+                    // Session offline : Keycloak renvoie 0 (« n'expire pas tant
+                    // qu'il est utilisé »), voire omet le champ. On ne caste donc
+                    // jamais en aveugle.
+                    .refreshExpiresIn(dureeSecondes(body, "refresh_expires_in"))
                     .tokenType((String) body.get("token_type"))
                     .build();
 

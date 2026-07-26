@@ -14,6 +14,7 @@ import '../../../../features/chauffeur/domain/entities/chauffeur.dart';
 import '../../../../features/vehicule/domain/entities/vehicule.dart';
 import 'ligne_recette_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../core/widgets/long_press_info_bubble.dart';
 
 // ── Constantes partagées ───────────────────────────────────────────────────
 
@@ -344,6 +345,15 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     final state = ref.watch(lignesRecetteListeProvider);
     final filtered = _filtrerRecherche(state.items);
 
+    // Montant (attendu) par statut sur les items filtrés (date + recherche), null = total.
+    double sommeRec(bool Function(LigneRecette) test) => filtered
+        .where(test)
+        .fold(0.0, (s, l) => s + (l.montantAttendu ?? l.montantEncaisse));
+    final montantsStatut = <StatutLigneRecette?, double>{
+      null: sommeRec((_) => true),
+      for (final s in StatutLigneRecette.values) s: sommeRec((l) => l.statut == s),
+    };
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
       body: SafeArea(
@@ -441,6 +451,8 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                               },
                               onTunePressed:   _showFiltreAvance,
                               hasActiveFilter: _vehiculeFiltre != null || _chauffeurFiltre != null,
+                              montantsStatut: montantsStatut,
+                              money: money,
                             ),
                           ),
 
@@ -659,6 +671,8 @@ class _SearchAndStatutBar extends StatefulWidget {
   final void Function(StatutLigneRecette?) onStatutChanged;
   final VoidCallback? onTunePressed;
   final bool hasActiveFilter;
+  final Map<StatutLigneRecette?, double> montantsStatut;
+  final NumberFormat money;
 
   const _SearchAndStatutBar({
     required this.controller,
@@ -667,6 +681,8 @@ class _SearchAndStatutBar extends StatefulWidget {
     required this.onStatutChanged,
     this.onTunePressed,
     this.hasActiveFilter = false,
+    required this.montantsStatut,
+    required this.money,
   });
 
   @override
@@ -747,12 +763,15 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
                 selected: widget.statutSelectionne == null,
                 color: Colors.grey.shade600,
                 onTap: () => widget.onStatutChanged(null),
+                infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
               ),
               ...StatutLigneRecette.values.map((s) => _StatutChip(
                     label: s.label,
                     selected: widget.statutSelectionne == s,
                     color: _couleurStatut(s),
                     onTap: () => widget.onStatutChanged(s),
+                    infoText:
+                        widget.money.format(widget.montantsStatut[s] ?? 0),
                   )),
             ],
           ),
@@ -776,36 +795,47 @@ class _StatutChip extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
+  /// Montant à afficher dans l'info-bulle au long-press (montant du statut).
+  final String? infoText;
+
   const _StatutChip({
     required this.label,
     required this.selected,
     required this.color,
     required this.onTap,
+    this.infoText,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? color : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? color : Colors.grey.shade300,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: selected ? Colors.white : Colors.grey.shade600,
-          ),
+    final chip = Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: selected ? color : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: selected ? color : Colors.grey.shade300,
         ),
       ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: selected ? Colors.white : Colors.grey.shade600,
+        ),
+      ),
+    );
+
+    if (infoText == null) {
+      return GestureDetector(onTap: onTap, child: chip);
+    }
+    return LongPressInfoBubble(
+      onTap: onTap,
+      infoText: infoText!,
+      color: color,
+      child: chip,
     );
   }
 }

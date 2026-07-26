@@ -46,6 +46,10 @@ dependencies:
   # Stockage sécurisé des tokens
   flutter_secure_storage: ^9.2.2
 
+  # Code d'accès local (verrou d'application), partagé avec l'app gestionnaire
+  tmk_pin:
+    path: ../packages/tmk_pin
+
   # Format / dates (FCFA, locale fr)
   intl: ^0.20.2
 

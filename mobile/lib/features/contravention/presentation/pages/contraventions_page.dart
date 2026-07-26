@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../core/widgets/long_press_info_bubble.dart';
 import '../../domain/entities/contravention.dart';
 import '../providers/contravention_provider.dart';
 import '../widgets/contravention_card.dart';
@@ -583,10 +584,41 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
     }).toList();
   }
 
+  /// Filtre recherche seul (sans le statut) — base pour les montants par statut.
+  List<Contravention> _filtrerRechercheSeule(List<Contravention> all) {
+    final query = (widget.externalSearch ?? _recherche).trim().toLowerCase();
+    if (query.isEmpty) return all;
+    return all.where((c) {
+      final hay = [
+        c.numeroContravention ?? '',
+        c.vehiculeNom ?? '',
+        c.chauffeurNom ?? '',
+        c.typeInfraction ?? '',
+        c.codeInfraction ?? '',
+        c.lieu ?? '',
+      ].join(' ').toLowerCase();
+      return hay.contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(contraventionsListeProvider);
     final items = _filtrer(state.items);
+
+    // Montant par statut sur les items filtrés par date (serveur) + recherche,
+    // hors filtre statut, pour que chaque chip affiche son propre total.
+    final baseStatut = _filtrerRechercheSeule(state.items);
+    double sommeCtv(bool Function(Contravention) t) =>
+        baseStatut.where(t).fold(0.0, (s, c) => s + c.montant);
+    final montantsStatut = <String?, double>{
+      null: sommeCtv((_) => true),
+      'ATTENTE': sommeCtv((c) => !c.isRegle && !c.isPartial),
+      'PARTIEL': sommeCtv((c) => c.isPartial),
+      'PAYE': sommeCtv((c) => c.isPaid),
+      'REVERSE': sommeCtv((c) => c.isReverse),
+      'ANNULE': sommeCtv((c) => c.isCancelled),
+    };
 
     // Éligibles au paiement en lot = non soldées et identifiables.
     final selectables =
@@ -629,6 +661,7 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
           child: _StatutChips(
             selected: _statutFiltre,
             onChanged: (k) => setState(() => _statutFiltre = k),
+            montantsStatut: montantsStatut,
           ),
         ),
       ),
@@ -937,8 +970,13 @@ class _PayingOverlay extends StatelessWidget {
 class _StatutChips extends StatelessWidget {
   final String? selected;
   final ValueChanged<String?> onChanged;
+  final Map<String?, double> montantsStatut;
 
-  const _StatutChips({required this.selected, required this.onChanged});
+  const _StatutChips({
+    required this.selected,
+    required this.onChanged,
+    required this.montantsStatut,
+  });
 
   // Couleurs alignées sur les badges de statut de ContraventionCard.
   static const _ambre = Color(0xFF854F0B);
@@ -966,25 +1004,27 @@ class _StatutChips extends StatelessWidget {
         itemBuilder: (_, i) {
           final (key, label, color) = _options[i];
           final sel = selected == key;
-          return GestureDetector(
-            onTap: () => onChanged(key),
-            child: Container(
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: sel ? color.withValues(alpha: 0.12) : AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color:
-                        sel ? color.withValues(alpha: 0.5) : AppColors.border),
-              ),
-              child: Text(label,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: sel ? color : AppColors.label,
-                    fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                  )),
+          final chip = Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: sel ? color.withValues(alpha: 0.12) : AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: sel ? color.withValues(alpha: 0.5) : AppColors.border),
             ),
+            child: Text(label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: sel ? color : AppColors.label,
+                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                )),
+          );
+          return LongPressInfoBubble(
+            onTap: () => onChanged(key),
+            color: color,
+            infoText: '${_money.format(montantsStatut[key] ?? 0)} XOF',
+            child: chip,
           );
         },
       ),

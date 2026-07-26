@@ -7,9 +7,11 @@ import 'package:intl/intl.dart';
 import '../../../chauffeur/domain/entities/chauffeur.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
 import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
+import '../../../../core/widgets/long_press_info_bubble.dart';
 import '../../domain/entities/operation_financiere.dart';
 import '../../domain/enums/statut_operation.dart';
 import '../../domain/enums/type_operation.dart';
+import '../providers/operation_financiere_provider.dart';
 import '../providers/operations_liste_provider.dart';
 import 'operation_financiere_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
@@ -131,15 +133,28 @@ class _OperationsFinancieresPageState
 
   void _loadWithFilters() {
     final (debut, fin) = _plageActive();
+    final debutStr = debut != null ? DateFormat('yyyy-MM-dd').format(debut) : null;
+    final finStr = fin != null ? DateFormat('yyyy-MM-dd').format(fin) : null;
+    final recherche = _recherche.isEmpty ? null : _recherche;
     ref.read(operationsListeProvider.notifier).load(
           typeOperation: ref.read(operationsTypeFiltreProvider),
-          debut: debut != null ? DateFormat('yyyy-MM-dd').format(debut) : null,
-          fin: fin != null ? DateFormat('yyyy-MM-dd').format(fin) : null,
+          debut: debutStr,
+          fin: finStr,
           categorieCode: _categorieFiltre?.categorieCodeParam,
           sousCategorieLibelle: _categorieFiltre?.sousCategorieLibelleParam,
           vehiculeId: _vehiculeFiltre?.id,
           chauffeurId: _chauffeurFiltre?.id,
-          recherche: _recherche.isEmpty ? null : _recherche,
+          recherche: recherche,
+        );
+    // Montants par catégorie : mêmes filtres SANS le filtre catégorie, pour que
+    // chaque chip garde son propre montant même quand une catégorie est active.
+    ref.read(montantsCategoriesProvider.notifier).charger(
+          typeOperation: ref.read(operationsTypeFiltreProvider),
+          debut: debutStr,
+          fin: finStr,
+          vehiculeId: _vehiculeFiltre?.id,
+          chauffeurId: _chauffeurFiltre?.id,
+          recherche: recherche,
         );
   }
 
@@ -337,6 +352,18 @@ class _OperationsFinancieresPageState
     final state = ref.watch(operationsListeProvider);
     final ops = state.items;
 
+    // Montant par catégorie calculé côté backend (mêmes filtres hors catégorie) :
+    // chaque chip affiche toujours son propre montant, même filtre catégorie actif.
+    final m = ref.watch(montantsCategoriesProvider);
+    final montantsCategorie = <_CategorieFiltre?, double>{
+      null: m.total,
+      _CategorieFiltre.recette: m.recette,
+      _CategorieFiltre.cotisation: m.cotisation,
+      _CategorieFiltre.penalite: m.penalite,
+      _CategorieFiltre.maintenance: m.maintenance,
+      _CategorieFiltre.document: m.document,
+    };
+
     // Filtre par type partagé : recharge la liste quand il change (ex. déclenché
     // par le « Tout afficher » du Rapport financier alors que cet onglet est déjà
     // monté). Le premier chargement, lui, lit la valeur dans _loadWithFilters.
@@ -362,9 +389,12 @@ class _OperationsFinancieresPageState
               child: state.initialLoading && ops.isEmpty
                   ? const Center(child: CircularProgressIndicator())
                   : RefreshIndicator(
-                      onRefresh: () => ref
-                          .read(operationsListeProvider.notifier)
-                          .refresh(),
+                      onRefresh: () async {
+                        await ref
+                            .read(operationsListeProvider.notifier)
+                            .refresh();
+                        _loadWithFilters(); // resynchronise aussi les montants
+                      },
                       child: CustomScrollView(
                         controller: _scrollController,
                         slivers: [
@@ -410,6 +440,8 @@ class _OperationsFinancieresPageState
                               onClearType: () => ref
                                   .read(operationsTypeFiltreProvider.notifier)
                                   .state = null,
+                              montantsCategorie: montantsCategorie,
+                              money: money,
                             ),
                           ),
 
@@ -859,12 +891,16 @@ class _CategorieChipBar extends StatelessWidget {
   /// Filtre par type actif ('REVENU'/'DEPENSE'), affiché en fin de rangée.
   final String? typeFiltre;
   final VoidCallback? onClearType;
+  final Map<_CategorieFiltre?, double> montantsCategorie;
+  final NumberFormat money;
 
   const _CategorieChipBar({
     required this.selected,
     required this.onChanged,
     this.typeFiltre,
     this.onClearType,
+    required this.montantsCategorie,
+    required this.money,
   });
 
   @override
@@ -880,12 +916,14 @@ class _CategorieChipBar extends StatelessWidget {
             selected: selected == null,
             color: Colors.grey.shade600,
             onTap: () => onChanged(null),
+            infoText: money.format(montantsCategorie[null] ?? 0),
           ),
           ..._CategorieFiltre.values.map((c) => _CategoryChip(
                 label: c.label,
                 selected: selected == c,
                 color: c.couleur,
                 onTap: () => onChanged(c),
+                infoText: money.format(montantsCategorie[c] ?? 0),
               )),
           // Chip du filtre type (Revenus/Dépenses) en fin de rangée : même
           // ligne que les catégories, atteignable par scroll sur petit écran.
@@ -912,35 +950,45 @@ class _CategoryChip extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
+  /// Montant à afficher dans l'info-bulle au long-press (montant de la catégorie).
+  final String? infoText;
+
   const _CategoryChip({
     required this.label,
     required this.selected,
     required this.color,
     required this.onTap,
+    this.infoText,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? color : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: selected ? color : Colors.grey.shade300),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: selected ? Colors.white : Colors.grey.shade600,
-          ),
+    final chip = Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: selected ? color : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: selected ? color : Colors.grey.shade300),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: selected ? Colors.white : Colors.grey.shade600,
         ),
       ),
+    );
+
+    if (infoText == null) {
+      return GestureDetector(onTap: onTap, child: chip);
+    }
+    return LongPressInfoBubble(
+      onTap: onTap,
+      infoText: infoText!,
+      color: color,
+      child: chip,
     );
   }
 }
