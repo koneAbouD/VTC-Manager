@@ -13,6 +13,7 @@ import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepos
 import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +52,7 @@ public class ImputerEcartCaisseUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final AuteurCourant auteurCourant;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public ClotureCaisse executer(Long clotureId, StatutImputationEcart decision, String motif) {
@@ -70,6 +72,7 @@ public class ImputerEcartCaisseUseCase {
 
         LocalDate date = LocalDate.now();
         periodeClotureeGuard.verifier(date);
+        caisseClotureeGuard.verifier(cloture.getCompteId(), date);
 
         boolean excedent = cloture.getEcart().compareTo(BigDecimal.ZERO) > 0;
         BigDecimal montant = cloture.getEcart().abs();

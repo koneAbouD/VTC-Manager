@@ -6,6 +6,8 @@ import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,7 @@ public class UpdateMaintenanceUseCase {
     private final MaintenanceRepository maintenanceRepository;
     private final CategorieOperationRepository categorieOperationRepository;
     private final VehiculeStatutEventPublisher statutEventPublisher;
+    private final PeriodeClotureeGuard periodeClotureeGuard;
 
     @Transactional
     public Maintenance execute(Long id, Maintenance data) {
@@ -24,6 +27,15 @@ public class UpdateMaintenanceUseCase {
 
         Maintenance existing = maintenanceRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Maintenance", id));
+
+        // Une intervention terminée a produit une dépense datée de son jour
+        // d'exécution : si cette période est close, ni le coût ni la date ne
+        // peuvent plus bouger sans faire mentir les états publiés.
+        if (existing.getStatut() == MaintenanceStatus.TERMINEE) {
+            periodeClotureeGuard.verifier(existing.getDateEffectuee());
+            periodeClotureeGuard.verifier(data.getDateEffectuee());
+        }
+
         existing.setType(data.getType());
         existing.setDatePrevue(data.getDatePrevue());
         existing.setDateEffectuee(data.getDateEffectuee());

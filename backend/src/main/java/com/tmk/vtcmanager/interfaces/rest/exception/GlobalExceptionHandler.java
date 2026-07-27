@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.interfaces.rest.exception;
 
 import com.tmk.vtcmanager.application.exception.AucunePenaliteAmendePendingException;
 import com.tmk.vtcmanager.application.exception.CaisseClotureeException;
+import com.tmk.vtcmanager.application.exception.EcritureFigeeException;
 import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedException;
 import com.tmk.vtcmanager.application.exception.ClotureCaisseDejaEffectueeException;
 import com.tmk.vtcmanager.application.exception.MotifEcartObligatoireException;
@@ -259,6 +260,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PeriodeNonCloturableException.class)
     public ResponseEntity<ApiError> handlePeriodeNonCloturable(PeriodeNonCloturableException ex, HttpServletRequest request) {
         return respond(HttpStatus.CONFLICT, "PERIODE_NON_CLOTURABLE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(EcritureFigeeException.class)
+    public ResponseEntity<ApiError> handleEcritureFigee(EcritureFigeeException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "ECRITURE_FIGEE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(CaisseClotureeException.class)

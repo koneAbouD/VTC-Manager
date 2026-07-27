@@ -25,6 +25,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,6 +68,7 @@ class ArreterCompteUseCaseTest {
     private CompteTresorerieResolver compteTresorerieResolver;
     private PeriodeClotureeGuard periodeClotureeGuard;
     private SequenceReferenceService sequenceReferenceService;
+    private CaisseClotureeGuard caisseClotureeGuard;
 
     private ArreterCompteUseCase useCase;
 
@@ -91,6 +93,8 @@ class ArreterCompteUseCaseTest {
         compteTresorerieResolver = mock(CompteTresorerieResolver.class);
         periodeClotureeGuard = mock(PeriodeClotureeGuard.class);
         sequenceReferenceService = mock(SequenceReferenceService.class);
+        // Aucune caisse clôturée dans ces scénarios : le garde-fou laisse passer.
+        caisseClotureeGuard = mock(CaisseClotureeGuard.class);
         // Numérotation déterministe : les assertions portent sur les montants,
         // pas sur la référence exacte.
         when(sequenceReferenceService.suivante(any(SequenceReferenceService.Journal.class)))
@@ -102,7 +106,7 @@ class ArreterCompteUseCaseTest {
                 ligneRecetteRepository, encaissementRepository, lignePenaliteRepository,
                 encaissementPenaliteRepository, contraventionRepository, operationFinanciereRepository,
                 categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard,
-                sequenceReferenceService);
+                sequenceReferenceService, caisseClotureeGuard);
 
         // Catégorie renvoyée avec le code demandé (pour assertions).
         when(categorieOperationRepository.findByCode(anyString()))

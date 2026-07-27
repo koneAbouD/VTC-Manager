@@ -756,12 +756,17 @@ class _DerniereOpTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Signe, couleur et flèche suivent l'effet réel sur la caisse, pas le type
+    // de l'écriture : une extourne garde le type de l'origine mais porte un
+    // montant opposé, donc une dépense annulée fait rentrer de l'argent.
     final isRevenu = op.typeOperation == TypeOperation.REVENU;
-    final color = isRevenu ? Colors.green : Colors.red;
-    // Seules les dépenses portent un signe : la couleur suffit à distinguer
-    // les revenus.
-    final sign = isRevenu ? '' : '-';
-    final isAnnulee = op.statut == StatutOperation.ANNULEE;
+    final effetCaisse = isRevenu ? op.montant : -op.montant;
+    final entreEnCaisse = effetCaisse >= 0;
+    final color = entreEnCaisse ? Colors.green : Colors.red;
+    // Une sortie porte son signe ; une entrée s'en passe, sauf sur une extourne
+    // où le « + » dit clairement que l'argent revient.
+    final sign = entreEnCaisse ? (op.estUneExtourne ? '+' : '') : '-';
+    final isAnnulee = op.statut == StatutOperation.ANNULEE || op.estExtournee;
 
     // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
     // La date relative (recalculée à l'affichage) n'est ajoutée que pour les
@@ -799,7 +804,7 @@ class _DerniereOpTile extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isRevenu
+              entreEnCaisse
                   ? Icons.trending_up_rounded
                   : Icons.trending_down_rounded,
               color: color,
@@ -832,7 +837,7 @@ class _DerniereOpTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '$sign${money.format(op.montant)}',
+                      '$sign${money.format(effetCaisse.abs())}',
                       style: TextStyle(
                           // Montant en noir comme le libellé ; le sens de
                           // l'opération se lit sur la pastille d'icône et le

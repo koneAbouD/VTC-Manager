@@ -12,6 +12,7 @@ import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,7 @@ public class PayContraventionUseCase {
     private final CategorieOperationRepository categorieOperationRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final SequenceReferenceService sequenceReferenceService;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public Contravention execute(Long id, BigDecimal montant, ModePaiement modePaiement) {
@@ -48,6 +50,9 @@ public class PayContraventionUseCase {
 
     private void creerOperation(Contravention contravention, BigDecimal montant, ModePaiement modePaiement) {
         CategorieOperation categorie = categorieOperationRepository.findByCode(CODE_CATEGORIE).orElse(null);
+
+        caisseClotureeGuard.verifier(
+                compteTresorerieResolver.resoudre(null, modePaiement), LocalDate.now());
 
         OperationFinanciere operation = OperationFinanciere.builder()
                 .typeOperation(TypeOperation.REVENU)

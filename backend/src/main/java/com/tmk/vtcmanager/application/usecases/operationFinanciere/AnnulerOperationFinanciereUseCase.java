@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ public class AnnulerOperationFinanciereUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final AuteurCourant auteurCourant;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public OperationFinanciere execute(Long id, String motif) {
@@ -58,6 +60,9 @@ public class AnnulerOperationFinanciereUseCase {
         // ouverte : sinon la correction n'apparaîtrait dans aucun état.
         LocalDate dateExtourne = LocalDate.now();
         periodeClotureeGuard.verifier(dateExtourne);
+        // …et la caisse qu'elle mouvemente ne doit pas avoir déjà été comptée
+        // ce jour-là : sinon le procès-verbal de comptage deviendrait faux.
+        caisseClotureeGuard.verifier(origine.getCompteTresorerieId(), dateExtourne);
 
         String auteur = auteurCourant.nom();
         origine.setMotifAnnulation(motif);

@@ -30,6 +30,7 @@ import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepos
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,6 +71,7 @@ public class ArreterCompteUseCase {
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     /** Arrêté total : toutes les cotisations et créances de la période. */
     public ArreteCompte executer(PerimetreArrete perimetre, Long perimetreId,
@@ -245,6 +247,11 @@ public class ArreterCompteUseCase {
                                              LocalDate date, ModePaiement modePaiement, Long compteTresorerieId,
                                              String refArrete) {
         ModePaiement mode = modePaiement != null ? modePaiement : ModePaiement.ESPECES;
+        Long compteId = compteTresorerieResolver.resoudre(compteTresorerieId, mode);
+        // Seul ce versement sort de la caisse : c'est ici — et pas plus tôt —
+        // qu'on vérifie qu'elle n'a pas déjà été comptée à cette date.
+        caisseClotureeGuard.verifier(compteId, date);
+
         CategorieOperation categorie = categorieOperationRepository.findByCode(CAT_RESTITUTION).orElse(null);
         OperationFinanciere op = OperationFinanciere.builder()
                 .typeOperation(TypeOperation.DEPENSE)
@@ -253,7 +260,7 @@ public class ArreterCompteUseCase {
                 .vehicule(perimetre == PerimetreArrete.VEHICULE ? vehiculeRef(perimetreId) : null)
                 .montant(d.getNet())
                 .modePaiement(mode)
-                .compteTresorerieId(compteTresorerieResolver.resoudre(compteTresorerieId, mode))
+                .compteTresorerieId(compteId)
                 .dateOperation(date)
                 .dateReference(date)
                 .commentaire("Restitution cotisations " + refArrete + " - " + d.getChauffeurNom())

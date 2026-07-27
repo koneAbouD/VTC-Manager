@@ -55,10 +55,15 @@ class _DetailBody extends ConsumerWidget {
         NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
     final dateFmt = DateFormat('dd/MM/yyyy', 'fr_FR');
 
+    // Ce qui compte à l'œil, c'est le sens dans lequel l'argent bouge — pas le
+    // type de l'écriture. Une extourne conserve le type de l'origine mais porte
+    // un montant opposé : une dépense annulée fait donc rentrer de l'argent.
     final isRevenu = op.typeOperation == TypeOperation.REVENU;
+    final effetCaisse = isRevenu ? op.montant : -op.montant;
+    final entreEnCaisse = effetCaisse >= 0;
     final color =
-        isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
-    final sign = isRevenu ? '+' : '-';
+        entreEnCaisse ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+    final sign = entreEnCaisse ? '+' : '-';
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -74,7 +79,7 @@ class _DetailBody extends ConsumerWidget {
           child: Column(
             children: [
               Icon(
-                isRevenu
+                entreEnCaisse
                     ? Icons.trending_up_rounded
                     : Icons.trending_down_rounded,
                 color: color,
@@ -82,7 +87,7 @@ class _DetailBody extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '$sign${money.format(op.montant)}',
+                '$sign${money.format(effetCaisse.abs())}',
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.bold,

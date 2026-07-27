@@ -760,12 +760,17 @@ class _OpCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Le signe, la couleur et la flèche suivent l'effet réel sur la caisse, pas
+    // le type de l'écriture : une extourne garde le type de l'origine mais porte
+    // un montant opposé, donc une dépense annulée fait rentrer de l'argent.
     final isRevenu = op.typeOperation == TypeOperation.REVENU;
+    final effetCaisse = isRevenu ? op.montant : -op.montant;
+    final entreEnCaisse = effetCaisse >= 0;
     final amountColor =
-        isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
-    // Seules les dépenses portent un signe : la couleur suffit à distinguer
-    // les revenus.
-    final sign = isRevenu ? '' : '-';
+        entreEnCaisse ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+    // Une sortie porte son signe ; une entrée s'en passe, sauf sur une extourne
+    // où le « + » dit clairement que l'argent revient.
+    final sign = entreEnCaisse ? (op.estUneExtourne ? '+' : '') : '-';
     // Trois états à distinguer : l'ancien statut ANNULEE (écritures d'avant
     // l'extourne), une écriture contre-passée (barrée, elle reste au journal)
     // et la contre-passation elle-même (montant négatif).
@@ -810,7 +815,7 @@ class _OpCard extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isRevenu
+                entreEnCaisse
                     ? Icons.trending_up_rounded
                     : Icons.trending_down_rounded,
                 color: amountColor,
@@ -846,7 +851,7 @@ class _OpCard extends StatelessWidget {
                   _StatusBadge(label: 'Extournée', color: Colors.red.shade400),
                 const SizedBox(width: 8),
                 Text(
-                  '$sign${NumberFormat('#,##0', 'fr_FR').format(op.montant)} XOF',
+                  '$sign${NumberFormat('#,##0', 'fr_FR').format(effetCaisse.abs())} XOF',
                   style: TextStyle(
                     // Montant en noir comme le libellé ; le sens de
                     // l'opération se lit sur la pastille d'icône et le signe.

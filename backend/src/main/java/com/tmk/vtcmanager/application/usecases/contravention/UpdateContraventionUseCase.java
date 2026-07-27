@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.contravention.Contravention;
 import com.tmk.vtcmanager.application.domain.contravention.StatutRattachement;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UpdateContraventionUseCase {
 
     private final ContraventionRepository contraventionRepository;
+    private final PeriodeClotureeGuard periodeClotureeGuard;
 
     @Transactional
     public Contravention execute(Long id, Contravention data) {
@@ -21,6 +23,12 @@ public class UpdateContraventionUseCase {
         // changement manuel du lien effectué par l'exploitant.
         Long ancienChauffeurId = existing.getChauffeur() != null ? existing.getChauffeur().getId() : null;
         StatutRattachement ancienStatut = existing.getStatutRattachement();
+
+        // Une contravention réglée ou reversée a produit une écriture datée du
+        // paiement : période close, son montant ne bouge plus.
+        if (existing.getDatePaiement() != null) {
+            periodeClotureeGuard.verifier(existing.getDatePaiement());
+        }
 
         existing.setDateInfraction(data.getDateInfraction());
         existing.setTypeInfraction(data.getTypeInfraction());

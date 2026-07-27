@@ -18,6 +18,7 @@ import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRe
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +43,7 @@ public class CompleteMaintenanceUseCase {
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public Maintenance execute(Long id, BigDecimal cout, LocalDate dateEffectuee,
@@ -50,6 +52,10 @@ public class CompleteMaintenanceUseCase {
                 .orElseThrow(() -> ResourceNotFoundException.of("Maintenance", id));
 
         periodeClotureeGuard.verifier(dateEffectuee);
+        caisseClotureeGuard.verifier(
+                compteTresorerieResolver.resoudre(null,
+                        modePaiement != null ? modePaiement : ModePaiement.ESPECES),
+                dateEffectuee);
         maintenance.terminer(cout, dateEffectuee);
         Maintenance saved = maintenanceRepository.save(maintenance);
 

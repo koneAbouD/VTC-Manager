@@ -4,13 +4,22 @@ import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.services.ModificationEcritureGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Modification d'une écriture existante.
+ *
+ * <p>Ce qui reste modifiable dépend de l'état des livres : voir
+ * {@link ModificationEcritureGuard}. Pour corriger un montant figé, la voie est
+ * l'extourne puis la ressaisie — elle laisse une trace.
+ */
 @RequiredArgsConstructor
 public class UpdateOperationFinanciereUseCase {
 
     private final OperationFinanciereRepository operationRepository;
+    private final ModificationEcritureGuard modificationEcritureGuard;
 
     @Transactional
     public OperationFinanciere execute(Long id, OperationFinanciere data) {
@@ -20,6 +29,10 @@ public class UpdateOperationFinanciereUseCase {
         if (existing.getStatut() == StatutOperation.ANNULEE) {
             throw new IllegalStateException("Impossible de modifier une opération annulée.");
         }
+
+        // Période close, caisse comptée, écriture déjà extournée : le garde-fou
+        // dit ce qui est encore permis, en comparant l'avant et l'après.
+        modificationEcritureGuard.verifier(existing, data);
 
         existing.setTypeOperation(data.getTypeOperation());
         existing.setCategorie(data.getCategorie());
