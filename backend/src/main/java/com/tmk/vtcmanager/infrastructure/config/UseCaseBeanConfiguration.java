@@ -107,6 +107,7 @@ import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
 import com.tmk.vtcmanager.application.ports.persistence.SequenceReferenceRepository;
 import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import com.tmk.vtcmanager.application.services.ModificationEcritureGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
@@ -1408,8 +1409,18 @@ public class UseCaseBeanConfiguration {
 
     @Bean
     public GetCompteResultatUseCase getCompteResultatUseCase(
-            FinanceReportingRepository repo, EtatsClotureRepository etatsClotureRepository) {
-        return new GetCompteResultatUseCase(repo, etatsClotureRepository);
+            FinanceReportingRepository repo,
+            EtatsClotureRepository etatsClotureRepository,
+            GetProvisionCreancesUseCase getProvisionCreancesUseCase,
+            DotationProvisionService dotationProvisionService) {
+        return new GetCompteResultatUseCase(repo, etatsClotureRepository,
+                getProvisionCreancesUseCase, dotationProvisionService);
+    }
+
+    @Bean
+    public DotationProvisionService dotationProvisionService(
+            EtatsClotureRepository etatsClotureRepository) {
+        return new DotationProvisionService(etatsClotureRepository);
     }
 
     @Bean
@@ -1453,10 +1464,11 @@ public class UseCaseBeanConfiguration {
             FinanceReportingRepository reportingRepository,
             EtatsClotureRepository etatsClotureRepository,
             GetCompteResultatUseCase getCompteResultatUseCase,
-            GetProvisionCreancesUseCase getProvisionCreancesUseCase) {
+            GetProvisionCreancesUseCase getProvisionCreancesUseCase,
+            DotationProvisionService dotationProvisionService) {
         return new CloturerPeriodeUseCase(repo, clotureCaisseRepository, compteTresorerieRepository,
                 creanceRepository, reportingRepository, etatsClotureRepository,
-                getCompteResultatUseCase, getProvisionCreancesUseCase);
+                getCompteResultatUseCase, getProvisionCreancesUseCase, dotationProvisionService);
     }
 
     @Bean

@@ -103,7 +103,7 @@ public class FinanceController {
                 cr.getProduitsExploitation(), cr.getChargesVariables(),
                 cr.getMargeSurCoutsVariables(), cr.getChargesFixes(),
                 cr.getExcedentBrutExploitation(), cr.getAmortissements(),
-                cr.getResultatGestion(), cr.getPontCreances());
+                cr.getDotationProvisions(), cr.getResultatGestion(), cr.getPontCreances());
     }
 
     @GetMapping("/compte-resultat/par-vehicule")

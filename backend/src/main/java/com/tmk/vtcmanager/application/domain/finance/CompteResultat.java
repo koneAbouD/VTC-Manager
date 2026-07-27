@@ -32,7 +32,13 @@ public class CompteResultat {
     private BigDecimal excedentBrutExploitation;
     /** Dotation linéaire des véhicules amortissables sur la période. */
     private BigDecimal amortissements;
-    /** excedentBrutExploitation − amortissements. */
+    /**
+     * Variation du stock de provision sur créances : la perte attendue sur les
+     * impayés du mois. Négative quand les créances rentrent — c'est une reprise,
+     * elle améliore le résultat.
+     */
+    private BigDecimal dotationProvisions;
+    /** excedentBrutExploitation − amortissements − dotationProvisions. */
     private BigDecimal resultatGestion;
 
     /** produits ENGAGEMENT − produits CAISSE : la variation des créances. */

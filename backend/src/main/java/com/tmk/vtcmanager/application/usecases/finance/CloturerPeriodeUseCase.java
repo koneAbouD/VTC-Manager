@@ -14,6 +14,7 @@ import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieReposito
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
+import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ public class CloturerPeriodeUseCase {
     private final EtatsClotureRepository etatsClotureRepository;
     private final GetCompteResultatUseCase getCompteResultatUseCase;
     private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
+    private final DotationProvisionService dotationProvisionService;
 
     /**
      * Clôture un mois strictement passé (jamais le mois courant : les
@@ -140,6 +142,10 @@ public class CloturerPeriodeUseCase {
         // l'actif, sinon la photo et le bilan courant se contrediraient.
         BigDecimal provision = getProvisionCreancesUseCase.executer().getProvisionTotale();
         BigDecimal creancesNettes = creances.subtract(provision);
+        // Ce que le mois supporte : la variation par rapport à la photo du mois
+        // précédent, pas le stock.
+        BigDecimal dotation = dotationProvisionService.calculer(
+                YearMonth.of(annee, mois), provision);
 
         BigDecimal immobilisations = reportingRepository.immobilisationsNettes(fin);
         BigDecimal detteEtat = creanceRepository.getMontantAReverserEtat();
@@ -153,6 +159,7 @@ public class CloturerPeriodeUseCase {
                 .chargesVariables(caisse.getChargesVariables())
                 .chargesFixes(caisse.getChargesFixes())
                 .amortissements(caisse.getAmortissements())
+                .dotationProvisions(dotation)
                 .resultatCaisse(caisse.getResultatGestion())
                 .produitsEngagement(engagement.getProduitsExploitation())
                 .resultatEngagement(engagement.getResultatGestion())

@@ -32,6 +32,8 @@ public class EtatsCloture {
     private BigDecimal chargesVariables;
     private BigDecimal chargesFixes;
     private BigDecimal amortissements;
+    /** Variation du stock de provision sur le mois (dotation, ou reprise si négative). */
+    private BigDecimal dotationProvisions;
     private BigDecimal resultatCaisse;
 
     // Compte de résultat, base engagement

@@ -18,6 +18,7 @@ import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingReposito
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
@@ -57,6 +58,7 @@ class CloturerPeriodeUseCaseTest {
     private EtatsClotureRepository etatsClotureRepository;
     private GetCompteResultatUseCase getCompteResultatUseCase;
     private GetProvisionCreancesUseCase getProvisionCreancesUseCase;
+    private DotationProvisionService dotationProvisionService;
     private CloturerPeriodeUseCase useCase;
 
     private final CompteTresorerie caisse = CompteTresorerie.builder()
@@ -72,6 +74,8 @@ class CloturerPeriodeUseCaseTest {
         etatsClotureRepository = mock(EtatsClotureRepository.class);
         getCompteResultatUseCase = mock(GetCompteResultatUseCase.class);
         getProvisionCreancesUseCase = mock(GetProvisionCreancesUseCase.class);
+        dotationProvisionService = mock(DotationProvisionService.class);
+        when(dotationProvisionService.calculer(any(), any())).thenReturn(BigDecimal.valueOf(27_750));
         when(getProvisionCreancesUseCase.executer()).thenReturn(
                 com.tmk.vtcmanager.application.domain.finance.ProvisionCreances.builder()
                         .creancesBrutes(BigDecimal.valueOf(769_000))
@@ -106,7 +110,8 @@ class CloturerPeriodeUseCaseTest {
 
         useCase = new CloturerPeriodeUseCase(cloturePeriodeRepository, clotureCaisseRepository,
                 compteTresorerieRepository, creanceRepository, reportingRepository,
-                etatsClotureRepository, getCompteResultatUseCase, getProvisionCreancesUseCase);
+                etatsClotureRepository, getCompteResultatUseCase, getProvisionCreancesUseCase,
+                dotationProvisionService);
     }
 
     private CompteResultat resultat(BigDecimal produits) {
@@ -191,6 +196,7 @@ class CloturerPeriodeUseCaseTest {
         assertThat(e.getTresorerie()).isEqualByComparingTo("300000");
         assertThat(e.getImmobilisationsNettes()).isEqualByComparingTo("2000000");
         assertThat(e.getDetteEtat()).isEqualByComparingTo("50000");
+        assertThat(e.getDotationProvisions()).isEqualByComparingTo("27750");
         assertThat(e.getSoldes()).hasSize(1);
         assertThat(e.getSoldes().get(0).getLibelleCompte()).isEqualTo("Caisse espèces");
     }

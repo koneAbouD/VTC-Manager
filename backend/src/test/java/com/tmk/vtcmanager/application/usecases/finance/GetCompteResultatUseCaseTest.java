@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptabl
 import com.tmk.vtcmanager.application.domain.finance.EtatsCloture;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
+import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,8 @@ class GetCompteResultatUseCaseTest {
 
     private FinanceReportingRepository reportingRepository;
     private EtatsClotureRepository etatsClotureRepository;
+    private GetProvisionCreancesUseCase getProvisionCreancesUseCase;
+    private DotationProvisionService dotationProvisionService;
     private GetCompteResultatUseCase useCase;
 
     @BeforeEach
@@ -43,7 +46,15 @@ class GetCompteResultatUseCaseTest {
                 "CHARGE_FIXE", BigDecimal.valueOf(200_000)));
         when(reportingRepository.produitsEngagement(any(), any())).thenReturn(BigDecimal.valueOf(830_000));
         when(reportingRepository.dotationAmortissements(any(), any())).thenReturn(BigDecimal.valueOf(50_000));
-        useCase = new GetCompteResultatUseCase(reportingRepository, etatsClotureRepository);
+        getProvisionCreancesUseCase = mock(GetProvisionCreancesUseCase.class);
+        when(getProvisionCreancesUseCase.executer()).thenReturn(
+                com.tmk.vtcmanager.application.domain.finance.ProvisionCreances.builder()
+                        .provisionTotale(BigDecimal.valueOf(152_250)).build());
+        dotationProvisionService = mock(DotationProvisionService.class);
+        when(dotationProvisionService.calculer(any(), any())).thenReturn(BigDecimal.valueOf(20_000));
+
+        useCase = new GetCompteResultatUseCase(reportingRepository, etatsClotureRepository,
+                getProvisionCreancesUseCase, dotationProvisionService);
     }
 
     private EtatsCloture archive() {
@@ -53,7 +64,8 @@ class GetCompteResultatUseCaseTest {
                 .chargesVariables(BigDecimal.valueOf(80_000))
                 .chargesFixes(BigDecimal.valueOf(120_000))
                 .amortissements(BigDecimal.valueOf(40_000))
-                .resultatCaisse(BigDecimal.valueOf(260_000))
+                .dotationProvisions(BigDecimal.valueOf(10_000))
+                .resultatCaisse(BigDecimal.valueOf(250_000))
                 .produitsEngagement(BigDecimal.valueOf(560_000))
                 .resultatEngagement(BigDecimal.valueOf(320_000))
                 .pontCreances(BigDecimal.valueOf(60_000))
@@ -68,7 +80,8 @@ class GetCompteResultatUseCaseTest {
         assertThat(r.getProduitsExploitation()).isEqualByComparingTo("800000");
         assertThat(r.getMargeSurCoutsVariables()).isEqualByComparingTo("700000");
         assertThat(r.getExcedentBrutExploitation()).isEqualByComparingTo("500000");
-        assertThat(r.getResultatGestion()).isEqualByComparingTo("450000");
+        assertThat(r.getDotationProvisions()).isEqualByComparingTo("20000");
+        assertThat(r.getResultatGestion()).isEqualByComparingTo("430000");
         assertThat(r.getPontCreances()).isEqualByComparingTo("30000");
     }
 
@@ -85,7 +98,8 @@ class GetCompteResultatUseCaseTest {
         // La cascade est reconstruite depuis les postes archivés.
         assertThat(r.getMargeSurCoutsVariables()).isEqualByComparingTo("420000");
         assertThat(r.getExcedentBrutExploitation()).isEqualByComparingTo("300000");
-        assertThat(r.getResultatGestion()).isEqualByComparingTo("260000");
+        assertThat(r.getDotationProvisions()).isEqualByComparingTo("10000");
+        assertThat(r.getResultatGestion()).isEqualByComparingTo("250000");
 
         // Aucun recalcul : c'est la garantie que le chiffre publié ne bouge plus.
         verify(reportingRepository, never()).totauxCaisseParNature(any(), any());
@@ -102,8 +116,8 @@ class GetCompteResultatUseCaseTest {
 
         assertThat(r.getBase()).isEqualTo(BaseComptable.ENGAGEMENT);
         assertThat(r.getProduitsExploitation()).isEqualByComparingTo("560000");
-        // 560 000 − 80 000 − 120 000 − 40 000
-        assertThat(r.getResultatGestion()).isEqualByComparingTo("320000");
+        // 560 000 − 80 000 − 120 000 − 40 000 − 10 000
+        assertThat(r.getResultatGestion()).isEqualByComparingTo("310000");
         assertThat(r.getPontCreances()).isEqualByComparingTo("60000");
     }
 

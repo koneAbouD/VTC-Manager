@@ -12,6 +12,8 @@ public record CompteResultatResponse(
         BigDecimal chargesFixes,
         BigDecimal excedentBrutExploitation,
         BigDecimal amortissements,
+        /** Variation du stock de provision sur créances (reprise si négative). */
+        BigDecimal dotationProvisions,
         BigDecimal resultatGestion,
         BigDecimal pontCreances
 ) {}

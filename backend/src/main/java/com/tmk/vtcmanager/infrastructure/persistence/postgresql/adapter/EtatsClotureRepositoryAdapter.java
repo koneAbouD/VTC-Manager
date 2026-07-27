@@ -27,15 +27,17 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
         Long id = jdbcTemplate.queryForObject("""
                 INSERT INTO etats_cloture_periode (
                     cloture_periode_id, produits_caisse, charges_variables, charges_fixes,
-                    amortissements, resultat_caisse, produits_engagement, resultat_engagement,
+                    amortissements, dotation_provisions, resultat_caisse,
+                    produits_engagement, resultat_engagement,
                     pont_creances, tresorerie, creances_chauffeurs, provision_creances,
                     creances_nettes, immobilisations_nettes,
                     total_actif, dette_etat, situation_nette, created_at, updated_at, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
                 RETURNING id
                 """, Long.class,
                 e.getCloturePeriodeId(), e.getProduitsCaisse(), e.getChargesVariables(),
-                e.getChargesFixes(), e.getAmortissements(), e.getResultatCaisse(),
+                e.getChargesFixes(), e.getAmortissements(), e.getDotationProvisions(),
+                e.getResultatCaisse(),
                 e.getProduitsEngagement(), e.getResultatEngagement(), e.getPontCreances(),
                 e.getTresorerie(), e.getCreancesChauffeurs(), e.getProvisionCreances(),
                 e.getCreancesNettes(), e.getImmobilisationsNettes(),
@@ -71,6 +73,7 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
                         .chargesVariables(rs.getBigDecimal("charges_variables"))
                         .chargesFixes(rs.getBigDecimal("charges_fixes"))
                         .amortissements(rs.getBigDecimal("amortissements"))
+                        .dotationProvisions(rs.getBigDecimal("dotation_provisions"))
                         .resultatCaisse(rs.getBigDecimal("resultat_caisse"))
                         .produitsEngagement(rs.getBigDecimal("produits_engagement"))
                         .resultatEngagement(rs.getBigDecimal("resultat_engagement"))

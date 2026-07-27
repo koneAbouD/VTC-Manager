@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptabl
 import com.tmk.vtcmanager.application.domain.finance.EtatsCloture;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
+import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,8 @@ public class GetCompteResultatUseCase {
 
     private final FinanceReportingRepository reportingRepository;
     private final EtatsClotureRepository etatsClotureRepository;
+    private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
+    private final DotationProvisionService dotationProvisionService;
 
     /**
      * Cascade des soldes intermédiaires. Base CAISSE : tout est agrégé sur
@@ -53,6 +56,13 @@ public class GetCompteResultatUseCase {
         BigDecimal ebe = marge.subtract(chargesFixes);
         BigDecimal amortissements = reportingRepository.dotationAmortissements(debut, fin);
 
+        // Perte attendue sur les impayés : la variation du stock de provision,
+        // pas le stock lui-même. Le stock n'étant connu qu'à l'instant présent,
+        // la dotation n'a de sens que pour le mois en cours ou le dernier mois
+        // non clos ; les mois antérieurs la lisent dans leur photo de clôture.
+        BigDecimal dotationProvisions = dotationProvisionService.calculer(
+                periode, getProvisionCreancesUseCase.executer().getProvisionTotale());
+
         return CompteResultat.builder()
                 .annee(annee)
                 .mois(mois)
@@ -63,7 +73,8 @@ public class GetCompteResultatUseCase {
                 .chargesFixes(chargesFixes)
                 .excedentBrutExploitation(ebe)
                 .amortissements(amortissements)
-                .resultatGestion(ebe.subtract(amortissements))
+                .dotationProvisions(dotationProvisions)
+                .resultatGestion(ebe.subtract(amortissements).subtract(dotationProvisions))
                 .pontCreances(produitsEngagement.subtract(produitsCaisse))
                 .build();
     }
@@ -72,6 +83,9 @@ public class GetCompteResultatUseCase {
     private CompteResultat depuisArchive(EtatsCloture e, BaseComptable base) {
         BigDecimal produits = base == BaseComptable.ENGAGEMENT
                 ? e.getProduitsEngagement() : e.getProduitsCaisse();
+        // Les photos antérieures à cette fonctionnalité n'ont pas de dotation.
+        BigDecimal dotation = e.getDotationProvisions() != null
+                ? e.getDotationProvisions() : BigDecimal.ZERO;
         BigDecimal marge = produits.subtract(e.getChargesVariables());
         BigDecimal ebe = marge.subtract(e.getChargesFixes());
         return CompteResultat.builder()
@@ -84,7 +98,8 @@ public class GetCompteResultatUseCase {
                 .chargesFixes(e.getChargesFixes())
                 .excedentBrutExploitation(ebe)
                 .amortissements(e.getAmortissements())
-                .resultatGestion(ebe.subtract(e.getAmortissements()))
+                .dotationProvisions(dotation)
+                .resultatGestion(ebe.subtract(e.getAmortissements()).subtract(dotation))
                 .pontCreances(e.getPontCreances())
                 .build();
     }
