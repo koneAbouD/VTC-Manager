@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
 import com.tmk.vtcmanager.application.domain.finance.EtatsCloture;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
+import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -19,6 +20,7 @@ import java.util.Optional;
 public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
 
     private final JdbcTemplate jdbcTemplate;
+    private final AuteurCourant auteurCourant;
 
     @Override
     public EtatsCloture save(EtatsCloture e) {
@@ -26,16 +28,18 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
                 INSERT INTO etats_cloture_periode (
                     cloture_periode_id, produits_caisse, charges_variables, charges_fixes,
                     amortissements, resultat_caisse, produits_engagement, resultat_engagement,
-                    pont_creances, tresorerie, creances_chauffeurs, immobilisations_nettes,
-                    total_actif, dette_etat, situation_nette, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                    pont_creances, tresorerie, creances_chauffeurs, provision_creances,
+                    creances_nettes, immobilisations_nettes,
+                    total_actif, dette_etat, situation_nette, created_at, updated_at, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
                 RETURNING id
                 """, Long.class,
                 e.getCloturePeriodeId(), e.getProduitsCaisse(), e.getChargesVariables(),
                 e.getChargesFixes(), e.getAmortissements(), e.getResultatCaisse(),
                 e.getProduitsEngagement(), e.getResultatEngagement(), e.getPontCreances(),
-                e.getTresorerie(), e.getCreancesChauffeurs(), e.getImmobilisationsNettes(),
-                e.getTotalActif(), e.getDetteEtat(), e.getSituationNette());
+                e.getTresorerie(), e.getCreancesChauffeurs(), e.getProvisionCreances(),
+                e.getCreancesNettes(), e.getImmobilisationsNettes(),
+                e.getTotalActif(), e.getDetteEtat(), e.getSituationNette(), auteurCourant.nom());
         e.setId(id);
 
         if (e.getSoldes() != null) {
@@ -73,6 +77,8 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
                         .pontCreances(rs.getBigDecimal("pont_creances"))
                         .tresorerie(rs.getBigDecimal("tresorerie"))
                         .creancesChauffeurs(rs.getBigDecimal("creances_chauffeurs"))
+                        .provisionCreances(rs.getBigDecimal("provision_creances"))
+                        .creancesNettes(rs.getBigDecimal("creances_nettes"))
                         .immobilisationsNettes(rs.getBigDecimal("immobilisations_nettes"))
                         .totalActif(rs.getBigDecimal("total_actif"))
                         .detteEtat(rs.getBigDecimal("dette_etat"))

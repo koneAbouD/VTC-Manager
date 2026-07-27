@@ -41,7 +41,12 @@ public class EtatsCloture {
 
     // Bilan de gestion arrêté au dernier jour de la période
     private BigDecimal tresorerie;
+    /** Créances brutes. */
     private BigDecimal creancesChauffeurs;
+    /** Dépréciation appliquée à la date de clôture. */
+    private BigDecimal provisionCreances;
+    /** Montant retenu à l'actif : brutes − provision. */
+    private BigDecimal creancesNettes;
     private BigDecimal immobilisationsNettes;
     private BigDecimal totalActif;
     private BigDecimal detteEtat;

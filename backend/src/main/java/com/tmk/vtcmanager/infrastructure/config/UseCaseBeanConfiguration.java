@@ -1452,10 +1452,11 @@ public class UseCaseBeanConfiguration {
             CreanceRepository creanceRepository,
             FinanceReportingRepository reportingRepository,
             EtatsClotureRepository etatsClotureRepository,
-            GetCompteResultatUseCase getCompteResultatUseCase) {
+            GetCompteResultatUseCase getCompteResultatUseCase,
+            GetProvisionCreancesUseCase getProvisionCreancesUseCase) {
         return new CloturerPeriodeUseCase(repo, clotureCaisseRepository, compteTresorerieRepository,
                 creanceRepository, reportingRepository, etatsClotureRepository,
-                getCompteResultatUseCase);
+                getCompteResultatUseCase, getProvisionCreancesUseCase);
     }
 
     @Bean

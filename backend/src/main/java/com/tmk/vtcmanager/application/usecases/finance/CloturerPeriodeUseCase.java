@@ -34,6 +34,7 @@ public class CloturerPeriodeUseCase {
     private final FinanceReportingRepository reportingRepository;
     private final EtatsClotureRepository etatsClotureRepository;
     private final GetCompteResultatUseCase getCompteResultatUseCase;
+    private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
 
     /**
      * Clôture un mois strictement passé (jamais le mois courant : les
@@ -135,9 +136,14 @@ public class CloturerPeriodeUseCase {
         BigDecimal creances = creanceRepository.getBalanceAgee().stream()
                 .map(CreanceChauffeur::getTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Même lecture qu'à l'écran : c'est le net de dépréciation qui entre à
+        // l'actif, sinon la photo et le bilan courant se contrediraient.
+        BigDecimal provision = getProvisionCreancesUseCase.executer().getProvisionTotale();
+        BigDecimal creancesNettes = creances.subtract(provision);
+
         BigDecimal immobilisations = reportingRepository.immobilisationsNettes(fin);
         BigDecimal detteEtat = creanceRepository.getMontantAReverserEtat();
-        BigDecimal totalActif = tresorerie.add(creances).add(immobilisations);
+        BigDecimal totalActif = tresorerie.add(creancesNettes).add(immobilisations);
 
         return EtatsCloture.builder()
                 .cloturePeriodeId(cloture.getId())
@@ -153,6 +159,8 @@ public class CloturerPeriodeUseCase {
                 .pontCreances(caisse.getPontCreances())
                 .tresorerie(tresorerie)
                 .creancesChauffeurs(creances)
+                .provisionCreances(provision)
+                .creancesNettes(creancesNettes)
                 .immobilisationsNettes(immobilisations)
                 .totalActif(totalActif)
                 .detteEtat(detteEtat)
