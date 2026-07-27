@@ -7,6 +7,7 @@ import 'core/network/session_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/pin_lock_page.dart';
+import 'features/auth/presentation/pages/pin_resume_page.dart';
 import 'features/auth/presentation/pages/pin_setup_page.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/providers/auth_state.dart';
@@ -74,6 +75,8 @@ class VtcManagerApp extends ConsumerWidget {
           AuthLocked() => const PinLockPage(),
           AuthPinSetup(:final displayName) =>
             PinSetupPage(displayName: displayName),
+          AuthPinResume(:final displayName) =>
+            PinResumePage(displayName: displayName),
           _ => const LoginPage(),
         },
       ),

@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationReposi
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class PayContraventionUseCase {
     private final OperationFinanciereRepository operationFinanciereRepository;
     private final CategorieOperationRepository categorieOperationRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
+    private final SequenceReferenceService sequenceReferenceService;
 
     @Transactional
     public Contravention execute(Long id, BigDecimal montant, ModePaiement modePaiement) {
@@ -59,15 +61,12 @@ public class PayContraventionUseCase {
                 .dateReference(contravention.getDateInfraction())
                 .commentaire("Remboursement contravention " + (contravention.getTypeInfraction() != null
                         ? contravention.getTypeInfraction() : "#" + contravention.getId()))
-                .reference(genererReference())
+                .reference(sequenceReferenceService.suivante(
+                        SequenceReferenceService.Journal.CONTRAVENTION))
                 .statut(StatutOperation.ENCAISSE)
                 .build();
 
         operationFinanciereRepository.save(operation);
     }
 
-    private String genererReference() {
-        String ts = String.valueOf(System.currentTimeMillis()).substring(7);
-        return "CTR-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy")) + "-" + ts;
-    }
 }

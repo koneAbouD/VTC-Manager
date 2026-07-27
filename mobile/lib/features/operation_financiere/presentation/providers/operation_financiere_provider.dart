@@ -112,8 +112,8 @@ class OperationFinanciereNotifier
     );
   }
 
-  Future<String?> annuler(int id) async {
-    final result = await _annuler(id);
+  Future<String?> annuler(int id, String motif) async {
+    final result = await _annuler(id, motif);
     return result.fold(
       (f) => f.message,
       (_) {

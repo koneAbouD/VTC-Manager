@@ -19,7 +19,9 @@ import com.tmk.vtcmanager.application.ports.persistence.EncaissementRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,8 @@ public class CreateEncaissementUseCase {
     private final CategorieOperationRepository categorieOperationRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final SequenceReferenceService sequenceReferenceService;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public Encaissement executer(Long ligneRecetteId, Encaissement encaissement) {
@@ -50,6 +54,11 @@ public class CreateEncaissementUseCase {
         }
 
         periodeClotureeGuard.verifier(encaissement.getDateEncaissement());
+
+        // La caisse visée ne doit pas avoir déjà été comptée pour ce jour :
+        // un encaissement rétroactif ferait mentir le procès-verbal.
+        Long compteId = compteTresorerieResolver.resoudre(null, encaissement.getModeEncaissement());
+        caisseClotureeGuard.verifier(compteId, encaissement.getDateEncaissement());
         validerModePaiement(ligne, encaissement.getModeEncaissement());
         validerMontant(ligne, encaissement.getMontant());
 
@@ -108,7 +117,8 @@ public class CreateEncaissementUseCase {
                 .dateOperation(encaissement.getDateEncaissement())
                 .dateReference(ligne.getDateRecette())
                 .commentaire(encaissement.getCommentaire())
-                .reference(genererReference())
+                .reference(sequenceReferenceService.suivante(
+                        SequenceReferenceService.Journal.ENCAISSEMENT))
                 .statut(StatutOperation.ENCAISSE)
                 .build();
 
@@ -127,8 +137,4 @@ public class CreateEncaissementUseCase {
         return c;
     }
 
-    private String genererReference() {
-        String timestamp = String.valueOf(System.currentTimeMillis()).substring(7);
-        return "ENC-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy")) + "-" + timestamp;
-    }
 }

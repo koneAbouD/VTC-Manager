@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.response.VehiculeResponse
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record OperationFinanciereResponse(
         Long id,
@@ -23,5 +24,11 @@ public record OperationFinanciereResponse(
         LocalDate dateReference,
         String commentaire,
         StatutOperation statut,
-        DetailMaintenanceResponse detailMaintenance
+        DetailMaintenanceResponse detailMaintenance,
+        /** Écriture contre-passée par celle-ci : non nul sur une extourne. */
+        Long extourneDeId,
+        /** Renseignés sur une écriture qui a été extournée. */
+        String motifAnnulation,
+        String annulePar,
+        LocalDateTime annuleLe
 ) {}

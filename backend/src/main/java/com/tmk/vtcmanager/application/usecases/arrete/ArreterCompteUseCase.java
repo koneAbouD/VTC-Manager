@@ -29,6 +29,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +69,7 @@ public class ArreterCompteUseCase {
     private final CategorieOperationRepository categorieOperationRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final SequenceReferenceService sequenceReferenceService;
 
     /** Arrêté total : toutes les cotisations et créances de la période. */
     public ArreteCompte executer(PerimetreArrete perimetre, Long perimetreId,
@@ -96,7 +98,7 @@ public class ArreterCompteUseCase {
             throw new IllegalArgumentException("Aucune cotisation ni créance à arrêter sur cette période.");
         }
 
-        String reference = genererReference("ARR");
+        String reference = sequenceReferenceService.suivante(SequenceReferenceService.Journal.ARRETE);
 
         ArreteCompte entete = arreteCompteRepository.enregistrerEntete(ArreteCompte.builder()
                 .perimetre(perimetre)
@@ -233,7 +235,7 @@ public class ArreterCompteUseCase {
                 .dateOperation(date)
                 .dateReference(creance.getDateReference())
                 .commentaire("Compensation cotisation " + refArrete)
-                .reference(genererReference("COMP"))
+                .reference(sequenceReferenceService.suivante(SequenceReferenceService.Journal.COMPENSATION))
                 .statut(StatutOperation.ENCAISSE)
                 .build();
         return operationFinanciereRepository.save(op);
@@ -255,7 +257,7 @@ public class ArreterCompteUseCase {
                 .dateOperation(date)
                 .dateReference(date)
                 .commentaire("Restitution cotisations " + refArrete + " - " + d.getChauffeurNom())
-                .reference(genererReference("RES"))
+                .reference(sequenceReferenceService.suivante(SequenceReferenceService.Journal.RESTITUTION))
                 .statut(StatutOperation.PAYE)
                 .build();
         return operationFinanciereRepository.save(op);
@@ -276,7 +278,4 @@ public class ArreterCompteUseCase {
     }
 
     /** Références uniques (VARCHAR(30)) : préfixe + année + horodatage nanos (base 36, monotone). */
-    private String genererReference(String prefixe) {
-        return prefixe + "-" + LocalDate.now().format(ANNEE) + "-" + Long.toString(System.nanoTime(), 36);
-    }
 }

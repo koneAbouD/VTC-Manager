@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'pin_theme.dart';
 
@@ -46,6 +47,9 @@ class _PinBoxesState extends State<PinBoxes>
   void didUpdateWidget(PinBoxes oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.errorTick != oldWidget.errorTick) {
+      // La secousse se double d'un retour tactile : le refus se perçoit même
+      // sans regarder l'écran.
+      HapticFeedback.heavyImpact();
       _shake.forward(from: 0);
     }
   }
@@ -63,8 +67,7 @@ class _PinBoxesState extends State<PinBoxes>
       animation: _shake,
       builder: (context, child) {
         // Oscillation amortie : quatre allers-retours qui s'éteignent.
-        final offset =
-            sin(_shake.value * pi * 8) * 10 * (1 - _shake.value);
+        final offset = sin(_shake.value * pi * 8) * 10 * (1 - _shake.value);
         return Transform.translate(offset: Offset(offset, 0), child: child);
       },
       child: LayoutBuilder(
@@ -114,33 +117,56 @@ class _Box extends StatelessWidget {
     required this.theme,
   });
 
+  static const _duration = Duration(milliseconds: 180);
+  static const _curve = Curves.easeOutCubic;
+
   @override
   Widget build(BuildContext context) {
     final borderColor = inError
         ? theme.error
         : (active || filled ? theme.accent : theme.border);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: borderColor,
-          width: active || filled ? 2 : 1.4,
+    // La case en attente de frappe se détache légèrement : bordure accentuée,
+    // halo coloré et infime agrandissement. L'œil sait où il en est sans
+    // compter les cases.
+    return AnimatedScale(
+      duration: _duration,
+      curve: _curve,
+      scale: active && !inError ? 1.05 : 1,
+      child: AnimatedContainer(
+        duration: _duration,
+        curve: _curve,
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: filled ? theme.tintColor : theme.fillColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: borderColor,
+            width: active || filled ? 2 : 1.2,
+          ),
+          boxShadow: active && !inError
+              ? [
+                  BoxShadow(
+                    color: theme.accent.withValues(alpha: 0.18),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
-      ),
-      alignment: Alignment.center,
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 150),
-        scale: filled ? 1 : 0,
-        child: Container(
-          width: size * 0.24,
-          height: size * 0.24,
-          decoration: BoxDecoration(
-            color: inError ? theme.error : theme.filled,
-            shape: BoxShape.circle,
+        alignment: Alignment.center,
+        child: AnimatedScale(
+          duration: _duration,
+          curve: Curves.easeOutBack,
+          scale: filled ? 1 : 0,
+          child: Container(
+            width: size * 0.26,
+            height: size * 0.26,
+            decoration: BoxDecoration(
+              color: inError ? theme.error : theme.filled,
+              shape: BoxShape.circle,
+            ),
           ),
         ),
       ),

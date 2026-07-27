@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -44,21 +46,30 @@ class PinKeypad extends StatelessWidget {
               _Row(children: [
                 for (final digit in row)
                   _Key(
+                    theme: theme,
                     onTap: enabled ? () => _press(digit) : null,
+                    semanticsLabel: digit,
                     child: _DigitLabel(digit: digit, color: theme.digit),
                   ),
               ]),
             _Row(children: [
-              const _Key(onTap: null, child: SizedBox.shrink()),
+              _Key(theme: theme, onTap: null, child: const SizedBox.shrink()),
               _Key(
+                theme: theme,
                 onTap: enabled ? () => _press('0') : null,
+                semanticsLabel: '0',
                 child: _DigitLabel(digit: '0', color: theme.digit),
               ),
               _Key(
+                // Pas de pastille sous l'effacement : la touche reste
+                // secondaire, l'œil va d'abord aux chiffres.
+                theme: theme,
+                filled: false,
                 onTap: enabled ? _erase : null,
+                semanticsLabel: 'Effacer',
                 child: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 28,
+                  Icons.backspace_rounded,
+                  size: 26,
                   color: theme.digit,
                 ),
               ),
@@ -91,23 +102,83 @@ class _Row extends StatelessWidget {
       );
 }
 
-class _Key extends StatelessWidget {
+/// Touche du pavé : pastille ronde qui s'enfonce légèrement sous le doigt.
+class _Key extends StatefulWidget {
   final VoidCallback? onTap;
   final Widget child;
+  final PinTheme theme;
 
-  const _Key({required this.onTap, required this.child});
+  /// Pastille de fond — absente pour la touche d'effacement.
+  final bool filled;
+
+  final String? semanticsLabel;
+
+  const _Key({
+    required this.onTap,
+    required this.child,
+    required this.theme,
+    this.filled = true,
+    this.semanticsLabel,
+  });
+
+  @override
+  State<_Key> createState() => _KeyState();
+}
+
+class _KeyState extends State<_Key> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final actif = widget.onTap != null;
+
     return AspectRatio(
       aspectRatio: 1.5,
-      child: Material(
-        color: Colors.transparent,
-        child: InkResponse(
-          onTap: onTap,
-          radius: 48,
-          containedInkWell: false,
-          child: Center(child: child),
+      child: Semantics(
+        button: actif,
+        label: widget.semanticsLabel,
+        excludeSemantics: widget.semanticsLabel != null,
+        child: Center(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Pastille inscrite dans la case : ronde et généreuse, sans
+              // jamais déborder sur un écran étroit.
+              final diametre =
+                  min(constraints.maxWidth, constraints.maxHeight) * 0.92;
+
+              return AnimatedScale(
+                duration: const Duration(milliseconds: 110),
+                curve: Curves.easeOut,
+                scale: _pressed ? 0.92 : 1,
+                child: SizedBox(
+                  width: diametre,
+                  height: diametre,
+                  child: Material(
+                    color: widget.filled && actif
+                        ? widget.theme.fillColor
+                        : Colors.transparent,
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkResponse(
+                      onTap: widget.onTap,
+                      onTapDown: actif ? (_) => _setPressed(true) : null,
+                      onTapUp: actif ? (_) => _setPressed(false) : null,
+                      onTapCancel: actif ? () => _setPressed(false) : null,
+                      radius: diametre,
+                      highlightColor:
+                          widget.theme.accent.withValues(alpha: 0.08),
+                      splashColor: widget.theme.accent.withValues(alpha: 0.14),
+                      child: Center(child: widget.child),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -124,9 +195,10 @@ class _DigitLabel extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         digit,
         style: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.w500,
+          fontSize: 30,
+          fontWeight: FontWeight.w600,
           color: color,
+          height: 1,
         ),
       );
 }

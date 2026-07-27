@@ -8,6 +8,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = OperationFinanciereEntity.TABLE_NAME)
@@ -16,7 +17,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class OperationFinanciereEntity extends AbstractAuditEntity {
+public class OperationFinanciereEntity extends AbstractEcritureAuditEntity {
 
     public static final String TABLE_NAME = "operations_financieres";
 
@@ -77,4 +78,22 @@ public class OperationFinanciereEntity extends AbstractAuditEntity {
     /** Maintenance d'origine (dépense issue d'une complétion de maintenance). */
     @Column(name = "maintenance_id")
     private Long maintenanceId;
+
+    /**
+     * Écriture contre-passée par celle-ci. Renseigné uniquement sur une
+     * extourne, dont le montant est négatif : le couple origine + extourne
+     * s'annule dans tous les agrégats.
+     */
+    @Column(name = "extourne_de_id")
+    private Long extourneDeId;
+
+    /** Motif saisi lors de l'annulation, porté par l'écriture d'origine. */
+    @Column(name = "motif_annulation", columnDefinition = "TEXT")
+    private String motifAnnulation;
+
+    @Column(name = "annule_par", length = 255)
+    private String annulePar;
+
+    @Column(name = "annule_le")
+    private LocalDateTime annuleLe;
 }

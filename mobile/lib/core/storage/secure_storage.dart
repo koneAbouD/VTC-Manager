@@ -6,6 +6,7 @@ class SecureStorage {
   static const _kAccessToken = 'access_token';
   static const _kRefreshToken = 'refresh_token';
   static const _kAccessExpiry = 'access_token_expiry'; // epoch ms
+  static const _kLoggedOut = 'session_logged_out';
 
   final FlutterSecureStorage _storage;
 
@@ -59,5 +60,23 @@ class SecureStorage {
   Future<bool> hasAccessToken() async {
     final t = await getAccessToken();
     return t != null && t.isNotEmpty;
+  }
+
+  /// La session a été fermée volontairement (déconnexion), par opposition à
+  /// simplement verrouillée.
+  ///
+  /// Le coffre du code survit à une déconnexion, mais le refresh token qu'il
+  /// contient est révoqué : sans ce drapeau, le démarrage suivant proposerait
+  /// un déverrouillage voué à l'échec. Levé jusqu'à ce qu'un code soit repris
+  /// ou installé sur une session neuve. Survit volontairement à [clearTokens].
+  Future<bool> isLoggedOut() async =>
+      (await _storage.read(key: _kLoggedOut)) == 'true';
+
+  Future<void> setLoggedOut(bool loggedOut) async {
+    if (loggedOut) {
+      await _storage.write(key: _kLoggedOut, value: 'true');
+    } else {
+      await _storage.delete(key: _kLoggedOut);
+    }
   }
 }

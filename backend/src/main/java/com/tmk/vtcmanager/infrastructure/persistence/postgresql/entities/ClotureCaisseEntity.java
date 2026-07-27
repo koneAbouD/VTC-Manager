@@ -1,10 +1,12 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities;
 
+import com.tmk.vtcmanager.application.domain.tresorerie.StatutImputationEcart;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = ClotureCaisseEntity.TABLE_NAME)
@@ -13,7 +15,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ClotureCaisseEntity extends AbstractAuditEntity {
+public class ClotureCaisseEntity extends AbstractEcritureAuditEntity {
 
     public static final String TABLE_NAME = "clotures_caisse";
 
@@ -41,4 +43,24 @@ public class ClotureCaisseEntity extends AbstractAuditEntity {
 
     @Column(name = "operation_id")
     private Long operationId;
+
+    /** Qui répond du fonds compté. */
+    @Column(name = "responsable", length = 255)
+    private String responsable;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "imputation_statut", length = 20)
+    private StatutImputationEcart imputationStatut;
+
+    @Column(name = "imputation_motif", columnDefinition = "TEXT")
+    private String imputationMotif;
+
+    @Column(name = "imputee_le")
+    private LocalDateTime imputeeLe;
+
+    @Column(name = "imputee_par", length = 255)
+    private String imputeePar;
+
+    @Column(name = "operation_imputation_id")
+    private Long operationImputationId;
 }

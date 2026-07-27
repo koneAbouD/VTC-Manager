@@ -9,10 +9,12 @@ import com.tmk.vtcmanager.application.usecases.tresorerie.CloturerCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CreateCompteTresorerieUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CreateTransfertUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetCloturesCaisseUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.ImputerEcartCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetComptesTresorerieUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetTransfertsUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.UpdateCompteTresorerieUseCase;
 import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.ClotureCaisseRequest;
+import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.ImputationEcartRequest;
 import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.CompteTresorerieRequest;
 import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.CompteTresorerieUpdateRequest;
 import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.TransfertRequest;
@@ -41,6 +43,7 @@ public class CompteTresorerieController {
     private final GetTransfertsUseCase getTransfertsUseCase;
     private final CloturerCaisseUseCase cloturerCaisseUseCase;
     private final GetCloturesCaisseUseCase getCloturesCaisseUseCase;
+    private final ImputerEcartCaisseUseCase imputerEcartCaisseUseCase;
 
     @GetMapping
     public TresorerieSummaryResponse findAll(
@@ -113,7 +116,19 @@ public class CompteTresorerieController {
     @ResponseStatus(HttpStatus.CREATED)
     public ClotureCaisseResponse cloturerCaisse(@PathVariable Long id,
                                                 @Valid @RequestBody ClotureCaisseRequest request) {
-        return toResponse(cloturerCaisseUseCase.executer(id, request.soldeCompte(), request.motifEcart()));
+        return toResponse(cloturerCaisseUseCase.executer(id, request.dateCloture(),
+                request.soldeCompte(), request.motifEcart(), request.responsable()));
+    }
+
+    /**
+     * Impute un écart de caisse resté en attente : l'entreprise le supporte
+     * (PERTE) ou le responsable rembourse (RECOUVREE).
+     */
+    @PatchMapping("/clotures/{clotureId}/imputer")
+    public ClotureCaisseResponse imputerEcart(@PathVariable Long clotureId,
+                                              @Valid @RequestBody ImputationEcartRequest request) {
+        return toResponse(imputerEcartCaisseUseCase.executer(
+                clotureId, request.decision(), request.motif()));
     }
 
     @GetMapping("/{id}/clotures")
@@ -129,7 +144,9 @@ public class CompteTresorerieController {
     private ClotureCaisseResponse toResponse(ClotureCaisse c) {
         return new ClotureCaisseResponse(c.getId(), c.getCompteId(), c.getDateCloture(),
                 c.getSoldeTheorique(), c.getSoldeCompte(), c.getEcart(), c.getMotifEcart(),
-                c.getOperationId());
+                c.getOperationId(), c.getResponsable(), c.getImputationStatut(),
+                c.getImputationMotif(), c.getImputeeLe(), c.getImputeePar(),
+                c.getOperationImputationId());
     }
 
     private CompteTresorerieResponse toResponse(CompteAvecSolde avecSolde) {

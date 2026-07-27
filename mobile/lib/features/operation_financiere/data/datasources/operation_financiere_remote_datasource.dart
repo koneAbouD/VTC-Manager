@@ -130,6 +130,7 @@ class OperationFinanciereRemoteDatasource {
     return OperationFinanciereModel.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<void> annuler(int id) =>
-      _client.patch('/operations-financieres/$id/annuler');
+  /// Contre-passe l'opération : le motif est obligatoire côté serveur.
+  Future<void> annuler(int id, String motif) =>
+      _client.patch('/operations-financieres/$id/annuler', {'motif': motif});
 }

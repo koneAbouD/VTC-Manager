@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -23,4 +24,9 @@ public class EncaissementCotisation {
     private LocalDate dateEncaissement;
     private String reference;
     private String commentaire;
+
+    /** Annulé (jamais supprimé) : ignoré des recalculs et des agrégats. */
+    private LocalDateTime annuleLe;
+    private String annulePar;
+    private String motifAnnulation;
 }

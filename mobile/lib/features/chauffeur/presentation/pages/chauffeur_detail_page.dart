@@ -55,7 +55,7 @@ class _ChauffeurDetailPageState extends ConsumerState<ChauffeurDetailPage>
   void initState() {
     super.initState();
     _tab = TabController(
-        length: 4, vsync: this, initialIndex: widget.initialTabIndex);
+        length: 3, vsync: this, initialIndex: widget.initialTabIndex);
   }
 
   @override
@@ -137,7 +137,6 @@ class _DetailBody extends StatelessWidget {
           _PillTabItem(label: 'Infos', icon: Icons.info_outline),
           _PillTabItem(label: 'Documents', icon: Icons.folder_outlined),
           _PillTabItem(label: 'Programmes', icon: Icons.people_outline),
-          _PillTabItem(label: 'Recettes', icon: Icons.payments_outlined),
         ]),
         const SizedBox(height: 12),
         Expanded(
@@ -148,7 +147,6 @@ class _DetailBody extends StatelessWidget {
               _DocumentsTab(chauffeur: chauffeur),
               _ProgrammesTab(
                   chauffeur: chauffeur, canPopToVehicule: canPopToVehicule),
-              const _PlaceholderTab(label: 'Recettes à venir'),
             ],
           ),
         ),
@@ -2434,18 +2432,6 @@ class _PermisViewerError extends StatelessWidget {
 }
 
 // ── Widgets partagés ─────────────────────────────────────────────────────────
-
-class _PlaceholderTab extends StatelessWidget {
-  final String label;
-  const _PlaceholderTab({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(label, style: const TextStyle(color: Colors.grey)),
-    );
-  }
-}
 
 class _SectionCard extends StatelessWidget {
   final String title;

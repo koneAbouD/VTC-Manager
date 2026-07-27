@@ -6,5 +6,6 @@ class AnnulerOperationFinanciereUseCase {
   final OperationFinanciereRepository _repository;
   const AnnulerOperationFinanciereUseCase(this._repository);
 
-  Future<Either<Failure, void>> call(int id) => _repository.annuler(id);
+  Future<Either<Failure, void>> call(int id, String motif) =>
+      _repository.annuler(id, motif);
 }

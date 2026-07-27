@@ -14,7 +14,9 @@ import com.tmk.vtcmanager.application.ports.persistence.EncaissementPenaliteRepo
 import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,8 @@ public class CreateEncaissementPenaliteUseCase {
     private final CategorieOperationRepository categorieOperationRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final SequenceReferenceService sequenceReferenceService;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public EncaissementPenalite executer(Long lignePenaliteId, EncaissementPenalite encaissement) {
@@ -44,6 +48,11 @@ public class CreateEncaissementPenaliteUseCase {
         }
 
         periodeClotureeGuard.verifier(encaissement.getDateEncaissement());
+
+        // La caisse visée ne doit pas avoir déjà été comptée pour ce jour :
+        // un encaissement rétroactif ferait mentir le procès-verbal.
+        Long compteId = compteTresorerieResolver.resoudre(null, encaissement.getModeEncaissement());
+        caisseClotureeGuard.verifier(compteId, encaissement.getDateEncaissement());
 
         if (encaissement.getMontant().compareTo(ligne.montantRestant()) > 0) {
             throw new EncaissementPenaliteDepasseMontantException(ligne.montantRestant());
@@ -84,15 +93,12 @@ public class CreateEncaissementPenaliteUseCase {
                 .dateOperation(encaissement.getDateEncaissement())
                 .dateReference(ligne.getDateFaute())
                 .commentaire(encaissement.getCommentaire())
-                .reference(genererReference())
+                .reference(sequenceReferenceService.suivante(
+                        SequenceReferenceService.Journal.PENALITE))
                 .statut(StatutOperation.ENCAISSE)
                 .build();
 
         return operationFinanciereRepository.save(op);
     }
 
-    private String genererReference() {
-        String ts = String.valueOf(System.currentTimeMillis()).substring(7);
-        return "PEN-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy")) + "-" + ts;
-    }
 }

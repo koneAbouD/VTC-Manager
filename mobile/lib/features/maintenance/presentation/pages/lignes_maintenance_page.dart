@@ -19,7 +19,6 @@ import '../../../../core/widgets/long_press_info_bubble.dart';
 enum _FiltreMode { mois, semaine, jour, periode }
 
 const _kPrimary = Color(0xFF1A5276);
-const _kAccent  = Color(0xFFE65100);
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -695,7 +694,7 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
             _StatutChip(
               label:    'Tous',
               selected: widget.statutSelectionne == null,
-              color:    Colors.grey.shade600,
+              color:    _hint,
               onTap:    () => widget.onStatutChanged(null),
               infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
             ),
@@ -720,11 +719,18 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
         _           => s,
       };
 
+  /// Palette des chips de statut, alignée sur celle de ContraventionsPage :
+  /// trois teintes seulement — gris pour l'attente et les fins de course
+  /// neutres, ambre pour ce qui est en cours, vert pour ce qui est soldé.
+  static const _ambre = Color(0xFF854F0B);
+  static const _vert = Color(0xFF2E7D32);
+  static const _hint = Color(0xFF8A94A6);
+
   Color _couleurStatut(String s) => switch (s) {
-        'PLANIFIEE' => Colors.orange,
-        'TERMINEE'  => Colors.green,
-        'ANNULEE'   => Colors.grey,
-        _           => Colors.blueGrey,
+        'PLANIFIEE' => _ambre,
+        'TERMINEE'  => _vert,
+        'ANNULEE'   => _hint,
+        _           => _hint,
       };
 }
 
@@ -747,19 +753,23 @@ class _StatutChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Fond, bordure et texte repris des chips de statut de ContraventionsPage :
+    // le chip sélectionné se teinte de sa couleur au lieu de s'en remplir.
     final chip = Container(
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? color : Colors.white,
+        color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: selected ? color : Colors.grey.shade300),
+        border: Border.all(
+            color:
+                selected ? color.withValues(alpha: 0.5) : AppColors.border),
       ),
       child: Text(label,
           style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: selected ? Colors.white : Colors.grey.shade600)),
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? color : AppColors.label)),
     );
 
     if (infoText == null) {
@@ -839,20 +849,12 @@ class _MaintenanceCard extends StatelessWidget {
                   ),
                   if (m.vehiculeImmatriculation?.isNotEmpty == true) ...[
                     const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: _kPrimary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        m.vehiculeImmatriculation!,
-                        style: const TextStyle(
-                            fontSize: 10,
-                            color: _kPrimary,
-                            fontWeight: FontWeight.w700),
-                      ),
+                    Text(
+                      m.vehiculeImmatriculation!,
+                      style: const TextStyle(
+                          fontSize: 10,
+                          color: _kPrimary,
+                          fontWeight: FontWeight.w700),
                     ),
                   ],
                 ]),
@@ -877,25 +879,6 @@ class _MaintenanceCard extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 11, color: Colors.grey.shade500)),
                   ],
-                  if (m.detailMaintenance != null &&
-                      m.detailMaintenance!.elements.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: _kAccent.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${m.detailMaintenance!.elements.length} élém.',
-                        style: const TextStyle(
-                            fontSize: 10,
-                            color: _kAccent,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
                 ]),
               ],
             ),
@@ -916,11 +899,13 @@ class _MaintenanceCard extends StatelessWidget {
             ),
             if (m.cout != null && m.cout! > 0) ...[
               const SizedBox(height: 6),
+              // Coût toujours en noir : la pastille au-dessus porte déjà la
+              // couleur du statut.
               Text(money.format(m.cout),
                   style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFB71C1C))),
+                      color: AppColors.dark)),
             ],
           ]),
         ],
@@ -941,11 +926,13 @@ class _MaintenanceCard extends StatelessWidget {
     return DateFormat('dd/MM/yyyy').format(d);
   }
 
+  /// Même palette que les chips de filtre : la pastille d'icône reprend la
+  /// couleur du statut telle qu'elle est présentée en haut de page.
   Color _couleurStatut(String s) => switch (s) {
-        'PLANIFIEE' => Colors.orange,
-        'TERMINEE'  => Colors.green,
-        'ANNULEE'   => Colors.grey,
-        _           => Colors.blueGrey,
+        'PLANIFIEE' => const Color(0xFF854F0B),
+        'TERMINEE'  => const Color(0xFF2E7D32),
+        'ANNULEE'   => const Color(0xFF8A94A6),
+        _           => const Color(0xFF8A94A6),
       };
 
   String _labelStatut(String s) => switch (s) {

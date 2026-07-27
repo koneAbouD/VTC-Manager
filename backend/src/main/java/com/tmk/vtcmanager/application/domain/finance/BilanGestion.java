@@ -23,7 +23,12 @@ public class BilanGestion {
 
     // Actif
     private BigDecimal tresorerie;
+    /** Créances brutes, avant dépréciation. */
     private BigDecimal creancesChauffeurs;
+    /** Dépréciation des créances selon leur ancienneté (politique paramétrable). */
+    private BigDecimal provisionCreances;
+    /** creancesChauffeurs − provisionCreances : c'est ce montant qui entre à l'actif. */
+    private BigDecimal creancesNettes;
     /** Σ valeur nette comptable des véhicules (prix d'achat − amortissement couru). */
     private BigDecimal immobilisationsNettes;
     private BigDecimal totalActif;

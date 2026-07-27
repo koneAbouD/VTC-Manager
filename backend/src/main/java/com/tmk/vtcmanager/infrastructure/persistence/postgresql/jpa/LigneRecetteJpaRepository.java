@@ -64,7 +64,8 @@ public interface LigneRecetteJpaRepository
                     ELSE 'EN_ATTENTE'
                 END
             FROM (SELECT COALESCE(SUM(montant), 0) AS total
-                  FROM encaissements WHERE ligne_recette_id = :ligneId) sub
+                  FROM encaissements
+                  WHERE ligne_recette_id = :ligneId AND annule_le IS NULL) sub
             WHERE lr.id = :ligneId AND lr.statut <> 'ANNULEE'
             """, nativeQuery = true)
     void recalculerDepuisEncaissements(@Param("ligneId") Long ligneId);

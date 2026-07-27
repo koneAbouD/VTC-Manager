@@ -97,17 +97,22 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> bootstrap() async {
     // Un code d'accès configuré prime : les tokens en clair ont pu être purgés
-    // à la fermeture, seul le coffre chiffré fait foi.
-    if (await _pin.isConfigured()) {
+    // à la fermeture, seul le coffre chiffré fait foi. Sauf après une
+    // déconnexion volontaire : le coffre est conservé, mais le refresh token
+    // qu'il protège est révoqué — il n'y a plus de session à rouvrir.
+    if (await _pin.isConfigured() && !await _storage.isLoggedOut()) {
       state = AuthLocked(displayName: await _pin.displayName());
       return;
     }
     if (await _storage.hasAccessToken()) {
       SessionManager.instance.start();
-      // Session ouverte mais pas de code : le cas ne subsiste que pour les
-      // appareils connectés avant qu'il devienne obligatoire. On le fait
-      // installer maintenant plutôt que d'ouvrir l'application.
-      state = AuthPinSetup(displayName: await _displayName());
+      // Session ouverte sans code utilisable : soit l'appareil a été connecté
+      // avant que le code devienne obligatoire, soit l'application a été fermée
+      // pendant la reprise du code.
+      final displayName = await _displayName();
+      state = await _pin.isConfigured()
+          ? AuthPinResume(displayName: displayName)
+          : AuthPinSetup(displayName: displayName);
     } else {
       state = const AuthUnauthenticated();
     }
@@ -144,22 +149,27 @@ class AuthController extends Notifier<AuthState> {
       refreshToken: tokens.refreshToken,
       expiresInSeconds: tokens.expiresInSeconds,
     );
-    // Un éventuel code existant protège un refresh token désormais périmé : il
-    // sera reproposé à la volée plutôt que conservé inutilisable.
-    await _pin.reset();
+    // Un code rattaché à un autre compte n'a rien à faire ici.
+    await _pin.resetIfOtherAccount(await _accountId());
     SessionManager.instance.start();
 
-    // Le code d'accès est le seul chemin de retour dans l'application : on le
-    // fait choisir avant d'entrer, sans échappatoire.
-    state = AuthPinSetup(displayName: await _displayName());
+    final displayName = await _displayName();
+    // Le code d'accès est le seul chemin de retour dans l'application. S'il
+    // existe déjà, on le redemande pour rouvrir le coffre et y ranger le
+    // nouveau refresh token ; sinon on le fait choisir.
+    state = await _pin.isConfigured()
+        ? AuthPinResume(displayName: displayName)
+        : AuthPinSetup(displayName: displayName);
   }
 
   Future<void> logout() async {
     SessionManager.instance.stop();
-    // Déconnexion volontaire : le code d'accès et son coffre disparaissent avec
-    // la session — la prochaine ouverture repassera par la connexion.
-    await _pin.reset();
+    // Le code d'accès survit à la déconnexion : la prochaine connexion le
+    // redemandera ([AuthPinResume]) au lieu d'en faire choisir un nouveau. Seul
+    // « Code TMK oublié ? » efface le coffre (voir [forgetPin]).
+    _pin.lock();
     await _storage.clearTokens();
+    await _storage.setLoggedOut(true);
     state = const AuthUnauthenticated();
   }
 
@@ -202,6 +212,7 @@ class AuthController extends Notifier<AuthState> {
       account: await _accountId(),
       displayName: displayName,
     );
+    await _storage.setLoggedOut(false);
     if (entrerDansLApplication) state = AuthAuthenticated(displayName);
     return null;
   }
@@ -321,6 +332,50 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// Reprise du code existant après une reconnexion ([AuthPinResume]).
+  ///
+  /// La session est déjà ouverte : la saisie ne sert qu'à re-dériver la clé du
+  /// coffre, dont l'ancien refresh token est aussitôt remplacé par le neuf.
+  /// Aucun appel réseau, donc pas de cas « hors ligne » ici.
+  Future<UnlockOutcome> resumePin(String code) async {
+    final nom =
+        state is AuthPinResume ? (state as AuthPinResume).displayName : null;
+    final result = await _pin.unlock(code);
+
+    switch (result) {
+      case UnlockFailure(:final remainingAttempts):
+        return UnlockWrong(remainingAttempts);
+
+      case UnlockThrottled(:final remaining):
+        return UnlockWait(remaining);
+
+      case UnlockExhausted():
+        // Le coffre est perdu, mais la session vient d'être ouverte : on
+        // enchaîne sur le choix d'un nouveau code plutôt que de renvoyer à la
+        // page de connexion.
+        state = AuthPinSetup(displayName: nom);
+        return const UnlockRequiresLogin();
+
+      case UnlockSuccess():
+        // Le coffre porte de nouveau un refresh token vivant : la session
+        // redevient simplement verrouillable.
+        await _syncVaultWithStoredToken();
+        await _storage.setLoggedOut(false);
+        state = AuthAuthenticated(nom);
+        return const UnlockOk();
+    }
+  }
+
+  /// « Code TMK oublié ? » depuis l'écran de reprise : seul le coffre est
+  /// abandonné. La session restant ouverte, on passe directement au choix d'un
+  /// nouveau code, sans redemander de code OTP.
+  Future<void> restartPinSetup() async {
+    final nom =
+        state is AuthPinResume ? (state as AuthPinResume).displayName : null;
+    await _pin.reset();
+    state = AuthPinSetup(displayName: nom);
+  }
+
   Future<void> _syncVaultWithStoredToken() async {
     final refreshToken = await _storage.getRefreshToken();
     if (refreshToken != null && refreshToken.isNotEmpty) {
@@ -333,6 +388,7 @@ class AuthController extends Notifier<AuthState> {
   Future<void> forgetPin() async {
     await _pin.reset();
     await _storage.clearTokens();
+    await _storage.setLoggedOut(true);
     state = const AuthUnauthenticated();
   }
 }

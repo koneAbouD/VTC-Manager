@@ -26,7 +26,7 @@ void main() {
       for (final digit in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']) {
         expect(find.text(digit), findsOneWidget);
       }
-      expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.backspace_rounded), findsOneWidget);
     });
 
     testWidgets('remonte les frappes et l\'effacement', (tester) async {
@@ -41,7 +41,7 @@ void main() {
 
       await tester.tap(find.text('4'));
       await tester.tap(find.text('8'));
-      await tester.tap(find.byIcon(Icons.arrow_back_ios_new_rounded));
+      await tester.tap(find.byIcon(Icons.backspace_rounded));
 
       expect(frappes, ['4', '8']);
       expect(effacements, 1);
@@ -59,6 +59,117 @@ void main() {
 
       await tester.tap(find.text('4'));
       expect(frappes, isEmpty);
+    });
+  });
+
+  group('PinLayout', () {
+    testWidgets('tient sur un petit écran, logo abaissé compris',
+        (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: PinLayout(
+            theme: _theme,
+            brand: const SizedBox(width: 96, height: 96),
+            topSpacing: 48,
+            prompt: 'Veuillez saisir votre code TMK',
+            message: 'Code incorrect. 4 essais restants.',
+            length: PinService.codeLength,
+            filled: 2,
+            onDigit: (_) {},
+            onBackspace: () {},
+          ),
+        ),
+      ));
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Veuillez saisir votre code TMK'), findsOneWidget);
+    });
+
+    testWidgets('tient en paysage, où la hauteur manque', (tester) async {
+      // Téléphone couché : la pile verticale (barre, pavé, pied de page) ne
+      // rentre pas — la mise en page doit basculer en deux colonnes.
+      tester.view.physicalSize = const Size(832, 305);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: PinLayout(
+            theme: _theme,
+            brand: const SizedBox(width: 96, height: 96),
+            topSpacing: 48,
+            prompt: 'Veuillez saisir votre code TMK',
+            message: 'Code incorrect. 4 essais restants.',
+            length: PinService.codeLength,
+            filled: 2,
+            footer: const Text('Code TMK oublié ?'),
+            onDigit: (_) {},
+            onBackspace: () {},
+          ),
+        ),
+      ));
+
+      // Aucun débordement, et le pavé reste utilisable.
+      expect(tester.takeException(), isNull);
+      for (final digit in ['0', '5', '9']) {
+        expect(find.text(digit), findsOneWidget);
+      }
+      expect(find.text('Code TMK oublié ?'), findsOneWidget);
+    });
+  });
+
+  group('PinLayout — zone de retour', () {
+    Widget page({bool busy = false, String? message}) => MaterialApp(
+          home: Scaffold(
+            body: PinLayout(
+              theme: _theme,
+              brand: const SizedBox(width: 96, height: 96),
+              prompt: 'Veuillez saisir votre code TMK',
+              length: PinService.codeLength,
+              filled: 5,
+              busy: busy,
+              message: message,
+              onDigit: (_) {},
+              onBackspace: () {},
+            ),
+          ),
+        );
+
+    void ecran(WidgetTester tester) {
+      tester.view.physicalSize = const Size(400, 860);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
+
+    testWidgets('le loader est centré horizontalement', (tester) async {
+      ecran(tester);
+
+      await tester.pumpWidget(page(busy: true));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        tester.getCenter(find.byType(CircularProgressIndicator)).dx,
+        closeTo(200, 0.5),
+      );
+    });
+
+    testWidgets('le message de refus est centré horizontalement',
+        (tester) async {
+      ecran(tester);
+      const refus = 'Code incorrect. 4 essais restants.';
+
+      await tester.pumpWidget(page(message: refus));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // C'est la pastille entière qu'on mesure : le texte, lui, est décalé par
+      // l'icône qui le précède.
+      final pastille =
+          find.ancestor(of: find.text(refus), matching: find.byType(Row)).first;
+      expect(tester.getCenter(pastille).dx, closeTo(200, 0.5));
     });
   });
 

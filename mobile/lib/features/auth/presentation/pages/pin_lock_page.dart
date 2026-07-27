@@ -92,10 +92,43 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
     });
   }
 
+  /// Déconnexion : retour à la page de connexion, **code conservé**. La
+  /// prochaine connexion le redemandera au lieu d'en faire choisir un nouveau.
   Future<void> _confirmLogout() async {
     final confirme = await showDialog<bool>(
       context: context,
       builder: (context) => const _LogoutDialog(),
+    );
+    if (confirme ?? false) {
+      await ref.read(authNotifierProvider.notifier).logout();
+    }
+  }
+
+  /// « Code TMK oublié ? » : le seul geste qui abandonne le code. L'utilisateur
+  /// se reconnecte puis en choisit un nouveau.
+  Future<void> _confirmForget() async {
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Code TMK oublié ?'),
+        content: const Text(
+          'Votre code sera effacé de cet appareil. Reconnectez-vous avec votre '
+          'identifiant et votre mot de passe, puis choisissez un nouveau code.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Effacer le code'),
+          ),
+        ],
+      ),
     );
     if (confirme ?? false) {
       await ref.read(authNotifierProvider.notifier).forgetPin();
@@ -109,6 +142,8 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
       body: PinLayout(
         theme: pinTheme,
         brand: const PinBrand(),
+        // Sans titre à afficher, le bloc logo + cases descend vers le centre.
+        topSpacing: 48,
         prompt: 'Veuillez saisir votre code TMK',
         length: PinService.codeLength,
         filled: _code.length,
@@ -124,8 +159,8 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
           tooltip: 'Se déconnecter',
         ),
         footer: TextButton(
-          onPressed: _busy ? null : _confirmLogout,
-          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          onPressed: _busy ? null : _confirmForget,
+          style: TextButton.styleFrom(foregroundColor: AppColors.dark),
           child: const Text(
             'Code TMK oublié ?',
             style: TextStyle(fontWeight: FontWeight.w600),
@@ -136,7 +171,7 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
   }
 }
 
-/// « Se déconnecter ? OUI / NON » — le code et la session sont abandonnés.
+/// « Se déconnecter ? OUI / NON » — la session est fermée, le code conservé.
 class _LogoutDialog extends StatelessWidget {
   const _LogoutDialog();
 
@@ -149,6 +184,12 @@ class _LogoutDialog extends StatelessWidget {
         'Se déconnecter ?',
         textAlign: TextAlign.center,
         style: TextStyle(fontSize: 18, color: AppColors.dark),
+      ),
+      content: const Text(
+        'Vous gardez votre code TMK : il vous sera simplement redemandé à la '
+        'prochaine connexion.',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 13, color: AppColors.label, height: 1.4),
       ),
       actionsAlignment: MainAxisAlignment.center,
       actions: [

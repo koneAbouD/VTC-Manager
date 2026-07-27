@@ -1,7 +1,12 @@
 package com.tmk.vtcmanager.interfaces.rest.exception;
 
 import com.tmk.vtcmanager.application.exception.AucunePenaliteAmendePendingException;
+import com.tmk.vtcmanager.application.exception.CaisseClotureeException;
 import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedException;
+import com.tmk.vtcmanager.application.exception.ClotureCaisseDejaEffectueeException;
+import com.tmk.vtcmanager.application.exception.MotifEcartObligatoireException;
+import com.tmk.vtcmanager.application.exception.PeriodeClotureeException;
+import com.tmk.vtcmanager.application.exception.PeriodeNonCloturableException;
 import com.tmk.vtcmanager.application.exception.ChauffeurPermisExpireException;
 import com.tmk.vtcmanager.application.exception.ChauffeurSuspenduException;
 import com.tmk.vtcmanager.application.exception.EncaissementPenaliteDepasseMontantException;
@@ -241,6 +246,34 @@ public class GlobalExceptionHandler {
                         "chauffeurId:" + ex.getChauffeurId(),
                         "chauffeurNom:" + ex.getChauffeurNom()
                 ), ex);
+    }
+
+    // ── Verrous comptables ────────────────────────────────────────────────
+    // 409 : l'écriture est refusée par l'état des livres, pas par sa forme.
+
+    @ExceptionHandler(PeriodeClotureeException.class)
+    public ResponseEntity<ApiError> handlePeriodeCloturee(PeriodeClotureeException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "PERIODE_CLOTUREE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(PeriodeNonCloturableException.class)
+    public ResponseEntity<ApiError> handlePeriodeNonCloturable(PeriodeNonCloturableException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "PERIODE_NON_CLOTURABLE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(CaisseClotureeException.class)
+    public ResponseEntity<ApiError> handleCaisseCloturee(CaisseClotureeException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "CAISSE_CLOTUREE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(ClotureCaisseDejaEffectueeException.class)
+    public ResponseEntity<ApiError> handleClotureDejaEffectuee(ClotureCaisseDejaEffectueeException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "CLOTURE_CAISSE_DEJA_EFFECTUEE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(MotifEcartObligatoireException.class)
+    public ResponseEntity<ApiError> handleMotifEcartObligatoire(MotifEcartObligatoireException ex, HttpServletRequest request) {
+        return respond(HttpStatus.BAD_REQUEST, "MOTIF_ECART_OBLIGATOIRE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(ResourceAlreadyExistsException.class)

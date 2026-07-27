@@ -17,6 +17,7 @@ import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepos
 import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,7 @@ public class CompleteMaintenanceUseCase {
     private final VehiculeStatutEventPublisher statutEventPublisher;
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final SequenceReferenceService sequenceReferenceService;
 
     @Transactional
     public Maintenance execute(Long id, BigDecimal cout, LocalDate dateEffectuee,
@@ -56,8 +58,8 @@ public class CompleteMaintenanceUseCase {
                     saved.getType() != null ? saved.getType() : "AUTRE",
                     saved.getPrestataire() != null ? saved.getPrestataire() : "Prestataire non renseigné");
 
-            String reference = "DEP-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy"))
-                    + "-" + String.valueOf(System.currentTimeMillis()).substring(7);
+String reference = sequenceReferenceService.suivante(
+                    SequenceReferenceService.Journal.MAINTENANCE);
 
             CategorieOperation categorie = categorieId != null
                     ? categorieRepository.findById(categorieId).orElse(null)

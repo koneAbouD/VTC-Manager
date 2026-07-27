@@ -24,6 +24,9 @@ void main() {
           contravention: _fake(statut: 'EN_ATTENTE'),
           selectable: true,
           selected: false,
+          // Le tap ne coche qu'en mode sélection ; hors mode, il ouvre le
+          // détail (voir la doc de ContraventionCard).
+          selectionMode: true,
           onSelectChanged: (v) => received = v,
           onEdit: () => received = null,
         ),
@@ -31,7 +34,7 @@ void main() {
     ));
 
     // Tap au centre de la carte (sur le contenu, pas la case).
-    await tester.tap(find.text('Excès de vitesse'));
+    await tester.tap(find.text('AA-123-BB', findRichText: true));
     await tester.pump();
 
     expect(received, isTrue,
@@ -55,7 +58,7 @@ void main() {
       ),
     ));
 
-    await tester.tap(find.text('Excès de vitesse'));
+    await tester.tap(find.text('AA-123-BB', findRichText: true));
     await tester.pump();
 
     expect(selectChanged, isFalse);

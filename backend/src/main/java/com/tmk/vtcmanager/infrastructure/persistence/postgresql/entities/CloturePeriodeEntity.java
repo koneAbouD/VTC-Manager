@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CloturePeriodeEntity extends AbstractAuditEntity {
+public class CloturePeriodeEntity extends AbstractEcritureAuditEntity {
 
     public static final String TABLE_NAME = "clotures_periode";
 

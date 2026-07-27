@@ -29,8 +29,18 @@ class AuthLocked extends AuthState {
   const AuthLocked({this.displayName, this.message});
 }
 
-/// Connexion réussie, code d'accès proposé avant d'entrer dans l'application.
+/// Connexion réussie, code d'accès à choisir avant d'entrer dans l'application.
 class AuthPinSetup extends AuthState {
   final String? displayName;
   const AuthPinSetup({this.displayName});
+}
+
+/// Connexion réussie alors qu'un code existe déjà pour ce compte : on le
+/// redemande au lieu d'en faire choisir un nouveau.
+///
+/// La saisie sert à re-dériver la clé du coffre, pour y ranger le refresh token
+/// tout neuf sans que le chauffeur ait à changer de code.
+class AuthPinResume extends AuthState {
+  final String? displayName;
+  const AuthPinResume({this.displayName});
 }

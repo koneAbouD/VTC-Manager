@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/pin_lock_page.dart';
+import 'features/auth/presentation/pages/pin_resume_page.dart';
 import 'features/auth/presentation/pages/pin_setup_page.dart';
 import 'features/auth/presentation/providers/auth_controller.dart';
 import 'features/auth/presentation/providers/auth_state.dart';
@@ -83,6 +84,8 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
       AuthLocked() => const PinLockPage(),
       AuthPinSetup(:final displayName) =>
         PinSetupPage(displayName: displayName),
+      AuthPinResume(:final displayName) =>
+        PinResumePage(displayName: displayName),
     };
   }
 }

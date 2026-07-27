@@ -5,7 +5,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../data/parametrage_api.dart';
 import '../providers/parametrage_providers.dart';
-import 'parametres_generaux_page.dart';
 import 'referentiel_liste_page.dart';
 
 /// Écran d'accueil du paramétrage des données de référence.
@@ -33,26 +32,13 @@ class ParametrageHubPage extends ConsumerWidget {
           // que la dernière carte ne passe pas sous la barre système.
           padding: EdgeInsets.fromLTRB(
               16, 16, 16, 32 + MediaQuery.of(context).padding.bottom),
-          // Index 0 = carte fixe « Paramètres généraux » (réglages globaux) ;
-          // le reste = référentiels dynamiques du méta-catalogue.
-          itemCount: referentiels.length + 1,
+          // Référentiels dynamiques du méta-catalogue. Les réglages globaux
+          // (« Paramétrage généraux ») ont leur propre entrée dans les
+          // paramètres de l'application.
+          itemCount: referentiels.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (_, i) {
-            if (i == 0) {
-              return _HubTile(
-                icon: Icons.settings_suggest_outlined,
-                libelle: 'Paramètres généraux',
-                description:
-                    "Réglages globaux : durée d'amortissement des véhicules…",
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ParametresGenerauxPage(),
-                  ),
-                ),
-              );
-            }
-            final descriptor = referentiels[i - 1];
+            final descriptor = referentiels[i];
             return _HubTile(
               icon: Icons.tune_rounded,
               libelle: descriptor.libelle,

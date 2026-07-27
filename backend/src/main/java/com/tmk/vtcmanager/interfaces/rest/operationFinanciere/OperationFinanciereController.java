@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.application.usecases.operationFinanciere.*;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
+import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.AnnulationRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.OperationFinanciereRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.MontantsCategoriesResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.OperationFinanciereResponse;
@@ -136,9 +137,14 @@ public class OperationFinanciereController {
         return mapper.toResponse(updateUseCase.execute(id, mapper.toDomain(request)));
     }
 
+    /**
+     * Contre-passe l'opération : l'écriture d'origine reste au journal, une
+     * extourne de montant opposé la neutralise. Le motif est obligatoire.
+     */
     @PatchMapping("/{id}/annuler")
-    public OperationFinanciereResponse annuler(@PathVariable Long id) {
-        return mapper.toResponse(annulerUseCase.execute(id));
+    public OperationFinanciereResponse annuler(@PathVariable Long id,
+                                               @Valid @RequestBody AnnulationRequest request) {
+        return mapper.toResponse(annulerUseCase.execute(id, request.motif()));
     }
 
     // La suppression d'une opération est volontairement non exposée :

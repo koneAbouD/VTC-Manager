@@ -29,6 +29,20 @@ class OperationFinanciere {
   final StatutOperation statut;
   final DetailMaintenance? detailMaintenance;
 
+  /// Écriture contre-passée par celle-ci : non nul sur une extourne, dont le
+  /// montant est l'opposé de l'origine.
+  final int? extourneDeId;
+
+  /// Renseignés sur une écriture qui a été extournée.
+  final DateTime? annuleLe;
+  final String? motifAnnulation;
+
+  /// Cette écriture est une contre-passation.
+  bool get estUneExtourne => extourneDeId != null;
+
+  /// Cette écriture a été contre-passée : elle reste au journal, neutralisée.
+  bool get estExtournee => annuleLe != null;
+
   const OperationFinanciere({
     this.id,
     this.reference,
@@ -50,6 +64,9 @@ class OperationFinanciere {
     this.commentaire,
     this.statut = StatutOperation.ENCAISSE,
     this.detailMaintenance,
+    this.extourneDeId,
+    this.annuleLe,
+    this.motifAnnulation,
   });
 
   /// Date à afficher sur les lignes d'opération : la date métier si présente

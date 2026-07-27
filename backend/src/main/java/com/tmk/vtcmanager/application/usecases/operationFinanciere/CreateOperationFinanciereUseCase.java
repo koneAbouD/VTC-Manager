@@ -15,7 +15,9 @@ import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepos
 import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,10 +40,13 @@ public class CreateOperationFinanciereUseCase {
     private final SousCategorieOperationRepository sousCategorieRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final SequenceReferenceService sequenceReferenceService;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public OperationFinanciere execute(OperationFinanciere operation) {
         periodeClotureeGuard.verifier(operation.getDateOperation());
+        caisseClotureeGuard.verifier(operation.getCompteTresorerieId(), operation.getDateOperation());
 
         // Validation chauffeur
         if (operation.getChauffeur() != null && operation.getChauffeur().getId() != null) {
@@ -157,9 +162,8 @@ public class CreateOperationFinanciereUseCase {
     }
 
     private String generateReference(TypeOperation type) {
-        String prefix = type == TypeOperation.REVENU ? "REV" : "DEP";
-        String year = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy"));
-        String timestamp = String.valueOf(System.currentTimeMillis()).substring(7);
-        return prefix + "-" + year + "-" + timestamp;
+        return sequenceReferenceService.suivante(type == TypeOperation.REVENU
+                ? SequenceReferenceService.Journal.RECETTE
+                : SequenceReferenceService.Journal.DEPENSE);
     }
 }

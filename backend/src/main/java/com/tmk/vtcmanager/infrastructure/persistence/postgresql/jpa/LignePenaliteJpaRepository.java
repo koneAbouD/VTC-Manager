@@ -97,7 +97,8 @@ public interface LignePenaliteJpaRepository
                     ELSE 'EN_ATTENTE'
                 END
             FROM (SELECT COALESCE(SUM(montant), 0) AS total
-                  FROM encaissements_penalite WHERE ligne_penalite_id = :ligneId) sub
+                  FROM encaissements_penalite
+                  WHERE ligne_penalite_id = :ligneId AND annule_le IS NULL) sub
             WHERE lp.id = :ligneId
               AND lp.statut IN ('EN_ATTENTE', 'PARTIELLEMENT_ENCAISSEE', 'ENCAISSEE')
             """, nativeQuery = true)

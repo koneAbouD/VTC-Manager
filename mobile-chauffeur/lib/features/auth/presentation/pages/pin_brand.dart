@@ -10,6 +10,9 @@ const pinTheme = PinTheme(
   border: AppColors.border,
   filled: AppColors.primary,
   error: AppColors.error,
+  // Fond des cases vides et des touches, fond d'une case saisie.
+  fill: AppColors.fieldFill,
+  tint: AppColors.primaryTint,
 );
 
 /// Marque affichée en tête des écrans de code.

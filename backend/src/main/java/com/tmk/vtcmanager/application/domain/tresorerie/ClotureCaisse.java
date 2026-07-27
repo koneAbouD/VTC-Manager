@@ -7,11 +7,16 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
- * Clôture de caisse : comparaison du solde théorique et du comptage
- * physique à une date. L'écart éventuel donne lieu à une opération
- * d'ajustement (operationId) qui réaligne le solde sur le comptage.
+ * Clôture de caisse : comparaison du solde théorique et du comptage physique à
+ * une date.
+ *
+ * <p>L'écart éventuel donne lieu à une opération d'ajustement ({@code operationId})
+ * qui réaligne le solde sur le comptage. Cette écriture est passée en <em>compte
+ * d'attente</em> : elle n'affecte pas encore le résultat, tant que la décision
+ * d'imputation n'est pas prise ({@link StatutImputationEcart}).
  */
 @Data
 @Builder
@@ -29,4 +34,20 @@ public class ClotureCaisse {
     private BigDecimal ecart;
     private String motifEcart;
     private Long operationId;
+
+    /** Qui répond du fonds de caisse compté (caissier, gérant du point). */
+    private String responsable;
+
+    /** Null quand il n'y a pas d'écart : il n'y a rien à imputer. */
+    private StatutImputationEcart imputationStatut;
+    private String imputationMotif;
+    private LocalDateTime imputeeLe;
+    private String imputeePar;
+    /** Écriture qui a soldé le compte d'attente. */
+    private Long operationImputationId;
+
+    /** Vrai si un écart reste à imputer. */
+    public boolean attendImputation() {
+        return imputationStatut == StatutImputationEcart.EN_ATTENTE;
+    }
 }

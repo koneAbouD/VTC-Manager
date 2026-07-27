@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tmk_pin/tmk_pin.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_header.dart';
 import '../providers/auth_provider.dart';
 import 'pin_brand.dart';
 
@@ -201,21 +202,25 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
         busy: _busy,
         onDigit: _onDigit,
         onBackspace: _onBackspace,
-        // Depuis les réglages, la croix referme la page ; à la suite d'une
-        // connexion, le code est obligatoire et la seule sortie est de
-        // repartir sur la page de connexion.
-        action: IconButton(
-          onPressed: _busy
-              ? null
-              : widget.onDone != null
-                  ? () => Navigator.of(context).pop()
-                  : _confirmLogout,
-          icon: Icon(
-            widget.onDone != null ? Icons.close_rounded : Icons.logout_rounded,
-          ),
-          color: AppColors.dark,
-          tooltip: widget.onDone != null ? 'Annuler' : 'Se déconnecter',
-        ),
+        // Depuis les réglages, on repart en arrière avec le même bouton que
+        // les en-têtes du reste de l'application.
+        leading: widget.onDone != null
+            ? AppHeaderAction(
+                icon: Icons.arrow_back_rounded,
+                iconSize: 18,
+                onTap: _busy ? null : () => Navigator.of(context).pop(),
+              )
+            : null,
+        // À la suite d'une connexion, le code est obligatoire : pas de retour,
+        // la seule sortie est de repartir sur la page de connexion.
+        action: widget.onDone == null
+            ? IconButton(
+                onPressed: _busy ? null : _confirmLogout,
+                icon: const Icon(Icons.logout_rounded),
+                color: AppColors.dark,
+                tooltip: 'Se déconnecter',
+              )
+            : null,
       ),
     );
   }

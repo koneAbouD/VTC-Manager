@@ -117,9 +117,9 @@ class OperationFinanciereRepositoryImpl
   }
 
   @override
-  Future<Either<Failure, void>> annuler(int id) async {
+  Future<Either<Failure, void>> annuler(int id, String motif) async {
     try {
-      await _datasource.annuler(id);
+      await _datasource.annuler(id, motif);
       return const Right(null);
     } on ApiException catch (e) {
       return Left(_map(e));

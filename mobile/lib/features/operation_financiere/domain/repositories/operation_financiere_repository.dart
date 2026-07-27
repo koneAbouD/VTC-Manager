@@ -34,5 +34,5 @@ abstract class OperationFinanciereRepository {
   Future<Either<Failure, OperationFinanciere>> update(
       int id, Map<String, dynamic> payload);
 
-  Future<Either<Failure, void>> annuler(int id);
+  Future<Either<Failure, void>> annuler(int id, String motif);
 }

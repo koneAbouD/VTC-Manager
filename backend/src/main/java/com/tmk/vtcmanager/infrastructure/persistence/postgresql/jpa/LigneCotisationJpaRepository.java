@@ -58,7 +58,8 @@ public interface LigneCotisationJpaRepository
                     ELSE 'EN_ATTENTE'
                 END
             FROM (SELECT COALESCE(SUM(montant), 0) AS total
-                  FROM encaissements_cotisation WHERE ligne_cotisation_id = :ligneId) sub
+                  FROM encaissements_cotisation
+                  WHERE ligne_cotisation_id = :ligneId AND annule_le IS NULL) sub
             WHERE lc.id = :ligneId AND lc.statut NOT IN ('ANNULEE', 'RESTITUEE')
             """, nativeQuery = true)
     void recalculerDepuisEncaissements(@Param("ligneId") Long ligneId);

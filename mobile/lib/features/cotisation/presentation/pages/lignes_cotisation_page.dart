@@ -729,7 +729,7 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
               _Chip(
                 label: 'Tous',
                 selected: widget.statutSelectionne == null,
-                color: Colors.grey.shade600,
+                color: _hint,
                 onTap: () => widget.onStatutChanged(null),
                 infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
               ),
@@ -747,11 +747,18 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
         const SizedBox(height: 4),
       ]);
 
+  /// Palette des chips de statut, alignée sur celle de ContraventionsPage :
+  /// trois teintes seulement — gris pour l'attente et les fins de course
+  /// neutres, ambre pour ce qui est en cours, vert pour ce qui est soldé.
+  static const _ambre = Color(0xFF854F0B);
+  static const _vert = Color(0xFF2E7D32);
+  static const _hint = Color(0xFF8A94A6);
+
   Color _couleur(StatutLigneCotisation s) => switch (s) {
-        StatutLigneCotisation.enAttente             => Colors.orange,
-        StatutLigneCotisation.partiellementEncaisse => Colors.blue,
-        StatutLigneCotisation.encaisse              => Colors.green,
-        StatutLigneCotisation.annulee               => Colors.grey,
+        StatutLigneCotisation.enAttente             => _hint,
+        StatutLigneCotisation.partiellementEncaisse => _ambre,
+        StatutLigneCotisation.encaisse              => _vert,
+        StatutLigneCotisation.annulee               => _hint,
       };
 }
 
@@ -773,19 +780,23 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Fond, bordure et texte repris des chips de statut de ContraventionsPage :
+    // le chip sélectionné se teinte de sa couleur au lieu de s'en remplir.
     final chip = Container(
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? color : Colors.white,
+        color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: selected ? color : Colors.grey.shade300),
+        border: Border.all(
+            color:
+                selected ? color.withValues(alpha: 0.5) : AppColors.border),
       ),
       child: Text(label,
           style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: selected ? Colors.white : Colors.grey.shade600)),
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? color : AppColors.label)),
     );
 
     if (infoText == null) {
@@ -821,6 +832,12 @@ class _LigneCotisationCard extends StatelessWidget {
         (ligne.montantDu - ligne.montantEncaisse)
             .clamp(0, double.infinity)
             .toDouble();
+    // Encaissement partiel : c'est ce qui est déjà rentré qui intéresse, pas
+    // ce qui manque — le total reste rappelé juste en dessous.
+    final montantPrincipal =
+        ligne.statut == StatutLigneCotisation.partiellementEncaisse
+            ? ligne.montantEncaisse
+            : restant;
 
     return GestureDetector(
       onTap: onTap,
@@ -875,16 +892,16 @@ class _LigneCotisationCard extends StatelessWidget {
             const SizedBox(width: 8),
             // Montants + bouton encaisser (droite)
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              // Montant toujours en noir : l'état de l'encaissement se lit déjà
+              // sur l'icône et la pastille de statut.
               Text(
-                '${NumberFormat('#,##0', 'fr_FR').format(restant)} XOF',
-                style: TextStyle(
+                '${NumberFormat('#,##0', 'fr_FR').format(montantPrincipal)} XOF',
+                style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: restant > 0
-                        ? Colors.orange.shade700
-                        : const Color(0xFF2E7D32)),
+                    color: AppColors.dark),
               ),
-              if (restant != ligne.montantDu)
+              if (montantPrincipal != ligne.montantDu)
                 Text(
                   'sur ${NumberFormat('#,##0', 'fr_FR').format(ligne.montantDu)} XOF',
                   style: TextStyle(
@@ -921,11 +938,13 @@ class _LigneCotisationCard extends StatelessWidget {
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
+  /// Même palette que les chips de filtre : la pastille d'icône reprend la
+  /// couleur du statut telle qu'elle est présentée en haut de page.
   Color _couleur(StatutLigneCotisation s) => switch (s) {
-        StatutLigneCotisation.enAttente             => Colors.orange,
-        StatutLigneCotisation.partiellementEncaisse => Colors.blue,
-        StatutLigneCotisation.encaisse              => Colors.green,
-        StatutLigneCotisation.annulee               => Colors.grey,
+        StatutLigneCotisation.enAttente             => const Color(0xFF8A94A6),
+        StatutLigneCotisation.partiellementEncaisse => const Color(0xFF854F0B),
+        StatutLigneCotisation.encaisse              => const Color(0xFF2E7D32),
+        StatutLigneCotisation.annulee               => const Color(0xFF8A94A6),
       };
 
   IconData _icone(StatutLigneCotisation s) => switch (s) {

@@ -76,11 +76,11 @@ Future<void> _pumpPage(WidgetTester tester) async {
 void main() {
   testWidgets('les 3 lignes se chargent', (tester) async {
     await _pumpPage(tester);
-    // Les 3 types d'infraction sont rendus ; aucune barre de sélection tant
-    // qu'on n'a pas activé le mode sélection (appui long).
-    expect(find.text('Excès'), findsOneWidget);
-    expect(find.text('Feu rouge'), findsOneWidget);
-    expect(find.text('Stationnement'), findsOneWidget);
+    // Les 3 lignes sont rendues (titre = véhicule) ; aucune barre de sélection
+    // tant qu'on n'a pas activé le mode sélection (appui long).
+    expect(find.text('AA-111', findRichText: true), findsOneWidget);
+    expect(find.text('BB-222', findRichText: true), findsOneWidget);
+    expect(find.text('CC-333', findRichText: true), findsOneWidget);
     expect(find.text('Total à reverser'), findsNothing);
   });
 
@@ -92,7 +92,7 @@ void main() {
     expect(find.textContaining('Reverser ('), findsNothing);
 
     // La sélection s'active par appui long (le tap ouvre le détail).
-    await tester.longPress(find.text('Feu rouge'));
+    await tester.longPress(find.text('BB-222', findRichText: true));
     await tester.pump();
 
     // La barre basse « Total à reverser » + « Reverser (1) » doit apparaître.
@@ -105,7 +105,7 @@ void main() {
     await _pumpPage(tester);
 
     // Entre en mode sélection (appui long), puis coche tout.
-    await tester.longPress(find.text('Feu rouge'));
+    await tester.longPress(find.text('BB-222', findRichText: true));
     await tester.pump();
 
     expect(find.text('3 contravention(s)'), findsOneWidget);

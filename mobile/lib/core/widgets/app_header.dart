@@ -33,11 +33,21 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   /// invisible pour centrer le titre.
   final Widget? action;
 
+  /// Widget affiché à gauche sur les écrans racines (ex. : bouton menu de
+  /// l'accueil). Ignoré quand [showBack] est true, le bouton retour occupant
+  /// déjà cette place.
+  final Widget? leading;
+
   /// Pill colorée affichée sous le titre (ex. : "Sélection").
   final String? badge;
 
   /// Couleur de fond (blanc par défaut).
   final Color? backgroundColor;
+
+  /// Fond du bouton retour ([AppColors.headerButton] par défaut). À surcharger
+  /// quand l'en-tête est posé sur une teinte proche, où la pastille se
+  /// confondrait avec le fond.
+  final Color? backButtonColor;
 
   const AppHeader({
     super.key,
@@ -47,6 +57,8 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     this.action,
     this.badge,
     this.backgroundColor,
+    this.backButtonColor,
+    this.leading,
   });
 
   @override
@@ -61,7 +73,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               width: 56,
               height: 38,
               decoration: BoxDecoration(
-                color: AppColors.headerButton,
+                color: backButtonColor ?? AppColors.headerButton,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Icon(Icons.arrow_back_rounded,
@@ -92,8 +104,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
         if (badge != null) ...[
           const SizedBox(height: 4),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
               color: AppColors.primaryTint,
               borderRadius: BorderRadius.circular(20),
@@ -124,8 +135,11 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
         : Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              if (leading != null) leading!,
               Expanded(child: titleColumn),
-              if (action != null) action!,
+              // Placeholder symétrique du leading : le titre reste centré même
+              // sans action à droite.
+              if (action != null) action! else if (leading != null) placeholder,
             ],
           );
 
@@ -210,9 +224,8 @@ class AppHeaderAction extends StatelessWidget {
         height: 38,
         // Largeur fixe pour icône, padding horizontal pour texte
         width: label != null ? null : 56,
-        padding: label != null
-            ? const EdgeInsets.symmetric(horizontal: 14)
-            : null,
+        padding:
+            label != null ? const EdgeInsets.symmetric(horizontal: 14) : null,
         decoration: BoxDecoration(
           color: AppColors.headerButton,
           borderRadius: BorderRadius.circular(20),

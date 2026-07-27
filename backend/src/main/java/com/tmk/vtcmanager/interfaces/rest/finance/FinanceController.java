@@ -12,7 +12,9 @@ import com.tmk.vtcmanager.application.usecases.finance.GetCompteResultatUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCreancesChauffeurUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCreancesVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetMargesParVehiculeUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetProvisionCreancesUseCase;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.BilanResponse;
+import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.ProvisionCreancesResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CloturePeriodeResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CompteResultatResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CreanceChauffeurResponse;
@@ -42,6 +44,7 @@ public class FinanceController {
     private final GetCompteResultatUseCase getCompteResultatUseCase;
     private final GetMargesParVehiculeUseCase getMargesParVehiculeUseCase;
     private final GetBilanUseCase getBilanUseCase;
+    private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
     private final ExportComptableUseCase exportComptableUseCase;
     private final CloturerPeriodeUseCase cloturerPeriodeUseCase;
     private final GetCloturesPeriodeUseCase getCloturesPeriodeUseCase;
@@ -119,9 +122,24 @@ public class FinanceController {
     public BilanResponse getBilan() {
         var bilan = getBilanUseCase.executer();
         return new BilanResponse(bilan.getDate(), bilan.getTresorerie(),
-                bilan.getCreancesChauffeurs(), bilan.getImmobilisationsNettes(),
+                bilan.getCreancesChauffeurs(), bilan.getProvisionCreances(),
+                bilan.getCreancesNettes(), bilan.getImmobilisationsNettes(),
                 bilan.getTotalActif(), bilan.getDetteEtatContraventions(),
                 bilan.getSituationNette());
+    }
+
+    /**
+     * Détail de la dépréciation des créances : assiette et taux par tranche
+     * d'ancienneté. C'est la justification de la ligne « provision » du bilan.
+     */
+    @GetMapping("/provision-creances")
+    public ProvisionCreancesResponse getProvisionCreances() {
+        var p = getProvisionCreancesUseCase.executer();
+        return new ProvisionCreancesResponse(p.getCreancesBrutes(), p.getBase0a7Jours(),
+                p.getBase8a30Jours(), p.getBasePlus30Jours(), p.getTaux0a7Jours(),
+                p.getTaux8a30Jours(), p.getTauxPlus30Jours(), p.getProvision0a7Jours(),
+                p.getProvision8a30Jours(), p.getProvisionPlus30Jours(),
+                p.getProvisionTotale(), p.getCreancesNettes());
     }
 
     // ── Export comptable ─────────────────────────────────────────────────

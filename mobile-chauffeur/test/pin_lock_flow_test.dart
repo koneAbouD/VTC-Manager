@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -100,6 +101,50 @@ void main() {
     expect(find.byType(HomePage), findsNothing);
   });
 
+  testWidgets('après une déconnexion, la relance demande la connexion',
+      (tester) async {
+    // Le coffre est conservé, mais son refresh token est révoqué : proposer le
+    // déverrouillage n'aurait aucun sens.
+    await tester.runAsync(() => fastPin().configure(
+          code: '48213',
+          refreshToken: 'refresh-token-abc',
+          account: '+2250708090910',
+          displayName: 'Abou-dramane',
+        ));
+    storage.values['session_logged_out'] = 'true';
+
+    await bootApp(tester);
+
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(find.byType(PinLockPage), findsNothing);
+  });
+
+  testWidgets('la déconnexion conserve le code TMK, « oublié » l\'efface',
+      (tester) async {
+    final pin = fastPin();
+    await tester.runAsync(() => pin.configure(
+          code: '48213',
+          refreshToken: 'refresh-token-abc',
+          account: '+2250708090910',
+          displayName: 'Abou-dramane',
+        ));
+
+    final container = ProviderContainer(
+      overrides: [pinServiceProvider.overrideWith((_) => pin)],
+    );
+    addTearDown(container.dispose);
+    final auth = container.read(authControllerProvider.notifier);
+
+    // Déconnexion volontaire : le coffre survit, la prochaine connexion
+    // redemandera le même code au lieu d'en faire choisir un nouveau.
+    await tester.runAsync(auth.logout);
+    expect(await pin.isConfigured(), isTrue);
+
+    // « Code TMK oublié ? » : là, le coffre disparaît.
+    await tester.runAsync(auth.forgetPin);
+    expect(await pin.isConfigured(), isFalse);
+  });
+
   testWidgets('l\'écran de verrouillage n\'expose aucune identité',
       (tester) async {
     // Le compte du chauffeur EST son numéro : il ne doit pas apparaître. Le
@@ -116,6 +161,34 @@ void main() {
     expect(find.byType(PinLockPage), findsOneWidget);
     expect(find.textContaining('0708090910'), findsNothing);
     expect(find.textContaining('Abou-dramane'), findsNothing);
+  });
+
+  testWidgets(
+      'depuis le verrouillage, « Se déconnecter » garde le code et « Code TMK '
+      'oublié ? » l\'efface', (tester) async {
+    final pin = fastPin();
+    Future<void> configurer() => pin.configure(
+          code: '48213',
+          refreshToken: 'refresh-token-abc',
+          account: '+2250708090910',
+          displayName: 'Abou-dramane',
+        );
+
+    await tester.runAsync(configurer);
+    await bootApp(tester);
+    expect(find.byType(PinLockPage), findsOneWidget);
+
+    // Bouton de déconnexion (en haut à droite) : le coffre doit survivre.
+    await tester.tap(find.byIcon(Icons.logout_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OUI'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(await pin.isConfigured(), isTrue);
+    expect(find.byType(LoginPage), findsOneWidget);
   });
 
   testWidgets('un code erroné décompte les essais sans quitter l\'écran',

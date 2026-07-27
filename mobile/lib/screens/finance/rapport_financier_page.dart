@@ -644,7 +644,9 @@ class _OperationTile extends StatelessWidget {
     final isRevenu = op.type == 'REVENU';
     final amountColor =
         isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
-    final sign = isRevenu ? '+' : '-';
+    // Seules les dépenses portent un signe : la couleur de la pastille
+    // suffit à distinguer les revenus.
+    final sign = isRevenu ? '' : '-';
 
     final titre = op.description ?? '—';
     final vehiculeChauffeur = [
@@ -710,8 +712,10 @@ class _OperationTile extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       '$sign${NumberFormat('#,##0', 'fr_FR').format(op.montant.abs())} XOF',
-                      style: TextStyle(
-                        color: amountColor,
+                      style: const TextStyle(
+                        // Montant en noir comme le libellé ; le sens de
+                        // l'opération se lit sur la pastille d'icône.
+                        color: Color(0xFF1A1A1A),
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),

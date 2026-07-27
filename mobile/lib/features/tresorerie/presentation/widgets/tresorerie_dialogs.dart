@@ -179,20 +179,16 @@ class _TransfertSheetState extends ConsumerState<_TransfertSheet> {
     final bottomSafe = MediaQuery.paddingOf(context).bottom;
     final memeCompte = _source.id == _destination.id;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + keyboardHeight + bottomSafe),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const _DragHandle(),
-          const _SheetTitle(
-            icon: Icons.swap_horiz_rounded,
-            accent: _kPrimary,
-            title: 'Transfert entre comptes',
-            subtitle: 'Déplacer un montant d\'un compte vers un autre',
-          ),
-          const SizedBox(height: 14),
+    return _SheetShell(
+      keyboardHeight: keyboardHeight,
+      bottomSafe: bottomSafe,
+      entete: const _SheetTitle(
+        icon: Icons.swap_horiz_rounded,
+        accent: _kPrimary,
+        title: 'Transfert entre comptes',
+        subtitle: 'Déplacer un montant d\'un compte vers un autre',
+      ),
+      children: [
 
           // ── Aperçu source → destination ─────────────────────────────
           _FlowPreview(source: _source, destination: _destination),
@@ -318,8 +314,7 @@ class _TransfertSheetState extends ConsumerState<_TransfertSheet> {
             submittingLabel: 'Transfert…',
             onPressed: _valide ? _submit : null,
           ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -520,20 +515,16 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
         ? AppColors.success
         : (ecart < 0 ? _kError : _kAmber);
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + keyboardHeight + bottomSafe),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const _DragHandle(),
-          const _SheetTitle(
-            icon: Icons.lock_outline_rounded,
-            accent: _kPrimary,
-            title: 'Clôture de caisse',
-            subtitle: 'Comparer le comptage réel au solde théorique',
-          ),
-          const SizedBox(height: 14),
+    return _SheetShell(
+      keyboardHeight: keyboardHeight,
+      bottomSafe: bottomSafe,
+      entete: const _SheetTitle(
+        icon: Icons.lock_outline_rounded,
+        accent: _kPrimary,
+        title: 'Clôture de caisse',
+        subtitle: 'Comparer le comptage réel au solde théorique',
+      ),
+      children: [
 
           // ── Compte ──────────────────────────────────────────────────
           _FormCard(
@@ -628,8 +619,7 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
             submittingLabel: 'Clôture…',
             onPressed: _valide ? _submit : null,
           ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -695,6 +685,63 @@ class CompteAvecSoldeVue {
 // ═══════════════════════════════════════════════════════════════════════════
 //  WIDGETS PARTAGÉS (alignés sur vidange_form_dialog / encaissement)
 // ═══════════════════════════════════════════════════════════════════════════
+
+/// Enveloppe commune des bottom sheets de trésorerie.
+///
+/// Poignée et titre restent **hors** de la zone défilante : ils forment une
+/// prise fixe, sur laquelle le glissement vers le bas ferme la feuille même
+/// quand le formulaire est plus haut que l'écran (sans quoi le défilement
+/// interne capte le geste).
+class _SheetShell extends StatelessWidget {
+  final Widget entete;
+  final List<Widget> children;
+  final double keyboardHeight;
+  final double bottomSafe;
+
+  const _SheetShell({
+    required this.entete,
+    required this.children,
+    required this.keyboardHeight,
+    required this.bottomSafe,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      // La feuille ne monte jamais jusqu'au bord haut : la bande restante
+      // reste tactile pour refermer d'un appui à côté.
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: _DragHandle(),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: entete,
+          ),
+          const SizedBox(height: 14),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                  16, 0, 16, 16 + keyboardHeight + bottomSafe),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _DragHandle extends StatelessWidget {
   const _DragHandle();

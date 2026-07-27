@@ -18,6 +18,7 @@ public class GetBilanUseCase {
     private final CompteTresorerieRepository compteTresorerieRepository;
     private final CreanceRepository creanceRepository;
     private final FinanceReportingRepository reportingRepository;
+    private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
 
     /**
      * Bilan de gestion à aujourd'hui : chaque poste est un calcul dérivé
@@ -37,15 +38,22 @@ public class GetBilanUseCase {
                 .map(CreanceChauffeur::getTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Les créances entrent à l'actif pour leur valeur probable de
+        // recouvrement, pas pour leur montant facial.
+        BigDecimal provision = getProvisionCreancesUseCase.executer().getProvisionTotale();
+        BigDecimal creancesNettes = creances.subtract(provision);
+
         BigDecimal immobilisations = reportingRepository.immobilisationsNettes(aujourdHui);
         BigDecimal detteEtat = creanceRepository.getMontantAReverserEtat();
 
-        BigDecimal totalActif = tresorerie.add(creances).add(immobilisations);
+        BigDecimal totalActif = tresorerie.add(creancesNettes).add(immobilisations);
 
         return BilanGestion.builder()
                 .date(aujourdHui)
                 .tresorerie(tresorerie)
                 .creancesChauffeurs(creances)
+                .provisionCreances(provision)
+                .creancesNettes(creancesNettes)
                 .immobilisationsNettes(immobilisations)
                 .totalActif(totalActif)
                 .detteEtatContraventions(detteEtat)

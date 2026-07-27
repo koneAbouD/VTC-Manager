@@ -26,6 +26,9 @@ class OperationFinanciereModel extends OperationFinanciere {
     super.commentaire,
     super.statut,
     super.detailMaintenance,
+    super.extourneDeId,
+    super.annuleLe,
+    super.motifAnnulation,
   });
 
   factory OperationFinanciereModel.fromJson(Map<String, dynamic> json) {
@@ -78,6 +81,11 @@ class OperationFinanciereModel extends OperationFinanciere {
       statut: StatutOperationExt.fromString(statutStr),
       detailMaintenance:
           dm != null ? DetailMaintenanceModel.fromJson(dm) : null,
+      extourneDeId: (json['extourneDeId'] as num?)?.toInt(),
+      annuleLe: json['annuleLe'] != null
+          ? DateTime.tryParse(json['annuleLe'] as String)
+          : null,
+      motifAnnulation: json['motifAnnulation'] as String?,
     );
   }
 }

@@ -11,7 +11,7 @@ import 'accueil/accueil_screen.dart';
 import 'finance/finance_screen.dart';
 import 'home_nav_provider.dart';
 import 'fleet/fleet_screen.dart';
-import 'settings/settings_screen.dart';
+import '../features/parametrage/presentation/pages/settings_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -46,14 +46,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(homeTabIndexProvider);
 
-    // Action de l'en-tête :
-    //  • Accueil → accès aux paramètres
+    // Bouton d'en-tête, à gauche :
+    //  • Accueil → menu, qui ouvre les réglages
     //  • Autres onglets → aucune action (l'export CSV de la Flotte est
     //    désormais intégré aux barres de recherche des onglets Véhicules
     //    et Chauffeurs).
     final AppHeaderAction? headerAction = currentIndex == 0
         ? AppHeaderAction(
-            icon: Icons.settings_outlined,
+            icon: Icons.menu_rounded,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -66,7 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: '',
         showBack: false,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        action: headerAction,
+        leading: headerAction,
       ),
       body: IndexedStack(
         index: currentIndex,

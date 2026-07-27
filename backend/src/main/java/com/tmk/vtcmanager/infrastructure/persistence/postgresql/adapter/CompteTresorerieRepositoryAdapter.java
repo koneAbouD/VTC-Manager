@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -67,6 +68,14 @@ public class CompteTresorerieRepositoryAdapter implements CompteTresorerieReposi
         return findAllAvecSoldes(false).stream()
                 .filter(c -> c.getCompte().getId().equals(id))
                 .findFirst();
+    }
+
+    @Override
+    public Optional<CompteAvecSolde> findAvecSoldeALaDate(Long id, LocalDate date) {
+        return findById(id).map(compte -> CompteAvecSolde.builder()
+                .compte(compte)
+                .solde(jpaRepository.calculerSoldeALaDate(id, date))
+                .build());
     }
 
     @Override

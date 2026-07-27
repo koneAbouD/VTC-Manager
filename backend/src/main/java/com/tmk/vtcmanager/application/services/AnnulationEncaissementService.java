@@ -9,16 +9,21 @@ import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDateTime;
+
 /**
- * Lorsqu'une opération d'encaissement (recette / cotisation / pénalité) est
- * annulée, l'encaissement sous-jacent n'a plus de réalité comptable : on le
- * supprime, puis on recalcule montant_encaisse + statut de la ligne
- * DIRECTEMENT depuis la table des encaissements (source de vérité), en une
- * instruction atomique — sans manipuler de liste en mémoire (source des
- * incohérences précédentes).
- * <p>
- * No-op pour les opérations non liées à un encaissement (dépense, maintenance,
- * opération manuelle).
+ * Lorsqu'une écriture d'encaissement (recette / cotisation / pénalité) est
+ * contre-passée, l'encaissement sous-jacent est <em>marqué annulé</em> — avec
+ * son auteur et son motif — et jamais supprimé : un règlement reçu puis annulé
+ * reste un fait, seule sa portée comptable disparaît.
+ *
+ * <p>Le montant encaissé et le statut de la ligne sont ensuite recalculés
+ * DIRECTEMENT depuis la table des encaissements (source de vérité), qui ne
+ * somme que les encaissements actifs — en une instruction atomique, sans
+ * manipuler de liste en mémoire.
+ *
+ * <p>No-op pour les opérations non liées à un encaissement (dépense,
+ * maintenance, opération manuelle).
  */
 @RequiredArgsConstructor
 public class AnnulationEncaissementService {
@@ -30,40 +35,46 @@ public class AnnulationEncaissementService {
     private final LigneCotisationRepository ligneCotisationRepository;
     private final LignePenaliteRepository lignePenaliteRepository;
 
-    public void annulerEncaissementLie(OperationFinanciere operation) {
+    public void annulerEncaissementLie(OperationFinanciere operation, String auteur, String motif) {
         if (operation == null || operation.getId() == null) {
             return;
         }
         Long opId = operation.getId();
         // On sonde les 3 tables par operationFinanciereId (indépendant du code
         // catégorie). Chaque méthode est un no-op si aucun encaissement lié.
-        annulerRecette(opId);
-        annulerCotisation(opId);
-        annulerPenalite(opId);
+        annulerRecette(opId, auteur, motif);
+        annulerCotisation(opId, auteur, motif);
+        annulerPenalite(opId, auteur, motif);
     }
 
-    private void annulerRecette(Long opId) {
+    private void annulerRecette(Long opId, String auteur, String motif) {
         var enc = encaissementRepository.findByOperationFinanciereId(opId).orElse(null);
-        if (enc == null) return;
-        Long ligneId = enc.getLigneRecetteId();
-        encaissementRepository.deleteById(enc.getId());
-        // Recalcul fiable depuis la BDD (le flush du delete est garanti avant le SUM).
-        ligneRecetteRepository.recalculerDepuisEncaissements(ligneId);
+        if (enc == null || enc.getAnnuleLe() != null) return;
+        enc.setAnnuleLe(LocalDateTime.now());
+        enc.setAnnulePar(auteur);
+        enc.setMotifAnnulation(motif);
+        encaissementRepository.save(enc);
+        // Recalcul fiable depuis la BDD (le flush du marquage est garanti avant le SUM).
+        ligneRecetteRepository.recalculerDepuisEncaissements(enc.getLigneRecetteId());
     }
 
-    private void annulerCotisation(Long opId) {
+    private void annulerCotisation(Long opId, String auteur, String motif) {
         var enc = encaissementCotisationRepository.findByOperationFinanciereId(opId).orElse(null);
-        if (enc == null) return;
-        Long ligneId = enc.getLigneCotisationId();
-        encaissementCotisationRepository.deleteById(enc.getId());
-        ligneCotisationRepository.recalculerDepuisEncaissements(ligneId);
+        if (enc == null || enc.getAnnuleLe() != null) return;
+        enc.setAnnuleLe(LocalDateTime.now());
+        enc.setAnnulePar(auteur);
+        enc.setMotifAnnulation(motif);
+        encaissementCotisationRepository.save(enc);
+        ligneCotisationRepository.recalculerDepuisEncaissements(enc.getLigneCotisationId());
     }
 
-    private void annulerPenalite(Long opId) {
+    private void annulerPenalite(Long opId, String auteur, String motif) {
         var enc = encaissementPenaliteRepository.findByOperationFinanciereId(opId).orElse(null);
-        if (enc == null) return;
-        Long ligneId = enc.getLignePenaliteId();
-        encaissementPenaliteRepository.deleteById(enc.getId());
-        lignePenaliteRepository.recalculerDepuisEncaissements(ligneId);
+        if (enc == null || enc.getAnnuleLe() != null) return;
+        enc.setAnnuleLe(LocalDateTime.now());
+        enc.setAnnulePar(auteur);
+        enc.setMotifAnnulation(motif);
+        encaissementPenaliteRepository.save(enc);
+        lignePenaliteRepository.recalculerDepuisEncaissements(enc.getLignePenaliteId());
     }
 }

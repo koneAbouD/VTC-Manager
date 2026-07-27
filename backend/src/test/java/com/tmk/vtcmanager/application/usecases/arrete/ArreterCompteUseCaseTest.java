@@ -26,6 +26,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -65,6 +66,7 @@ class ArreterCompteUseCaseTest {
     private ArreteCompteRepository arreteCompteRepository;
     private CompteTresorerieResolver compteTresorerieResolver;
     private PeriodeClotureeGuard periodeClotureeGuard;
+    private SequenceReferenceService sequenceReferenceService;
 
     private ArreterCompteUseCase useCase;
 
@@ -88,13 +90,19 @@ class ArreterCompteUseCaseTest {
         arreteCompteRepository = mock(ArreteCompteRepository.class);
         compteTresorerieResolver = mock(CompteTresorerieResolver.class);
         periodeClotureeGuard = mock(PeriodeClotureeGuard.class);
+        sequenceReferenceService = mock(SequenceReferenceService.class);
+        // Numérotation déterministe : les assertions portent sur les montants,
+        // pas sur la référence exacte.
+        when(sequenceReferenceService.suivante(any(SequenceReferenceService.Journal.class)))
+                .thenReturn("ARR-2026-000001");
 
         CalculerCompteCourantUseCase calculer = new CalculerCompteCourantUseCase(
                 ligneCotisationRepository, creanceRepository, chauffeurRepository);
         useCase = new ArreterCompteUseCase(calculer, arreteCompteRepository, ligneCotisationRepository,
                 ligneRecetteRepository, encaissementRepository, lignePenaliteRepository,
                 encaissementPenaliteRepository, contraventionRepository, operationFinanciereRepository,
-                categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard);
+                categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard,
+                sequenceReferenceService);
 
         // Catégorie renvoyée avec le code demandé (pour assertions).
         when(categorieOperationRepository.findByCode(anyString()))

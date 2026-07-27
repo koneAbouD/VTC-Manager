@@ -761,7 +761,7 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
               _StatutChip(
                 label: 'Tous',
                 selected: widget.statutSelectionne == null,
-                color: Colors.grey.shade600,
+                color: _hint,
                 onTap: () => widget.onStatutChanged(null),
                 infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
               ),
@@ -781,11 +781,18 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
     );
   }
 
+  /// Palette des chips de statut, alignée sur celle de ContraventionsPage :
+  /// trois teintes seulement — gris pour l'attente et les fins de course
+  /// neutres, ambre pour ce qui est en cours, vert pour ce qui est soldé.
+  static const _ambre = Color(0xFF854F0B);
+  static const _vert = Color(0xFF2E7D32);
+  static const _hint = Color(0xFF8A94A6);
+
   Color _couleurStatut(StatutLigneRecette s) => switch (s) {
-        StatutLigneRecette.enAttente => Colors.orange,
-        StatutLigneRecette.partiellementEncaisse => Colors.blue,
-        StatutLigneRecette.encaisse => Colors.green,
-        StatutLigneRecette.annulee => Colors.grey,
+        StatutLigneRecette.enAttente => _hint,
+        StatutLigneRecette.partiellementEncaisse => _ambre,
+        StatutLigneRecette.encaisse => _vert,
+        StatutLigneRecette.annulee => _hint,
       };
 }
 
@@ -808,22 +815,24 @@ class _StatutChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Fond, bordure et texte repris des chips de statut de ContraventionsPage :
+    // le chip sélectionné se teinte de sa couleur au lieu de s'en remplir.
     final chip = Container(
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? color : Colors.white,
+        color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: selected ? color : Colors.grey.shade300,
+          color: selected ? color.withValues(alpha: 0.5) : AppColors.border,
         ),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: selected ? Colors.white : Colors.grey.shade600,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected ? color : AppColors.label,
         ),
       ),
     );
@@ -876,8 +885,12 @@ class _LigneCard extends StatelessWidget {
     final montantRestant = ligne.montantAttendu != null
         ? (ligne.montantAttendu! - ligne.montantEncaisse).clamp(0, double.infinity)
         : null;
-    final montantAttenduDifferent = montantRestant != null &&
-        montantRestant != ligne.montantAttendu;
+    // Encaissement partiel : c'est ce qui est déjà rentré qui intéresse, pas
+    // ce qui manque — le total reste rappelé juste en dessous.
+    final partiel = ligne.statut == StatutLigneRecette.partiellementEncaisse;
+    final montantPrincipal = partiel ? ligne.montantEncaisse : montantRestant;
+    final montantAttenduDifferent = montantPrincipal != null &&
+        montantPrincipal != ligne.montantAttendu;
 
     return GestureDetector(
       onTap: onTap,
@@ -936,13 +949,13 @@ class _LigneCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (montantRestant != null)
+                // Montant toujours en noir : l'état de l'encaissement se lit
+                // déjà sur l'icône et la pastille de statut.
+                if (montantPrincipal != null)
                   Text(
-                    '${NumberFormat('#,##0', 'fr_FR').format(montantRestant)} XOF',
-                    style: TextStyle(
-                      color: montantRestant > 0
-                          ? Colors.orange.shade700
-                          : const Color(0xFF2E7D32),
+                    '${NumberFormat('#,##0', 'fr_FR').format(montantPrincipal)} XOF',
+                    style: const TextStyle(
+                      color: AppColors.dark,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -951,7 +964,7 @@ class _LigneCard extends StatelessWidget {
                   Text(
                     '+${NumberFormat('#,##0', 'fr_FR').format(ligne.montantEncaisse)} XOF',
                     style: const TextStyle(
-                      color: Color(0xFF2E7D32),
+                      color: AppColors.dark,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -973,11 +986,13 @@ class _LigneCard extends StatelessWidget {
     );
   }
 
+  /// Même palette que les chips de filtre : la pastille d'icône reprend la
+  /// couleur du statut telle qu'elle est présentée en haut de page.
   Color _couleurStatut(StatutLigneRecette s) => switch (s) {
-        StatutLigneRecette.enAttente => Colors.orange,
-        StatutLigneRecette.partiellementEncaisse => Colors.blue,
-        StatutLigneRecette.encaisse => Colors.green,
-        StatutLigneRecette.annulee => Colors.grey,
+        StatutLigneRecette.enAttente => const Color(0xFF8A94A6),
+        StatutLigneRecette.partiellementEncaisse => const Color(0xFF854F0B),
+        StatutLigneRecette.encaisse => const Color(0xFF2E7D32),
+        StatutLigneRecette.annulee => const Color(0xFF8A94A6),
       };
 
   IconData _iconeStatut(StatutLigneRecette s) => switch (s) {

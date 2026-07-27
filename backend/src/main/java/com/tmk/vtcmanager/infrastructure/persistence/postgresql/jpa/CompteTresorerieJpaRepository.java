@@ -46,6 +46,30 @@ public interface CompteTresorerieJpaRepository extends JpaRepository<CompteTreso
             """, nativeQuery = true)
     List<SoldeCompteProjection> calculerSoldes(@Param("actifsSeulement") boolean actifsSeulement);
 
+    /**
+     * Solde d'un compte arrêté à une date : même formule que
+     * {@link #calculerSoldes(boolean)}, bornée à {@code date} incluse.
+     */
+    @Query(value = """
+            SELECT c.solde_initial
+                   + COALESCE((SELECT SUM(CASE WHEN o.type_operation = 'REVENU' THEN o.montant
+                                               ELSE -o.montant END)
+                               FROM operations_financieres o
+                               WHERE o.compte_tresorerie_id = c.id
+                                 AND o.statut IN ('ENCAISSE', 'PAYE')
+                                 AND o.date_operation <= :date), 0)
+                   + COALESCE((SELECT SUM(t.montant) FROM transferts_tresorerie t
+                               WHERE t.compte_destination_id = c.id
+                                 AND t.date_transfert <= :date), 0)
+                   - COALESCE((SELECT SUM(t.montant) FROM transferts_tresorerie t
+                               WHERE t.compte_source_id = c.id
+                                 AND t.date_transfert <= :date), 0)
+            FROM comptes_tresorerie c
+            WHERE c.id = :compteId
+            """, nativeQuery = true)
+    java.math.BigDecimal calculerSoldeALaDate(@Param("compteId") Long compteId,
+                                              @Param("date") java.time.LocalDate date);
+
     interface SoldeCompteProjection {
         Long getCompteId();
         java.math.BigDecimal getSolde();

@@ -729,7 +729,7 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
               _Chip(
                 label: 'Tous',
                 selected: widget.statutSelectionne == null,
-                color: Colors.grey.shade600,
+                color: _hint,
                 onTap: () => widget.onStatutChanged(null),
                 infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
               ),
@@ -747,15 +747,22 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
         const SizedBox(height: 4),
       ]);
 
+  /// Palette des chips de statut, alignée sur celle de ContraventionsPage :
+  /// trois teintes seulement — l'attente et les fins de course neutres en gris,
+  /// l'ambre pour ce qui est en cours, le vert pour ce qui est soldé.
+  static const _ambre = Color(0xFF854F0B);
+  static const _vert = Color(0xFF2E7D32);
+  static const _hint = Color(0xFF8A94A6);
+
   Color _couleur(StatutLignePenalite s) => switch (s) {
-        StatutLignePenalite.enAttente              => Colors.orange,
-        StatutLignePenalite.partiellementEncaissee => Colors.blue,
-        StatutLignePenalite.encaissee              => Colors.green,
-        StatutLignePenalite.executee               => Colors.indigo,
-        StatutLignePenalite.notifiee               => Colors.teal,
-        StatutLignePenalite.enCours                => Colors.red.shade700,
-        StatutLignePenalite.levee                  => const Color(0xFF2E7D32),
-        StatutLignePenalite.annulee                => Colors.grey,
+        StatutLignePenalite.enAttente              => _hint,
+        StatutLignePenalite.partiellementEncaissee => _ambre,
+        StatutLignePenalite.encaissee              => _vert,
+        StatutLignePenalite.executee               => _vert,
+        StatutLignePenalite.notifiee               => _vert,
+        StatutLignePenalite.enCours                => _ambre,
+        StatutLignePenalite.levee                  => _vert,
+        StatutLignePenalite.annulee                => _hint,
       };
 }
 
@@ -779,19 +786,23 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Fond, bordure et texte repris de _StatutChips (ContraventionsPage) : le
+    // chip sélectionné se teinte de sa couleur au lieu de s'en remplir.
     final chip = Container(
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? color : Colors.white,
+        color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: selected ? color : Colors.grey.shade300),
+        border: Border.all(
+            color:
+                selected ? color.withValues(alpha: 0.5) : AppColors.border),
       ),
       child: Text(label,
           style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: selected ? Colors.white : Colors.grey.shade600)),
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? color : AppColors.label)),
     );
 
     if (infoText == null) {
@@ -950,17 +961,23 @@ class _LignePenaliteCard extends StatelessWidget {
       TypeSanctionLigne.amende => () {
           final restant = ligne.montantRestant ??
               (ligne.montant - ligne.montantEncaisse).clamp(0, double.infinity);
+          // Encaissement partiel : c'est ce qui est déjà rentré qui intéresse,
+          // pas ce qui manque — le total reste rappelé juste en dessous.
+          final principal =
+              ligne.statut == StatutLignePenalite.partiellementEncaissee
+                  ? ligne.montantEncaisse
+                  : restant;
           return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            // Montant toujours en noir : l'état de l'encaissement se lit déjà
+            // sur l'icône et la pastille de statut.
             Text(
-              '${fmt.format(restant)} XOF',
-              style: TextStyle(
+              '${fmt.format(principal)} XOF',
+              style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: restant > 0
-                      ? Colors.orange.shade700
-                      : const Color(0xFF2E7D32)),
+                  color: AppColors.dark),
             ),
-            if (restant != ligne.montant)
+            if (principal != ligne.montant)
               Text('sur ${fmt.format(ligne.montant)} XOF',
                   style:
                       TextStyle(fontSize: 10, color: Colors.grey.shade400)),

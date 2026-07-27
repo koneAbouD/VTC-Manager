@@ -34,4 +34,11 @@ public interface CompteTresorerieRepository {
 
     /** Solde courant d'un seul compte (même formule). */
     Optional<CompteAvecSolde> findAvecSoldeById(Long id);
+
+    /**
+     * Solde d'un compte arrêté à une date (bornes incluses) : même formule, mais
+     * seules les écritures jusqu'à ce jour comptent. C'est le solde théorique
+     * opposable lors d'un comptage, y compris pour une journée passée.
+     */
+    Optional<CompteAvecSolde> findAvecSoldeALaDate(Long id, java.time.LocalDate date);
 }

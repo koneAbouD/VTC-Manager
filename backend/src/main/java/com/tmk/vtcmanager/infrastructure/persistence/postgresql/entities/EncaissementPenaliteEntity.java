@@ -21,11 +21,12 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = EncaissementPenaliteEntity.TABLE_NAME)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class EncaissementPenaliteEntity extends AbstractAuditEntity {
+public class EncaissementPenaliteEntity extends AbstractEcritureAuditEntity {
 
     public static final String TABLE_NAME = "encaissements_penalite";
 
@@ -56,4 +57,17 @@ public class EncaissementPenaliteEntity extends AbstractAuditEntity {
 
     @Column(name = "commentaire")
     private String commentaire;
+
+    /**
+     * Annulation : l'encaissement n'est jamais supprimé, il est marqué. Les
+     * recalculs de ligne et les agrégats ignorent les encaissements annulés.
+     */
+    @Column(name = "annule_le")
+    private LocalDateTime annuleLe;
+
+    @Column(name = "annule_par", length = 255)
+    private String annulePar;
+
+    @Column(name = "motif_annulation", columnDefinition = "TEXT")
+    private String motifAnnulation;
 }

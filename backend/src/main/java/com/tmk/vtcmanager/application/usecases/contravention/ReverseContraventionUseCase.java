@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationReposi
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ public class ReverseContraventionUseCase {
     private final OperationFinanciereRepository operationFinanciereRepository;
     private final CategorieOperationRepository categorieOperationRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
+    private final SequenceReferenceService sequenceReferenceService;
 
     @Transactional
     public Contravention execute(Long id) {
@@ -68,15 +70,12 @@ public class ReverseContraventionUseCase {
                 .dateReference(contravention.getDateInfraction())
                 .commentaire("Reversement contravention " + (contravention.getTypeInfraction() != null
                         ? contravention.getTypeInfraction() : "#" + contravention.getId()))
-                .reference(genererReference())
+                .reference(sequenceReferenceService.suivante(
+                        SequenceReferenceService.Journal.REVERSEMENT_ETAT))
                 .statut(StatutOperation.PAYE)
                 .build();
 
         operationFinanciereRepository.save(operation);
     }
 
-    private String genererReference() {
-        String ts = String.valueOf(System.currentTimeMillis()).substring(7);
-        return "CTV-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy")) + "-" + ts;
-    }
 }

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../chauffeur/domain/entities/chauffeur.dart';
 import '../../../vehicule/domain/entities/vehicule.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
 import '../../domain/entities/operation_financiere.dart';
@@ -762,8 +763,14 @@ class _OpCard extends StatelessWidget {
     final isRevenu = op.typeOperation == TypeOperation.REVENU;
     final amountColor =
         isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
-    final sign = isRevenu ? '+' : '-';
-    final isAnnulee = op.statut == StatutOperation.ANNULEE;
+    // Seules les dépenses portent un signe : la couleur suffit à distinguer
+    // les revenus.
+    final sign = isRevenu ? '' : '-';
+    // Trois états à distinguer : l'ancien statut ANNULEE (écritures d'avant
+    // l'extourne), une écriture contre-passée (barrée, elle reste au journal)
+    // et la contre-passation elle-même (montant négatif).
+    final isAnnulee = op.statut == StatutOperation.ANNULEE || op.estExtournee;
+    final isExtourne = op.estUneExtourne;
 
     // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
     // La date relative (recalculée à l'affichage) n'est ajoutée que pour les
@@ -833,13 +840,17 @@ class _OpCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (isAnnulee)
-                  _StatusBadge(label: 'Annulée', color: Colors.red.shade400),
+                if (isExtourne)
+                  _StatusBadge(label: 'Extourne', color: Colors.orange.shade700)
+                else if (isAnnulee)
+                  _StatusBadge(label: 'Extournée', color: Colors.red.shade400),
                 const SizedBox(width: 8),
                 Text(
                   '$sign${NumberFormat('#,##0', 'fr_FR').format(op.montant)} XOF',
                   style: TextStyle(
-                    color: isAnnulee ? Colors.red : amountColor,
+                    // Montant en noir comme le libellé ; le sens de
+                    // l'opération se lit sur la pastille d'icône et le signe.
+                    color: isAnnulee ? Colors.red : const Color(0xFF1A1A1A),
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     decoration:
@@ -914,7 +925,8 @@ class _CategorieChipBar extends StatelessWidget {
           _CategoryChip(
             label: 'Tous',
             selected: selected == null,
-            color: Colors.grey.shade600,
+            // Même gris neutre que le chip « Toutes » de ContraventionsPage.
+            color: AppColors.hint,
             onTap: () => onChanged(null),
             infoText: money.format(montantsCategorie[null] ?? 0),
           ),
@@ -963,20 +975,23 @@ class _CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Fond, bordure et texte repris des chips de statut de ContraventionsPage :
+    // le chip sélectionné se teinte de sa couleur au lieu de s'en remplir.
     final chip = Container(
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? color : Colors.white,
+        color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: selected ? color : Colors.grey.shade300),
+        border: Border.all(
+            color: selected ? color.withValues(alpha: 0.5) : AppColors.border),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: selected ? Colors.white : Colors.grey.shade600,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected ? color : AppColors.label,
         ),
       ),
     );

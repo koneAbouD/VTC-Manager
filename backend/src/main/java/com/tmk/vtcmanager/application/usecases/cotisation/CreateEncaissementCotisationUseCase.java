@@ -14,7 +14,9 @@ import com.tmk.vtcmanager.application.ports.persistence.EncaissementCotisationRe
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,8 @@ public class CreateEncaissementCotisationUseCase {
     private final CategorieOperationRepository categorieOperationRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final SequenceReferenceService sequenceReferenceService;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public EncaissementCotisation executer(Long ligneCotisationId, EncaissementCotisation encaissement) {
@@ -43,6 +47,11 @@ public class CreateEncaissementCotisationUseCase {
         }
 
         periodeClotureeGuard.verifier(encaissement.getDateEncaissement());
+
+        // La caisse visée ne doit pas avoir déjà été comptée pour ce jour :
+        // un encaissement rétroactif ferait mentir le procès-verbal.
+        Long compteId = compteTresorerieResolver.resoudre(null, encaissement.getModeEncaissement());
+        caisseClotureeGuard.verifier(compteId, encaissement.getDateEncaissement());
 
         if (encaissement.getMontant().compareTo(ligne.montantRestant()) > 0) {
             throw new EncaissementDepasseMontantDuException(ligne.montantRestant());
@@ -85,15 +94,12 @@ public class CreateEncaissementCotisationUseCase {
                 .commentaire(encaissement.getCommentaire() != null && !encaissement.getCommentaire().isBlank()
                         ? encaissement.getCommentaire()
                         : ligne.getNomCotisation())
-                .reference(genererReference())
+                .reference(sequenceReferenceService.suivante(
+                        SequenceReferenceService.Journal.COTISATION))
                 .statut(StatutOperation.ENCAISSE)
                 .build();
 
         return operationFinanciereRepository.save(op);
     }
 
-    private String genererReference() {
-        String ts = String.valueOf(System.currentTimeMillis()).substring(7);
-        return "COT-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy")) + "-" + ts;
-    }
 }

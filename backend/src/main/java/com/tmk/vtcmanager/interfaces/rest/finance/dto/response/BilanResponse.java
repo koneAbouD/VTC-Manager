@@ -6,7 +6,12 @@ import java.time.LocalDate;
 public record BilanResponse(
         LocalDate date,
         BigDecimal tresorerie,
+        /** Créances brutes. */
         BigDecimal creancesChauffeurs,
+        /** Dépréciation appliquée selon l'ancienneté. */
+        BigDecimal provisionCreances,
+        /** Montant retenu à l'actif : brutes − provision. */
+        BigDecimal creancesNettes,
         BigDecimal immobilisationsNettes,
         BigDecimal totalActif,
         BigDecimal detteEtatContraventions,

@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TransfertTresorerieEntity extends AbstractAuditEntity {
+public class TransfertTresorerieEntity extends AbstractEcritureAuditEntity {
 
     public static final String TABLE_NAME = "transferts_tresorerie";
 

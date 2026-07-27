@@ -2,6 +2,8 @@ package com.tmk.vtcmanager.application.usecases.finance;
 
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
+import com.tmk.vtcmanager.application.domain.finance.EtatsCloture;
+import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,7 @@ import java.util.Map;
 public class GetCompteResultatUseCase {
 
     private final FinanceReportingRepository reportingRepository;
+    private final EtatsClotureRepository etatsClotureRepository;
 
     /**
      * Cascade des soldes intermédiaires. Base CAISSE : tout est agrégé sur
@@ -26,6 +29,14 @@ public class GetCompteResultatUseCase {
      */
     @Transactional(readOnly = true)
     public CompteResultat executer(int annee, int mois, BaseComptable base) {
+        // Mois clos : on sert la photo prise à la clôture. Un recalcul pourrait
+        // donner un autre chiffre qu'à la publication — ce serait le signe que
+        // l'état n'était opposable à personne.
+        var archive = etatsClotureRepository.findByPeriode(annee, mois);
+        if (archive.isPresent()) {
+            return depuisArchive(archive.get(), base);
+        }
+
         YearMonth periode = YearMonth.of(annee, mois);
         LocalDate debut = periode.atDay(1);
         LocalDate fin = periode.atEndOfMonth();
@@ -54,6 +65,27 @@ public class GetCompteResultatUseCase {
                 .amortissements(amortissements)
                 .resultatGestion(ebe.subtract(amortissements))
                 .pontCreances(produitsEngagement.subtract(produitsCaisse))
+                .build();
+    }
+
+    /** Relit la cascade telle qu'elle a été figée, sans rien recalculer. */
+    private CompteResultat depuisArchive(EtatsCloture e, BaseComptable base) {
+        BigDecimal produits = base == BaseComptable.ENGAGEMENT
+                ? e.getProduitsEngagement() : e.getProduitsCaisse();
+        BigDecimal marge = produits.subtract(e.getChargesVariables());
+        BigDecimal ebe = marge.subtract(e.getChargesFixes());
+        return CompteResultat.builder()
+                .annee(e.getAnnee())
+                .mois(e.getMois())
+                .base(base)
+                .produitsExploitation(produits)
+                .chargesVariables(e.getChargesVariables())
+                .margeSurCoutsVariables(marge)
+                .chargesFixes(e.getChargesFixes())
+                .excedentBrutExploitation(ebe)
+                .amortissements(e.getAmortissements())
+                .resultatGestion(ebe.subtract(e.getAmortissements()))
+                .pontCreances(e.getPontCreances())
                 .build();
     }
 }

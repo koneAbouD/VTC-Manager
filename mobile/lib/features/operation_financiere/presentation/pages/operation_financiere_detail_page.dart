@@ -11,6 +11,7 @@ import '../providers/operation_financiere_provider.dart';
 import '../providers/operation_financiere_state.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import 'operation_financiere_form_page.dart';
+import '../../../../core/widgets/motif_annulation_dialog.dart';
 
 /// Page de détail d'une opération financière.
 ///
@@ -166,29 +167,20 @@ class _DetailBody extends ConsumerWidget {
     final id = op.id;
     if (id == null) return;
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Annuler l\'opération ?'),
-        content: const Text('Cette action est irréversible.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Non')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Oui, Annuler'),
-          ),
-        ],
-      ),
+    // L'écriture n'est pas effacée : elle est contre-passée par une extourne
+    // datée du jour, qui porte ce motif. Il est donc obligatoire.
+    final motif = await showMotifAnnulationDialog(
+      context,
+      titre: 'Annuler l\'opération ?',
+      message: "L'opération sera contre-passée par une écriture d'extourne "
+          'datée du jour. Indiquez le motif.',
     );
-    if (confirm != true) return;
+    if (motif == null) return;
     if (!context.mounted) return;
 
     final error = await ref
         .read(operationFinanciereNotifierProvider.notifier)
-        .annuler(id);
+        .annuler(id, motif);
     if (!context.mounted) return;
 
     if (error != null) {
@@ -200,7 +192,7 @@ class _DetailBody extends ConsumerWidget {
       // rafraîchit tout le module Finances.
       refreshFinances(ref);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Opération annulée')),
+        const SnackBar(content: Text('Opération extournée')),
       );
       Navigator.pop(context);
     }

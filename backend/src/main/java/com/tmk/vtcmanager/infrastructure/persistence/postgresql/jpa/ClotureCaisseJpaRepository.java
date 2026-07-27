@@ -13,4 +13,6 @@ public interface ClotureCaisseJpaRepository extends JpaRepository<ClotureCaisseE
     boolean existsByCompteIdAndDateCloture(Long compteId, LocalDate dateCloture);
 
     List<ClotureCaisseEntity> findByCompteIdOrderByDateClotureDesc(Long compteId);
+
+    java.util.Optional<ClotureCaisseEntity> findFirstByCompteIdOrderByDateClotureDesc(Long compteId);
 }

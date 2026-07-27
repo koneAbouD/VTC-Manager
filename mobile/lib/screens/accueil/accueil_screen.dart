@@ -758,7 +758,9 @@ class _DerniereOpTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isRevenu = op.typeOperation == TypeOperation.REVENU;
     final color = isRevenu ? Colors.green : Colors.red;
-    final sign = isRevenu ? '+' : '-';
+    // Seules les dépenses portent un signe : la couleur suffit à distinguer
+    // les revenus.
+    final sign = isRevenu ? '' : '-';
     final isAnnulee = op.statut == StatutOperation.ANNULEE;
 
     // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
@@ -832,7 +834,10 @@ class _DerniereOpTile extends StatelessWidget {
                     Text(
                       '$sign${money.format(op.montant)}',
                       style: TextStyle(
-                          color: isAnnulee ? Colors.red : color,
+                          // Montant en noir comme le libellé ; le sens de
+                          // l'opération se lit sur la pastille d'icône et le
+                          // signe.
+                          color: isAnnulee ? Colors.red : null,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                           decoration:

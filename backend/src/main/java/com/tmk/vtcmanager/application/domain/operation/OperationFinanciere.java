@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -49,4 +50,26 @@ public class OperationFinanciere {
      * rouvrir la maintenance lorsqu'on annule l'opération.
      */
     private Long maintenanceId;
+
+    /**
+     * Écriture contre-passée par celle-ci. Renseigné sur l'extourne seule, dont
+     * le montant est l'opposé de l'origine — le couple s'annule dans tous les
+     * agrégats sans qu'aucune écriture ne disparaisse.
+     */
+    private Long extourneDeId;
+
+    /** Motif d'annulation, porté par l'écriture d'origine. */
+    private String motifAnnulation;
+    private String annulePar;
+    private LocalDateTime annuleLe;
+
+    /** Vrai si cette écriture a été contre-passée. */
+    public boolean estExtournee() {
+        return annuleLe != null;
+    }
+
+    /** Vrai si cette écriture est elle-même une contre-passation. */
+    public boolean estUneExtourne() {
+        return extourneDeId != null;
+    }
 }

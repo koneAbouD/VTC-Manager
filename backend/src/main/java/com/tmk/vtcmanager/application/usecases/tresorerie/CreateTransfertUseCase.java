@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.exception.CompteTresorerieNotFoundExceptio
 import com.tmk.vtcmanager.application.exception.TransfertInvalideException;
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.TransfertTresorerieRepository;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ public class CreateTransfertUseCase {
     private final TransfertTresorerieRepository transfertRepository;
     private final CompteTresorerieRepository compteTresorerieRepository;
     private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public TransfertTresorerie executer(TransfertTresorerie transfert) {
@@ -36,6 +38,9 @@ public class CreateTransfertUseCase {
             transfert.setDateTransfert(LocalDate.now());
         }
         periodeClotureeGuard.verifier(transfert.getDateTransfert());
+        // Les deux caisses sont mouvementées : aucune ne doit être déjà comptée.
+        caisseClotureeGuard.verifier(transfert.getCompteSourceId(), transfert.getDateTransfert());
+        caisseClotureeGuard.verifier(transfert.getCompteDestinationId(), transfert.getDateTransfert());
 
         return transfertRepository.save(transfert);
     }

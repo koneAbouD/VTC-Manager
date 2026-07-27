@@ -13,6 +13,7 @@ import com.tmk.vtcmanager.application.ports.payment.PaymentGatewayPort;
 import com.tmk.vtcmanager.application.ports.persistence.PaiementRepository;
 import com.tmk.vtcmanager.application.usecases.cotisation.GetLignesCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GetLignesRecetteUseCase;
+import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
@@ -35,6 +36,7 @@ public class InitierPaiementUseCase {
     private final GetLignesCotisationUseCase getLignesCotisationUseCase;
     /** URL publique du webhook agrégateur (base + provider). */
     private final String callbackUrl;
+    private final SequenceReferenceService sequenceReferenceService;
 
     public Paiement executer(Long chauffeurId, TypeCiblePaiement typeCible, Long cibleId,
                              CanalPaiement canal, String telephone) {
@@ -73,7 +75,7 @@ public class InitierPaiementUseCase {
             throw new PaiementException("Aucun montant restant à payer.");
         }
 
-        String reference = genererReference();
+        String reference = sequenceReferenceService.suivante(SequenceReferenceService.Journal.PAIEMENT);
         Paiement paiement = Paiement.builder()
                 .reference(reference)
                 .typeCible(typeCible)
@@ -107,7 +109,4 @@ public class InitierPaiementUseCase {
         }
     }
 
-    private String genererReference() {
-        return "PAY-" + System.currentTimeMillis() + "-" + (1000 + RANDOM.nextInt(9000));
-    }
 }
