@@ -11,6 +11,11 @@ class CompteResultatData {
   final double chargesFixes;
   final double excedentBrutExploitation;
   final double amortissements;
+
+  /// Variation du stock de provision sur créances : la perte attendue sur les
+  /// impayés du mois. Négative quand les créances rentrent — c'est une reprise,
+  /// elle améliore le résultat.
+  final double dotationProvisions;
   final double resultatGestion;
 
   /// Produits engagement − produits caisse (variation des créances).
@@ -26,6 +31,7 @@ class CompteResultatData {
     required this.chargesFixes,
     required this.excedentBrutExploitation,
     required this.amortissements,
+    required this.dotationProvisions,
     required this.resultatGestion,
     required this.pontCreances,
   });
@@ -41,6 +47,7 @@ class CompteResultatData {
         chargesFixes: _d(j['chargesFixes']),
         excedentBrutExploitation: _d(j['excedentBrutExploitation']),
         amortissements: _d(j['amortissements']),
+        dotationProvisions: _d(j['dotationProvisions']),
         resultatGestion: _d(j['resultatGestion']),
         pontCreances: _d(j['pontCreances']),
       );

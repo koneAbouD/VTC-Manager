@@ -160,6 +160,18 @@ class _CascadeCard extends StatelessWidget {
           _ligne('− Amortissements véhicules', -cr.amortissements,
               sousTitre: 'Dotation linéaire (prix d\'achat / durée)',
               secondaire: true),
+          // Une reprise (créances qui rentrent) est un montant négatif : elle
+          // s'ajoute au résultat, le libellé le dit alors explicitement.
+          if (cr.dotationProvisions != 0)
+            _ligne(
+                cr.dotationProvisions >= 0
+                    ? '− Provisions sur créances'
+                    : '+ Reprise sur provisions',
+                -cr.dotationProvisions,
+                sousTitre: cr.dotationProvisions >= 0
+                    ? 'Part des impayés qu\'on n\'espère plus recouvrer'
+                    : 'Créances finalement encaissées',
+                secondaire: true),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
