@@ -201,8 +201,3 @@ class PinStore {
     }
   }
 }
-
-/// Conversion pratique pour les appelants qui manipulent des octets bruts.
-extension Uint8ListBase64 on Uint8List {
-  String toBase64() => base64Encode(this);
-}
