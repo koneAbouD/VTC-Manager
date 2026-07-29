@@ -31,8 +31,9 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
                     produits_engagement, resultat_engagement,
                     pont_creances, tresorerie, creances_chauffeurs, provision_creances,
                     creances_nettes, immobilisations_nettes,
-                    total_actif, dette_etat, situation_nette, created_at, updated_at, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
+                    total_actif, dette_etat, dettes_fournisseurs, situation_nette,
+                    created_at, updated_at, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
                 RETURNING id
                 """, Long.class,
                 e.getCloturePeriodeId(), e.getProduitsCaisse(), e.getChargesVariables(),
@@ -41,7 +42,8 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
                 e.getProduitsEngagement(), e.getResultatEngagement(), e.getPontCreances(),
                 e.getTresorerie(), e.getCreancesChauffeurs(), e.getProvisionCreances(),
                 e.getCreancesNettes(), e.getImmobilisationsNettes(),
-                e.getTotalActif(), e.getDetteEtat(), e.getSituationNette(), auteurCourant.nom());
+                e.getTotalActif(), e.getDetteEtat(), e.getDettesFournisseurs(),
+                e.getSituationNette(), auteurCourant.nom());
         e.setId(id);
 
         if (e.getSoldes() != null) {
@@ -85,6 +87,7 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
                         .immobilisationsNettes(rs.getBigDecimal("immobilisations_nettes"))
                         .totalActif(rs.getBigDecimal("total_actif"))
                         .detteEtat(rs.getBigDecimal("dette_etat"))
+                        .dettesFournisseurs(rs.getBigDecimal("dettes_fournisseurs"))
                         .situationNette(rs.getBigDecimal("situation_nette"))
                         .build(),
                 annee, mois);

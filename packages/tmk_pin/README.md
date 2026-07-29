@@ -32,6 +32,50 @@ Garde-fous : 5 essais maximum puis purge, temporisation de 5 s / 15 s après le
 à zéro), refus des codes devinables (`00000`, `12345`…), code rattaché à un
 compte (`resetIfOtherAccount`).
 
+## Déverrouillage biométrique
+
+Option facultative, greffée sur le même coffre : `enableBiometrics()` range la
+clé **dérivée** (jamais le code) dans le Keychain / Keystore, et
+`unlockWithBiometrics()` la relit pour ouvrir le coffre sans PBKDF2. Le code
+reste le chemin de secours et n'est jamais remplacé.
+
+```
+Activation (session déverrouillée, biométrie validée par l'OS)
+  stocké : pin_biometric_key = la clé AES du coffre
+
+Déverrouillage
+  OS reconnaît l'utilisateur → clé relue → coffre ouvert (instantané)
+  OS refuse                  → rien n'est lu, le pavé reprend la main
+```
+
+C'est la garantie du magasin de l'OS qui porte l'option, pas la cryptographie
+du code : sur un appareil rooté ou jailbreaké, cette clé est extractible là où
+un code à 5 chiffres ne l'était pas. Le compromis est assumé — l'option est
+facultative, et le coffre reste le seul dépôt du refresh token.
+
+`BiometricService` s'occupe de la détection (matériel, enrôlement, plateforme)
+et traduit les codes d'erreur de `local_auth` en messages français ; il ne sait
+rien du code d'accès. `BiometricAvailability` fournit le libellé accordé à la
+plateforme (« Face ID » sur iOS, « empreinte digitale » sur Android) et l'icône
+de la touche.
+
+Cohérence entretenue par `PinService` : `configure()` purge la clé (sel neuf),
+`changeCode()` la réinstalle, `lock()` la conserve — c'est ce qui permet de
+rouvrir d'un doigt —, `reset()` l'emporte. Une clé qui n'ouvre plus le coffre
+est abandonnée d'elle-même.
+
+### Configuration native requise
+
+| Plateforme | À faire | Sans quoi |
+|---|---|---|
+| Android | `MainActivity : FlutterFragmentActivity` | `BiometricPrompt` ne peut pas s'afficher |
+| Android | `<uses-permission android:name="android.permission.USE_BIOMETRIC"/>` | Refus au premier appel |
+| Android | minSdk ≥ 24 (défaut Flutter) | `local_auth_android` ne compile pas |
+| iOS | `NSFaceIDUsageDescription` dans `Info.plist` | L'app est **tuée** à la première demande Face ID |
+
+Le web n'expose aucune biométrie à Flutter : `BiometricService` y répond
+`indisponible` sans jamais appeler le greffon.
+
 ## Prérequis backend
 
 Les tokens doivent être émis avec le scope `offline_access` (voir
@@ -69,6 +113,9 @@ est un numéro de téléphone, comme c'est le cas côté chauffeur.
 `PinTheme` porte les couleurs (aucune n'est codée en dur), `PinBoxes` les cases
 de saisie avec secousse sur erreur, `PinKeypad` le pavé numérique dédié — pas de
 clavier système, donc ni suggestion, ni presse-papiers, ni saisie prédictive.
+
+`PinKeypad` accepte une `PinAuxKey` qui occupe l'emplacement vide en bas à
+gauche du pavé, là où iOS et Android placent la touche biométrique.
 
 ## Plateformes
 

@@ -9,8 +9,8 @@ import '../providers/unlock_outcome.dart';
 import '../widgets/auth_ui.dart';
 import 'pin_brand.dart';
 
-/// Écran d'accès à l'application : la session est ouverte, cinq chiffres
-/// suffisent à la rouvrir.
+/// Écran d'accès à l'application : la session est ouverte, cinq chiffres — ou
+/// un doigt, quand la biométrie est activée — suffisent à la rouvrir.
 ///
 /// La déconnexion (en haut à droite) et « Code TMK oublié ? » mènent toutes
 /// deux à la page de connexion complète, en purgeant le coffre.
@@ -27,12 +27,51 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
   int _errorTick = 0;
   bool _busy = false;
 
+  /// Modalité biométrique de l'appareil, une fois l'option confirmée active.
+  /// `null` tant qu'on ne sait pas, ou quand il n'y a rien à proposer.
+  BiometricAvailability? _biometrie;
+
   @override
   void initState() {
     super.initState();
     // Motif du verrouillage (inactivité…), affiché tant que rien n'est saisi.
     final state = ref.read(authNotifierProvider);
     if (state is AuthLocked) _message = state.message;
+    _preparerBiometrie();
+  }
+
+  /// Prépare la touche biométrique et, si l'option est active, lance l'invite
+  /// système d'emblée : c'est le geste attendu, autant l'éviter à l'utilisateur.
+  Future<void> _preparerBiometrie() async {
+    final notifier = ref.read(authNotifierProvider.notifier);
+    if (!await notifier.isBiometricsEnabled()) return;
+
+    final dispo = await notifier.biometricAvailability();
+    if (!mounted || !dispo.disponible) return;
+
+    setState(() => _biometrie = dispo);
+    await _deverrouillerParBiometrie();
+  }
+
+  Future<void> _deverrouillerParBiometrie() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+
+    final notifier = ref.read(authNotifierProvider.notifier);
+    final outcome = await notifier.unlockWithBiometrics();
+    if (!mounted) return;
+    _traiter(outcome);
+
+    // L'option a pu être abandonnée en chemin (plus aucune empreinte enrôlée,
+    // capteur absent) : la touche s'efface avec elle.
+    if (outcome is UnlockBiometricsFailed &&
+        !await notifier.isBiometricsEnabled() &&
+        mounted) {
+      setState(() => _biometrie = null);
+    }
   }
 
   Future<void> _onDigit(String digit) async {
@@ -55,7 +94,10 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
     setState(() => _busy = true);
     final outcome = await ref.read(authNotifierProvider.notifier).unlock(_code);
     if (!mounted) return;
+    _traiter(outcome);
+  }
 
+  void _traiter(UnlockOutcome outcome) {
     switch (outcome) {
       // Le changement d'état fait disparaître cet écran. On relâche tout de
       // même l'indicateur : si l'écran survit (transition retardée, cas
@@ -80,6 +122,13 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
 
       case UnlockOffline(:final message):
         _reject(message);
+
+      // Traité en amont par [_deverrouillerParBiometrie], qui doit aussi
+      // décider du sort de la touche.
+      case UnlockBiometricsFailed(:final message):
+        message == null
+            ? setState(() => _busy = false)
+            : _reject(message);
     }
   }
 
@@ -137,6 +186,8 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
 
   @override
   Widget build(BuildContext context) {
+    final biometrie = _biometrie;
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: PinLayout(
@@ -144,7 +195,10 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
         brand: const PinBrand(),
         // Sans titre à afficher, le bloc logo + cases descend vers le centre.
         topSpacing: 48,
-        prompt: 'Veuillez saisir votre code TMK',
+        prompt: biometrie == null
+            ? 'Veuillez saisir votre code TMK'
+            : 'Utilisez ${biometrie.libelleAvecArticle} '
+                'ou saisissez votre code TMK',
         length: PinService.codeLength,
         filled: _code.length,
         errorTick: _errorTick,
@@ -152,6 +206,14 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
         busy: _busy,
         onDigit: _onDigit,
         onBackspace: _onBackspace,
+        // Touche en bas à gauche du pavé, là où les OS la placent.
+        auxKey: biometrie == null
+            ? null
+            : PinAuxKey(
+                icon: biometrie.icone,
+                label: 'Déverrouiller avec ${biometrie.libelleAvecArticle}',
+                onTap: _deverrouillerParBiometrie,
+              ),
         action: IconButton(
           onPressed: _busy ? null : _confirmLogout,
           icon: const Icon(Icons.logout_rounded),

@@ -34,6 +34,18 @@ final pinServiceProvider = Provider<PinService>(
   (_) => PinService(const PinStore(SecureKeyValueStore())),
 );
 
+/// Biométrie de l'appareil (Face ID, Touch ID, empreinte…).
+final biometricServiceProvider = Provider<BiometricService>(
+  (_) => BiometricService(),
+);
+
+/// Ce que l'appareil sait faire en biométrie. Calculé une fois par session
+/// d'application : le matériel ne change pas, et l'enrôlement est revérifié à
+/// chaque tentative par l'OS lui-même.
+final biometricAvailabilityProvider = FutureProvider<BiometricAvailability>(
+  (ref) => ref.watch(biometricServiceProvider).availability(),
+);
+
 // ── Datasource → Repository (injection de dépendances) ──────────────────────
 
 final authRemoteDatasourceProvider = Provider<AuthRemoteDatasource>(
@@ -75,6 +87,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final ForgotPasswordUseCase _forgotPassword;
   final AuthRepository _repository;
   final PinService _pin;
+  final BiometricService _biometrics;
   final SecureStorage _storage;
 
   /// Abonnement au signal d'expiration centralisé du [SessionManager].
@@ -91,6 +104,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required ForgotPasswordUseCase forgotPassword,
     required AuthRepository repository,
     required PinService pin,
+    required BiometricService biometrics,
     required SecureStorage storage,
   })  : _login = login,
         _register = register,
@@ -99,6 +113,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _forgotPassword = forgotPassword,
         _repository = repository,
         _pin = pin,
+        _biometrics = biometrics,
         _storage = storage,
         super(const AuthInitial()) {
     // Le SessionManager émet quand il n'a pas pu renouveler les tokens. Le
@@ -282,8 +297,64 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Vérifie le code saisi et, s'il est bon, rouvre la session.
   Future<UnlockOutcome> unlock(String code) async {
     final nom = state is AuthLocked ? (state as AuthLocked).displayName : null;
-    final result = await _pin.unlock(code);
+    return _traiterDeverrouillage(await _pin.unlock(code), nom);
+  }
 
+  /// Déverrouille par la biométrie de l'appareil, quand l'option est active.
+  ///
+  /// Un refus de l'OS ne coûte aucun des essais du code : c'est l'OS qui
+  /// compte les siens, et il finit par bloquer la biométrie de lui-même. La
+  /// temporisation du code, elle, reste opposable — sans quoi la biométrie
+  /// offrirait un contournement.
+  Future<UnlockOutcome> unlockWithBiometrics() async {
+    final nom = state is AuthLocked ? (state as AuthLocked).displayName : null;
+
+    // Vérifié avant l'invite : inutile de demander un doigt pour refuser
+    // ensuite.
+    final throttle = await _pin.throttleRemaining();
+    if (throttle != null) return UnlockWait(throttle);
+
+    final dispo = await _biometrics.availability();
+    if (!dispo.disponible) {
+      // Plus rien d'enrôlé (empreinte supprimée depuis l'activation) : on
+      // abandonne l'option, le pavé reprend la main.
+      await _pin.disableBiometrics();
+      return UnlockBiometricsFailed(dispo.raison);
+    }
+
+    final autorisation = await _biometrics.authenticate(
+      titre: 'Accès à VTC Manager',
+      raison: 'Confirmez votre identité pour rouvrir l\'application.',
+    );
+
+    switch (autorisation) {
+      case BiometricDismissed():
+        return const UnlockBiometricsFailed();
+
+      case BiometricUnavailable(:final message, :final definitif):
+        if (definitif) await _pin.disableBiometrics();
+        return UnlockBiometricsFailed(message);
+
+      case BiometricAccepted():
+        final result = await _pin.unlockWithBiometrics();
+        // `null` : la clé rangée n'ouvre plus le coffre, le service vient de
+        // l'abandonner. Le code reste le chemin sûr.
+        if (result == null) {
+          return const UnlockBiometricsFailed(
+            'Le déverrouillage biométrique a été réinitialisé. '
+            'Saisissez votre code TMK.',
+          );
+        }
+        return _traiterDeverrouillage(result, nom);
+    }
+  }
+
+  /// Suite commune aux deux chemins de déverrouillage : le coffre a rendu (ou
+  /// non) le refresh token, il reste à rouvrir la session côté serveur.
+  Future<UnlockOutcome> _traiterDeverrouillage(
+    UnlockResult result,
+    String? nom,
+  ) async {
     switch (result) {
       case UnlockFailure(:final remainingAttempts):
         return UnlockWrong(remainingAttempts);
@@ -340,6 +411,64 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
     }
   }
+
+  // ── Déverrouillage biométrique ──────────────────────────────────────────
+
+  /// Ce que l'appareil sait faire (matériel + enrôlement).
+  Future<BiometricAvailability> biometricAvailability() =>
+      _biometrics.availability();
+
+  /// L'option est-elle active sur cet appareil ?
+  Future<bool> isBiometricsEnabled() => _pin.isBiometricsEnabled();
+
+  /// Faut-il proposer l'activation ? Vrai une seule fois, sur un appareil
+  /// compatible où l'option n'est pas déjà en place.
+  Future<BiometricAvailability?> biometricsToPropose() async {
+    if (await _pin.hasProposedBiometrics()) return null;
+    if (await _pin.isBiometricsEnabled()) return null;
+    if (!_pin.isUnlocked) return null;
+
+    final dispo = await _biometrics.availability();
+    return dispo.disponible ? dispo : null;
+  }
+
+  /// Mémorise que la proposition a été faite, acceptée ou non.
+  Future<void> markBiometricsProposed() => _pin.markBiometricsProposed();
+
+  /// Active l'option après avoir fait valider la biométrie par l'OS — sans
+  /// cette validation, on rangerait la clé pour quelqu'un qui ne saura pas
+  /// s'en servir. Retourne un message d'erreur, ou `null` si c'est en place.
+  Future<String?> enableBiometrics() async {
+    final dispo = await _biometrics.availability();
+    if (!dispo.disponible) {
+      return dispo.raison ??
+          'Le déverrouillage biométrique n\'est pas disponible sur cet '
+              'appareil.';
+    }
+
+    final autorisation = await _biometrics.authenticate(
+      titre: 'Activer le déverrouillage',
+      raison: 'Confirmez votre identité pour activer '
+          '${dispo.libelleAvecArticle}.',
+    );
+
+    switch (autorisation) {
+      case BiometricDismissed():
+        return 'Activation annulée.';
+      case BiometricUnavailable(:final message):
+        return message;
+      case BiometricAccepted():
+        // Échoue si la session s'est reverrouillée entre-temps : la clé du
+        // coffre n'est plus en mémoire.
+        final ok = await _pin.enableBiometrics();
+        return ok
+            ? null
+            : 'Session verrouillée. Saisissez votre code TMK, puis réessayez.';
+    }
+  }
+
+  /// Désactive l'option : la clé rangée est effacée.
+  Future<void> disableBiometrics() => _pin.disableBiometrics();
 
   /// Reprise du code existant après une reconnexion ([AuthPinResume]).
   ///
@@ -473,6 +602,7 @@ final authNotifierProvider =
     forgotPassword: ref.watch(forgotPasswordUseCaseProvider),
     repository: ref.watch(authRepositoryProvider),
     pin: ref.watch(pinServiceProvider),
+    biometrics: ref.watch(biometricServiceProvider),
     storage: ref.watch(secureStorageProvider),
   );
 });

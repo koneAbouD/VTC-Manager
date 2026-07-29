@@ -52,6 +52,8 @@ public class EtatsCloture {
     private BigDecimal immobilisationsNettes;
     private BigDecimal totalActif;
     private BigDecimal detteEtat;
+    /** Reste dû aux fournisseurs au dernier jour de la période. */
+    private BigDecimal dettesFournisseurs;
     private BigDecimal situationNette;
 
     /** Justification de la ligne « trésorerie », compte par compte. */

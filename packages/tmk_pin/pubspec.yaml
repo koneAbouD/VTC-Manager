@@ -16,6 +16,9 @@ dependencies:
 
   # Persistance du sel, du coffre chiffré et du compteur de tentatives.
   flutter_secure_storage: ^9.2.2
+  local_auth: ^3.0.2
+  local_auth_android: ^2.0.8
+  local_auth_darwin: ^2.0.3
 
 dev_dependencies:
   flutter_test:

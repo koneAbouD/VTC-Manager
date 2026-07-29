@@ -185,6 +185,122 @@ void main() {
     });
   });
 
+  group('déverrouillage biométrique', () {
+    test('désactivé tant qu\'on ne l\'a pas demandé', () async {
+      await configure();
+      expect(await service.isBiometricsEnabled(), isFalse);
+      expect(await service.unlockWithBiometrics(), isNull);
+    });
+
+    test('activé, il rouvre le coffre sans le code', () async {
+      await configure();
+      expect(await service.enableBiometrics(), isTrue);
+
+      service.lock();
+      final result = await service.unlockWithBiometrics();
+      expect(result, isA<UnlockSuccess>());
+      expect((result! as UnlockSuccess).refreshToken, 'refresh-token-abc');
+      expect(service.isUnlocked, isTrue);
+    });
+
+    test('l\'activation exige une session déverrouillée', () async {
+      await configure();
+      service.lock();
+      expect(await service.enableBiometrics(), isFalse);
+      expect(await service.isBiometricsEnabled(), isFalse);
+    });
+
+    test('la clé rangée ne laisse pas fuiter le code ni le token', () async {
+      await configure();
+      await service.enableBiometrics();
+
+      expect(raw.values.values.any((v) => v.contains('48213')), isFalse);
+      expect(
+        raw.values.values.any((v) => v.contains('refresh-token-abc')),
+        isFalse,
+      );
+    });
+
+    test('désactiver efface la clé sans toucher au coffre', () async {
+      await configure();
+      await service.enableBiometrics();
+      await service.disableBiometrics();
+
+      expect(await service.isBiometricsEnabled(), isFalse);
+      expect(await service.unlockWithBiometrics(), isNull);
+
+      service.lock();
+      expect(await service.unlock('48213'), isA<UnlockSuccess>());
+    });
+
+    test('il survit au redémarrage de l\'application', () async {
+      await configure();
+      await service.enableBiometrics();
+
+      final apresRedemarrage = build();
+      expect(await apresRedemarrage.isBiometricsEnabled(), isTrue);
+      expect(await apresRedemarrage.unlockWithBiometrics(),
+          isA<UnlockSuccess>());
+    });
+
+    test('la temporisation des échecs de code lui est opposable', () async {
+      await configure();
+      await service.enableBiometrics();
+      for (var i = 0; i < 3; i++) {
+        await raw.write('pin_locked_until', '0');
+        await service.unlock('00000');
+      }
+
+      expect(await service.unlockWithBiometrics(), isA<UnlockThrottled>());
+    });
+
+    test('changer de code réinstalle la clé au lieu de la perdre', () async {
+      await configure();
+      await service.enableBiometrics();
+
+      await service.changeCode(currentCode: '48213', newCode: '90427');
+      expect(await service.isBiometricsEnabled(), isTrue);
+
+      service.lock();
+      final result = await service.unlockWithBiometrics();
+      expect((result! as UnlockSuccess).refreshToken, 'refresh-token-abc');
+    });
+
+    test('changer de code sans biométrie n\'en active pas', () async {
+      await configure();
+      await service.changeCode(currentCode: '48213', newCode: '90427');
+      expect(await service.isBiometricsEnabled(), isFalse);
+    });
+
+    test('une clé qui n\'ouvre plus le coffre est abandonnée', () async {
+      await configure();
+      await service.enableBiometrics();
+      // Coffre réécrit avec un sel neuf, hors de tout appel à [configure].
+      await raw.write('pin_cipher', raw.values['pin_cipher']!.substring(4));
+
+      expect(await service.unlockWithBiometrics(), isNull);
+      expect(await service.isBiometricsEnabled(), isFalse);
+    });
+
+    test('la purge du code emporte la clé biométrique', () async {
+      await configure();
+      await service.enableBiometrics();
+      await service.markBiometricsProposed();
+
+      await service.reset();
+      expect(await service.isBiometricsEnabled(), isFalse);
+      expect(await service.hasProposedBiometrics(), isFalse);
+      expect(raw.values, isEmpty);
+    });
+
+    test('la proposition ne se fait qu\'une fois', () async {
+      await configure();
+      expect(await service.hasProposedBiometrics(), isFalse);
+      await service.markBiometricsProposed();
+      expect(await build().hasProposedBiometrics(), isTrue);
+    });
+  });
+
   group('validation du code', () {
     test('refuse les codes trop courts ou non numériques', () {
       expect(PinService.validate('123'), isNotNull);

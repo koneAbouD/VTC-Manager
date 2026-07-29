@@ -60,6 +60,8 @@ class PinStore {
   static const _kLockedUntil = 'pin_locked_until'; // epoch ms
   static const _kAccount = 'pin_account';
   static const _kDisplayName = 'pin_display_name';
+  static const _kBiometricKey = 'pin_biometric_key';
+  static const _kBiometricAsked = 'pin_biometric_asked';
 
   final PinKeyValueStore _store;
 
@@ -137,6 +139,47 @@ class PinStore {
     }
   }
 
+  // ── Déverrouillage biométrique ───────────────────────────────────────────
+
+  /// Clé du coffre rangée pour le déverrouillage biométrique, ou `null` si
+  /// l'option est désactivée.
+  ///
+  /// Cette clé ouvre le coffre **sans le code** : c'est tout l'intérêt de
+  /// l'option, et aussi sa limite. Elle repose donc entièrement sur le magasin
+  /// sous-jacent (Keychain iOS / Keystore Android) et sur le fait que le
+  /// service appelant n'y touche qu'après une validation biométrique de l'OS.
+  /// On range la clé dérivée plutôt que le code lui-même : le code de
+  /// l'utilisateur — qu'il réutilise peut-être ailleurs — ne se retrouve jamais
+  /// écrit sur l'appareil, et le déverrouillage évite le coût du PBKDF2.
+  Future<Uint8List?> readBiometricKey() async {
+    final value = await _store.read(_kBiometricKey);
+    return value == null ? null : base64Decode(value);
+  }
+
+  Future<void> writeBiometricKey(Uint8List? key) async {
+    if (key == null) {
+      await _store.delete(_kBiometricKey);
+    } else {
+      await _store.write(_kBiometricKey, base64Encode(key));
+    }
+  }
+
+  Future<bool> hasBiometricKey() async =>
+      (await _store.read(_kBiometricKey)) != null;
+
+  /// L'activation a-t-elle déjà été proposée ? Un refus vaut pour toujours :
+  /// l'option reste accessible dans les réglages, mais on ne la redemande plus.
+  Future<bool> readBiometricAsked() async =>
+      (await _store.read(_kBiometricAsked)) == '1';
+
+  Future<void> writeBiometricAsked(bool asked) async {
+    if (asked) {
+      await _store.write(_kBiometricAsked, '1');
+    } else {
+      await _store.delete(_kBiometricAsked);
+    }
+  }
+
   // ── Purge ────────────────────────────────────────────────────────────────
 
   /// Efface tout : plus de code configuré, plus de refresh token conservé.
@@ -151,6 +194,8 @@ class PinStore {
       _kLockedUntil,
       _kAccount,
       _kDisplayName,
+      _kBiometricKey,
+      _kBiometricAsked,
     ]) {
       await _store.delete(key);
     }

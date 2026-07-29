@@ -15,5 +15,7 @@ public record BilanResponse(
         BigDecimal immobilisationsNettes,
         BigDecimal totalActif,
         BigDecimal detteEtatContraventions,
+        /** Reste dû aux fournisseurs sur les factures non soldées. */
+        BigDecimal dettesFournisseurs,
         BigDecimal situationNette
 ) {}

@@ -125,6 +125,9 @@ class PinService {
     await _store.writeDisplayName(displayName);
     await _store.writeAttempts(0);
     await _store.writeLockedUntil(null);
+    // Sel neuf, donc clé neuve : celle rangée pour la biométrie n'ouvrirait
+    // plus rien. [changeCode] la réinstalle quand l'option était active.
+    await _store.writeBiometricKey(null);
     _key = key;
   }
 
@@ -137,6 +140,7 @@ class PinService {
     final result = await unlock(currentCode);
     if (result is! UnlockSuccess) return false;
 
+    final biometrieActive = await isBiometricsEnabled();
     final account = await _store.readAccount() ?? '';
     await configure(
       code: newCode,
@@ -144,6 +148,9 @@ class PinService {
       account: account,
       displayName: await _store.readDisplayName(),
     );
+    // Changer de code ne doit pas faire perdre silencieusement la biométrie :
+    // on range la nouvelle clé à la place de l'ancienne.
+    if (biometrieActive) await enableBiometrics();
     return true;
   }
 
@@ -197,6 +204,66 @@ class PinService {
     );
   }
 
+  // ── Déverrouillage biométrique ───────────────────────────────────────────
+
+  /// L'option est-elle active sur cet appareil ?
+  Future<bool> isBiometricsEnabled() => _store.hasBiometricKey();
+
+  /// Active le déverrouillage biométrique en rangeant la clé du coffre.
+  ///
+  /// N'est possible que sur une session **déverrouillée** : c'est le
+  /// déverrouillage par code qui a produit la clé. Retourne `false` sinon.
+  ///
+  /// Ne fait rien d'autre : la validation biométrique elle-même appartient à
+  /// l'appelant (voir `BiometricService`), qui doit l'exiger avant d'appeler.
+  Future<bool> enableBiometrics() async {
+    final key = _key;
+    if (key == null) return false;
+    await _store.writeBiometricKey(key);
+    return true;
+  }
+
+  /// Désactive l'option : la clé rangée est effacée, le code redevient le seul
+  /// chemin. Le coffre, lui, n'est pas touché.
+  Future<void> disableBiometrics() => _store.writeBiometricKey(null);
+
+  /// Ouvre le coffre avec la clé rangée, **après** que l'OS a validé la
+  /// biométrie.
+  ///
+  /// Retourne `null` quand la biométrie n'est pas exploitable (option
+  /// désactivée, ou clé qui n'ouvre plus le coffre) : à l'appelant de retomber
+  /// sur la saisie du code. La temporisation des échecs de code reste opposable,
+  /// pour que la biométrie ne serve pas à la contourner.
+  Future<UnlockResult?> unlockWithBiometrics() async {
+    final throttle = await throttleRemaining();
+    if (throttle != null) return UnlockThrottled(throttle);
+
+    final key = await _store.readBiometricKey();
+    final vault = await _store.readVault();
+    if (key == null || vault == null) return null;
+
+    final secret = await PinCipher.open(vault: vault, key: key);
+    if (secret == null) {
+      // Clé désynchronisée du coffre (cas théorique : coffre réécrit sans
+      // passer par [configure]). On abandonne l'option plutôt que de proposer
+      // indéfiniment une biométrie qui n'ouvre rien.
+      await disableBiometrics();
+      return null;
+    }
+
+    await _store.writeAttempts(0);
+    await _store.writeLockedUntil(null);
+    _key = key;
+    return UnlockSuccess(secret);
+  }
+
+  /// L'activation a-t-elle déjà été proposée à l'utilisateur ?
+  Future<bool> hasProposedBiometrics() => _store.readBiometricAsked();
+
+  /// Mémorise que la proposition a été faite — acceptée ou non, on ne la
+  /// représente plus (l'option reste dans les réglages).
+  Future<void> markBiometricsProposed() => _store.writeBiometricAsked(true);
+
   // ── Cycle de vie de la session ───────────────────────────────────────────
 
   /// Rechiffre le refresh token renouvelé, en réutilisant la clé en mémoire.
@@ -218,7 +285,9 @@ class PinService {
     return true;
   }
 
-  /// Oublie la clé : le code redeviendra nécessaire. Le coffre est conservé.
+  /// Oublie la clé : le code redeviendra nécessaire. Le coffre est conservé,
+  /// ainsi que la clé rangée pour la biométrie — c'est précisément ce qui
+  /// permet de rouvrir d'un doigt plutôt qu'en cinq chiffres.
   void lock() => _key = null;
 
   /// Supprime le code et le refresh token conservé (déconnexion, échecs

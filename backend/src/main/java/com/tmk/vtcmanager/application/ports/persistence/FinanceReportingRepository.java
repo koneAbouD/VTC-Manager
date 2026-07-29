@@ -18,6 +18,13 @@ public interface FinanceReportingRepository {
     Map<String, BigDecimal> totauxCaisseParNature(LocalDate debut, LocalDate fin);
 
     /**
+     * Même agrégat que {@link #totauxCaisseParNature}, mais sans les règlements
+     * de factures fournisseurs : leur charge est déjà portée par la facture, la
+     * lecture en base engagement ne doit pas la compter une seconde fois.
+     */
+    Map<String, BigDecimal> totauxCaisseHorsFactureParNature(LocalDate debut, LocalDate fin);
+
+    /**
      * Base engagement : produits dus de la période par date métier
      * (recettes attendues + cotisations + pénalités AMENDE émises),
      * lignes annulées exclues.

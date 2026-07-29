@@ -14,6 +14,7 @@ import com.tmk.vtcmanager.application.ports.persistence.CloturePeriodeRepository
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
+import com.tmk.vtcmanager.application.ports.persistence.FactureFournisseurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,6 +60,7 @@ class CloturerPeriodeUseCaseTest {
     private GetCompteResultatUseCase getCompteResultatUseCase;
     private GetProvisionCreancesUseCase getProvisionCreancesUseCase;
     private DotationProvisionService dotationProvisionService;
+    private FactureFournisseurRepository factureFournisseurRepository;
     private CloturerPeriodeUseCase useCase;
 
     private final CompteTresorerie caisse = CompteTresorerie.builder()
@@ -75,6 +77,9 @@ class CloturerPeriodeUseCaseTest {
         getCompteResultatUseCase = mock(GetCompteResultatUseCase.class);
         getProvisionCreancesUseCase = mock(GetProvisionCreancesUseCase.class);
         dotationProvisionService = mock(DotationProvisionService.class);
+        factureFournisseurRepository = mock(FactureFournisseurRepository.class);
+        when(factureFournisseurRepository.detteALaDate(any()))
+                .thenReturn(BigDecimal.valueOf(80_000));
         when(dotationProvisionService.calculer(any(), any())).thenReturn(BigDecimal.valueOf(27_750));
         when(getProvisionCreancesUseCase.executer()).thenReturn(
                 com.tmk.vtcmanager.application.domain.finance.ProvisionCreances.builder()
@@ -111,7 +116,7 @@ class CloturerPeriodeUseCaseTest {
         useCase = new CloturerPeriodeUseCase(cloturePeriodeRepository, clotureCaisseRepository,
                 compteTresorerieRepository, creanceRepository, reportingRepository,
                 etatsClotureRepository, getCompteResultatUseCase, getProvisionCreancesUseCase,
-                dotationProvisionService);
+                dotationProvisionService, factureFournisseurRepository);
     }
 
     private CompteResultat resultat(BigDecimal produits) {
@@ -215,7 +220,8 @@ class CloturerPeriodeUseCaseTest {
         assertThat(e.getProvisionCreances()).isEqualByComparingTo("152250");
         // Actif = trésorerie + créances NETTES + immobilisations.
         assertThat(e.getTotalActif()).isEqualByComparingTo("2916750");
-        assertThat(e.getSituationNette()).isEqualByComparingTo("2866750");
+        assertThat(e.getDettesFournisseurs()).isEqualByComparingTo("80000");
+        assertThat(e.getSituationNette()).isEqualByComparingTo("2786750");
     }
 
     @Test

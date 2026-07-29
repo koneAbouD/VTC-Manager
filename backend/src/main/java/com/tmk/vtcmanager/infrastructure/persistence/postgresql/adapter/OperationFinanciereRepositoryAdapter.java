@@ -83,6 +83,12 @@ public class OperationFinanciereRepositoryAdapter implements OperationFinanciere
     }
 
     @Override
+    public List<OperationFinanciere> findByFactureFournisseurId(Long factureId) {
+        return mapper.toDomainList(jpaRepository
+                .findByFactureFournisseurIdOrderByDateOperationAscIdAsc(factureId));
+    }
+
+    @Override
     public boolean existsByReference(String reference) {
         return jpaRepository.existsByReference(reference);
     }

@@ -11,6 +11,7 @@ import 'features/auth/presentation/pages/pin_resume_page.dart';
 import 'features/auth/presentation/pages/pin_setup_page.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/providers/auth_state.dart';
+import 'features/auth/presentation/widgets/biometric_proposal.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
@@ -71,7 +72,10 @@ class VtcManagerApp extends ConsumerWidget {
       theme: AppTheme.light,
         home: switch (authState) {
           AuthInitial() => const _SplashScreen(),
-          AuthAuthenticated() => const HomeScreen(),
+          // L'invite du déverrouillage biométrique s'accroche à l'accueil :
+          // l'écran de code, lui, disparaît dès que le code est accepté.
+          AuthAuthenticated() =>
+            const BiometricProposal(child: HomeScreen()),
           AuthLocked() => const PinLockPage(),
           AuthPinSetup(:final displayName) =>
             PinSetupPage(displayName: displayName),

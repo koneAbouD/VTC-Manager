@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.finance.CompteResultat;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
 import com.tmk.vtcmanager.application.domain.finance.EtatsCloture;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
+import com.tmk.vtcmanager.application.ports.persistence.FactureFournisseurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,7 @@ class GetCompteResultatUseCaseTest {
     private EtatsClotureRepository etatsClotureRepository;
     private GetProvisionCreancesUseCase getProvisionCreancesUseCase;
     private DotationProvisionService dotationProvisionService;
+    private FactureFournisseurRepository factureFournisseurRepository;
     private GetCompteResultatUseCase useCase;
 
     @BeforeEach
@@ -53,8 +55,17 @@ class GetCompteResultatUseCaseTest {
         dotationProvisionService = mock(DotationProvisionService.class);
         when(dotationProvisionService.calculer(any(), any())).thenReturn(BigDecimal.valueOf(20_000));
 
+        factureFournisseurRepository = mock(FactureFournisseurRepository.class);
+        when(factureFournisseurRepository.chargesEngageesParNature(any(), any()))
+                .thenReturn(Map.of());
+        when(reportingRepository.totauxCaisseHorsFactureParNature(any(), any()))
+                .thenReturn(Map.of(
+                        "CHARGE_VARIABLE", BigDecimal.valueOf(100_000),
+                        "CHARGE_FIXE", BigDecimal.valueOf(200_000)));
+
         useCase = new GetCompteResultatUseCase(reportingRepository, etatsClotureRepository,
-                getProvisionCreancesUseCase, dotationProvisionService);
+                getProvisionCreancesUseCase, dotationProvisionService,
+                factureFournisseurRepository);
     }
 
     private EtatsCloture archive() {

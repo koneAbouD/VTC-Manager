@@ -4,12 +4,17 @@ import android.content.ContentValues
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
-class MainActivity : FlutterActivity() {
+/**
+ * FlutterFragmentActivity et non FlutterActivity : le déverrouillage
+ * biométrique (local_auth) s'appuie sur androidx.biometric.BiometricPrompt,
+ * qui a besoin d'une FragmentActivity pour s'afficher.
+ */
+class MainActivity : FlutterFragmentActivity() {
 
     private val downloadsChannel = "vtc/downloads"
 

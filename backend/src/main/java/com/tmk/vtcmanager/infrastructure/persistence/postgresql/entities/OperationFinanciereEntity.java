@@ -87,6 +87,10 @@ public class OperationFinanciereEntity extends AbstractEcritureAuditEntity {
     @Column(name = "extourne_de_id")
     private Long extourneDeId;
 
+    /** Facture fournisseur soldée par cette écriture (règlement). */
+    @Column(name = "facture_fournisseur_id")
+    private Long factureFournisseurId;
+
     /** Motif saisi lors de l'annulation, porté par l'écriture d'origine. */
     @Column(name = "motif_annulation", columnDefinition = "TEXT")
     private String motifAnnulation;

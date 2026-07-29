@@ -60,6 +60,62 @@ void main() {
       await tester.tap(find.text('4'));
       expect(frappes, isEmpty);
     });
+
+    testWidgets('sans touche auxiliaire, l\'emplacement reste vide',
+        (tester) async {
+      await tester.pumpWidget(host(PinKeypad(
+        onDigit: (_) {},
+        onBackspace: () {},
+        theme: _theme,
+      )));
+
+      expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
+    });
+
+    testWidgets('la touche auxiliaire occupe le bas à gauche et agit',
+        (tester) async {
+      var appuis = 0;
+
+      await tester.pumpWidget(host(PinKeypad(
+        onDigit: (_) {},
+        onBackspace: () {},
+        theme: _theme,
+        auxKey: PinAuxKey(
+          icon: Icons.fingerprint_rounded,
+          label: 'Déverrouiller avec l\'empreinte digitale',
+          onTap: () => appuis++,
+        ),
+      )));
+
+      final aux = find.byIcon(Icons.fingerprint_rounded);
+      expect(aux, findsOneWidget);
+      // Même rangée que le 0, à sa gauche.
+      final zero = tester.getCenter(find.text('0'));
+      expect(tester.getCenter(aux).dy, moreOrLessEquals(zero.dy, epsilon: 1));
+      expect(tester.getCenter(aux).dx, lessThan(zero.dx));
+
+      await tester.tap(aux);
+      expect(appuis, 1);
+    });
+
+    testWidgets('désactivée avec le reste du pavé', (tester) async {
+      var appuis = 0;
+
+      await tester.pumpWidget(host(PinKeypad(
+        onDigit: (_) {},
+        onBackspace: () {},
+        theme: _theme,
+        enabled: false,
+        auxKey: PinAuxKey(
+          icon: Icons.fingerprint_rounded,
+          label: 'Déverrouiller avec l\'empreinte digitale',
+          onTap: () => appuis++,
+        ),
+      )));
+
+      await tester.tap(find.byIcon(Icons.fingerprint_rounded));
+      expect(appuis, 0);
+    });
   });
 
   group('PinLayout', () {

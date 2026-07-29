@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.finance.CompteResultat;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
 import com.tmk.vtcmanager.application.domain.finance.EtatsCloture;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
+import com.tmk.vtcmanager.application.ports.persistence.FactureFournisseurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import lombok.RequiredArgsConstructor;
@@ -21,14 +22,15 @@ public class GetCompteResultatUseCase {
     private final EtatsClotureRepository etatsClotureRepository;
     private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
     private final DotationProvisionService dotationProvisionService;
+    private final FactureFournisseurRepository factureFournisseurRepository;
 
     /**
      * Cascade des soldes intermédiaires. Base CAISSE : tout est agrégé sur
      * les opérations encaissées/payées de la période. Base ENGAGEMENT : les
      * produits sont remplacés par les montants dus de la période (date
-     * métier) ; les charges restent celles de la caisse (payées = engagées
-     * dans ce modèle sans dette fournisseur). Le pont créances relie les
-     * deux lectures : produits engagement − produits caisse.
+     * métier), et les charges par celles qui y ont été engagées — factures
+     * fournisseurs reçues, plus les dépenses réglées sans facture. Le pont
+     * créances relie les deux lectures : produits engagement − produits caisse.
      */
     @Transactional(readOnly = true)
     public CompteResultat executer(int annee, int mois, BaseComptable base) {
@@ -46,11 +48,28 @@ public class GetCompteResultatUseCase {
 
         Map<String, BigDecimal> caisse = reportingRepository.totauxCaisseParNature(debut, fin);
         BigDecimal produitsCaisse = caisse.getOrDefault("PRODUIT_EXPLOITATION", BigDecimal.ZERO);
-        BigDecimal chargesVariables = caisse.getOrDefault("CHARGE_VARIABLE", BigDecimal.ZERO);
-        BigDecimal chargesFixes = caisse.getOrDefault("CHARGE_FIXE", BigDecimal.ZERO);
-
         BigDecimal produitsEngagement = reportingRepository.produitsEngagement(debut, fin);
         BigDecimal produits = base == BaseComptable.ENGAGEMENT ? produitsEngagement : produitsCaisse;
+
+        // Base CAISSE : ce qui est sorti, règlements de factures compris.
+        // Base ENGAGEMENT : ce qui est dû — les factures reçues sur la période,
+        // plus les dépenses payées sans facture. Le lien règlement → facture
+        // écarte les secondes pour ne pas compter la charge deux fois.
+        BigDecimal chargesVariables;
+        BigDecimal chargesFixes;
+        if (base == BaseComptable.ENGAGEMENT) {
+            Map<String, BigDecimal> horsFacture =
+                    reportingRepository.totauxCaisseHorsFactureParNature(debut, fin);
+            Map<String, BigDecimal> facturees =
+                    factureFournisseurRepository.chargesEngageesParNature(debut, fin);
+            chargesVariables = horsFacture.getOrDefault("CHARGE_VARIABLE", BigDecimal.ZERO)
+                    .add(facturees.getOrDefault("CHARGE_VARIABLE", BigDecimal.ZERO));
+            chargesFixes = horsFacture.getOrDefault("CHARGE_FIXE", BigDecimal.ZERO)
+                    .add(facturees.getOrDefault("CHARGE_FIXE", BigDecimal.ZERO));
+        } else {
+            chargesVariables = caisse.getOrDefault("CHARGE_VARIABLE", BigDecimal.ZERO);
+            chargesFixes = caisse.getOrDefault("CHARGE_FIXE", BigDecimal.ZERO);
+        }
 
         BigDecimal marge = produits.subtract(chargesVariables);
         BigDecimal ebe = marge.subtract(chargesFixes);

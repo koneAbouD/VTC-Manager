@@ -46,6 +46,24 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
     }
 
     @Override
+    public Map<String, BigDecimal> totauxCaisseHorsFactureParNature(LocalDate debut, LocalDate fin) {
+        Map<String, BigDecimal> totaux = new HashMap<>();
+        jdbcTemplate.query("""
+                SELECT c.nature_resultat AS nature, COALESCE(SUM(o.montant), 0) AS total
+                FROM operations_financieres o
+                JOIN categories_operation c ON c.id = o.categorie_id
+                WHERE o.statut IN ('ENCAISSE', 'PAYE')
+                  AND o.date_operation BETWEEN ? AND ?
+                  AND c.nature_resultat <> 'HORS_RESULTAT'
+                  AND o.facture_fournisseur_id IS NULL
+                GROUP BY c.nature_resultat
+                """,
+                rs -> { totaux.put(rs.getString("nature"), rs.getBigDecimal("total")); },
+                debut, fin);
+        return totaux;
+    }
+
+    @Override
     public BigDecimal produitsEngagement(LocalDate debut, LocalDate fin) {
         // Les cotisations ne sont PAS un produit (dépôt HORS_RESULTAT, restitué en
         // fin de période) : elles sont exclues du produit d'exploitation engagement.

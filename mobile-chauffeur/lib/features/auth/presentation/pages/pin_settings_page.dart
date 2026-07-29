@@ -21,6 +21,12 @@ class PinSettingsPage extends ConsumerStatefulWidget {
 class _PinSettingsPageState extends ConsumerState<PinSettingsPage> {
   bool? _configured;
 
+  /// Modalité biométrique de l'appareil, `null` s'il n'en propose aucune : la
+  /// ligne n'apparaît alors pas du tout.
+  BiometricAvailability? _biometrie;
+  bool _biometrieActive = false;
+  bool _biometrieOccupee = false;
+
   @override
   void initState() {
     super.initState();
@@ -28,9 +34,44 @@ class _PinSettingsPageState extends ConsumerState<PinSettingsPage> {
   }
 
   Future<void> _refresh() async {
-    final configured =
-        await ref.read(authControllerProvider.notifier).isPinConfigured();
-    if (mounted) setState(() => _configured = configured);
+    final notifier = ref.read(authControllerProvider.notifier);
+    final configured = await notifier.isPinConfigured();
+    final dispo = await notifier.biometricAvailability();
+    final active = await notifier.isBiometricsEnabled();
+    if (!mounted) return;
+
+    setState(() {
+      _configured = configured;
+      // Un appareil sans capteur ne mérite pas une ligne grisée : on n'en
+      // parle pas. Le matériel présent mais non enrôlé, si — c'est un geste à
+      // faire dans les réglages du téléphone.
+      _biometrie = dispo.disponible || dispo.raison != null ? dispo : null;
+      _biometrieActive = active;
+    });
+  }
+
+  Future<void> _basculerBiometrie(bool active) async {
+    setState(() => _biometrieOccupee = true);
+    final notifier = ref.read(authControllerProvider.notifier);
+
+    String? erreur;
+    if (active) {
+      erreur = await notifier.enableBiometrics();
+    } else {
+      await notifier.disableBiometrics();
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _biometrieOccupee = false;
+      _biometrieActive = active && erreur == null;
+    });
+
+    if (erreur != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(erreur), backgroundColor: AppColors.error),
+      );
+    }
   }
 
   Future<void> _openSetup({bool requireCurrentCode = false}) async {
@@ -90,6 +131,18 @@ class _PinSettingsPageState extends ConsumerState<PinSettingsPage> {
                             title: const Text('Changer le code'),
                             onTap: () => _openSetup(requireCurrentCode: true),
                           ),
+                        // Le déverrouillage biométrique complète le code, il
+                        // ne le remplace pas : sans code configuré, il n'y a
+                        // rien à ouvrir.
+                        if (configured && _biometrie != null) ...[
+                          const Divider(height: 32),
+                          _LigneBiometrie(
+                            availability: _biometrie!,
+                            active: _biometrieActive,
+                            occupee: _biometrieOccupee,
+                            onChanged: _basculerBiometrie,
+                          ),
+                        ],
                       ],
                     ),
             ),
@@ -98,4 +151,55 @@ class _PinSettingsPageState extends ConsumerState<PinSettingsPage> {
       ),
     );
   }
+}
+
+/// Interrupteur du déverrouillage biométrique, nommé d'après ce que
+/// l'appareil sait faire (Face ID, empreinte digitale…).
+class _LigneBiometrie extends StatelessWidget {
+  final BiometricAvailability availability;
+  final bool active;
+  final bool occupee;
+  final ValueChanged<bool> onChanged;
+
+  const _LigneBiometrie({
+    required this.availability,
+    required this.active,
+    required this.occupee,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final utilisable = availability.disponible && !occupee;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SwitchListTile(
+          value: active,
+          onChanged: utilisable ? onChanged : null,
+          activeTrackColor: AppColors.primary,
+          secondary: Icon(
+            availability.icone,
+            color: utilisable ? AppColors.primary : AppColors.label,
+          ),
+          title: Text(_capitaliser(availability.libelle)),
+          subtitle: Text(
+            availability.disponible
+                ? 'Ouvrir l\'application sans saisir le code'
+                : availability.raison!,
+            style: const TextStyle(fontSize: 12, height: 1.3),
+          ),
+        ),
+        if (occupee)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: LinearProgressIndicator(minHeight: 2),
+          ),
+      ],
+    );
+  }
+
+  static String _capitaliser(String texte) =>
+      texte.isEmpty ? texte : texte[0].toUpperCase() + texte.substring(1);
 }

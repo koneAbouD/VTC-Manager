@@ -35,6 +35,8 @@ public class BilanGestion {
 
     // Passif
     private BigDecimal detteEtatContraventions;
-    /** totalActif − dettes. */
+    /** Reste dû aux fournisseurs sur les factures non soldées. */
+    private BigDecimal dettesFournisseurs;
+    /** totalActif − dettes (État + fournisseurs). */
     private BigDecimal situationNette;
 }

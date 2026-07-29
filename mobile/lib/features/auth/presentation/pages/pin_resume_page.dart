@@ -59,6 +59,9 @@ class _PinResumePageState extends ConsumerState<PinResumePage> {
       case UnlockOk():
       case UnlockRequiresLogin():
       case UnlockOffline():
+      // La reprise ne passe jamais par la biométrie : c'est la saisie du code
+      // qui re-dérive la clé du coffre après une reconnexion.
+      case UnlockBiometricsFailed():
         setState(() {
           _busy = false;
           _code = '';

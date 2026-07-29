@@ -20,6 +20,10 @@ class PinKeypad extends StatelessWidget {
   final PinTheme theme;
   final double maxWidth;
 
+  /// Touche facultative en bas à gauche — le déverrouillage biométrique, à la
+  /// place que lui donnent iOS et Android. Sans elle, l'emplacement reste vide.
+  final PinAuxKey? auxKey;
+
   const PinKeypad({
     super.key,
     required this.onDigit,
@@ -27,6 +31,7 @@ class PinKeypad extends StatelessWidget {
     required this.theme,
     this.enabled = true,
     this.maxWidth = 320,
+    this.auxKey,
   });
 
   @override
@@ -53,7 +58,18 @@ class PinKeypad extends StatelessWidget {
                   ),
               ]),
             _Row(children: [
-              _Key(theme: theme, onTap: null, child: const SizedBox.shrink()),
+              if (auxKey == null)
+                _Key(theme: theme, onTap: null, child: const SizedBox.shrink())
+              else
+                _Key(
+                  // Pas de pastille : comme l'effacement, la touche est
+                  // secondaire, l'œil doit aller d'abord aux chiffres.
+                  theme: theme,
+                  filled: false,
+                  onTap: enabled ? () => _presserAux(auxKey!) : null,
+                  semanticsLabel: auxKey!.label,
+                  child: Icon(auxKey!.icon, size: 30, color: theme.accent),
+                ),
               _Key(
                 theme: theme,
                 onTap: enabled ? () => _press('0') : null,
@@ -89,6 +105,29 @@ class PinKeypad extends StatelessWidget {
     HapticFeedback.selectionClick();
     onBackspace();
   }
+
+  void _presserAux(PinAuxKey key) {
+    HapticFeedback.selectionClick();
+    key.onTap();
+  }
+}
+
+/// Touche auxiliaire du pavé (bas à gauche) : une icône, un libellé
+/// d'accessibilité, une action.
+@immutable
+class PinAuxKey {
+  final IconData icon;
+
+  /// Lu par les lecteurs d'écran (« Déverrouiller avec Face ID »).
+  final String label;
+
+  final VoidCallback onTap;
+
+  const PinAuxKey({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 }
 
 class _Row extends StatelessWidget {

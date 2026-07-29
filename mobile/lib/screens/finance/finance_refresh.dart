@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/tresorerie/presentation/providers/tresorerie_providers.dart';
 import 'rapport_financier_page.dart';
+import '../../features/fournisseur/presentation/providers/fournisseur_providers.dart';
 
 /// Signal de rafraîchissement du module Finances : incrémenté par
 /// [refreshFinances]. Les pages qui ne s'appuient pas sur un FutureProvider
@@ -29,5 +30,8 @@ void refreshFinances(WidgetRef ref) {
   ref.invalidate(bilanProvider);
   ref.invalidate(cloturesPeriodeProvider);
   ref.invalidate(rapportFinancierProvider);
+  // Une facture reçue change la dette au bilan ; un règlement change la caisse.
+  ref.invalidate(echeancierProvider);
+  ref.invalidate(facturesDuMoisProvider);
   ref.read(financeRefreshTickProvider.notifier).state++;
 }

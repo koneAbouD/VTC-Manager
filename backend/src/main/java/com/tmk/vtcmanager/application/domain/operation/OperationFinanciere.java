@@ -63,6 +63,13 @@ public class OperationFinanciere {
     private String annulePar;
     private LocalDateTime annuleLe;
 
+    /**
+     * Facture fournisseur soldée par cette écriture. Renseigné sur un règlement :
+     * la charge étant déjà portée par la facture, la lecture en base engagement
+     * écarte ces écritures pour ne pas la compter deux fois.
+     */
+    private Long factureFournisseurId;
+
     /** Vrai si cette écriture a été contre-passée. */
     public boolean estExtournee() {
         return annuleLe != null;

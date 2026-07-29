@@ -29,6 +29,9 @@ public interface OperationFinanciereRepository {
 
     List<OperationFinanciere> findByVehiculeId(Long vehiculeId);
 
+    /** Règlements passés sur une facture fournisseur, du plus ancien au plus récent. */
+    List<OperationFinanciere> findByFactureFournisseurId(Long factureId);
+
     boolean existsByReference(String reference);
 
     void deleteById(Long id);

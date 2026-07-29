@@ -32,6 +32,16 @@ class UnlockOffline extends UnlockOutcome {
   const UnlockOffline(this.message);
 }
 
+/// La biométrie n'a pas abouti : rien n'est ouvert, le pavé numérique reste
+/// le chemin normal.
+///
+/// [message] vaut `null` quand l'utilisateur a simplement renoncé (annulation,
+/// bascule volontaire vers le code) : il n'y a alors rien à lui expliquer.
+class UnlockBiometricsFailed extends UnlockOutcome {
+  final String? message;
+  const UnlockBiometricsFailed([this.message]);
+}
+
 /// Le code a été abandonné (essais épuisés ou session révoquée côté serveur) :
 /// retour à la connexion complète.
 class UnlockRequiresLogin extends UnlockOutcome {

@@ -5,6 +5,7 @@
 /// une clé dérivée du code. Sans le bon code, rien n'est exploitable.
 library tmk_pin;
 
+export 'src/biometric_service.dart';
 export 'src/jwt_claims.dart';
 export 'src/pin_cipher.dart' show PinCipher, PinVault;
 export 'src/pin_service.dart';

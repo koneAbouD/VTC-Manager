@@ -125,7 +125,7 @@ public class FinanceController {
                 bilan.getCreancesChauffeurs(), bilan.getProvisionCreances(),
                 bilan.getCreancesNettes(), bilan.getImmobilisationsNettes(),
                 bilan.getTotalActif(), bilan.getDetteEtatContraventions(),
-                bilan.getSituationNette());
+                bilan.getDettesFournisseurs(), bilan.getSituationNette());
     }
 
     /**

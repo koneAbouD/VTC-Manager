@@ -42,6 +42,10 @@ class PinLayout extends StatelessWidget {
   final ValueChanged<String> onDigit;
   final VoidCallback onBackspace;
 
+  /// Touche facultative en bas à gauche du pavé — le déverrouillage
+  /// biométrique sur l'écran de verrouillage, quand l'appareil le permet.
+  final PinAuxKey? auxKey;
+
   /// Espace au-dessus du logo. L'écran de verrouillage, qui n'a pas de titre,
   /// le majore pour descendre le bloc de saisie vers le centre de l'écran.
   final double topSpacing;
@@ -60,6 +64,7 @@ class PinLayout extends StatelessWidget {
     this.action,
     this.leading,
     this.footer,
+    this.auxKey,
     this.errorTick = 0,
     this.busy = false,
     this.topSpacing = 12,
@@ -195,6 +200,7 @@ class PinLayout extends StatelessWidget {
         theme: theme,
         enabled: !busy,
         maxWidth: largeurMax,
+        auxKey: auxKey,
       );
 
   Widget _piedDePage() => SizedBox(

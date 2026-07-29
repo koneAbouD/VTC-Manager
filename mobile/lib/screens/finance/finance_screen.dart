@@ -7,6 +7,7 @@ import '../../features/tresorerie/presentation/pages/rapports_tab.dart';
 import '../../features/tresorerie/presentation/pages/tresorerie_tab.dart';
 import '../home_nav_provider.dart';
 import 'finance_refresh.dart';
+import '../../features/fournisseur/presentation/pages/fournisseurs_tab.dart';
 
 /// Index de l'onglet Finances dans la barre de navigation principale.
 const _financeNavIndex = 3;
@@ -27,7 +28,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 4, vsync: this);
+    _tab = TabController(length: 5, vsync: this);
     // Reflète la sélection manuelle de l'utilisateur dans le provider partagé.
     _tab.addListener(() {
       if (!_tab.indexIsChanging) {
@@ -97,6 +98,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
               Tab(text: 'Trésorerie'),
               Tab(text: 'Créances'),
               Tab(text: 'Opérations'),
+              Tab(text: 'Fournisseurs'),
               Tab(text: 'Rapports'),
             ],
           ),
@@ -108,6 +110,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
               TresorerieTab(),
               CreancesTab(),
               OperationsFinancieresPage(),
+              FournisseursTab(),
               RapportsTab(),
             ],
           ),

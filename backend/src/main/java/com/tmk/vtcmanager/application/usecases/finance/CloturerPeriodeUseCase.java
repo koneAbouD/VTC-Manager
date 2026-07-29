@@ -13,6 +13,7 @@ import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
+import com.tmk.vtcmanager.application.ports.persistence.FactureFournisseurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class CloturerPeriodeUseCase {
     private final GetCompteResultatUseCase getCompteResultatUseCase;
     private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
     private final DotationProvisionService dotationProvisionService;
+    private final FactureFournisseurRepository factureFournisseurRepository;
 
     /**
      * Clôture un mois strictement passé (jamais le mois courant : les
@@ -149,6 +151,9 @@ public class CloturerPeriodeUseCase {
 
         BigDecimal immobilisations = reportingRepository.immobilisationsNettes(fin);
         BigDecimal detteEtat = creanceRepository.getMontantAReverserEtat();
+        // La dette fournisseurs, elle, se rejoue à la date : elle est arrêtée au
+        // dernier jour de la période, comme la trésorerie.
+        BigDecimal dettesFournisseurs = factureFournisseurRepository.detteALaDate(fin);
         BigDecimal totalActif = tresorerie.add(creancesNettes).add(immobilisations);
 
         return EtatsCloture.builder()
@@ -171,7 +176,8 @@ public class CloturerPeriodeUseCase {
                 .immobilisationsNettes(immobilisations)
                 .totalActif(totalActif)
                 .detteEtat(detteEtat)
-                .situationNette(totalActif.subtract(detteEtat))
+                .dettesFournisseurs(dettesFournisseurs)
+                .situationNette(totalActif.subtract(detteEtat).subtract(dettesFournisseurs))
                 .soldes(soldes)
                 .build();
     }

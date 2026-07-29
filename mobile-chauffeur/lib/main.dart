@@ -10,6 +10,7 @@ import 'features/auth/presentation/pages/pin_resume_page.dart';
 import 'features/auth/presentation/pages/pin_setup_page.dart';
 import 'features/auth/presentation/providers/auth_controller.dart';
 import 'features/auth/presentation/providers/auth_state.dart';
+import 'features/auth/presentation/widgets/biometric_proposal.dart';
 import 'features/compte/presentation/pages/home_page.dart';
 
 Future<void> main() async {
@@ -80,7 +81,9 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
     return switch (state) {
       AuthUnknown() => const _Splash(),
       AuthUnauthenticated() => const LoginPage(),
-      AuthAuthenticated() => const HomePage(),
+      // L'invite du déverrouillage biométrique s'accroche à l'accueil :
+      // l'écran de code, lui, disparaît dès que le code est accepté.
+      AuthAuthenticated() => const BiometricProposal(child: HomePage()),
       AuthLocked() => const PinLockPage(),
       AuthPinSetup(:final displayName) =>
         PinSetupPage(displayName: displayName),

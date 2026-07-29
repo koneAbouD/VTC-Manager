@@ -46,7 +46,11 @@ public class SequenceReferenceService {
         /** Dépense saisie manuellement. */
         DEPENSE("DEP"),
         /** Paiement mobile money initié depuis l'app chauffeur. */
-        PAIEMENT("PAY");
+        PAIEMENT("PAY"),
+        /** Facture reçue d'un fournisseur. */
+        FOURNISSEUR("FRN"),
+        /** Règlement d'une facture fournisseur. */
+        REGLEMENT_FOURNISSEUR("RGF");
 
         private final String code;
 
