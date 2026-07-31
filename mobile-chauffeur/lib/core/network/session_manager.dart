@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../storage/secure_storage.dart';
 import 'api_config.dart';
+import 'device_lock.dart';
 
 /// Gestion centralisée de la session et du refresh token.
 ///
@@ -24,6 +25,10 @@ enum LockReason {
 
   /// Retour au premier plan après un séjour prolongé en arrière-plan.
   arrierePlan,
+
+  /// L'appareil lui-même a été verrouillé : l'application suit, sans délai
+  /// de grâce.
+  appareilVerrouille,
 }
 
 class SessionManager with WidgetsBindingObserver {
@@ -61,6 +66,9 @@ class SessionManager with WidgetsBindingObserver {
   /// Horodatage du passage en arrière-plan, pour mesurer le délai de grâce.
   DateTime? _backgroundedAt;
 
+  /// Abonnement au verrouillage de l'appareil (canal natif).
+  StreamSubscription<void>? _deviceLockSub;
+
   final StreamController<String> _expiredCtrl =
       StreamController<String>.broadcast();
   final StreamController<LockReason> _lockCtrl =
@@ -94,8 +102,20 @@ class SessionManager with WidgetsBindingObserver {
       _started = true;
       WidgetsBinding.instance.addObserver(this);
     }
+    _ecouterVerrouillageAppareil();
     _scheduleProactiveRefresh();
     _restartInactivityTimer();
+  }
+
+  /// Un seul abonnement pour toute la vie du processus : le canal natif reste
+  /// ouvert, et les événements reçus hors session ([_started] à faux) sont
+  /// ignorés — l'application est alors déjà sous clé.
+  void _ecouterVerrouillageAppareil() {
+    _deviceLockSub ??= DeviceLock.instance.onDeviceLocked.listen((_) {
+      if (!_started) return;
+      stop();
+      _emitLock(LockReason.appareilVerrouille);
+    });
   }
 
   /// À appeler à la déconnexion : arrête tous les timers.

@@ -115,6 +115,11 @@ class BiometricService {
       (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS);
 
+  /// Les deux systèmes ne composent pas la même fenêtre : Android la bâtit
+  /// ligne par ligne (titre, sous-titre, description), iOS n'en a qu'une.
+  static bool get _android =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
   /// Ce que cet appareil peut proposer, ici et maintenant.
   ///
   /// Ne lève jamais : un appareil sans capteur, un greffon absent ou une
@@ -162,10 +167,17 @@ class BiometricService {
   /// [raison] est la phrase affichée dans la fenêtre système (obligatoire sur
   /// iOS). Seule la biométrie est acceptée : le repli vers le code de
   /// verrouillage du téléphone n'aurait pas de sens, l'application a le sien.
-  Future<BiometricOutcome> authenticate({
-    required String raison,
-    String titre = 'Déverrouillage',
-  }) async {
+  ///
+  /// La fenêtre Android est réduite à une seule ligne de texte. Le titre ne
+  /// pouvant pas être omis — `androidx.biometric` (1.1.0, la version qu'embarque
+  /// local_auth) refuse de construire la fenêtre sans lui —, c'est lui qui
+  /// porte [raison] ; sous-titre et description s'effacent derrière.
+  ///
+  /// Le bandeau du haut — icône et nom de l'application — reste, lui, et il n'y
+  /// a rien à y faire : depuis Android 15 c'est le système qui le pose, et
+  /// aucune API ne l'enlève. C'est délibéré côté Android, qui tient à ce que
+  /// l'utilisateur voie toujours à qui il donne son empreinte.
+  Future<BiometricOutcome> authenticate({required String raison}) async {
     if (!_plateformeSupportee) {
       return const BiometricUnavailable(
         'Le déverrouillage biométrique n\'est pas disponible ici.',
@@ -175,15 +187,34 @@ class BiometricService {
 
     try {
       final reconnu = await _auth.authenticate(
-        localizedReason: raison,
+        // Sur iOS, [raison] est le texte de la fenêtre Face ID, rien d'autre ne
+        // s'affiche. Sur Android, le plugin la range en description, sous le
+        // titre : comme c'est le titre qui la porte désormais, la description
+        // reçoit à son tour un espace. Vide, elle ferait sauter l'`assert` du
+        // plugin, qui exige une raison non vide.
+        localizedReason: _android ? ' ' : raison,
         biometricOnly: true,
         // Une mise en arrière-plan pendant l'invite (notification, appel) ne
         // doit pas compter comme un refus : l'invite reprend au retour.
         persistAcrossBackgrounding: true,
+        // `false` = `setConfirmationRequired(false)` côté Android : la
+        // reconnaissance du visage ouvre l'application, sans le « Confirmer »
+        // que le système intercale sinon. Ce garde-fou vise les transactions
+        // sensibles — un paiement déclenché par un regard distrait ; ici le
+        // geste est délibéré, l'utilisateur vient d'appuyer sur le bouton de
+        // déverrouillage. Sans effet sur l'empreinte, qui suppose un contact.
+        sensitiveTransaction: false,
         authMessages: [
           AndroidAuthMessages(
-            signInTitle: titre,
-            signInHint: raison,
+            // Le titre est la seule ligne qu'AndroidX impose : autant qu'elle
+            // dise ce qu'on attend de l'utilisateur plutôt qu'un intitulé de
+            // plus, le nom de l'application figurant déjà dans le bandeau posé
+            // par le système.
+            signInTitle: raison,
+            // Sous-titre vide, et non omis : l'omettre ferait retomber le
+            // plugin sur son défaut, « Verify identity », en anglais. AndroidX
+            // masque la ligne quand elle est vide.
+            signInHint: '',
             cancelButton: 'Utiliser mon code',
           ),
           const IOSAuthMessages(

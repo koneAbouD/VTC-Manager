@@ -28,6 +28,11 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
   /// `null` tant qu'on ne sait pas, ou quand il n'y a rien à proposer.
   BiometricAvailability? _biometrie;
 
+  /// Invite système ouverte. Distinct de [_busy] : la fenêtre de l'OS occupe
+  /// déjà l'écran et bloque les touches, l'application n'a donc rien à
+  /// afficher par-dessus. Ce drapeau ne sert qu'à ne pas lancer deux invites.
+  bool _invitationSysteme = false;
+
   @override
   void initState() {
     super.initState();
@@ -50,15 +55,28 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
   }
 
   Future<void> _deverrouillerParBiometrie() async {
-    if (_busy) return;
+    if (_busy || _invitationSysteme) return;
     setState(() {
-      _busy = true;
+      _invitationSysteme = true;
       _message = null;
     });
 
     final notifier = ref.read(authControllerProvider.notifier);
-    final outcome = await notifier.unlockWithBiometrics();
+    final outcome = await notifier.unlockWithBiometrics(
+      // L'OS a reconnu l'utilisateur : sa fenêtre se referme, et ce qui suit
+      // (déchiffrement du coffre, réouverture de session) peut durer. C'est
+      // seulement à partir d'ici que l'attente mérite d'être montrée.
+      onAccepted: () {
+        if (mounted) {
+          setState(() {
+            _invitationSysteme = false;
+            _busy = true;
+          });
+        }
+      },
+    );
     if (!mounted) return;
+    _invitationSysteme = false;
     _traiter(outcome);
 
     // L'option a pu être abandonnée en chemin (plus aucune empreinte enrôlée,

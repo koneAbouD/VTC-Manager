@@ -293,7 +293,12 @@ class AuthController extends Notifier<AuthState> {
   /// les siens, et il finit par bloquer la biométrie de lui-même. La
   /// temporisation du code, elle, reste opposable — sans quoi la biométrie
   /// offrirait un contournement.
-  Future<UnlockOutcome> unlockWithBiometrics() async {
+  ///
+  /// [onAccepted] est appelé dès que l'OS a reconnu l'utilisateur, avant la
+  /// réouverture de session. Il marque la frontière entre l'invite système —
+  /// pendant laquelle l'écran ne doit rien afficher, la fenêtre de l'OS étant
+  /// déjà par-dessus — et le travail qui suit, lui bien réel.
+  Future<UnlockOutcome> unlockWithBiometrics({void Function()? onAccepted}) async {
     final nom = state is AuthLocked ? (state as AuthLocked).displayName : null;
 
     // Vérifié avant l'invite : inutile de demander un doigt pour refuser
@@ -310,7 +315,6 @@ class AuthController extends Notifier<AuthState> {
     }
 
     final autorisation = await _biometrics.authenticate(
-      titre: 'Accès à votre espace',
       raison: 'Confirmez votre identité pour rouvrir l\'application.',
     );
 
@@ -323,6 +327,7 @@ class AuthController extends Notifier<AuthState> {
         return UnlockBiometricsFailed(message);
 
       case BiometricAccepted():
+        onAccepted?.call();
         final result = await _pin.unlockWithBiometrics();
         // `null` : la clé rangée n'ouvre plus le coffre, le service vient de
         // l'abandonner. Le code reste le chemin sûr.
@@ -430,7 +435,6 @@ class AuthController extends Notifier<AuthState> {
     }
 
     final autorisation = await _biometrics.authenticate(
-      titre: 'Activer le déverrouillage',
       raison: 'Confirmez votre identité pour activer '
           '${dispo.libelleAvecArticle}.',
     );
