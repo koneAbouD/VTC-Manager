@@ -24,19 +24,19 @@ public class DetailMaintenanceEntity extends AbstractAuditEntity {
     private List<ElementMaintenanceEntity> elements;
 
     /**
-     * Garantit la cohérence de la relation bidirectionnelle avant chaque
-     * persistance : sans cela les enfants seraient insérés avec
-     * detail_maintenance_id = NULL (le côté propriétaire de la FK est l'enfant).
-     * Posé au niveau entité pour être indépendant du mapper — MapStruct peut
-     * inliner le mapping imbriqué et sauter le @AfterMapping du mapper de détail.
+     * Rattache chaque ligne à ce détail, à appeler juste avant l'enregistrement.
+     *
+     * <p>Le côté propriétaire de la clé étrangère est l'enfant : sans cet appel,
+     * les lignes partent en base avec {@code detail_maintenance_id} nul. Rien ne
+     * peut s'en charger à notre place — MapStruct saute les {@code @AfterMapping}
+     * lorsqu'il construit par builder, et un callback {@code @PreUpdate} ne se
+     * déclenche pas sur un détail dont aucune colonne ne change, ce qui est
+     * précisément le cas quand on ne fait que remplacer ses lignes.
      */
-    @PrePersist
-    @PreUpdate
-    private void synchroniserElements() {
-        if (elements != null) {
-            for (ElementMaintenanceEntity element : elements) {
-                element.setDetailMaintenance(this);
-            }
+    public void rattacherElements() {
+        if (elements == null) return;
+        for (ElementMaintenanceEntity element : elements) {
+            element.setDetailMaintenance(this);
         }
     }
 }

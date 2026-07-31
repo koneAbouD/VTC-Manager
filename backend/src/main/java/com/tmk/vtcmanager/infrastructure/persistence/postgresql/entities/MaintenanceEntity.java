@@ -45,7 +45,10 @@ public class MaintenanceEntity extends AbstractAuditEntity {
     @Column(precision = 19, scale = 2)
     private BigDecimal cout;
 
-    private String prestataire;
+    /** Partenaire ayant réalisé l'intervention (prestataire, garage…). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "partenaire_id")
+    private PartenaireEntity partenaire;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 30)

@@ -16,7 +16,8 @@ public record MaintenanceRequest(
         Integer kilometrageAuMoment,
         Integer kilometrageProchaine,
         BigDecimal cout,
-        String prestataire,
+        /** Partenaire ayant réalisé l'intervention (facultatif). */
+        Long partenaireId,
         MaintenanceStatus statut,
         Long vehiculeId,
         Long categorieTypeId,

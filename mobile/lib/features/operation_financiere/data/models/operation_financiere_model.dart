@@ -19,6 +19,8 @@ class OperationFinanciereModel extends OperationFinanciere {
     super.chauffeurNom,
     super.vehiculeId,
     super.vehiculeNom,
+    super.partenaireId,
+    super.partenaireNom,
     required super.montant,
     super.modePaiement,
     required super.dateOperation,
@@ -70,6 +72,8 @@ class OperationFinanciereModel extends OperationFinanciere {
       chauffeurNom: chauffeurNom.isEmpty ? null : chauffeurNom,
       vehiculeId: (vehicule?['id'] as num?)?.toInt(),
       vehiculeNom: vehiculeNom?.isEmpty == true ? null : vehiculeNom,
+      partenaireId: (json['partenaireId'] as num?)?.toInt(),
+      partenaireNom: json['partenaireNom'] as String?,
       montant: (json['montant'] as num? ?? 0).toDouble(),
       modePaiement:
           mpStr != null ? ModePaiementExt.fromString(mpStr) : null,

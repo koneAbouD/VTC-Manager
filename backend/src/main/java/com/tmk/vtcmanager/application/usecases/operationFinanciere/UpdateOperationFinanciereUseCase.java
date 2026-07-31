@@ -39,6 +39,7 @@ public class UpdateOperationFinanciereUseCase {
         existing.setSousCategorie(data.getSousCategorie());
         existing.setChauffeur(data.getChauffeur());
         existing.setVehicule(data.getVehicule());
+        existing.setPartenaire(data.getPartenaire());
         existing.setModePaiement(data.getModePaiement());
         existing.setDateOperation(data.getDateOperation());
         existing.setCommentaire(data.getCommentaire());

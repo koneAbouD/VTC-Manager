@@ -26,7 +26,7 @@ public class ExportComptableUseCase {
         YearMonth periode = YearMonth.of(annee, mois);
         List<OperationFinanciere> operations = operationRepository.findByCriteres(
                 new OperationFinanciereFiltres(null, periode.atDay(1), periode.atEndOfMonth(),
-                        null, null, null, null, null, null));
+                        null, null, null, null, null, null, null));
 
         StringBuilder csv = new StringBuilder(
                 "Date;Référence;Catégorie;Compte;Nature;Débit;Crédit;Chauffeur;Véhicule;Mode;Commentaire\n");

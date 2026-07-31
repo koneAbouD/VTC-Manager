@@ -37,7 +37,22 @@ public class ReferentielCatalogue {
                 typesDocument(),
                 categoriesOperation(),
                 balises(),
+                typesPartenaire(),
                 catalogueElementsMaintenance());
+    }
+
+    private ReferentielDescriptorResponse typesPartenaire() {
+        return new ReferentielDescriptorResponse(
+                "types-partenaire",
+                "Types de partenaire",
+                "Familles de partenaires (prestataire, fournisseur, administration, bailleur…).",
+                "/api/v1/types-partenaire",
+                true,
+                "id",
+                List.of(
+                        texte("nom", "Nom", true),
+                        texte("description", "Description", false),
+                        booleen("actif", "Actif")));
     }
 
     private ReferentielDescriptorResponse balises() {

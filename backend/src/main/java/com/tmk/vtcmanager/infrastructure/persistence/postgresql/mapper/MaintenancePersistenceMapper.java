@@ -6,7 +6,7 @@ import org.mapstruct.Mapper;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {VehiculePersistenceMapper.class, DetailMaintenancePersistenceMapper.class, CategorieOperationPersistenceMapper.class})
+@Mapper(componentModel = "spring", uses = {VehiculePersistenceMapper.class, DetailMaintenancePersistenceMapper.class, CategorieOperationPersistenceMapper.class, PartenairePersistenceMapper.class})
 public interface MaintenancePersistenceMapper {
 
     MaintenanceEntity toEntity(Maintenance domain);

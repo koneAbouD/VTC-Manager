@@ -46,9 +46,11 @@ public class OperationFinanciereController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
             @RequestParam(required = false) StatutOperation statut,
             @RequestParam(required = false) String recherche,
-            @RequestParam(required = false) String categorieCode) {
+            @RequestParam(required = false) String categorieCode,
+            @RequestParam(required = false) Long partenaireId) {
         var filtres = new OperationFinanciereFiltres(
-                typeOperation, debut, fin, statut, recherche, categorieCode, null, null, null);
+                typeOperation, debut, fin, statut, recherche, categorieCode, null, null, null,
+                partenaireId);
         return mapper.toResponseList(getAllUseCase.execute(filtres));
     }
 
@@ -68,11 +70,12 @@ public class OperationFinanciereController {
             @RequestParam(required = false) String sousCategorieLibelle,
             @RequestParam(required = false) Long vehiculeId,
             @RequestParam(required = false) Long chauffeurId,
+            @RequestParam(required = false) Long partenaireId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         var filtres = new OperationFinanciereFiltres(
                 typeOperation, debut, fin, statut, recherche, categorieCode,
-                vehiculeId, chauffeurId, sousCategorieLibelle);
+                vehiculeId, chauffeurId, sousCategorieLibelle, partenaireId);
         var result = getAllUseCase.executePage(filtres, page, size)
                 .map(mapper::toResponse);
         return PageResponse.from(result);
@@ -105,9 +108,11 @@ public class OperationFinanciereController {
             @RequestParam(required = false) StatutOperation statut,
             @RequestParam(required = false) String recherche,
             @RequestParam(required = false) Long vehiculeId,
-            @RequestParam(required = false) Long chauffeurId) {
+            @RequestParam(required = false) Long chauffeurId,
+            @RequestParam(required = false) Long partenaireId) {
         var filtres = new OperationFinanciereFiltres(
-                typeOperation, debut, fin, statut, recherche, null, vehiculeId, chauffeurId, null);
+                typeOperation, debut, fin, statut, recherche, null, vehiculeId, chauffeurId, null,
+                partenaireId);
 
         double total = 0, recette = 0, cotisation = 0, penalite = 0, maintenance = 0, document = 0;
         for (var op : getAllUseCase.execute(filtres)) {

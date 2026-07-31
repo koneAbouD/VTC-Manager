@@ -48,6 +48,11 @@ public class OperationFinanciereEntity extends AbstractEcritureAuditEntity {
     @JoinColumn(name = "vehicule_id")
     private VehiculeEntity vehicule;
 
+    /** Tiers de l'écriture (garage, assureur, bailleur…), facultatif. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "partenaire_id")
+    private PartenaireEntity partenaire;
+
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal montant;
 
@@ -88,8 +93,8 @@ public class OperationFinanciereEntity extends AbstractEcritureAuditEntity {
     private Long extourneDeId;
 
     /** Facture fournisseur soldée par cette écriture (règlement). */
-    @Column(name = "facture_fournisseur_id")
-    private Long factureFournisseurId;
+    @Column(name = "facture_partenaire_id")
+    private Long facturePartenaireId;
 
     /** Motif saisi lors de l'annulation, porté par l'écriture d'origine. */
     @Column(name = "motif_annulation", columnDefinition = "TEXT")

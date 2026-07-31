@@ -8,5 +8,10 @@ import java.math.BigDecimal;
 public record ElementMaintenanceRequest(
         Long catalogueElementId,
         String libelle,
-        @NotNull @Positive BigDecimal montant
+        /** Exemplaires posés. Absent = un seul, cas de loin le plus fréquent. */
+        @Positive Integer quantite,
+        /** TOTAL de la ligne : quantité × prix unitaire, pas le prix d'un exemplaire. */
+        @NotNull @Positive BigDecimal montant,
+        /** Fournisseur de la ligne ; absent = celui de l'intervention. */
+        Long partenaireId
 ) {}

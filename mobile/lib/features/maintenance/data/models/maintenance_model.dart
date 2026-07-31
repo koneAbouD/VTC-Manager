@@ -13,7 +13,8 @@ class MaintenanceModel extends Maintenance {
     super.kilometrageAuMoment,
     super.kilometrageProchaine,
     super.cout,
-    super.prestataire,
+    super.partenaireId,
+    super.partenaireNom,
     super.statut,
     super.vehiculeId,
     super.vehiculeNom,
@@ -58,7 +59,8 @@ class MaintenanceModel extends Maintenance {
       cout:                json['cout'] != null
           ? (json['cout'] as num).toDouble()
           : null,
-      prestataire:         json['prestataire'] as String?,
+      partenaireId:        json['partenaireId'] as int?,
+      partenaireNom:       json['partenaireNom'] as String?,
       statut:              json['statut'] as String?,
       vehiculeId:          vehiculeJson?['id'] as int?,
       vehiculeNom:         vehiculeNom.isEmpty ? null : vehiculeNom,
@@ -83,7 +85,8 @@ class MaintenanceModel extends Maintenance {
         kilometrageAuMoment: m.kilometrageAuMoment,
         kilometrageProchaine: m.kilometrageProchaine,
         cout:                m.cout,
-        prestataire:         m.prestataire,
+        partenaireId:        m.partenaireId,
+        partenaireNom:       m.partenaireNom,
         statut:              m.statut,
         vehiculeId:          m.vehiculeId,
         vehiculeNom:         m.vehiculeNom,
@@ -111,11 +114,12 @@ class MaintenanceModel extends Maintenance {
         if (kilometrageProchaine != null)
           'kilometrageProchaine': kilometrageProchaine,
         if (cout != null) 'cout': cout,
-        if (prestataire != null) 'prestataire': prestataire,
+        if (partenaireId != null) 'partenaireId': partenaireId,
         if (statut != null) 'statut': statut,
         if (vehiculeId != null) 'vehiculeId': vehiculeId,
-        if (detailMaintenance != null &&
-            detailMaintenance!.elements.isNotEmpty)
+        // Toujours transmis, même vide : c'est ainsi qu'on peut retirer le
+        // dernier élément d'une intervention.
+        if (detailMaintenance != null)
           'detailMaintenance': _serializeDetail(detailMaintenance!),
       };
 
@@ -126,7 +130,9 @@ class MaintenanceModel extends Maintenance {
                     'catalogueElementId': e.catalogueElementId,
                   if (e.libelle != null && e.libelle!.isNotEmpty)
                     'libelle': e.libelle,
+                  'quantite': e.quantite,
                   'montant': e.montant,
+                  if (e.partenaireId != null) 'partenaireId': e.partenaireId,
                 })
             .toList(),
       };

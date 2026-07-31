@@ -7,6 +7,8 @@ import com.tmk.vtcmanager.application.domain.operation.SoldePeriode;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.DetailMaintenanceEntity;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.OperationFinanciereEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.OperationFinanciereJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.OperationFinanciereSpecs;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.OperationFinancierePersistenceMapper;
@@ -29,7 +31,12 @@ public class OperationFinanciereRepositoryAdapter implements OperationFinanciere
 
     @Override
     public OperationFinanciere save(OperationFinanciere operation) {
-        return mapper.toDomain(jpaRepository.save(mapper.toEntity(operation)));
+        OperationFinanciereEntity entity = mapper.toEntity(operation);
+        // Même règle que pour les maintenances : les lignes de détail ne
+        // connaissent leur parent que si on le leur dit avant l'écriture.
+        DetailMaintenanceEntity detail = entity.getDetailMaintenance();
+        if (detail != null) detail.rattacherElements();
+        return mapper.toDomain(jpaRepository.save(entity));
     }
 
     @Override
@@ -83,9 +90,9 @@ public class OperationFinanciereRepositoryAdapter implements OperationFinanciere
     }
 
     @Override
-    public List<OperationFinanciere> findByFactureFournisseurId(Long factureId) {
+    public List<OperationFinanciere> findByFacturePartenaireId(Long factureId) {
         return mapper.toDomainList(jpaRepository
-                .findByFactureFournisseurIdOrderByDateOperationAscIdAsc(factureId));
+                .findByFacturePartenaireIdOrderByDateOperationAscIdAsc(factureId));
     }
 
     @Override

@@ -47,10 +47,14 @@ public class SequenceReferenceService {
         DEPENSE("DEP"),
         /** Paiement mobile money initié depuis l'app chauffeur. */
         PAIEMENT("PAY"),
-        /** Facture reçue d'un fournisseur. */
-        FOURNISSEUR("FRN"),
-        /** Règlement d'une facture fournisseur. */
-        REGLEMENT_FOURNISSEUR("RGF");
+        /**
+         * Facture reçue d'un partenaire. Le code reste « FRN » : les pièces déjà
+         * émises le portent, et une série comptable ne change pas de préfixe en
+         * cours de route.
+         */
+        PARTENAIRE("FRN"),
+        /** Règlement d'une facture partenaire — série « RGF » déjà ouverte. */
+        REGLEMENT_PARTENAIRE("RGF");
 
         private final String code;
 

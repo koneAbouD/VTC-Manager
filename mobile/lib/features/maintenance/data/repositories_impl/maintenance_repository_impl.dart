@@ -139,9 +139,10 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
 
   @override
   Future<Either<Failure, Maintenance>> completeMaintenance(
-      int id, double cout) async {
+      int id, double cout, {bool aCredit = false, DateTime? dateEcheance}) async {
     try {
-      final result = await _datasource.completeMaintenance(id, cout);
+      final result = await _datasource.completeMaintenance(id, cout,
+          aCredit: aCredit, dateEcheance: dateEcheance);
       return Right(result);
     } on ApiException catch (e) {
       return Left(_mapApiException(e));

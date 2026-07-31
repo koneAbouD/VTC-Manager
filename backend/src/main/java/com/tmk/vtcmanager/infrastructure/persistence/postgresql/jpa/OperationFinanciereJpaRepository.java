@@ -24,8 +24,8 @@ public interface OperationFinanciereJpaRepository
 
     boolean existsByReference(String reference);
 
-    List<OperationFinanciereEntity> findByFactureFournisseurIdOrderByDateOperationAscIdAsc(
-            Long factureFournisseurId);
+    List<OperationFinanciereEntity> findByFacturePartenaireIdOrderByDateOperationAscIdAsc(
+            Long facturePartenaireId);
 
     /**
      * Somme des montants d'un type d'opération (REVENU / DEPENSE) sur la période

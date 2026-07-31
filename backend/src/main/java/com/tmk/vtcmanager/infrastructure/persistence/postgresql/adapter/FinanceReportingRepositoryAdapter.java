@@ -55,7 +55,7 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                 WHERE o.statut IN ('ENCAISSE', 'PAYE')
                   AND o.date_operation BETWEEN ? AND ?
                   AND c.nature_resultat <> 'HORS_RESULTAT'
-                  AND o.facture_fournisseur_id IS NULL
+                  AND o.facture_partenaire_id IS NULL
                 GROUP BY c.nature_resultat
                 """,
                 rs -> { totaux.put(rs.getString("nature"), rs.getBigDecimal("total")); },

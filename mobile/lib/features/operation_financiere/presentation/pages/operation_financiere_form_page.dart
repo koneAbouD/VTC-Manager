@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../../../core/widgets/responsive_field_row.dart';
+import '../../../partenaire/presentation/providers/partenaire_providers.dart';
 import '../../../../features/chauffeur/domain/entities/chauffeur.dart';
 import '../../../../features/chauffeur/presentation/pages/chauffeur_selector_page.dart';
 import '../../../../features/vehicule/domain/entities/vehicule.dart';
@@ -88,6 +90,16 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
   String? _chauffeurNom;
   int? _vehiculeId;
   String? _vehiculeNom;
+
+  /// Tiers de l'écriture (garage payé comptant, assureur, bailleur…).
+  int? _partenaireId;
+  String? _partenaireNom;
+
+  /// Dépense non encore réglée : au lieu d'une sortie de caisse, elle devient
+  /// une dette envers le partenaire, soldée le jour où on la paie.
+  bool _aPayer = false;
+  DateTime _echeance = DateTime.now();
+
   final _montantCtrl = TextEditingController();
   ModePaiement _modePaiement = ModePaiement.ESPECES;
   DateTime _date = DateTime.now();
@@ -127,6 +139,8 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
       _chauffeurNom = op.chauffeurNom;
       _vehiculeId = op.vehiculeId;
       _vehiculeNom = op.vehiculeNom;
+      _partenaireId = op.partenaireId;
+      _partenaireNom = op.partenaireNom;
       if (op.categorieId != null) {
         _categorie = CategorieOperation(
           id: op.categorieId!,
@@ -180,6 +194,11 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
           error: true);
       return;
     }
+    if (_aPayer && _partenaireId == null) {
+      _showToast(context, 'Choisissez le partenaire à qui la dette est due',
+          error: true);
+      return;
+    }
 
     setState(() => _loading = true);
 
@@ -188,6 +207,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
       'categorieId': _categorie!.id,
       if (_chauffeurId != null) 'chauffeurId': _chauffeurId,
       if (_vehiculeId != null) 'vehiculeId': _vehiculeId,
+      if (_partenaireId != null) 'partenaireId': _partenaireId,
       'montant': double.tryParse(
               _montantCtrl.text.replaceAll(',', '.').replaceAll(' ', '')) ??
           0,
@@ -205,14 +225,20 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                       'catalogueElementId': e.catalogueElementId,
                     if (e.libelle != null && e.libelle!.isNotEmpty)
                       'libelle': e.libelle,
+                    'quantite': e.quantite,
                     'montant': e.montant,
+                    if (e.partenaireId != null) 'partenaireId': e.partenaireId,
                   })
               .toList(),
         },
     };
 
     String? error;
-    if (_isEdit) {
+    if (_aPayer && !_isEdit) {
+      // Rien ne sort de la caisse : la dépense naît comme dette. C'est son
+      // règlement, plus tard, qui produira l'écriture de trésorerie.
+      error = await _enregistrerDette();
+    } else if (_isEdit) {
       error = await ref
           .read(operationFinanciereNotifierProvider.notifier)
           .update(widget.initial!.id!, payload);
@@ -238,6 +264,30 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
         // Pas d'alerte de succès : la fermeture + le refresh de la liste suffisent.
         Navigator.pop(context);
       }
+    }
+  }
+
+  /// Enregistre la dépense comme dette partenaire. Renvoie le message d'erreur
+  /// éventuel, `null` si tout s'est bien passé.
+  Future<String?> _enregistrerDette() async {
+    try {
+      await ref.read(partenaireDatasourceProvider).enregistrerFacture(
+            partenaireId: _partenaireId!,
+            montant: double.tryParse(_montantCtrl.text
+                    .replaceAll(',', '.')
+                    .replaceAll(' ', '')) ??
+                0,
+            categorieId: _categorie!.id,
+            vehiculeId: _vehiculeId,
+            dateFacture: _date,
+            dateEcheance: _echeance,
+            description: _commentaireCtrl.text.trim().isEmpty
+                ? null
+                : _commentaireCtrl.text.trim(),
+          );
+      return null;
+    } catch (e) {
+      return '$e';
     }
   }
 
@@ -426,7 +476,8 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
     final result = await Navigator.push<List<ElementMaintenance>>(
       context,
       MaterialPageRoute(
-        builder: (_) => ElementsMaintenancePage(initial: _elements),
+        builder: (_) => ElementsMaintenancePage(
+            initial: _elements, partenaireDefautNom: _partenaireNom),
       ),
     );
     if (result != null && mounted) {
@@ -460,7 +511,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        el.effectiveLibelle,
+                        el.libelleAvecQuantite,
                         style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -562,6 +613,128 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
               )
             else
               const Icon(Icons.chevron_right, size: 20, color: _kHint),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Tiers de l'écriture, choisi dans le répertoire des partenaires actifs.
+  /// Facultatif : beaucoup d'écritures n'ont pas de contrepartie externe.
+  Widget _buildPartenaireField() {
+    final partenaires = ref.watch(partenairesProvider(true));
+    return partenaires.when(
+      loading: () => _buildSelectorField(
+          hint: 'Chargement…', onTap: () {}),
+      error: (e, _) => _buildSelectorField(
+          hint: 'Partenaires indisponibles', onTap: () {}),
+      data: (liste) {
+        final options = liste
+            .where((p) => p.id != null)
+            .map((p) => SelectOption(
+                value: p.id!, label: p.nom, sousTitre: p.typeNom))
+            .toList();
+        // Un partenaire désactivé depuis la saisie doit rester visible, sinon
+        // il disparaîtrait de l'écriture à la première modification.
+        if (_partenaireId != null &&
+            !options.any((o) => o.value == _partenaireId)) {
+          options.insert(
+              0,
+              SelectOption(
+                  value: _partenaireId!,
+                  label: _partenaireNom ?? 'Partenaire #$_partenaireId'));
+        }
+        return PremiumSelectField<int>(
+          value: _partenaireId,
+          hint: 'Choisir',
+          sheetTitle: 'Choisir le partenaire',
+          options: options,
+          onChanged: (v) => setState(() {
+            _partenaireId = v;
+            _partenaireNom = v == null
+                ? null
+                : liste.firstWhere((p) => p.id == v,
+                    orElse: () => liste.first).nom;
+          }),
+        );
+      },
+    );
+  }
+
+  /// Bascule « réglée / à payer ». Le libellé dit ce qui va se passer, pas ce
+  /// qu'on coche : une dépense à payer ne touche pas la caisse.
+  Widget _buildAPayerToggle() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: _aPayer ? const Color(0xFFFFF4E5) : _kFieldFill,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: _aPayer ? const Color(0xFFE65100) : _kBorder,
+            width: _aPayer ? 1.4 : 1),
+      ),
+      child: Row(
+        children: [
+          Icon(_aPayer ? Icons.schedule_outlined : Icons.payments_outlined,
+              size: 19,
+              color: _aPayer ? const Color(0xFFE65100) : _kLabel),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_aPayer ? 'À payer' : 'Réglée maintenant',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _aPayer ? const Color(0xFFE65100) : _kDark)),
+                Text(
+                    _aPayer
+                        ? 'Crée une dette chez le partenaire'
+                        : 'Sort l\'argent de la caisse',
+                    style: const TextStyle(fontSize: 11.5, color: _kLabel)),
+              ],
+            ),
+          ),
+          Switch(
+            value: _aPayer,
+            activeThumbColor: const Color(0xFFE65100),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            onChanged: (v) => setState(() => _aPayer = v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEcheanceField() {
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDialog<DateTime>(
+          context: context,
+          builder: (_) => SingleDatePickerDialog(
+            initialDate: _echeance,
+            firstDate: DateTime(2020),
+            lastDate: DateTime(2030),
+          ),
+        );
+        if (picked != null) setState(() => _echeance = picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: _kFieldFill,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                DateFormat('dd MMMM yyyy', 'fr_FR').format(_echeance),
+                style: const TextStyle(fontSize: 15, color: _kDark),
+              ),
+            ),
+            const Icon(Icons.event_outlined, size: 19, color: _kHint),
           ],
         ),
       ),
@@ -688,6 +861,13 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                         }),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // — Partenaire ─────────────────────────────
+                  _LabeledField(
+                    label: 'Partenaire',
+                    child: _buildPartenaireField(),
                   ),
                   const SizedBox(height: 12),
 
@@ -834,11 +1014,29 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                           )
                         : null,
                   ),
-                  const SizedBox(height: 12),
-                  _LabeledField(
-                    label: 'Mode de paiement',
-                    child: _buildModePaiementToggle(),
-                  ),
+                  // — Réglée ou à payer ? ────────────────────
+                  // Réservé aux dépenses non encore réglées : c'est ce choix
+                  // qui décide si l'argent sort maintenant ou si une dette
+                  // apparaît chez le partenaire.
+                  if (_type == TypeOperation.DEPENSE && !_isEdit) ...[
+                    const SizedBox(height: 12),
+                    _buildAPayerToggle(),
+                  ],
+
+                  if (!(_aPayer && _type == TypeOperation.DEPENSE && !_isEdit)) ...[
+                    const SizedBox(height: 12),
+                    _LabeledField(
+                      label: 'Mode de paiement',
+                      child: _buildModePaiementToggle(),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 12),
+                    _LabeledField(
+                      label: 'Échéance',
+                      isRequired: true,
+                      child: _buildEcheanceField(),
+                    ),
+                  ],
 
                   _kCardDivider,
 

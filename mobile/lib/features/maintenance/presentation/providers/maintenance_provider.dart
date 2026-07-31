@@ -157,8 +157,10 @@ class MaintenanceNotifier extends StateNotifier<MaintenanceState> {
     );
   }
 
-  Future<String?> completeMaintenance(int id, double cout) async {
-    final result = await _completeMaintenance.call(id, cout);
+  Future<String?> completeMaintenance(int id, double cout,
+      {bool aCredit = false, DateTime? dateEcheance}) async {
+    final result = await _completeMaintenance.call(id, cout,
+        aCredit: aCredit, dateEcheance: dateEcheance);
     return result.fold(
       (failure) => failure.message,
       (_) {

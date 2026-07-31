@@ -5,14 +5,14 @@ import '../../../../core/theme/app_colors.dart';
 /// Briques d'interface de la page Paramètres.
 ///
 /// Même langage visuel que les cartes de `parametrage_hub_page` et de
-/// `detail_premium` : surface blanche, bordure fine, coins arrondis et
-/// pastille d'icône teintée.
+/// `detail_premium` : surface blanche, bordure fine, coins arrondis et icône
+/// teintée — seuls les en-têtes d'accordéon posent l'icône sur une pastille.
 
 /// Rayon des cartes de réglages.
 const double _kCardRadius = 16;
 
-/// Décalage du filet séparateur : padding gauche + pastille + gouttière,
-/// pour que le trait démarre sous le libellé et non sous l'icône.
+/// Décalage du filet séparateur : padding gauche + colonne d'icône +
+/// gouttière, pour que le trait démarre sous le libellé et non sous l'icône.
 const double _kDividerIndent = 70;
 
 /// Durée des transitions de la page (dépli des accordéons, rotation des
@@ -83,8 +83,8 @@ class SettingsCard extends StatelessWidget {
 ///
 /// **Hiérarchie visuelle** : une fois déplié, l'en-tête se teinte, sa pastille
 /// d'icône devient pleine et son titre passe à la couleur de marque, tandis que
-/// les lignes filles gardent le fond blanc, la pastille claire et un léger
-/// retrait. Parent et enfants ne se confondent jamais.
+/// les lignes filles gardent le fond blanc, une icône nue et un léger retrait.
+/// Parent et enfants ne se confondent jamais.
 class SettingsAccordion extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -287,8 +287,8 @@ class SettingsPlaceholder extends StatelessWidget {
   }
 }
 
-/// Ligne de réglage : pastille d'icône, libellé (+ description optionnelle) et
-/// élément de droite.
+/// Ligne de réglage : icône, libellé (+ description optionnelle) et élément de
+/// droite.
 ///
 /// - [onTap] non nul → la ligne est interactive ; un chevron est affiché quand
 ///   aucun [trailing] n'est fourni (le réglage ouvre une page).
@@ -303,7 +303,7 @@ class SettingsTile extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget? trailing;
 
-  /// Teinte de la pastille d'icône (et du libellé si [titleColor] est fourni).
+  /// Teinte de l'icône.
   final Color accent;
 
   /// Couleur du libellé — à surcharger pour les actions sensibles
@@ -331,13 +331,12 @@ class SettingsTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       child: Row(
         children: [
-          Container(
+          // Icône nue, sans pastille : seul l'en-tête d'accordéon porte un
+          // fond coloré. La boîte garde ses 42 px pour que libellés et filets
+          // séparateurs restent alignés sur ceux de l'en-tête.
+          SizedBox(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: enabled ? 0.10 : 0.06),
-              borderRadius: BorderRadius.circular(12),
-            ),
             child: Icon(
               icon,
               size: 20,

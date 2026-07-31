@@ -11,6 +11,7 @@ import '../../../auth/presentation/pages/pin_setup_page.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/auth_state.dart';
 import '../../../jour_ferie/presentation/jours_feries_page.dart';
+import '../../../partenaire/presentation/pages/partenaires_liste_page.dart';
 import '../widgets/settings_tile.dart';
 import 'parametrage_hub_page.dart';
 import 'parametres_generaux_page.dart';
@@ -27,6 +28,10 @@ const double _kCardGap = 10;
 /// Arrondi du bas du bandeau de profil — même valeur que la barre de
 /// navigation flottante de l'accueil.
 const double _kHeaderRadius = 24;
+
+/// Marge intérieure sous l'identité : le bandeau porte déjà un avatar haut de
+/// 62 px, il n'a pas besoin d'autant d'air qu'une carte de la liste.
+const double _kProfilPadding = 16;
 
 /// Arrondi des pilules du bandeau, aligné sur les boutons d'[AppHeader].
 const double _kPillRadius = 20;
@@ -118,16 +123,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.scaffold,
-      // Barre de retour et bandeau de profil partagent la même teinte : ils
-      // forment une seule zone, arrondie en bas. Pas de titre : l'identité du
-      // compte tient lieu d'en-tête.
-      appBar: const AppHeader(
-        title: '',
-        backgroundColor: AppColors.headerButton,
-        // Même pastille blanche que le bouton « Mon profil » : sans cela, le
-        // fond du bouton se confondrait avec celui du bandeau.
-        backButtonColor: AppColors.surface,
-      ),
+      // Pas d'`appBar` : la barre de retour est intégrée au bandeau de profil,
+      // qui descend du haut de l'écran d'un seul tenant. La teinte du bandeau
+      // court donc de la barre de statut jusqu'au bas de l'identité, sans
+      // rupture. Pas de titre non plus : l'identité du compte tient lieu
+      // d'en-tête.
       body: LayoutBuilder(builder: (context, contraintes) {
         // Le bandeau n'est pas flexible : déplié sur un écran bas (paysage), il
         // réclamerait plus que la hauteur disponible et écraserait la liste. On
@@ -137,19 +137,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
         return Column(
           children: [
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: hauteurMaxBandeau),
-              child: SingleChildScrollView(
-                child: _ProfileHeader(
-                  name: nomComplet,
-                  identifiant: identite?.identifiant ?? '',
-                  email: identite?.email ?? '',
-                  horizontalPadding: _kPagePadding,
-                  avecDescriptions: isWide,
-                  ouvert: _volet == _Volet.profil,
-                  onToggle: () => _basculer(_Volet.profil),
-                ),
-              ),
+            _ProfileHeader(
+              name: nomComplet,
+              identifiant: identite?.identifiant ?? '',
+              email: identite?.email ?? '',
+              horizontalPadding: _kPagePadding,
+              avecDescriptions: isWide,
+              ouvert: _volet == _Volet.profil,
+              onToggle: () => _basculer(_Volet.profil),
+              hauteurMaxIdentite: hauteurMaxBandeau,
             ),
             Expanded(
               // Padding bas incluant l'inset système pour que le pied de page ne
@@ -188,6 +184,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               builder: (_) => const ParametrageHubPage()),
                         ),
                       ),
+                      // Le référentiel des partenaires vit ici, avec les
+                      // autres données de référence : l'échéancier des dettes
+                      // ne fait que s'en servir, il ne l'administre pas.
+                      SettingsTile(
+                        icon: Icons.store_outlined,
+                        title: 'Partenaires',
+                        description: 'Garagistes, assureurs et autres '
+                            'prestataires',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const PartenairesListePage()),
+                        ),
+                      ),
                       SettingsTile(
                         icon: Icons.settings_suggest_outlined,
                         title: 'Paramétrage généraux',
@@ -198,23 +207,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               builder: (_) => const ParametresGenerauxPage()),
                         ),
                       ),
-                      // Les deux réglages suivants n'ont pas encore de
-                      // mécanisme derrière eux : switch présent mais inerte
-                      // (voir le rapport de livraison).
+                      // Ce réglage n'a pas encore de mécanisme derrière lui :
+                      // switch présent mais inerte (voir le rapport de
+                      // livraison).
                       const SettingsTile(
                         icon: Icons.notifications_outlined,
                         title: 'Notifications',
                         description: 'Alertes documents, entretiens et impayés',
                         trailing: Switch(value: false, onChanged: null),
                       ),
-                      const SettingsTile(
-                        icon: Icons.fingerprint_rounded,
-                        title: 'Biométrie',
-                        description:
-                            "Déverrouiller l'application par empreinte ou "
-                            'reconnaissance faciale',
-                        trailing: Switch(value: false, onChanged: null),
-                      ),
+                      const _LigneBiometrie(),
                       const SettingsTile(
                         icon: Icons.star_outline_rounded,
                         title: "Noter l'application",
@@ -284,12 +286,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-/// Bandeau d'identité en haut de la page : avatar, nom du compte, identifiant
-/// de connexion et accès au profil.
+/// Bandeau d'identité en haut de la page : barre de retour, avatar, nom du
+/// compte, identifiant de connexion et accès au profil.
 ///
-/// Prolonge l'[AppHeader] (même teinte) et se referme par des angles arrondis
-/// en bas ; il occupe toute la largeur, son contenu restant aligné sur la
-/// liste de réglages.
+/// Bloc plein, posé depuis le haut de l'écran : la barre de retour baigne dans
+/// la même teinte ([AppColors.headerButton]) que l'identité, ils forment une
+/// seule zone dont seul le bord bas est arrondi. Il occupe toute la largeur,
+/// son contenu restant aligné sur la liste de réglages.
 class _ProfileHeader extends StatelessWidget {
   /// Prénom et nom du compte connecté.
   final String name;
@@ -313,6 +316,11 @@ class _ProfileHeader extends StatelessWidget {
   final bool ouvert;
   final VoidCallback onToggle;
 
+  /// Hauteur maximale de la partie identité — barre de retour exclue, celle-ci
+  /// restant visible en toutes circonstances. Au-delà, l'identité défile sur
+  /// elle-même plutôt que d'écraser la liste de réglages.
+  final double hauteurMaxIdentite;
+
   const _ProfileHeader({
     required this.name,
     required this.email,
@@ -321,6 +329,7 @@ class _ProfileHeader extends StatelessWidget {
     required this.avecDescriptions,
     required this.ouvert,
     required this.onToggle,
+    required this.hauteurMaxIdentite,
   });
 
   @override
@@ -334,116 +343,242 @@ class _ProfileHeader extends StatelessWidget {
 
     return Container(
       width: double.infinity,
+      // Le bloc part du haut de l'écran : il n'a pas de bord haut, seuls les
+      // angles bas sont arrondis.
       decoration: const BoxDecoration(
         color: AppColors.headerButton,
         borderRadius:
             BorderRadius.vertical(bottom: Radius.circular(_kHeaderRadius)),
       ),
-      // Mêmes marges latérales que la liste : l'avatar reste aligné sur les
-      // icônes des cartes.
-      child: Padding(
-        padding:
-            EdgeInsets.fromLTRB(horizontalPadding, 2, horizontalPadding, 18),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                AnimatedContainer(
-                  duration: _kTransition,
-                  curve: Curves.easeOutCubic,
-                  width: emailVisible ? 62 : 52,
-                  height: emailVisible ? 62 : 52,
-                  alignment: Alignment.center,
-                  // Même pastille blanche que le bouton « Mon profil ».
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    shape: BoxShape.circle,
-                  ),
-                  child: AnimatedDefaultTextStyle(
-                    duration: _kTransition,
-                    curve: Curves.easeOutCubic,
-                    style: TextStyle(
-                      fontSize: emailVisible ? 24 : 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryDark,
-                    ),
-                    child: Text(initiale),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(children: [
+        // Barre de retour posée sur la teinte du bandeau : le fond court sans
+        // rupture depuis la barre de statut. Même pastille blanche que le
+        // bouton « Mon profil » : sans cela, le fond du bouton se confondrait
+        // avec celui du bandeau.
+        const AppHeader(
+          title: '',
+          backgroundColor: Colors.transparent,
+          backButtonColor: AppColors.surface,
+        ),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: hauteurMaxIdentite),
+          child: SingleChildScrollView(
+            child: Padding(
+              // L'en-tête pose déjà 14 px sous le bouton retour : l'identité
+              // n'ajoute qu'un souffle avant l'avatar.
+              padding: EdgeInsets.fromLTRB(
+                  horizontalPadding, 2, horizontalPadding, _kProfilPadding),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        libelle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.dark,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      if (identifiant.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          identifiant,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.label,
-                          ),
-                        ),
-                      ],
-                      // Apparition et disparition en douceur, au rythme
-                      // du volet.
-                      AnimatedSize(
+                      AnimatedContainer(
                         duration: _kTransition,
                         curve: Curves.easeOutCubic,
-                        alignment: Alignment.topLeft,
-                        child: emailVisible
-                            ? Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  email,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.hint,
-                                  ),
-                                ),
-                              )
-                            : const SizedBox.shrink(),
+                        width: emailVisible ? 62 : 52,
+                        height: emailVisible ? 62 : 52,
+                        alignment: Alignment.center,
+                        // Même pastille blanche que le bouton « Mon profil ».
+                        decoration: const BoxDecoration(
+                          color: AppColors.surface,
+                          shape: BoxShape.circle,
+                        ),
+                        child: AnimatedDefaultTextStyle(
+                          duration: _kTransition,
+                          curve: Curves.easeOutCubic,
+                          style: TextStyle(
+                            fontSize: emailVisible ? 24 : 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryDark,
+                          ),
+                          child: Text(initiale),
+                        ),
                       ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              libelle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.dark,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            if (identifiant.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                identifiant,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.label,
+                                ),
+                              ),
+                            ],
+                            // Apparition et disparition en douceur, au rythme
+                            // du volet.
+                            AnimatedSize(
+                              duration: _kTransition,
+                              curve: Curves.easeOutCubic,
+                              alignment: Alignment.topLeft,
+                              child: emailVisible
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        email,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.hint,
+                                        ),
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      _MonProfilBouton(ouvert: ouvert, onTap: onToggle),
                     ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                _MonProfilBouton(ouvert: ouvert, onTap: onToggle),
-              ],
+                  // Repli/dépli des actions de compte.
+                  AnimatedSize(
+                    duration: _kTransition,
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: ouvert
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 14),
+                            child: _ActionsProfil(
+                              avecDescriptions: avecDescriptions,
+                            ),
+                          )
+                        : const SizedBox(width: double.infinity),
+                  ),
+                ],
+              ),
             ),
-            // Repli/dépli des actions de compte.
-            AnimatedSize(
-              duration: _kTransition,
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.topCenter,
-              child: ouvert
-                  ? Padding(
-                      padding: const EdgeInsets.only(top: 14),
-                      child: _ActionsProfil(
-                        avecDescriptions: avecDescriptions,
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-          ],
+          ),
         ),
+      ]),
+    );
+  }
+}
+
+/// Réglage du déverrouillage biométrique.
+///
+/// La ligne s'adapte à l'appareil : elle prend le nom de ce qu'il sait faire
+/// (Face ID, empreinte digitale…) et n'est actionnable que si une donnée
+/// biométrique y est effectivement enrôlée. À défaut, elle reste en retrait
+/// avec le motif — un appareil sans capteur n'a rien à proposer, un appareil
+/// sans empreinte enregistrée demande un geste dans les réglages du téléphone.
+class _LigneBiometrie extends ConsumerStatefulWidget {
+  const _LigneBiometrie();
+
+  @override
+  ConsumerState<_LigneBiometrie> createState() => _LigneBiometrieState();
+}
+
+class _LigneBiometrieState extends ConsumerState<_LigneBiometrie> {
+  BiometricAvailability? _dispo;
+  bool _active = false;
+  bool _occupee = false;
+
+  /// Position visée pendant la bascule. L'interrupteur s'y place aussitôt :
+  /// la validation biométrique se joue dans la popup de l'OS, la page n'a rien
+  /// à faire attendre derrière elle. Revient à `null` une fois l'OS retiré.
+  bool? _cible;
+
+  @override
+  void initState() {
+    super.initState();
+    _charger();
+  }
+
+  Future<void> _charger() async {
+    final notifier = ref.read(authNotifierProvider.notifier);
+    final dispo = await notifier.biometricAvailability();
+    final active = await notifier.isBiometricsEnabled();
+    if (!mounted) return;
+    setState(() {
+      _dispo = dispo;
+      _active = active;
+    });
+  }
+
+  Future<void> _basculer(bool active) async {
+    setState(() {
+      _occupee = true;
+      _cible = active;
+    });
+    final notifier = ref.read(authNotifierProvider.notifier);
+
+    // L'activation passe par une validation biométrique de l'OS : sans elle,
+    // on rangerait la clé du coffre pour quelqu'un qui ne saura pas s'en servir.
+    String? erreur;
+    if (active) {
+      erreur = await notifier.enableBiometrics();
+    } else {
+      await notifier.disableBiometrics();
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _occupee = false;
+      _cible = null;
+      _active = active && erreur == null;
+    });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(erreur ??
+            (active
+                ? 'Déverrouillage biométrique activé.'
+                : 'Déverrouillage biométrique désactivé.')),
+        backgroundColor: erreur == null ? AppColors.primary : AppColors.error,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dispo = _dispo;
+    // Le temps de la détection, la ligne garde sa place sans clignoter.
+    final utilisable = (dispo?.disponible ?? false) && !_occupee;
+
+    return SettingsTile(
+      icon: dispo?.icone ?? Icons.fingerprint_rounded,
+      title: 'Biométrie',
+      description: switch (dispo) {
+        null => 'Vérification de cet appareil…',
+        BiometricAvailability(disponible: true, :final libelleAvecArticle) =>
+          'Ouvrir l\'application avec $libelleAvecArticle, '
+              'sans saisir le code TMK',
+        BiometricAvailability(:final raison?) => raison,
+        _ => 'Cet appareil ne dispose pas de capteur biométrique',
+      },
+      // La ligne entière reste tactile quand le réglage l'est : basculer se
+      // fait aussi bien en touchant la ligne qu'en poussant l'interrupteur.
+      onTap: utilisable ? () => _basculer(!_active) : null,
+      // Pas d'indicateur d'attente pendant la bascule : la popup système
+      // occupe déjà l'écran, un cercle qui tourne derrière elle n'apprendrait
+      // rien. L'interrupteur montre la position visée et n'accepte plus de
+      // geste tant que l'OS n'a pas répondu.
+      trailing: Switch(
+        value: _cible ?? _active,
+        onChanged: utilisable ? _basculer : null,
       ),
     );
   }
@@ -452,7 +587,8 @@ class _ProfileHeader extends StatelessWidget {
 /// Actions de compte révélées par « Mon profil », une par ligne.
 ///
 /// Reprend les briques de la liste de réglages ([SettingsCard] /
-/// [SettingsTile]) : icône à gauche, chevron à droite, même carte blanche.
+/// [SettingsTile]) — icône à gauche, chevron à droite — dont la surface
+/// blanche se détache du bandeau qui l'accueille.
 class _ActionsProfil extends StatelessWidget {
   final bool avecDescriptions;
 

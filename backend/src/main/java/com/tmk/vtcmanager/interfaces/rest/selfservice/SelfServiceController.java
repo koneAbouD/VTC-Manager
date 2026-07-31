@@ -164,7 +164,7 @@ public class SelfServiceController {
         // Opérations rattachées au chauffeur…
         List<OperationFinanciere> merged = new java.util.ArrayList<>(
                 getAllOperationsFinancieresUseCase.execute(new OperationFinanciereFiltres(
-                        null, null, null, null, null, null, null, chauffeurId, null)));
+                        null, null, null, null, null, null, null, chauffeurId, null, null)));
         java.util.Set<Long> ids = merged.stream()
                 .map(OperationFinanciere::getId).collect(java.util.stream.Collectors.toSet());
 
@@ -172,7 +172,7 @@ public class SelfServiceController {
         if (vehiculeId != null) {
             for (OperationFinanciere op : getAllOperationsFinancieresUseCase.execute(
                     new OperationFinanciereFiltres(
-                            null, null, null, null, null, null, vehiculeId, null, null))) {
+                            null, null, null, null, null, null, vehiculeId, null, null, null))) {
                 if (ids.add(op.getId())) {
                     merged.add(op);
                 }

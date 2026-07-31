@@ -28,6 +28,7 @@ class ReferentielCatalogueTest {
                         "types-document",
                         "categories-operation",
                         "balises",
+                        "types-partenaire",
                         "catalogue-elements-maintenance");
     }
 

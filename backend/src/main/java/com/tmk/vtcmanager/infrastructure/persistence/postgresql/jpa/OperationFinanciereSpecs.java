@@ -26,6 +26,7 @@ public class OperationFinanciereSpecs {
             var sc  = (filterBySousCategorie || hasRecherche) ? root.join("sousCategorie", JoinType.LEFT) : null;
             var ch  = hasRecherche ? root.join("chauffeur",     JoinType.LEFT) : null;
             var v   = hasRecherche ? root.join("vehicule",      JoinType.LEFT) : null;
+            var p   = hasRecherche ? root.join("partenaire",    JoinType.LEFT) : null;
 
             if (f.typeOperation() != null) {
                 predicates.add(cb.equal(root.get("typeOperation"), f.typeOperation()));
@@ -45,6 +46,9 @@ public class OperationFinanciereSpecs {
             if (f.chauffeurId() != null) {
                 predicates.add(cb.equal(root.get("chauffeur").get("id"), f.chauffeurId()));
             }
+            if (f.partenaireId() != null) {
+                predicates.add(cb.equal(root.get("partenaire").get("id"), f.partenaireId()));
+            }
             if (filterByCategorie) {
                 predicates.add(cb.equal(cb.upper(cat.get("code")), f.categorieCode().toUpperCase()));
             }
@@ -59,7 +63,8 @@ public class OperationFinanciereSpecs {
                     cb.like(cb.lower(sc.get("libelle")),        pattern),
                     cb.like(cb.lower(ch.get("nom")),            pattern),
                     cb.like(cb.lower(ch.get("prenom")),         pattern),
-                    cb.like(cb.lower(v.get("immatriculation")), pattern)
+                    cb.like(cb.lower(v.get("immatriculation")), pattern),
+                    cb.like(cb.lower(p.get("nom")),             pattern)
                 ));
             }
 

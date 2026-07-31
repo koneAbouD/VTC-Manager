@@ -104,19 +104,23 @@ import com.tmk.vtcmanager.application.usecases.tresorerie.UpdateCompteTresorerie
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ParametreGeneralRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
-import com.tmk.vtcmanager.application.ports.persistence.FactureFournisseurRepository;
-import com.tmk.vtcmanager.application.ports.persistence.FournisseurRepository;
-import com.tmk.vtcmanager.application.usecases.fournisseur.AnnulerFactureUseCase;
-import com.tmk.vtcmanager.application.usecases.fournisseur.EnregistrerFactureUseCase;
-import com.tmk.vtcmanager.application.usecases.fournisseur.GestionFournisseurUseCase;
-import com.tmk.vtcmanager.application.usecases.fournisseur.GetFacturesUseCase;
-import com.tmk.vtcmanager.application.usecases.fournisseur.ReglerFactureUseCase;
+import com.tmk.vtcmanager.application.ports.persistence.FacturePartenaireRepository;
+import com.tmk.vtcmanager.application.ports.persistence.PartenaireRepository;
+import com.tmk.vtcmanager.application.ports.persistence.TypePartenaireRepository;
+import com.tmk.vtcmanager.application.usecases.partenaire.TypePartenaireReferentielUseCase;
+import com.tmk.vtcmanager.application.usecases.partenaire.AnnulerFactureUseCase;
+import com.tmk.vtcmanager.application.usecases.partenaire.EnregistrerFactureUseCase;
+import com.tmk.vtcmanager.application.usecases.partenaire.GestionPartenaireUseCase;
+import com.tmk.vtcmanager.application.usecases.partenaire.GetFacturesUseCase;
+import com.tmk.vtcmanager.application.usecases.partenaire.ReglerFactureUseCase;
 import com.tmk.vtcmanager.application.ports.persistence.SequenceReferenceRepository;
 import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import com.tmk.vtcmanager.application.services.ModificationEcritureGuard;
+import com.tmk.vtcmanager.application.services.RepartitionDetteMaintenanceService;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
+import com.tmk.vtcmanager.application.services.SynchronisationDetteMaintenanceService;
 import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EncaissementCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EncaissementPenaliteRepository;
@@ -481,8 +485,25 @@ public class UseCaseBeanConfiguration {
             MaintenanceRepository repo,
             CategorieOperationRepository categorieOperationRepository,
             VehiculeStatutEventPublisher statutEventPublisher,
-            PeriodeClotureeGuard periodeClotureeGuard) {
-        return new UpdateMaintenanceUseCase(repo, categorieOperationRepository, statutEventPublisher, periodeClotureeGuard);
+            PeriodeClotureeGuard periodeClotureeGuard,
+            SynchronisationDetteMaintenanceService synchronisationDetteMaintenanceService) {
+        return new UpdateMaintenanceUseCase(repo, categorieOperationRepository, statutEventPublisher,
+                periodeClotureeGuard, synchronisationDetteMaintenanceService);
+    }
+
+    /** Une seule règle de répartition, partagée par la clôture et la correction. */
+    @Bean
+    public RepartitionDetteMaintenanceService repartitionDetteMaintenanceService() {
+        return new RepartitionDetteMaintenanceService();
+    }
+
+    @Bean
+    public SynchronisationDetteMaintenanceService synchronisationDetteMaintenanceService(
+            FacturePartenaireRepository facturePartenaireRepository,
+            EnregistrerFactureUseCase enregistrerFactureUseCase,
+            RepartitionDetteMaintenanceService repartitionDetteMaintenanceService) {
+        return new SynchronisationDetteMaintenanceService(facturePartenaireRepository,
+                enregistrerFactureUseCase, repartitionDetteMaintenanceService);
     }
 
     @Bean
@@ -519,10 +540,14 @@ public class UseCaseBeanConfiguration {
             CompteTresorerieResolver compteTresorerieResolver,
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService,
-            CaisseClotureeGuard caisseClotureeGuard) {
+            CaisseClotureeGuard caisseClotureeGuard,
+            FacturePartenaireRepository facturePartenaireRepository,
+            EnregistrerFactureUseCase enregistrerFactureUseCase,
+            RepartitionDetteMaintenanceService repartitionDetteMaintenanceService) {
         return new CompleteMaintenanceUseCase(repo, operationRepository,
                 categorieOperationRepository, sousCategorieOperationRepository, statutEventPublisher,
-                compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard);
+                compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard,
+                facturePartenaireRepository, enregistrerFactureUseCase, repartitionDetteMaintenanceService);
     }
 
     @Bean
@@ -802,13 +827,15 @@ public class UseCaseBeanConfiguration {
             LigneCotisationRepository ligneCotisationRepository,
             LignePenaliteRepository lignePenaliteRepository,
             SousCategorieOperationRepository sousCategorieOperationRepository,
+            PartenaireRepository partenaireRepository,
             CompteTresorerieResolver compteTresorerieResolver,
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService,
             CaisseClotureeGuard caisseClotureeGuard) {
         return new CreateOperationFinanciereUseCase(repo, chauffeurRepository, vehiculeRepository,
                 ligneRecetteRepository, ligneCotisationRepository, lignePenaliteRepository,
-                sousCategorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard);
+                sousCategorieOperationRepository, partenaireRepository, compteTresorerieResolver,
+                periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard);
     }
 
     @Bean
@@ -1347,26 +1374,33 @@ public class UseCaseBeanConfiguration {
         return new GetArreteDecompteUseCase(getArreteUseCase, arreteDocumentRenderer);
     }
 
-    // ----- Fournisseurs : dettes et échéancier -----
+    // ----- Partenaires : dettes et échéancier -----
     @Bean
-    public GestionFournisseurUseCase gestionFournisseurUseCase(
-            FournisseurRepository fournisseurRepository) {
-        return new GestionFournisseurUseCase(fournisseurRepository);
+    public GestionPartenaireUseCase gestionPartenaireUseCase(
+            PartenaireRepository partenaireRepository,
+            TypePartenaireRepository typePartenaireRepository) {
+        return new GestionPartenaireUseCase(partenaireRepository, typePartenaireRepository);
+    }
+
+    @Bean
+    public TypePartenaireReferentielUseCase typePartenaireReferentielUseCase(
+            TypePartenaireRepository typePartenaireRepository) {
+        return new TypePartenaireReferentielUseCase(typePartenaireRepository);
     }
 
     @Bean
     public EnregistrerFactureUseCase enregistrerFactureUseCase(
-            FactureFournisseurRepository factureRepository,
-            FournisseurRepository fournisseurRepository,
+            FacturePartenaireRepository factureRepository,
+            PartenaireRepository partenaireRepository,
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService) {
-        return new EnregistrerFactureUseCase(factureRepository, fournisseurRepository,
+        return new EnregistrerFactureUseCase(factureRepository, partenaireRepository,
                 periodeClotureeGuard, sequenceReferenceService);
     }
 
     @Bean
     public ReglerFactureUseCase reglerFactureUseCase(
-            FactureFournisseurRepository factureRepository,
+            FacturePartenaireRepository factureRepository,
             OperationFinanciereRepository operationRepository,
             CompteTresorerieResolver compteTresorerieResolver,
             PeriodeClotureeGuard periodeClotureeGuard,
@@ -1379,7 +1413,7 @@ public class UseCaseBeanConfiguration {
 
     @Bean
     public AnnulerFactureUseCase annulerFactureUseCase(
-            FactureFournisseurRepository factureRepository,
+            FacturePartenaireRepository factureRepository,
             PeriodeClotureeGuard periodeClotureeGuard,
             AuteurCourant auteurCourant) {
         return new AnnulerFactureUseCase(factureRepository, periodeClotureeGuard, auteurCourant);
@@ -1387,7 +1421,7 @@ public class UseCaseBeanConfiguration {
 
     @Bean
     public GetFacturesUseCase getFacturesUseCase(
-            FactureFournisseurRepository factureRepository,
+            FacturePartenaireRepository factureRepository,
             OperationFinanciereRepository operationRepository) {
         return new GetFacturesUseCase(factureRepository, operationRepository);
     }
@@ -1465,9 +1499,9 @@ public class UseCaseBeanConfiguration {
             EtatsClotureRepository etatsClotureRepository,
             GetProvisionCreancesUseCase getProvisionCreancesUseCase,
             DotationProvisionService dotationProvisionService,
-            FactureFournisseurRepository factureFournisseurRepository) {
+            FacturePartenaireRepository facturePartenaireRepository) {
         return new GetCompteResultatUseCase(repo, etatsClotureRepository,
-                getProvisionCreancesUseCase, dotationProvisionService, factureFournisseurRepository);
+                getProvisionCreancesUseCase, dotationProvisionService, facturePartenaireRepository);
     }
 
     @Bean
@@ -1499,9 +1533,9 @@ public class UseCaseBeanConfiguration {
             CreanceRepository creanceRepository,
             FinanceReportingRepository reportingRepository,
             GetProvisionCreancesUseCase getProvisionCreancesUseCase,
-            FactureFournisseurRepository factureFournisseurRepository) {
+            FacturePartenaireRepository facturePartenaireRepository) {
         return new GetBilanUseCase(compteTresorerieRepository, creanceRepository,
-                reportingRepository, getProvisionCreancesUseCase, factureFournisseurRepository);
+                reportingRepository, getProvisionCreancesUseCase, facturePartenaireRepository);
     }
 
     @Bean
@@ -1520,10 +1554,10 @@ public class UseCaseBeanConfiguration {
             GetCompteResultatUseCase getCompteResultatUseCase,
             GetProvisionCreancesUseCase getProvisionCreancesUseCase,
             DotationProvisionService dotationProvisionService,
-            FactureFournisseurRepository factureFournisseurRepository) {
+            FacturePartenaireRepository facturePartenaireRepository) {
         return new CloturerPeriodeUseCase(repo, clotureCaisseRepository, compteTresorerieRepository,
                 creanceRepository, reportingRepository, etatsClotureRepository,
-                getCompteResultatUseCase, getProvisionCreancesUseCase, dotationProvisionService, factureFournisseurRepository);
+                getCompteResultatUseCase, getProvisionCreancesUseCase, dotationProvisionService, facturePartenaireRepository);
     }
 
     @Bean

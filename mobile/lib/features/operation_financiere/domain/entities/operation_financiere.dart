@@ -17,6 +17,10 @@ class OperationFinanciere {
   final String? chauffeurNom;
   final int? vehiculeId;
   final String? vehiculeNom;
+
+  /// Tiers de l'écriture : garage, assureur, bailleur… Facultatif.
+  final int? partenaireId;
+  final String? partenaireNom;
   final double montant;
   final ModePaiement? modePaiement;
   final DateTime dateOperation;
@@ -57,6 +61,8 @@ class OperationFinanciere {
     this.chauffeurNom,
     this.vehiculeId,
     this.vehiculeNom,
+    this.partenaireId,
+    this.partenaireNom,
     required this.montant,
     this.modePaiement,
     required this.dateOperation,

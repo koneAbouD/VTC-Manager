@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/tresorerie/presentation/providers/tresorerie_providers.dart';
 import 'rapport_financier_page.dart';
-import '../../features/fournisseur/presentation/providers/fournisseur_providers.dart';
+import '../../features/partenaire/presentation/providers/partenaire_providers.dart';
 
 /// Signal de rafraîchissement du module Finances : incrémenté par
 /// [refreshFinances]. Les pages qui ne s'appuient pas sur un FutureProvider

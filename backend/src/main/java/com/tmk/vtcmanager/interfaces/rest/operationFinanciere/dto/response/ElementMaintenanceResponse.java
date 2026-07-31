@@ -6,5 +6,12 @@ public record ElementMaintenanceResponse(
         Long id,
         CatalogueElementMaintenanceResponse catalogueElement,
         String libelle,
-        BigDecimal montant
+        /** Exemplaires posés ; 1 pour les lignes d'avant la quantité. */
+        Integer quantite,
+        /** TOTAL de la ligne : quantité × prix unitaire. */
+        BigDecimal montant,
+        /** Prix d'un exemplaire, recalculé — évite au client de rediviser. */
+        BigDecimal prixUnitaire,
+        Long partenaireId,
+        String partenaireNom
 ) {}

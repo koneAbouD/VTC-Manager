@@ -11,7 +11,8 @@ import java.util.List;
         SousCategorieOperationPersistenceMapper.class,
         ChauffeurPersistenceMapper.class,
         VehiculePersistenceMapper.class,
-        DetailMaintenancePersistenceMapper.class
+        DetailMaintenancePersistenceMapper.class,
+        PartenairePersistenceMapper.class
 })
 public interface OperationFinancierePersistenceMapper {
 

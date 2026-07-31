@@ -8,6 +8,12 @@ class CompleteMaintenanceUseCase {
   final MaintenanceRepository _repository;
   const CompleteMaintenanceUseCase(this._repository);
 
-  Future<Either<Failure, Maintenance>> call(int id, double cout) =>
-      _repository.completeMaintenance(id, cout);
+  Future<Either<Failure, Maintenance>> call(
+    int id,
+    double cout, {
+    bool aCredit = false,
+    DateTime? dateEcheance,
+  }) =>
+      _repository.completeMaintenance(id, cout,
+          aCredit: aCredit, dateEcheance: dateEcheance);
 }

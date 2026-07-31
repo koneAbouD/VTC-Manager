@@ -64,7 +64,7 @@ public class GetRapportFinancierUseCase {
     private List<OperationFinanciere> operationsTerminees(YearMonth periode) {
         var filtres = new OperationFinanciereFiltres(
                 null, periode.atDay(1), periode.atEndOfMonth(),
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
         return operationRepository.findByCriteres(filtres).stream()
                 .filter(op -> op.getStatut() != null && op.getStatut().estTerminee())
                 .filter(op -> nature(op) != NatureResultat.HORS_RESULTAT)

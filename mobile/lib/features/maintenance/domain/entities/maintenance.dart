@@ -10,7 +10,9 @@ class Maintenance {
   final int? kilometrageAuMoment;
   final int? kilometrageProchaine;
   final double? cout;
-  final String? prestataire;
+  /// Partenaire ayant réalisé l'intervention (référentiel des partenaires).
+  final int? partenaireId;
+  final String? partenaireNom;
   final String? statut;
   final int? vehiculeId;
   final String? vehiculeNom;
@@ -29,7 +31,8 @@ class Maintenance {
     this.kilometrageAuMoment,
     this.kilometrageProchaine,
     this.cout,
-    this.prestataire,
+    this.partenaireId,
+    this.partenaireNom,
     this.statut,
     this.vehiculeId,
     this.vehiculeNom,
@@ -52,7 +55,8 @@ class Maintenance {
     int? kilometrageAuMoment,
     int? kilometrageProchaine,
     double? cout,
-    String? prestataire,
+    int? partenaireId,
+    String? partenaireNom,
     String? statut,
     int? vehiculeId,
     String? vehiculeNom,
@@ -71,7 +75,8 @@ class Maintenance {
       kilometrageAuMoment: kilometrageAuMoment ?? this.kilometrageAuMoment,
       kilometrageProchaine: kilometrageProchaine ?? this.kilometrageProchaine,
       cout: cout ?? this.cout,
-      prestataire: prestataire ?? this.prestataire,
+      partenaireId: partenaireId ?? this.partenaireId,
+      partenaireNom: partenaireNom ?? this.partenaireNom,
       statut: statut ?? this.statut,
       vehiculeId: vehiculeId ?? this.vehiculeId,
       vehiculeNom: vehiculeNom ?? this.vehiculeNom,

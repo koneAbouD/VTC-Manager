@@ -49,8 +49,28 @@ class _FakeSecureStorageChannel {
   }
 }
 
+/// Le verrouillage de l'appareil est observé côté natif : sans plateforme, le
+/// seul fait de s'abonner lèverait une MissingPluginException. On branche un
+/// flux muet — aucun test ici ne verrouille le téléphone.
+class _FakeDeviceLockChannel {
+  static const _channel = EventChannel('vtc/device_lock');
+
+  void install() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockStreamHandler(_channel, MockStreamHandler.inline(
+      onListen: (arguments, events) {},
+    ));
+  }
+
+  void remove() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockStreamHandler(_channel, null);
+  }
+}
+
 void main() {
   late _FakeSecureStorageChannel storage;
+  late _FakeDeviceLockChannel deviceLock;
 
   // Facteur de travail abaissé : la robustesse du PBKDF2 est vérifiée dans le
   // paquet `tmk_pin`, ici on veut un test rapide.
@@ -59,9 +79,13 @@ void main() {
 
   setUp(() {
     storage = _FakeSecureStorageChannel()..install();
+    deviceLock = _FakeDeviceLockChannel()..install();
   });
 
-  tearDown(() => storage.remove());
+  tearDown(() {
+    storage.remove();
+    deviceLock.remove();
+  });
 
   Future<void> bootApp(WidgetTester tester) async {
     await tester.pumpWidget(

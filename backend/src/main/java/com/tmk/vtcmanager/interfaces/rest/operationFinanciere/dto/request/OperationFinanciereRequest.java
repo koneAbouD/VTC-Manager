@@ -14,6 +14,8 @@ public record OperationFinanciereRequest(
         Long sousCategorieId,
         Long chauffeurId,
         Long vehiculeId,
+        /** Tiers de l'écriture (garage, assureur, bailleur…), facultatif. */
+        Long partenaireId,
         BigDecimal montant,
         @NotNull ModePaiement modePaiement,
         @NotNull LocalDate dateOperation,

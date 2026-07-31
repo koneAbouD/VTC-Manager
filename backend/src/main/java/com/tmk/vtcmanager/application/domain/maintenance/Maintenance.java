@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.application.domain.maintenance;
 
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.DetailMaintenance;
+import com.tmk.vtcmanager.application.domain.partenaire.Partenaire;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,7 +27,12 @@ public class Maintenance {
     private Integer kilometrageAuMoment;
     private Integer kilometrageProchaine;
     private BigDecimal cout;
-    private String prestataire;
+    /**
+     * Qui a réalisé l'intervention. C'était un texte libre : deux orthographes
+     * du même garage faisaient deux prestataires, et rien ne se regroupait. Le
+     * partenaire est désormais choisi dans le répertoire.
+     */
+    private Partenaire partenaire;
     private MaintenanceStatus statut;
     /** Statut mémorisé juste avant la complétion, pour une réouverture fidèle. */
     private MaintenanceStatus statutAvantCompletion;

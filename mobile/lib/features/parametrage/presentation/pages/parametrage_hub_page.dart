@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../data/parametrage_api.dart';
 import '../providers/parametrage_providers.dart';
 import 'referentiel_liste_page.dart';
 

@@ -3,7 +3,7 @@ package com.tmk.vtcmanager.application.usecases.finance;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
-import com.tmk.vtcmanager.application.ports.persistence.FactureFournisseurRepository;
+import com.tmk.vtcmanager.application.ports.persistence.FacturePartenaireRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,13 +27,13 @@ import static org.mockito.Mockito.when;
 class ChargesEngagementTest {
 
     private FinanceReportingRepository reportingRepository;
-    private FactureFournisseurRepository factureRepository;
+    private FacturePartenaireRepository factureRepository;
     private GetCompteResultatUseCase useCase;
 
     @BeforeEach
     void setUp() {
         reportingRepository = mock(FinanceReportingRepository.class);
-        factureRepository = mock(FactureFournisseurRepository.class);
+        factureRepository = mock(FacturePartenaireRepository.class);
         EtatsClotureRepository etatsClotureRepository = mock(EtatsClotureRepository.class);
         GetProvisionCreancesUseCase provision = mock(GetProvisionCreancesUseCase.class);
         DotationProvisionService dotation = mock(DotationProvisionService.class);

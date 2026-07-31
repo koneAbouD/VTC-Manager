@@ -13,7 +13,7 @@ import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
-import com.tmk.vtcmanager.application.ports.persistence.FactureFournisseurRepository;
+import com.tmk.vtcmanager.application.ports.persistence.FacturePartenaireRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +38,7 @@ public class CloturerPeriodeUseCase {
     private final GetCompteResultatUseCase getCompteResultatUseCase;
     private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
     private final DotationProvisionService dotationProvisionService;
-    private final FactureFournisseurRepository factureFournisseurRepository;
+    private final FacturePartenaireRepository facturePartenaireRepository;
 
     /**
      * Clôture un mois strictement passé (jamais le mois courant : les
@@ -153,7 +153,7 @@ public class CloturerPeriodeUseCase {
         BigDecimal detteEtat = creanceRepository.getMontantAReverserEtat();
         // La dette fournisseurs, elle, se rejoue à la date : elle est arrêtée au
         // dernier jour de la période, comme la trésorerie.
-        BigDecimal dettesFournisseurs = factureFournisseurRepository.detteALaDate(fin);
+        BigDecimal dettesFournisseurs = facturePartenaireRepository.detteALaDate(fin);
         BigDecimal totalActif = tresorerie.add(creancesNettes).add(immobilisations);
 
         return EtatsCloture.builder()

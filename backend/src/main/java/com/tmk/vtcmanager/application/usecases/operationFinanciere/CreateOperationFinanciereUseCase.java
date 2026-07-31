@@ -12,6 +12,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepositor
 import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.ports.persistence.PartenaireRepository;
 import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
@@ -38,6 +39,7 @@ public class CreateOperationFinanciereUseCase {
     private final LigneCotisationRepository ligneCotisationRepository;
     private final LignePenaliteRepository lignePenaliteRepository;
     private final SousCategorieOperationRepository sousCategorieRepository;
+    private final PartenaireRepository partenaireRepository;
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
@@ -58,6 +60,13 @@ public class CreateOperationFinanciereUseCase {
         if (operation.getVehicule() != null && operation.getVehicule().getId() != null) {
             vehiculeRepository.findById(operation.getVehicule().getId())
                     .orElseThrow(() -> ResourceNotFoundException.of("Véhicule", operation.getVehicule().getId()));
+        }
+
+        // Validation partenaire si fourni
+        if (operation.getPartenaire() != null && operation.getPartenaire().getId() != null) {
+            partenaireRepository.findById(operation.getPartenaire().getId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Partenaire",
+                            operation.getPartenaire().getId()));
         }
 
         // Garde : encaissement de recette exige une ligne active

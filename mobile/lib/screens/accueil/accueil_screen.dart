@@ -5,6 +5,7 @@ import 'package:vtc_manager/features/cotisation/presentation/pages/lignes_cotisa
 import 'package:vtc_manager/features/maintenance/presentation/pages/lignes_maintenance_page.dart';
 import 'package:vtc_manager/features/contravention/presentation/pages/contraventions_hub_page.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../features/condition_travail/presentation/pages/condition_travail_liste_page.dart';
 import '../../features/operation_financiere/domain/entities/operation_financiere.dart';
 import '../../features/operation_financiere/domain/entities/solde_periode.dart';
@@ -349,18 +350,14 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFBDBDBD), Color(0xFFEEEEEE), Color(0xFF9E9E9E)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
+        gradient: AppColors.cardBorderGradient,
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
       padding: const EdgeInsets.all(1.5),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16.5),
+          color: AppColors.cardTint,
+          borderRadius: BorderRadius.circular(AppColors.cardInnerRadius),
         ),
         padding: const EdgeInsets.all(20),
         child: Column(

@@ -12,6 +12,7 @@ import '../../../operation_financiere/domain/entities/detail_maintenance.dart';
 import '../../../operation_financiere/domain/entities/element_maintenance.dart';
 import '../../../operation_financiere/presentation/pages/elements_maintenance_page.dart';
 import '../../../operation_financiere/domain/entities/categorie_operation.dart';
+import '../../../partenaire/presentation/providers/partenaire_providers.dart';
 import '../../domain/entities/maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import '../providers/type_maintenance_provider.dart';
@@ -83,7 +84,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   DateTime? _datePrevue;
   final _dureeCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
-  final _prestataireCtrl = TextEditingController();
+  /// Partenaire ayant réalisé l'intervention, choisi dans le répertoire.
+  int? _partenaireId;
+  String? _partenaireNom;
 
   int? _vehiculeId;
   String? _vehiculeNom;
@@ -116,7 +119,8 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       _datePrevue = m.datePrevue;
       _dureeCtrl.text = m.dureeHeures?.toString() ?? '';
       _descriptionCtrl.text = m.description ?? '';
-      _prestataireCtrl.text = m.prestataire ?? '';
+      _partenaireId = m.partenaireId;
+      _partenaireNom = m.partenaireNom;
       _vehiculeId = m.vehiculeId;
       _vehiculeNom = m.vehiculeNom;
       if (m.detailMaintenance != null) {
@@ -131,7 +135,6 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   void dispose() {
     _dureeCtrl.dispose();
     _descriptionCtrl.dispose();
-    _prestataireCtrl.dispose();
     super.dispose();
   }
 
@@ -166,7 +169,8 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     final result = await Navigator.push<List<ElementMaintenance>>(
       context,
       MaterialPageRoute(
-          builder: (_) => ElementsMaintenancePage(initial: _elements)),
+          builder: (_) => ElementsMaintenancePage(
+              initial: _elements, partenaireDefautNom: _partenaireNom)),
     );
     if (result != null && mounted) {
       setState(() => _elements = List.from(result));
@@ -201,9 +205,8 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       // Champ kilométrage retiré du formulaire : on conserve la valeur
       // existante en édition pour ne pas l'écraser.
       kilometrageAuMoment: widget.initial?.kilometrageAuMoment,
-      prestataire: _prestataireCtrl.text.trim().isEmpty
-          ? null
-          : _prestataireCtrl.text.trim(),
+      partenaireId: _partenaireId,
+      partenaireNom: _partenaireNom,
       vehiculeId: _vehiculeId,
       categorieTypeId: _categorieType!.id,
       categorieTypeLibelle: _categorieType!.libelle,
@@ -223,12 +226,13 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       setState(() => _submitError = error);
       _showToast(context, error, error: true);
     } else {
-      // Date prévue déjà passée → le backend a terminé la maintenance et généré
-      // l'opération de dépense associée : on rafraîchit le module Finances.
+      // Deux raisons de rafraîchir les Finances : une date prévue déjà passée
+      // fait terminer la maintenance côté serveur (dépense générée), et une
+      // modification réaligne les dettes de l'intervention sur son nouveau coût.
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final estPassee = !_isEdit && _datePrevue!.isBefore(today);
-      if (estPassee) refreshFinances(ref);
+      if (estPassee || _isEdit) refreshFinances(ref);
 
       // Une maintenance modifie l'état du véhicule (immobilisation, retour en
       // service) : rafraîchir la photo de l'État de parc.
@@ -419,15 +423,21 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _LabeledField(
-                    label: 'Prestataire',
-                    child: TextFormField(
-                      controller: _prestataireCtrl,
-                      style: const TextStyle(fontSize: 15, color: _kDark),
-                      decoration: _fieldDeco('Garage, atelier…'),
+                  // Le partenaire de l'intervention ne se demande que s'il sert
+                  // encore : dès que chaque élément a son prestataire, il n'a
+                  // plus rien à couvrir et le champ disparaît.
+                  if (_partenaireUtile) ...[
+                    _LabeledField(
+                      label: _elementsRepartis
+                          ? 'Partenaire (éléments sans prestataire)'
+                          : 'Partenaire',
+                      child: _champPartenaire(),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ] else ...[
+                    _bandeauPrestatairesRepartis(),
+                    const SizedBox(height: 12),
+                  ],
                   _LabeledField(
                     label: 'Description',
                     child: TextFormField(
@@ -530,7 +540,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      el.effectiveLibelle,
+                      el.libelleAvecQuantite,
                       style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -591,6 +601,102 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Vrai dès qu'un élément porte son propre prestataire.
+  bool get _elementsRepartis => _elements.any((e) => e.partenaireId != null);
+
+  /// Le partenaire de l'intervention couvre les éléments qui n'en ont pas —
+  /// et l'écart éventuel entre le coût validé et la somme des lignes. Il ne
+  /// devient inutile que lorsque toutes les lignes sont attribuées.
+  bool get _partenaireUtile =>
+      _elements.isEmpty || _elements.any((e) => e.partenaireId == null);
+
+  /// Remplace le champ quand la répartition est complète : l'information reste
+  /// visible, sans demander une saisie qui ne servirait à rien.
+  Widget _bandeauPrestatairesRepartis() {
+    final noms = <String>{
+      for (final e in _elements)
+        if (e.partenaireNom != null && e.partenaireNom!.isNotEmpty)
+          e.partenaireNom!,
+    }.toList();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: _kAccent.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kAccent.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.groups_2_outlined, size: 18, color: _kAccent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Prestataires définis par élément',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _kAccent)),
+                if (noms.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(noms.join(' · '),
+                      style: const TextStyle(fontSize: 11.5, color: _kLabel)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Sélecteur de partenaire, alimenté par le répertoire des partenaires
+  /// actifs. Un partenaire absent se crée depuis l'écran Partenaires.
+  Widget _champPartenaire() {
+    final partenaires = ref.watch(partenairesProvider(true));
+    return partenaires.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (e, _) => Text('Partenaires indisponibles : $e',
+          style: const TextStyle(fontSize: 12, color: AppColors.error)),
+      data: (liste) {
+        // Un partenaire désactivé depuis la saisie reste affiché, sinon
+        // l'intervention perdrait son prestataire à la première modification.
+        final options = liste
+            .where((p) => p.id != null)
+            .map((p) => SelectOption(
+                value: p.id!, label: p.nom, sousTitre: p.typeNom))
+            .toList();
+        if (_partenaireId != null &&
+            !options.any((o) => o.value == _partenaireId)) {
+          options.insert(
+              0,
+              SelectOption(
+                  value: _partenaireId!,
+                  label: _partenaireNom ?? 'Partenaire #$_partenaireId'));
+        }
+        return PremiumSelectField<int>(
+          value: _partenaireId,
+          hint: 'Garage, atelier…',
+          sheetTitle: 'Choisir le partenaire',
+          options: options,
+          onChanged: (v) => setState(() {
+            _partenaireId = v;
+            _partenaireNom = v == null
+                ? null
+                : liste.firstWhere((p) => p.id == v,
+                    orElse: () => liste.first).nom;
+          }),
+        );
+      },
     );
   }
 

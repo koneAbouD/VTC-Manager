@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.usecases.maintenance;
 
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
+import com.tmk.vtcmanager.application.domain.maintenance.ReglementMaintenance;
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.DetailMaintenance;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
@@ -49,6 +50,12 @@ public class ScheduleMaintenanceUseCase {
             }
         }
 
+        // Un détail sans ligne n'a rien à enregistrer.
+        DetailMaintenance detail = maintenance.getDetailMaintenance();
+        if (detail != null && (detail.getElements() == null || detail.getElements().isEmpty())) {
+            maintenance.setDetailMaintenance(null);
+        }
+
         maintenance.initializeDefaults();
         Maintenance saved = maintenanceRepository.save(maintenance);
 
@@ -57,8 +64,11 @@ public class ScheduleMaintenanceUseCase {
         // dont le montant est la somme des éléments de maintenance.
         LocalDate datePrevue = saved.getDatePrevue();
         if (datePrevue != null && datePrevue.isBefore(LocalDate.now())) {
-            return completeMaintenanceUseCase.execute(
-                    saved.getId(), sommeElements(saved), datePrevue, null, null, null);
+            // Rattrapage d'une intervention déjà passée : on la suppose réglée
+            // sur place, faute d'échéance connue. Une dette se crée depuis la
+            // fiche, en terminant la maintenance en « à payer ».
+            return completeMaintenanceUseCase.execute(saved.getId(), sommeElements(saved), datePrevue,
+                    ReglementMaintenance.comptant(null), null, null);
         }
 
         // Recalcul du statut (→ EN_MAINTENANCE si la maintenance est créée EN_COURS).

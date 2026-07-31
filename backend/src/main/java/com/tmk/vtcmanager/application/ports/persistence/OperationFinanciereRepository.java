@@ -30,7 +30,7 @@ public interface OperationFinanciereRepository {
     List<OperationFinanciere> findByVehiculeId(Long vehiculeId);
 
     /** Règlements passés sur une facture fournisseur, du plus ancien au plus récent. */
-    List<OperationFinanciere> findByFactureFournisseurId(Long factureId);
+    List<OperationFinanciere> findByFacturePartenaireId(Long factureId);
 
     boolean existsByReference(String reference);
 

@@ -27,7 +27,9 @@ class DetailMaintenanceModel extends DetailMaintenance {
                     'catalogueElementId': e.catalogueElementId,
                   if (e.libelle != null && e.libelle!.isNotEmpty)
                     'libelle': e.libelle,
+                  'quantite': e.quantite,
                   'montant': e.montant,
+                  if (e.partenaireId != null) 'partenaireId': e.partenaireId,
                 })
             .toList(),
       };

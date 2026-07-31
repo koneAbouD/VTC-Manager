@@ -25,5 +25,10 @@ abstract interface class MaintenanceRepository {
   Future<Either<Failure, Maintenance>> updateMaintenance(int id, Maintenance maintenance);
   Future<Either<Failure, void>> deleteMaintenance(int id);
   Future<Either<Failure, Maintenance>> annulerMaintenance(int id);
-  Future<Either<Failure, Maintenance>> completeMaintenance(int id, double cout);
+  Future<Either<Failure, Maintenance>> completeMaintenance(
+    int id,
+    double cout, {
+    bool aCredit,
+    DateTime? dateEcheance,
+  });
 }

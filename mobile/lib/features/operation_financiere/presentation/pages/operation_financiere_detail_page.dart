@@ -116,6 +116,7 @@ class _DetailBody extends ConsumerWidget {
           if (op.modePaiement != null)
             _Row('Mode de paiement', op.modePaiement!.libelle),
           if (op.vehiculeNom != null) _Row('Véhicule', op.vehiculeNom!),
+          if (op.partenaireNom != null) _Row('Partenaire', op.partenaireNom!),
           if (op.chauffeurNom != null) _Row('Chauffeur', op.chauffeurNom!),
           if (op.reference != null) _Row('Référence', op.reference!),
           if (op.commentaire != null && op.commentaire!.isNotEmpty)
@@ -133,7 +134,7 @@ class _DetailBody extends ConsumerWidget {
               _Row('Durée',
                   '${op.detailMaintenance!.dureeMaintenance} min'),
             for (final el in op.detailMaintenance!.elements)
-              _Row(el.effectiveLibelle, money.format(el.montant)),
+              _Row(el.libelleAvecQuantite, money.format(el.montant)),
           ]),
         ],
 

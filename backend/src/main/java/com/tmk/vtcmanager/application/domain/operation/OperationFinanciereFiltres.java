@@ -11,5 +11,7 @@ public record OperationFinanciereFiltres(
         String categorieCode,
         Long vehiculeId,
         Long chauffeurId,
-        String sousCategorieLibelle
+        String sousCategorieLibelle,
+        /** Tiers de l'écriture : garage, assureur, bailleur… */
+        Long partenaireId
 ) {}

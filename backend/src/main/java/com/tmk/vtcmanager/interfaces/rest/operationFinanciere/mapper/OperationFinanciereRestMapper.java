@@ -8,12 +8,14 @@ import com.tmk.vtcmanager.application.domain.operation.ElementMaintenance;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.SoldePeriode;
 import com.tmk.vtcmanager.application.domain.operation.SousCategorieOperation;
+import com.tmk.vtcmanager.application.domain.partenaire.Partenaire;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.interfaces.rest.chauffeur.mapper.ChauffeurRestMapper;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.DetailMaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.ElementMaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.OperationFinanciereRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.CatalogueElementMaintenanceResponse;
+import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.ElementMaintenanceResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.OperationFinanciereResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.response.SoldePeriodeResponse;
 import com.tmk.vtcmanager.interfaces.rest.vehicule.mapper.VehiculeRestMapper;
@@ -42,15 +44,28 @@ public interface OperationFinanciereRestMapper {
     @Mapping(target = "sousCategorie", source = "sousCategorieId", qualifiedByName = "sousCategorieRefFromId")
     @Mapping(target = "chauffeur", source = "chauffeurId", qualifiedByName = "chauffeurRefFromId")
     @Mapping(target = "vehicule", source = "vehiculeId", qualifiedByName = "vehiculeRefFromId")
+    @Mapping(target = "partenaire", source = "partenaireId", qualifiedByName = "partenaireRefFromId")
     @Mapping(target = "detailMaintenance", source = "detailMaintenance", qualifiedByName = "toDetailMaintenanceDomain")
     OperationFinanciere toDomain(OperationFinanciereRequest request);
 
+    @Mapping(target = "partenaireId", source = "partenaire.id")
+    @Mapping(target = "partenaireNom", source = "partenaire.nom")
     OperationFinanciereResponse toResponse(OperationFinanciere domain);
 
     List<OperationFinanciereResponse> toResponseList(List<OperationFinanciere> domains);
 
     @Mapping(target = "imageUrl", ignore = true)
     CatalogueElementMaintenanceResponse toCatalogueElementResponse(CatalogueElementMaintenance domain);
+
+    /**
+     * Le tiers de la ligne est aplati : l'UI n'a besoin que de l'id et du nom.
+     * La quantité sort toujours renseignée — une ligne d'avant la quantité en
+     * vaut une, le client n'a pas à connaître ce détail d'histoire.
+     */
+    @Mapping(target = "partenaireId", source = "partenaire.id")
+    @Mapping(target = "partenaireNom", source = "partenaire.nom")
+    @Mapping(target = "quantite", expression = "java(domain.getQuantiteEffective())")
+    ElementMaintenanceResponse toElementResponse(ElementMaintenance domain);
 
     default SoldePeriodeResponse toSoldeResponse(SoldePeriode solde) {
         return new SoldePeriodeResponse(solde.revenus(), solde.depenses(), solde.solde());
@@ -80,6 +95,12 @@ public interface OperationFinanciereRestMapper {
         return Vehicule.builder().id(id).build();
     }
 
+    @Named("partenaireRefFromId")
+    default Partenaire partenaireRefFromId(Long id) {
+        if (id == null) return null;
+        return Partenaire.builder().id(id).build();
+    }
+
     @Named("toDetailMaintenanceDomain")
     default DetailMaintenance toDetailMaintenanceDomain(DetailMaintenanceRequest request) {
         if (request == null) return null;
@@ -96,7 +117,9 @@ public interface OperationFinanciereRestMapper {
                             return ElementMaintenance.builder()
                                     .catalogueElement(catalogueRef)
                                     .libelle(e.libelle())
+                                    .quantite(e.quantite())
                                     .montant(e.montant())
+                                    .partenaire(partenaireRefFromId(e.partenaireId()))
                                     .build();
                         })
                         .collect(Collectors.toList());

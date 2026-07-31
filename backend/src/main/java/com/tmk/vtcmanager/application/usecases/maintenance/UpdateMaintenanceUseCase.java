@@ -2,6 +2,8 @@ package com.tmk.vtcmanager.application.usecases.maintenance;
 
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
+import com.tmk.vtcmanager.application.domain.operation.DetailMaintenance;
+import com.tmk.vtcmanager.application.services.SynchronisationDetteMaintenanceService;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
@@ -20,6 +22,7 @@ public class UpdateMaintenanceUseCase {
     private final CategorieOperationRepository categorieOperationRepository;
     private final VehiculeStatutEventPublisher statutEventPublisher;
     private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final SynchronisationDetteMaintenanceService synchronisationDetteService;
 
     @Transactional
     public Maintenance execute(Long id, Maintenance data) {
@@ -38,14 +41,23 @@ public class UpdateMaintenanceUseCase {
 
         existing.setType(data.getType());
         existing.setDatePrevue(data.getDatePrevue());
-        existing.setDateEffectuee(data.getDateEffectuee());
+        // Coût et date d'exécution sont posés à la clôture, pas dans ce
+        // formulaire : une requête qui n'en parle pas ne doit pas les effacer.
+        if (data.getDateEffectuee() != null) existing.setDateEffectuee(data.getDateEffectuee());
         existing.setDescription(data.getDescription());
         existing.setKilometrageAuMoment(data.getKilometrageAuMoment());
         existing.setKilometrageProchaine(data.getKilometrageProchaine());
-        existing.setCout(data.getCout());
-        existing.setPrestataire(data.getPrestataire());
+        if (data.getCout() != null) existing.setCout(data.getCout());
+        existing.setPartenaire(data.getPartenaire());
+        // Les éléments font partie de l'intervention : sans cette ligne, une
+        // ligne ajoutée ou déplacée d'un prestataire à l'autre était perdue.
+        existing.setDetailMaintenance(fusionnerDetail(existing, data));
         if (data.getStatut() != null) existing.setStatut(data.getStatut());
         Maintenance saved = maintenanceRepository.save(existing);
+
+        // Ce qui vient de changer doit se voir tout de suite dans l'échéancier :
+        // un coût corrigé ou une ligne déplacée change ce que l'on doit, et à qui.
+        synchronisationDetteService.synchroniser(saved);
 
         // Le statut de la maintenance a pu changer (EN_COURS / TERMINEE / ANNULEE)
         // → recalcul du statut du véhicule.
@@ -53,6 +65,24 @@ public class UpdateMaintenanceUseCase {
             statutEventPublisher.publishStatutDirty(existing.getVehicule().getId());
         }
         return saved;
+    }
+
+    /**
+     * Détail à persister. Le détail existant garde son identité — ses lignes
+     * sont remplacées, pas la ligne de détail elle-même — pour que la relation
+     * survive à la mise à jour. Une requête sans détail ne touche à rien : elle
+     * ne dit pas « plus d'éléments », elle ne parle pas des éléments.
+     */
+    private DetailMaintenance fusionnerDetail(Maintenance existing, Maintenance data) {
+        DetailMaintenance entrant = data.getDetailMaintenance();
+        if (entrant == null) return existing.getDetailMaintenance();
+
+        // Détail vidé : l'intervention n'a plus de lignes, le détail s'efface.
+        if (entrant.getElements() == null || entrant.getElements().isEmpty()) return null;
+
+        DetailMaintenance actuel = existing.getDetailMaintenance();
+        if (actuel != null) entrant.setId(actuel.getId());
+        return entrant;
     }
 
     private void validerType(String type) {

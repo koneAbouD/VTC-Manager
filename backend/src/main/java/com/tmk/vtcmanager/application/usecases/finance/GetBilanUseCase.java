@@ -5,7 +5,7 @@ import com.tmk.vtcmanager.application.domain.finance.CreanceChauffeur;
 import com.tmk.vtcmanager.application.domain.tresorerie.CompteAvecSolde;
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
-import com.tmk.vtcmanager.application.ports.persistence.FactureFournisseurRepository;
+import com.tmk.vtcmanager.application.ports.persistence.FacturePartenaireRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +20,7 @@ public class GetBilanUseCase {
     private final CreanceRepository creanceRepository;
     private final FinanceReportingRepository reportingRepository;
     private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
-    private final FactureFournisseurRepository factureFournisseurRepository;
+    private final FacturePartenaireRepository facturePartenaireRepository;
 
     /**
      * Bilan de gestion à aujourd'hui : chaque poste est un calcul dérivé
@@ -47,7 +47,7 @@ public class GetBilanUseCase {
 
         BigDecimal immobilisations = reportingRepository.immobilisationsNettes(aujourdHui);
         BigDecimal detteEtat = creanceRepository.getMontantAReverserEtat();
-        BigDecimal dettesFournisseurs = factureFournisseurRepository.detteALaDate(aujourdHui);
+        BigDecimal dettesFournisseurs = facturePartenaireRepository.detteALaDate(aujourdHui);
 
         BigDecimal totalActif = tresorerie.add(creancesNettes).add(immobilisations);
 

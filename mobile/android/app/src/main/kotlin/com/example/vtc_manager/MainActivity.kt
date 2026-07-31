@@ -6,6 +6,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
@@ -35,6 +36,12 @@ class MainActivity : FlutterFragmentActivity() {
                     result.notImplemented()
                 }
             }
+
+        // Verrouillage de l'appareil → verrouillage de l'application.
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            DeviceLockStreamHandler.CHANNEL,
+        ).setStreamHandler(DeviceLockStreamHandler(applicationContext))
     }
 
     /**

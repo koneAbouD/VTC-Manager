@@ -132,7 +132,7 @@ class _LignesMaintenancePageState
         m.type,
         m.vehiculeNom ?? '',
         m.vehiculeImmatriculation ?? '',
-        m.prestataire ?? '',
+        m.partenaireNom ?? '',
       ].join(' ').toLowerCase();
       return hay.contains(q);
     }).toList();

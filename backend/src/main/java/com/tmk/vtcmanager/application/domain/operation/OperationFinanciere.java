@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.domain.operation;
 
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
+import com.tmk.vtcmanager.application.domain.partenaire.Partenaire;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,6 +25,11 @@ public class OperationFinanciere {
     private SousCategorieOperation sousCategorie;
     private Chauffeur chauffeur;
     private Vehicule vehicule;
+    /**
+     * Tiers de l'écriture — le garage payé comptant, l'assureur, le bailleur.
+     * Facultatif : toutes les écritures n'ont pas de contrepartie externe.
+     */
+    private Partenaire partenaire;
     private BigDecimal montant;
     private ModePaiement modePaiement;
     /**
@@ -68,7 +74,7 @@ public class OperationFinanciere {
      * la charge étant déjà portée par la facture, la lecture en base engagement
      * écarte ces écritures pour ne pas la compter deux fois.
      */
-    private Long factureFournisseurId;
+    private Long facturePartenaireId;
 
     /** Vrai si cette écriture a été contre-passée. */
     public boolean estExtournee() {

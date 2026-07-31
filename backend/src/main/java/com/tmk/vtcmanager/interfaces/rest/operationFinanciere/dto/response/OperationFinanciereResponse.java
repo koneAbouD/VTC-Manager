@@ -18,6 +18,8 @@ public record OperationFinanciereResponse(
         SousCategorieOperationResponse sousCategorie,
         ChauffeurResponse chauffeur,
         VehiculeResponse vehicule,
+        Long partenaireId,
+        String partenaireNom,
         BigDecimal montant,
         ModePaiement modePaiement,
         LocalDate dateOperation,

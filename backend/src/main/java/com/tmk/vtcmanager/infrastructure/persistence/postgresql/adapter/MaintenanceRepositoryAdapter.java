@@ -8,6 +8,8 @@ import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.DetailMaintenanceEntity;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.MaintenanceEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.MaintenanceJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.MaintenancePersistenceMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +28,12 @@ public class MaintenanceRepositoryAdapter implements MaintenanceRepository {
 
     @Override
     public Maintenance save(Maintenance maintenance) {
-        return mapper.toDomain(jpaRepository.save(mapper.toEntity(maintenance)));
+        MaintenanceEntity entity = mapper.toEntity(maintenance);
+        // La clé étrangère des lignes est portée par l'enfant : sans ce
+        // rattachement, elles partent avec detail_maintenance_id nul.
+        DetailMaintenanceEntity detail = entity.getDetailMaintenance();
+        if (detail != null) detail.rattacherElements();
+        return mapper.toDomain(jpaRepository.save(entity));
     }
 
     @Override

@@ -99,7 +99,7 @@ public class MaintenanceController {
     public MaintenanceResponse complete(@PathVariable Long id, @RequestBody CompleteMaintenanceRequest request) {
         return mapper.toResponse(
                 completeMaintenanceUseCase.execute(id, request.cout(), request.dateEffectueeOrToday(),
-                        request.modePaiementOrDefault(), request.categorieId(), request.sousCategorieId())
+                        request.reglement(), request.categorieId(), request.sousCategorieId())
         );
     }
 

@@ -4,7 +4,7 @@ import com.tmk.vtcmanager.application.domain.finance.CompteResultat;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
 import com.tmk.vtcmanager.application.domain.finance.EtatsCloture;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
-import com.tmk.vtcmanager.application.ports.persistence.FactureFournisseurRepository;
+import com.tmk.vtcmanager.application.ports.persistence.FacturePartenaireRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ public class GetCompteResultatUseCase {
     private final EtatsClotureRepository etatsClotureRepository;
     private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
     private final DotationProvisionService dotationProvisionService;
-    private final FactureFournisseurRepository factureFournisseurRepository;
+    private final FacturePartenaireRepository facturePartenaireRepository;
 
     /**
      * Cascade des soldes intermédiaires. Base CAISSE : tout est agrégé sur
@@ -61,7 +61,7 @@ public class GetCompteResultatUseCase {
             Map<String, BigDecimal> horsFacture =
                     reportingRepository.totauxCaisseHorsFactureParNature(debut, fin);
             Map<String, BigDecimal> facturees =
-                    factureFournisseurRepository.chargesEngageesParNature(debut, fin);
+                    facturePartenaireRepository.chargesEngageesParNature(debut, fin);
             chargesVariables = horsFacture.getOrDefault("CHARGE_VARIABLE", BigDecimal.ZERO)
                     .add(facturees.getOrDefault("CHARGE_VARIABLE", BigDecimal.ZERO));
             chargesFixes = horsFacture.getOrDefault("CHARGE_FIXE", BigDecimal.ZERO)

@@ -76,8 +76,20 @@ class MaintenanceRemoteDatasource {
     return MaintenanceModel.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<MaintenanceModel> completeMaintenance(int id, double cout) async {
-    final data = await _client.post('/maintenances/$id/complete', {'cout': cout});
+  /// Clôture l'intervention. [aCredit] la laisse due : le backend crée alors
+  /// une dette par prestataire au lieu d'une dépense payée.
+  Future<MaintenanceModel> completeMaintenance(
+    int id,
+    double cout, {
+    bool aCredit = false,
+    DateTime? dateEcheance,
+  }) async {
+    final data = await _client.post('/maintenances/$id/complete', {
+      'cout': cout,
+      if (aCredit) 'aCredit': true,
+      if (aCredit && dateEcheance != null)
+        'dateEcheance': dateEcheance.toIso8601String().split('T').first,
+    });
     return MaintenanceModel.fromJson(data as Map<String, dynamic>);
   }
 }
