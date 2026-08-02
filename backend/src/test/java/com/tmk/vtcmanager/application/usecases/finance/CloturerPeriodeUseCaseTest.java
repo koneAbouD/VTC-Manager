@@ -86,7 +86,8 @@ class CloturerPeriodeUseCaseTest {
         when(facturePartenaireRepository.detteALaDate(any()))
                 .thenReturn(BigDecimal.valueOf(80_000));
         when(dotationProvisionService.calculer(any(), any())).thenReturn(BigDecimal.valueOf(27_750));
-        when(getProvisionCreancesUseCase.executer()).thenReturn(
+        // La clôture lit la provision *à la date d'arrêté*, pas celle du jour.
+        when(getProvisionCreancesUseCase.executer(any(java.time.LocalDate.class))).thenReturn(
                 com.tmk.vtcmanager.application.domain.finance.ProvisionCreances.builder()
                         .creancesBrutes(BigDecimal.valueOf(769_000))
                         .provisionTotale(BigDecimal.valueOf(152_250))
@@ -107,10 +108,13 @@ class CloturerPeriodeUseCaseTest {
                 .thenReturn(Optional.of(CompteAvecSolde.builder()
                         .compte(caisse).solde(BigDecimal.valueOf(300_000)).build()));
 
-        when(creanceRepository.getBalanceAgee()).thenReturn(List.of(
+        // Créances et dette État sont arrêtées au dernier jour du mois : ce sont
+        // les variantes datées que la clôture doit interroger.
+        when(creanceRepository.getBalanceAgeeALaDate(any())).thenReturn(List.of(
                 CreanceChauffeur.builder().chauffeurId(1L)
                         .total(BigDecimal.valueOf(769_000)).build()));
-        when(creanceRepository.getMontantAReverserEtat()).thenReturn(BigDecimal.valueOf(50_000));
+        when(creanceRepository.getMontantAReverserEtatALaDate(any()))
+                .thenReturn(BigDecimal.valueOf(50_000));
         when(reportingRepository.immobilisationsNettes(any())).thenReturn(BigDecimal.valueOf(2_000_000));
 
         when(getCompteResultatUseCase.executer(anyInt(), anyInt(), any()))

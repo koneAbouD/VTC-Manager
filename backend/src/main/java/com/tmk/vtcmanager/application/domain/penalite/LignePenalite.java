@@ -48,6 +48,11 @@ public class LignePenalite {
 
     /** Motif saisi lors de l'annulation de la ligne (obligatoire à l'annulation). */
     private String motifAnnulation;
+    /**
+     * Moment de l'annulation. Sans lui, une ligne annulée disparaîtrait des
+     * états reconstitués à une date où elle était encore due.
+     */
+    private LocalDateTime annuleLe;
 
     public boolean isEncaissable() {
         return TypeSanction.AMENDE.equals(typeSanction)
@@ -107,5 +112,6 @@ public class LignePenalite {
     public void annuler(String motif) {
         this.statut = StatutLignePenalite.ANNULEE;
         this.motifAnnulation = motif;
+        this.annuleLe = LocalDateTime.now();
     }
 }

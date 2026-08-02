@@ -2,8 +2,8 @@ import 'facture_partenaire.dart';
 
 /// Axe de lecture de l'échéancier.
 enum VueDette {
-  /// Une ligne par intervention : les partenaires qui y sont passés et ce
-  /// qu'ils ont fait.
+  /// Une ligne par opération à l'origine de la dette — intervention ou dépense
+  /// « à payer » — avec les partenaires qui y sont passés et ce qu'ils ont fait.
   parMaintenance,
 
   /// Une ligne par partenaire : tout ce qu'on lui doit, intervention par
@@ -11,7 +11,7 @@ enum VueDette {
   parPartenaire;
 
   String get label => switch (this) {
-        parMaintenance => 'Par maintenance',
+        parMaintenance => 'Par opérations',
         parPartenaire => 'Par partenaire',
       };
 }

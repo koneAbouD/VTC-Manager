@@ -31,6 +31,7 @@ import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,6 +73,7 @@ public class ArreterCompteUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final CaisseCreditriceGuard caisseCreditriceGuard;
 
     /** Arrêté total : toutes les cotisations et créances de la période. */
     public ArreteCompte executer(PerimetreArrete perimetre, Long perimetreId,
@@ -249,8 +251,10 @@ public class ArreterCompteUseCase {
         ModePaiement mode = modePaiement != null ? modePaiement : ModePaiement.ESPECES;
         Long compteId = compteTresorerieResolver.resoudre(compteTresorerieId, mode);
         // Seul ce versement sort de la caisse : c'est ici — et pas plus tôt —
-        // qu'on vérifie qu'elle n'a pas déjà été comptée à cette date.
+        // qu'on vérifie qu'elle n'a pas déjà été comptée à cette date, et
+        // qu'elle détient bien de quoi payer.
         caisseClotureeGuard.verifier(compteId, date);
+        caisseCreditriceGuard.verifier(compteId, d.getNet(), date);
 
         CategorieOperation categorie = categorieOperationRepository.findByCode(CAT_RESTITUTION).orElse(null);
         OperationFinanciere op = OperationFinanciere.builder()

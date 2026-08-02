@@ -222,6 +222,69 @@ class _ContraventionDetailPageState
     );
   }
 
+  /// Annulation : la contravention reste au registre, motif à l'appui. Le
+  /// serveur la refuse si un versement ou un reversement s'y rattache — le
+  /// message est alors affiché tel quel.
+  Future<void> _annuler() async {
+    final motifCtrl = TextEditingController();
+    final motif = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Annuler la contravention'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Elle restera au registre, datée et motivée, mais cessera '
+              "d'être due à compter d'aujourd'hui.",
+              style: TextStyle(fontSize: 13, color: AppColors.label),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: motifCtrl,
+              autofocus: true,
+              maxLines: 2,
+              minLines: 1,
+              decoration: const InputDecoration(
+                labelText: 'Motif',
+                hintText: 'Pourquoi cette contravention n\'est-elle pas due ?',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Retour')),
+          FilledButton(
+            onPressed: () {
+              final saisi = motifCtrl.text.trim();
+              if (saisi.isEmpty) return;
+              Navigator.pop(ctx, saisi);
+            },
+            child: const Text('Annuler la contravention'),
+          ),
+        ],
+      ),
+    );
+    motifCtrl.dispose();
+    if (motif == null) return;
+
+    final error = await ref
+        .read(contraventionNotifierProvider.notifier)
+        .annulerContravention(c.id!, motif);
+    if (!mounted) return;
+    if (error != null) {
+      _toast(error, err: true);
+    } else {
+      _toast('Contravention annulée');
+      Navigator.pop(context, true);
+    }
+  }
+
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -330,6 +393,10 @@ class _ContraventionDetailPageState
               PremiumRow('Statut', statutLabel, valueColor: statutColor),
               PremiumRow('Date de paiement',
                   c.datePaiement != null ? _fmtDate(c.datePaiement!) : null),
+              // Une contravention annulée reste consultable : le motif dit
+              // pourquoi elle a cessé d'être due.
+              if (c.isCancelled)
+                PremiumRow("Motif de l'annulation", c.motifAnnulation),
             ],
           ),
           if (c.documentSourcePath != null && c.id != null)
@@ -394,10 +461,15 @@ class _ContraventionDetailPageState
   }
 
   /// Boutons d'action alignés côte à côte : « Reverser » (plein, prend la
-  /// largeur restante) et « Supprimer » (contour rouge, à droite). Quand le
-  /// reversement n'est plus possible, seul « Supprimer » subsiste.
+  /// largeur restante), puis le retrait de la contravention. Deux formes selon
+  /// ce qui s'y rattache : « Supprimer » tant qu'aucun argent n'a bougé,
+  /// « Annuler » ensuite — cette dernière conserve la trace, la première non.
   Widget _actions() {
     final reversable = !c.isReverse && !c.isCancelled;
+    // Dès qu'un versement ou un reversement existe, le serveur refuse la
+    // suppression : on propose directement l'annulation.
+    final aMouvemente = c.isReverse || ((c.montantPaye ?? 0) > 0);
+    final retirable = !c.isCancelled;
     return Row(children: [
       if (reversable) ...[
         Expanded(
@@ -419,22 +491,26 @@ class _ContraventionDetailPageState
         ),
         const SizedBox(width: 12),
       ],
-      SizedBox(
-        height: 50,
-        child: OutlinedButton.icon(
-          onPressed: _delete,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.error,
-            side: BorderSide(color: AppColors.error.withValues(alpha: 0.4)),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+      if (retirable)
+        SizedBox(
+          height: 50,
+          child: OutlinedButton.icon(
+            onPressed: aMouvemente ? _annuler : _delete,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: BorderSide(color: AppColors.error.withValues(alpha: 0.4)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+            ),
+            icon: Icon(
+                aMouvemente ? Icons.block_outlined : Icons.delete_outline,
+                size: 18),
+            label: Text(aMouvemente ? 'Annuler' : 'Supprimer',
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           ),
-          icon: const Icon(Icons.delete_outline, size: 18),
-          label: const Text('Supprimer',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         ),
-      ),
     ]);
   }
 

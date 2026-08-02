@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.domain.contravention.Contravention;
 import com.tmk.vtcmanager.application.domain.contravention.ResultatImportContraventions;
 import com.tmk.vtcmanager.application.domain.contravention.reversement.ApercuReversementQuittance;
 import com.tmk.vtcmanager.application.domain.contravention.reversement.ResultatReversementQuittance;
+import com.tmk.vtcmanager.application.usecases.contravention.AnnulerContraventionUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.ConfirmerImportContraventionsUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.ConfirmerReversementQuittanceUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.PreviewReversementQuittanceUseCase;
@@ -17,6 +18,7 @@ import com.tmk.vtcmanager.application.usecases.contravention.PayContraventionUse
 import com.tmk.vtcmanager.application.usecases.contravention.ReverseContraventionUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.UpdateContraventionUseCase;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
+import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ConfirmerImportRequest;
 import com.tmk.vtcmanager.interfaces.rest.contravention.dto.request.ConfirmerReversementRequest;
@@ -52,6 +54,7 @@ public class ContraventionController {
     private final CreateContraventionUseCase createContraventionUseCase;
     private final UpdateContraventionUseCase updateContraventionUseCase;
     private final DeleteContraventionUseCase deleteContraventionUseCase;
+    private final AnnulerContraventionUseCase annulerContraventionUseCase;
     private final GetContraventionByIdUseCase getContraventionByIdUseCase;
     private final GetAllContraventionsUseCase getAllContraventionsUseCase;
     private final PayContraventionUseCase payContraventionUseCase;
@@ -131,6 +134,17 @@ public class ContraventionController {
     @PostMapping("/{id}/payments")
     public ContraventionResponse pay(@PathVariable Long id, @Valid @RequestBody PaymentRequest request) {
         return mapper.toResponse(payContraventionUseCase.execute(id, request.montantPaye(), request.modePaiement()));
+    }
+
+    /**
+     * Annule une contravention saisie à tort : elle reste au registre, datée et
+     * motivée, et cesse d'être due à compter de ce jour. Les états déjà arrêtés
+     * continuent de la porter — elle y figurait bien.
+     */
+    @PatchMapping("/{id}/annuler")
+    public ContraventionResponse annuler(@PathVariable Long id,
+                                         @Valid @RequestBody AnnulationRequest request) {
+        return mapper.toResponse(annulerContraventionUseCase.execute(id, request.motif()));
     }
 
     @PostMapping("/{id}/reverse")

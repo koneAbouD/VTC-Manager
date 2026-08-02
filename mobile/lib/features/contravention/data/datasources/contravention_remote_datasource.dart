@@ -76,6 +76,14 @@ class ContraventionRemoteDatasource {
     return ContraventionModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Annule la contravention (`PATCH /contraventions/{id}/annuler`) : elle
+  /// reste au registre, datée et motivée, et cesse d'être due.
+  Future<ContraventionModel> annuler(int id, String motif) async {
+    final data =
+        await _client.patch('/contraventions/$id/annuler', {'motif': motif});
+    return ContraventionModel.fromJson(data as Map<String, dynamic>);
+  }
+
   /// Reverse la contravention à l'État : crée l'opération financière de
   /// catégorie « Reversement contravention » (`POST /contraventions/{id}/reverse`).
   Future<ContraventionModel> reverser(int id) async {

@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Data
@@ -42,9 +43,26 @@ public class Contravention {
     private BigDecimal montantPaye;
 
     private ContraventionStatus statut;
+    /** Jour où le chauffeur a payé l'entreprise. */
     private LocalDate datePaiement;
+    /**
+     * Jour où l'entreprise a reversé la somme à l'État. Tant qu'elle est nulle,
+     * l'argent encaissé est détenu pour le compte de l'État : c'est ce qui rend
+     * la dette datable au bilan.
+     */
+    private LocalDate dateReversement;
     private Chauffeur chauffeur;
     private Vehicule vehicule;
+
+    // ── Annulation ────────────────────────────────────────────────────────────
+    /**
+     * Moment de l'annulation ; NULL tant que la contravention est due. C'est
+     * lui — et non le statut courant — qui décide si elle figure dans un état
+     * reconstitué à une date passée.
+     */
+    private LocalDateTime annuleLe;
+    private String motifAnnulation;
+    private String annulePar;
 
     /**
      * Enregistre un paiement (ou versement partiel) et met à jour le statut de la contravention.
@@ -86,7 +104,34 @@ public class Contravention {
      */
     public void reverser() {
         this.statut = ContraventionStatus.REVERSE;
-        this.datePaiement = LocalDate.now();
+        // La date de paiement du chauffeur n'est pas touchée : elle date
+        // l'encaissement, pas le versement à l'État. Les écraser toutes deux
+        // reviendrait à effacer le moment où la dette est née.
+        this.dateReversement = LocalDate.now();
+    }
+
+    /** Vrai si le chauffeur a déjà versé quelque chose. */
+    public boolean aDesVersements() {
+        return montantPaye != null && montantPaye.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    public boolean estAnnulee() {
+        return statut == ContraventionStatus.ANNULE;
+    }
+
+    /**
+     * Passe la contravention en ANNULE, motif et auteur à l'appui (validation
+     * dans le use case).
+     *
+     * <p>La contravention n'est pas effacée : elle a figuré à l'actif tant
+     * qu'elle était due, et les états déjà arrêtés doivent continuer de la
+     * montrer. Seule sa date d'annulation la retire des lectures postérieures.
+     */
+    public void annuler(String motif, String auteur) {
+        this.statut = ContraventionStatus.ANNULE;
+        this.motifAnnulation = motif;
+        this.annulePar = auteur;
+        this.annuleLe = LocalDateTime.now();
     }
 
     public void initializeDefaults() {

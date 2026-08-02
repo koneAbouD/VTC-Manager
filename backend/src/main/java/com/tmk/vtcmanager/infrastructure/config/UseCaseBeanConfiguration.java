@@ -95,6 +95,7 @@ import com.tmk.vtcmanager.application.usecases.finance.GetProvisionCreancesUseCa
 import com.tmk.vtcmanager.application.usecases.finance.GetRapportFinancierUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetMontantAReverserEtatUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CloturerCaisseUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.GetSoldeCompteALaDateUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CreateCompteTresorerieUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CreateTransfertUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetCloturesCaisseUseCase;
@@ -117,6 +118,7 @@ import com.tmk.vtcmanager.application.usecases.partenaire.ReglerFactureUseCase;
 import com.tmk.vtcmanager.application.ports.persistence.SequenceReferenceRepository;
 import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import com.tmk.vtcmanager.application.services.ModificationEcritureGuard;
 import com.tmk.vtcmanager.application.services.RepartitionDetteMaintenanceService;
@@ -427,6 +429,12 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public AnnulerContraventionUseCase annulerContraventionUseCase(
+            ContraventionRepository repo, AuteurCourant auteurCourant) {
+        return new AnnulerContraventionUseCase(repo, auteurCourant);
+    }
+
+    @Bean
     public GetContraventionByIdUseCase getContraventionByIdUseCase(ContraventionRepository repo) {
         return new GetContraventionByIdUseCase(repo);
     }
@@ -455,9 +463,11 @@ public class UseCaseBeanConfiguration {
             CategorieOperationRepository categorieOperationRepository,
             CompteTresorerieResolver compteTresorerieResolver,
             SequenceReferenceService sequenceReferenceService,
-            CaisseClotureeGuard caisseClotureeGuard) {
+            CaisseClotureeGuard caisseClotureeGuard,
+            CaisseCreditriceGuard caisseCreditriceGuard) {
         return new ReverseContraventionUseCase(repo, operationFinanciereRepository,
-                categorieOperationRepository, compteTresorerieResolver, sequenceReferenceService, caisseClotureeGuard);
+                categorieOperationRepository, compteTresorerieResolver, sequenceReferenceService,
+                caisseClotureeGuard, caisseCreditriceGuard);
     }
 
     // ----- Maintenance -----
@@ -542,13 +552,15 @@ public class UseCaseBeanConfiguration {
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService,
             CaisseClotureeGuard caisseClotureeGuard,
+            CaisseCreditriceGuard caisseCreditriceGuard,
             FacturePartenaireRepository facturePartenaireRepository,
             EnregistrerFactureUseCase enregistrerFactureUseCase,
             RepartitionDetteMaintenanceService repartitionDetteMaintenanceService) {
         return new CompleteMaintenanceUseCase(repo, operationRepository,
                 categorieOperationRepository, sousCategorieOperationRepository, statutEventPublisher,
                 compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard,
-                facturePartenaireRepository, enregistrerFactureUseCase, repartitionDetteMaintenanceService);
+                caisseCreditriceGuard, facturePartenaireRepository, enregistrerFactureUseCase,
+                repartitionDetteMaintenanceService);
     }
 
     @Bean
@@ -832,11 +844,13 @@ public class UseCaseBeanConfiguration {
             CompteTresorerieResolver compteTresorerieResolver,
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService,
-            CaisseClotureeGuard caisseClotureeGuard) {
+            CaisseClotureeGuard caisseClotureeGuard,
+            CaisseCreditriceGuard caisseCreditriceGuard) {
         return new CreateOperationFinanciereUseCase(repo, chauffeurRepository, vehiculeRepository,
                 ligneRecetteRepository, ligneCotisationRepository, lignePenaliteRepository,
                 sousCategorieOperationRepository, partenaireRepository, compteTresorerieResolver,
-                periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard);
+                periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard,
+                caisseCreditriceGuard);
     }
 
     @Bean
@@ -1343,12 +1357,14 @@ public class UseCaseBeanConfiguration {
             CompteTresorerieResolver compteTresorerieResolver,
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService,
-            CaisseClotureeGuard caisseClotureeGuard) {
+            CaisseClotureeGuard caisseClotureeGuard,
+            CaisseCreditriceGuard caisseCreditriceGuard) {
         return new ArreterCompteUseCase(
                 calculerCompteCourantUseCase, arreteCompteRepository, ligneCotisationRepository,
                 ligneRecetteRepository, encaissementRepository, lignePenaliteRepository,
                 encaissementPenaliteRepository, contraventionRepository, operationFinanciereRepository,
-                categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard);
+                categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard,
+                sequenceReferenceService, caisseClotureeGuard, caisseCreditriceGuard);
     }
 
     @Bean
@@ -1406,10 +1422,11 @@ public class UseCaseBeanConfiguration {
             CompteTresorerieResolver compteTresorerieResolver,
             PeriodeClotureeGuard periodeClotureeGuard,
             CaisseClotureeGuard caisseClotureeGuard,
+            CaisseCreditriceGuard caisseCreditriceGuard,
             SequenceReferenceService sequenceReferenceService) {
         return new ReglerFactureUseCase(factureRepository, operationRepository,
                 compteTresorerieResolver, periodeClotureeGuard, caisseClotureeGuard,
-                sequenceReferenceService);
+                caisseCreditriceGuard, sequenceReferenceService);
     }
 
     @Bean
@@ -1441,13 +1458,20 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public CaisseCreditriceGuard caisseCreditriceGuard(
+            CompteTresorerieRepository compteTresorerieRepository) {
+        return new CaisseCreditriceGuard(compteTresorerieRepository);
+    }
+
+    @Bean
     public CreateTransfertUseCase createTransfertUseCase(
             TransfertTresorerieRepository transfertRepository,
             CompteTresorerieRepository compteTresorerieRepository,
             PeriodeClotureeGuard periodeClotureeGuard,
-            CaisseClotureeGuard caisseClotureeGuard) {
+            CaisseClotureeGuard caisseClotureeGuard,
+            CaisseCreditriceGuard caisseCreditriceGuard) {
         return new CreateTransfertUseCase(transfertRepository, compteTresorerieRepository,
-                periodeClotureeGuard, caisseClotureeGuard);
+                periodeClotureeGuard, caisseClotureeGuard, caisseCreditriceGuard);
     }
 
     @Bean
@@ -1485,6 +1509,12 @@ public class UseCaseBeanConfiguration {
     @Bean
     public GetCloturesCaisseUseCase getCloturesCaisseUseCase(ClotureCaisseRepository repo) {
         return new GetCloturesCaisseUseCase(repo);
+    }
+
+    @Bean
+    public GetSoldeCompteALaDateUseCase getSoldeCompteALaDateUseCase(
+            CompteTresorerieRepository repo) {
+        return new GetSoldeCompteALaDateUseCase(repo);
     }
 
     // ----- Finance V2/V3 : résultat, bilan, clôture, export -----

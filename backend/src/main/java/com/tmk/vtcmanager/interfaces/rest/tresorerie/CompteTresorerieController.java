@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.usecases.tresorerie.CreateTransfertUseCase
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetCloturesCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.ImputerEcartCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetComptesTresorerieUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.GetSoldeCompteALaDateUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetTransfertsUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.UpdateCompteTresorerieUseCase;
 import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.ClotureCaisseRequest;
@@ -24,10 +25,12 @@ import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.response.TransfertRespo
 import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.response.TresorerieSummaryResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -44,6 +47,7 @@ public class CompteTresorerieController {
     private final CloturerCaisseUseCase cloturerCaisseUseCase;
     private final GetCloturesCaisseUseCase getCloturesCaisseUseCase;
     private final ImputerEcartCaisseUseCase imputerEcartCaisseUseCase;
+    private final GetSoldeCompteALaDateUseCase getSoldeCompteALaDateUseCase;
 
     @GetMapping
     public TresorerieSummaryResponse findAll(
@@ -111,6 +115,18 @@ public class CompteTresorerieController {
     }
 
     // ── Clôture de caisse ────────────────────────────────────────────────
+
+    /**
+     * Solde théorique du compte arrêté à une date — celui auquel la clôture
+     * comparera le comptage. L'écran de comptage l'interroge dès que la date
+     * change, pour annoncer le même écart que le serveur.
+     */
+    @GetMapping("/{id}/solde")
+    public CompteTresorerieResponse getSoldeALaDate(
+            @PathVariable Long id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return toResponse(getSoldeCompteALaDateUseCase.executer(id, date));
+    }
 
     @PostMapping("/{id}/clotures")
     @ResponseStatus(HttpStatus.CREATED)

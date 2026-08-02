@@ -26,4 +26,8 @@ abstract interface class ContraventionRepository {
 
   /// Reverse la contravention à l'État (crée l'opération de reversement).
   Future<Either<Failure, Contravention>> reverserContravention(int id);
+
+  /// Annule la contravention : elle reste au registre, motif à l'appui.
+  Future<Either<Failure, Contravention>> annulerContravention(
+      int id, String motif);
 }

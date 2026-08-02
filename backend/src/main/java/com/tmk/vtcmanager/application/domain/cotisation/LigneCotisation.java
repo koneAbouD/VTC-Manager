@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +29,11 @@ public class LigneCotisation {
     private StatutLigneCotisation statut;
     /** Motif saisi lors de l'annulation de la ligne (obligatoire à l'annulation). */
     private String motifAnnulation;
+    /**
+     * Moment de l'annulation. Sans lui, une ligne annulée disparaîtrait des
+     * états reconstitués à une date où elle était encore due.
+     */
+    private LocalDateTime annuleLe;
     /** Arrêté de compte ayant soldé la ligne (RESTITUEE). Null tant qu'elle n'est pas restituée. */
     private Long arreteId;
     @Builder.Default
@@ -64,6 +70,7 @@ public class LigneCotisation {
     public void annuler(String motif) {
         this.statut = StatutLigneCotisation.ANNULEE;
         this.motifAnnulation = motif;
+        this.annuleLe = LocalDateTime.now();
     }
 
     /** Passe la ligne en RESTITUEE en la rattachant à l'arrêté qui l'a soldée. */

@@ -114,10 +114,13 @@ class CreanceVehicule {
     required this.total,
   });
 
+  /// Libellé d'affichage : immatriculation seule. La marque et le modèle sont
+  /// volontairement écartés pour garder les lignes de créance lisibles ; on ne
+  /// retombe sur eux que si l'immatriculation est absente.
   String get displayName {
+    if (immatriculation.isNotEmpty) return immatriculation;
     final mm = '${marque ?? ''} ${modele ?? ''}'.trim();
-    if (immatriculation.isEmpty) return mm.isEmpty ? 'Véhicule' : mm;
-    return mm.isEmpty ? immatriculation : '$immatriculation · $mm';
+    return mm.isEmpty ? 'Véhicule' : mm;
   }
 
   TrancheAge get trancheDominante {

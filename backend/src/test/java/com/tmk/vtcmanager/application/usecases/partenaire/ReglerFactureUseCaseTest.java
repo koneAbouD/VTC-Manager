@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.application.ports.persistence.FacturePartenaireRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
@@ -46,6 +47,7 @@ class ReglerFactureUseCaseTest {
     private CompteTresorerieResolver compteTresorerieResolver;
     private PeriodeClotureeGuard periodeClotureeGuard;
     private CaisseClotureeGuard caisseClotureeGuard;
+    private CaisseCreditriceGuard caisseCreditriceGuard;
     private SequenceReferenceService sequenceReferenceService;
     private ReglerFactureUseCase useCase;
 
@@ -56,6 +58,7 @@ class ReglerFactureUseCaseTest {
         compteTresorerieResolver = mock(CompteTresorerieResolver.class);
         periodeClotureeGuard = mock(PeriodeClotureeGuard.class);
         caisseClotureeGuard = mock(CaisseClotureeGuard.class);
+        caisseCreditriceGuard = mock(CaisseCreditriceGuard.class);
         sequenceReferenceService = mock(SequenceReferenceService.class);
 
         when(compteTresorerieResolver.resoudre(any(), any())).thenReturn(COMPTE);
@@ -65,7 +68,7 @@ class ReglerFactureUseCaseTest {
 
         useCase = new ReglerFactureUseCase(factureRepository, operationRepository,
                 compteTresorerieResolver, periodeClotureeGuard, caisseClotureeGuard,
-                sequenceReferenceService);
+                caisseCreditriceGuard, sequenceReferenceService);
     }
 
     private FacturePartenaire facture(String montant, String paye, StatutFacturePartenaire statut) {

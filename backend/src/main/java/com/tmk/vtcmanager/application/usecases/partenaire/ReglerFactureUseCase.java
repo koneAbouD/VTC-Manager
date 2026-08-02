@@ -9,6 +9,7 @@ import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.FacturePartenaireRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
@@ -34,6 +35,7 @@ public class ReglerFactureUseCase {
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final CaisseCreditriceGuard caisseCreditriceGuard;
     private final SequenceReferenceService sequenceReferenceService;
 
     @Transactional
@@ -62,6 +64,7 @@ public class ReglerFactureUseCase {
 
         periodeClotureeGuard.verifier(date);
         caisseClotureeGuard.verifier(compteId, date);
+        caisseCreditriceGuard.verifier(compteId, montant, date);
 
         operationRepository.save(OperationFinanciere.builder()
                 .reference(sequenceReferenceService.suivante(

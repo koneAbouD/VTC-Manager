@@ -72,7 +72,13 @@ public class ImputerEcartCaisseUseCase {
             throw new IllegalStateException("Cet écart n'est pas en attente d'imputation.");
         }
 
-        LocalDate date = LocalDate.now();
+        // Les deux écritures sont datées du **comptage**, pas de la décision :
+        // le fait générateur de l'écart est la journée où la caisse a été
+        // comptée. Les dater du jour de l'imputation ferait porter au mois
+        // suivant un manquant né dans le mois précédent — la clôture exigeant
+        // que l'écart soit tranché avant de figer, la décision tombe presque
+        // toujours après la fin du mois compté.
+        LocalDate date = cloture.getDateCloture();
         periodeClotureeGuard.verifier(date);
         // Pas de verrou de caisse ici : l'imputation ne mouvemente aucun compte
         // de trésorerie, elle ne peut donc pas faire mentir un comptage. L'exiger

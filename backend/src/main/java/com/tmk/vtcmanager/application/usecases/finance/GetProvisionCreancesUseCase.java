@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -32,8 +33,21 @@ public class GetProvisionCreancesUseCase {
 
     @Transactional(readOnly = true)
     public ProvisionCreances executer() {
-        List<CreanceChauffeur> balance = creanceRepository.getBalanceAgee();
+        return calculer(creanceRepository.getBalanceAgee());
+    }
 
+    /**
+     * Dépréciation telle qu'elle devait être constatée au soir de {@code date} :
+     * mêmes taux, mais appliqués à la balance âgée reconstituée à cette date.
+     * Une provision calculée sur le stock du jour de la clôture ferait porter au
+     * mois arrêté une antériorité qu'il n'avait pas encore.
+     */
+    @Transactional(readOnly = true)
+    public ProvisionCreances executer(LocalDate date) {
+        return calculer(creanceRepository.getBalanceAgeeALaDate(date));
+    }
+
+    private ProvisionCreances calculer(List<CreanceChauffeur> balance) {
         BigDecimal base0a7 = somme(balance, CreanceChauffeur::getDu0a7Jours);
         BigDecimal base8a30 = somme(balance, CreanceChauffeur::getDu8a30Jours);
         BigDecimal basePlus30 = somme(balance, CreanceChauffeur::getDuPlus30Jours);

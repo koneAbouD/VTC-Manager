@@ -17,6 +17,7 @@ import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRe
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class CreateOperationFinanciereUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final CaisseCreditriceGuard caisseCreditriceGuard;
 
     @Transactional
     public OperationFinanciere execute(OperationFinanciere operation) {
@@ -119,6 +121,13 @@ public class CreateOperationFinanciereUseCase {
         // (ENCAISSE pour un revenu, PAYE pour une dépense) — pas d'étape brouillon.
         if (operation.getStatut() == null) {
             operation.setStatut(StatutOperation.termineePour(operation.getTypeOperation()));
+        }
+
+        // Une sortie d'espèces ne peut pas excéder ce que la caisse détient : le
+        // contrôle vient après la résolution du compte, c'est lui qui est débité.
+        if (operation.getTypeOperation() == TypeOperation.DEPENSE) {
+            caisseCreditriceGuard.verifier(operation.getCompteTresorerieId(),
+                    operation.getMontant(), operation.getDateOperation());
         }
 
         return operationRepository.save(operation);

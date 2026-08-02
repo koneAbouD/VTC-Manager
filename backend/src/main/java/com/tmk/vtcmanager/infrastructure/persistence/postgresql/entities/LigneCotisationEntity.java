@@ -22,6 +22,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,6 +63,10 @@ public class LigneCotisationEntity extends AbstractAuditEntity {
 
     @Column(name = "motif_annulation", length = 500)
     private String motifAnnulation;
+
+    /** Moment de l'annulation ; NULL tant que la ligne est due. */
+    @Column(name = "annule_le")
+    private LocalDateTime annuleLe;
 
     /** Arrêté de compte ayant soldé la ligne (RESTITUEE). */
     @Column(name = "arrete_id")

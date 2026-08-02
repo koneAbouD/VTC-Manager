@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -431,6 +432,17 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
   final _comptageCtrl = TextEditingController();
   final _motifCtrl = TextEditingController();
 
+  /// Journée comptée. Aujourd'hui par défaut, mais une caisse oubliée reste
+  /// régularisable — et c'est la seule façon de satisfaire la clôture d'un mois
+  /// passé, qui exige un comptage daté *dans* le mois.
+  DateTime _date = DateTime.now();
+
+  /// Solde théorique **à la date comptée** : c'est à lui que le serveur
+  /// comparera le comptage. Tant que la date est aujourd'hui, le solde courant
+  /// déjà chargé fait l'affaire ; dès qu'on antidate, il faut le redemander.
+  late double _theorique;
+  bool _chargementSolde = false;
+
   bool _submitting = false;
   String? _submitError;
 
@@ -438,6 +450,7 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
   void initState() {
     super.initState();
     _selection = widget.comptes.first;
+    _theorique = _selection.solde;
   }
 
   @override
@@ -447,12 +460,57 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
     super.dispose();
   }
 
+  bool get _estAujourdHui {
+    final now = DateTime.now();
+    return _date.year == now.year &&
+        _date.month == now.month &&
+        _date.day == now.day;
+  }
+
+  /// Remet le solde théorique en phase avec le compte et la date choisis.
+  Future<void> _majTheorique() async {
+    if (_estAujourdHui) {
+      setState(() {
+        _theorique = _selection.solde;
+        _chargementSolde = false;
+      });
+      return;
+    }
+
+    final compteId = _selection.id;
+    final date = _date;
+    setState(() {
+      _chargementSolde = true;
+      _submitError = null;
+    });
+
+    double? solde;
+    String? erreur;
+    try {
+      solde = await ref
+          .read(tresorerieDatasourceProvider)
+          .getSoldeALaDate(compteId, date);
+    } on ApiException catch (e) {
+      erreur = e.message;
+    } catch (e) {
+      erreur = 'Solde à cette date indisponible : $e';
+    }
+
+    // Réponse périmée : l'utilisateur a changé de compte ou de date entre-temps.
+    if (!mounted || compteId != _selection.id || date != _date) return;
+    setState(() {
+      _chargementSolde = false;
+      if (solde != null) _theorique = solde;
+      _submitError = erreur;
+    });
+  }
+
   double? get _comptage =>
       double.tryParse(_comptageCtrl.text.replaceAll(' ', '').replaceAll(',', '.'));
 
   double? get _ecart {
     final c = _comptage;
-    return c != null ? c - _selection.solde : null;
+    return c != null ? c - _theorique : null;
   }
 
   bool get _motifRequis {
@@ -462,6 +520,9 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
 
   bool get _valide {
     if (_comptage == null) return false;
+    // Valider sur un solde théorique en cours de rafraîchissement afficherait
+    // un écart et en enregistrerait un autre.
+    if (_chargementSolde) return false;
     if (_motifRequis && _motifCtrl.text.trim().isEmpty) return false;
     return true;
   }
@@ -482,6 +543,7 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
             compteId: _selection.id,
             soldeCompte: comptage,
             motifEcart: _motifCtrl.text.trim(),
+            dateCloture: _date,
           );
       refreshFinances(ref);
     } on ApiException catch (e) {
@@ -526,25 +588,57 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
       ),
       children: [
 
-          // ── Compte ──────────────────────────────────────────────────
+          // ── Compte et journée comptée ───────────────────────────────
           _FormCard(
             icon: Icons.account_balance_wallet_outlined,
             accent: _kPrimary,
             title: 'Compte à clôturer',
-            child: _StyledDropdown<CompteAvecSoldeVue>(
-              value: _selection,
-              items: widget.comptes,
-              icon: Icons.payments_outlined,
-              label: (c) => c.libelle,
-              onChanged: (c) => setState(() => _selection = c),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _LabeledField(
+                  label: 'Compte',
+                  isRequired: true,
+                  child: _StyledDropdown<CompteAvecSoldeVue>(
+                    value: _selection,
+                    items: widget.comptes,
+                    icon: Icons.payments_outlined,
+                    label: (c) => c.libelle,
+                    onChanged: (c) {
+                      setState(() => _selection = c);
+                      _majTheorique();
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _LabeledField(
+                  label: 'Journée comptée',
+                  isRequired: true,
+                  child: _ChampDateCloture(
+                    date: _date,
+                    onChanged: (d) {
+                      setState(() => _date = d);
+                      _majTheorique();
+                    },
+                  ),
+                ),
+                if (!_estAujourdHui) ...[
+                  const SizedBox(height: 8),
+                  const _NoteAntidatage(),
+                ],
+              ],
             ),
           ),
 
           // ── Solde théorique ─────────────────────────────────────────
           _InfoCard(
             titre: 'Solde théorique',
-            sousTitre: 'Calculé à partir des mouvements enregistrés',
-            badge: CurrencyFormatter.format(_selection.solde),
+            sousTitre: _estAujourdHui
+                ? 'Calculé à partir des mouvements enregistrés'
+                : 'Arrêté au ${DateFormat('dd/MM/yyyy').format(_date)}',
+            badge: _chargementSolde
+                ? '…'
+                : CurrencyFormatter.format(_theorique),
             couleur: _kPrimary,
             icone: Icons.calculate_outlined,
           ),
@@ -620,6 +714,88 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
             onPressed: _valide ? _submit : null,
           ),
       ],
+    );
+  }
+}
+
+/// Journée comptée : aujourd'hui le plus souvent, mais un comptage en retard —
+/// ou de fin de mois, saisi après coup — doit rester possible. Jamais future :
+/// une caisse ne se compte pas à l'avance.
+class _ChampDateCloture extends StatelessWidget {
+  final DateTime date;
+  final ValueChanged<DateTime> onChanged;
+
+  const _ChampDateCloture({required this.date, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        final choix = await showDatePicker(
+          context: context,
+          initialDate: date,
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+          locale: const Locale('fr', 'FR'),
+        );
+        if (choix != null) onChanged(choix);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: _kFieldFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today_outlined, size: 16, color: _kLabel),
+            const SizedBox(width: 10),
+            Text(
+              DateFormat('dd/MM/yyyy').format(date),
+              style: const TextStyle(
+                  fontSize: 15, color: _kDark, fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            const Icon(Icons.keyboard_arrow_down_rounded,
+                size: 18, color: _kHint),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Rappel affiché dès que le comptage est antidaté : le comptage verrouille la
+/// journée sur ce compte — plus aucune écriture ne pourra y être datée de ce
+/// jour-là ou d'avant.
+class _NoteAntidatage extends StatelessWidget {
+  const _NoteAntidatage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _kAmber.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _kAmber.withValues(alpha: 0.25)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, size: 16, color: _kAmber),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Comptage antidaté : plus aucune écriture ne pourra être '
+              'enregistrée sur ce compte à cette date ou avant.',
+              style: TextStyle(fontSize: 12, height: 1.3, color: _kLabel),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

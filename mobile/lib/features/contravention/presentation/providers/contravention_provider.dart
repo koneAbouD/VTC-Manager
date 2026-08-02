@@ -12,6 +12,7 @@ import '../../data/models/contravention_model.dart';
 import '../../data/repositories_impl/contravention_repository_impl.dart';
 import '../../domain/entities/contravention.dart';
 import '../../domain/repositories/contravention_repository.dart';
+import '../../domain/usecases/annuler_contravention_usecase.dart';
 import '../../domain/usecases/create_contravention_usecase.dart';
 import '../../domain/usecases/delete_contravention_usecase.dart';
 import '../../domain/usecases/get_contraventions_usecase.dart';
@@ -75,6 +76,10 @@ final _reverseContraventionUseCaseProvider = Provider(
   (ref) =>
       ReverseContraventionUseCase(ref.watch(contraventionRepositoryProvider)),
 );
+final _annulerContraventionUseCaseProvider = Provider(
+  (ref) =>
+      AnnulerContraventionUseCase(ref.watch(contraventionRepositoryProvider)),
+);
 
 // ── Notifier ────────────────────────────────────────────────────────────────
 
@@ -85,6 +90,7 @@ class ContraventionNotifier extends StateNotifier<ContraventionState> {
   final DeleteContraventionUseCase _deleteContravention;
   final PayContraventionUseCase _payContravention;
   final ReverseContraventionUseCase _reverseContravention;
+  final AnnulerContraventionUseCase _annulerContravention;
 
   ContraventionNotifier({
     required GetContraventionsUseCase getContraventions,
@@ -93,12 +99,14 @@ class ContraventionNotifier extends StateNotifier<ContraventionState> {
     required DeleteContraventionUseCase deleteContravention,
     required PayContraventionUseCase payContravention,
     required ReverseContraventionUseCase reverseContravention,
+    required AnnulerContraventionUseCase annulerContravention,
   })  : _getContraventions = getContraventions,
         _createContravention = createContravention,
         _updateContravention = updateContravention,
         _deleteContravention = deleteContravention,
         _payContravention = payContravention,
         _reverseContravention = reverseContravention,
+        _annulerContravention = annulerContravention,
         super(const ContraventionInitial());
 
   Future<void> loadContraventions() async {
@@ -161,6 +169,13 @@ class ContraventionNotifier extends StateNotifier<ContraventionState> {
     final result = await _reverseContravention.call(id);
     return result.fold((failure) => failure.message, (_) => null);
   }
+
+  /// Annule la contravention. Retourne le message d'erreur, ou `null` si
+  /// l'annulation a été acceptée.
+  Future<String?> annulerContravention(int id, String motif) async {
+    final result = await _annulerContravention.call(id, motif);
+    return result.fold((failure) => failure.message, (_) => null);
+  }
 }
 
 // ── Liste paginée (scroll infini) pour la page Contraventions ────────────────
@@ -179,6 +194,7 @@ final contraventionNotifierProvider =
     deleteContravention: ref.watch(_deleteContraventionUseCaseProvider),
     payContravention: ref.watch(_payContraventionUseCaseProvider),
     reverseContravention: ref.watch(_reverseContraventionUseCaseProvider),
+    annulerContravention: ref.watch(_annulerContraventionUseCaseProvider),
   );
 });
 

@@ -97,6 +97,10 @@ public class LignePenaliteEntity extends AbstractAuditEntity {
     @Column(name = "motif_annulation", length = 500)
     private String motifAnnulation;
 
+    /** Moment de l'annulation ; NULL tant que la ligne est due. */
+    @Column(name = "annule_le")
+    private LocalDateTime annuleLe;
+
     @OneToMany(mappedBy = "lignePenalite", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<EncaissementPenaliteEntity> encaissements = new ArrayList<>();

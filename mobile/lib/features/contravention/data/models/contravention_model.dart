@@ -22,6 +22,7 @@ class ContraventionModel extends Contravention {
     super.codeInfraction,
     super.documentSourcePath,
     super.statutRattachement,
+    super.motifAnnulation,
   });
 
   /// Extrait un libellé qu'une valeur soit une chaîne ou un objet {nom/libelle}.
@@ -75,6 +76,7 @@ class ContraventionModel extends Contravention {
       codeInfraction: json['codeInfraction'] as String?,
       documentSourcePath: json['documentSourcePath'] as String?,
       statutRattachement: json['statutRattachement'] as String?,
+      motifAnnulation: json['motifAnnulation'] as String?,
     );
   }
 
@@ -100,6 +102,7 @@ class ContraventionModel extends Contravention {
         codeInfraction: c.codeInfraction,
         documentSourcePath: c.documentSourcePath,
         statutRattachement: c.statutRattachement,
+        motifAnnulation: c.motifAnnulation,
       );
 
   Map<String, dynamic> toJson() => {

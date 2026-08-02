@@ -22,6 +22,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -63,6 +64,10 @@ public class LigneRecetteEntity extends AbstractAuditEntity {
 
     @Column(name = "motif_annulation", length = 500)
     private String motifAnnulation;
+
+    /** Moment de l'annulation ; NULL tant que la ligne est due. */
+    @Column(name = "annule_le")
+    private LocalDateTime annuleLe;
 
     @OneToMany(mappedBy = "ligneRecette", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default

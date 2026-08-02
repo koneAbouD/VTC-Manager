@@ -18,6 +18,7 @@ import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.RepartitionDetteMaintenanceService;
@@ -85,6 +86,7 @@ class CompleteMaintenanceDetteTest {
                 maintenanceRepository, operationRepository, categorieRepository,
                 sousCategorieRepository, mock(VehiculeStatutEventPublisher.class), compteResolver,
                 mock(PeriodeClotureeGuard.class), sequences, mock(CaisseClotureeGuard.class),
+                mock(CaisseCreditriceGuard.class),
                 facturePartenaireRepository, enregistrerFactureUseCase,
                 new RepartitionDetteMaintenanceService());
     }

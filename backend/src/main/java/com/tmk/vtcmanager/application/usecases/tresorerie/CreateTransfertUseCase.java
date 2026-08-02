@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.exception.TransfertInvalideException;
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.TransfertTresorerieRepository;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ public class CreateTransfertUseCase {
     private final CompteTresorerieRepository compteTresorerieRepository;
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final CaisseCreditriceGuard caisseCreditriceGuard;
 
     @Transactional
     public TransfertTresorerie executer(TransfertTresorerie transfert) {
@@ -41,6 +43,10 @@ public class CreateTransfertUseCase {
         // Les deux caisses sont mouvementées : aucune ne doit être déjà comptée.
         caisseClotureeGuard.verifier(transfert.getCompteSourceId(), transfert.getDateTransfert());
         caisseClotureeGuard.verifier(transfert.getCompteDestinationId(), transfert.getDateTransfert());
+        // Seule la source est dégarnie : on ne transfère pas plus que ce qu'elle
+        // détient.
+        caisseCreditriceGuard.verifier(transfert.getCompteSourceId(),
+                transfert.getMontant(), transfert.getDateTransfert());
 
         return transfertRepository.save(transfert);
     }

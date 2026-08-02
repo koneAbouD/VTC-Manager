@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.interfaces.rest.exception;
 
 import com.tmk.vtcmanager.application.exception.AucunePenaliteAmendePendingException;
 import com.tmk.vtcmanager.application.exception.CaisseClotureeException;
+import com.tmk.vtcmanager.application.exception.CaisseCreditriceException;
 import com.tmk.vtcmanager.application.exception.EcritureFigeeException;
 import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedException;
 import com.tmk.vtcmanager.application.exception.ClotureCaisseDejaEffectueeException;
@@ -270,6 +271,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CaisseClotureeException.class)
     public ResponseEntity<ApiError> handleCaisseCloturee(CaisseClotureeException ex, HttpServletRequest request) {
         return respond(HttpStatus.CONFLICT, "CAISSE_CLOTUREE", ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(CaisseCreditriceException.class)
+    public ResponseEntity<ApiError> handleCaisseCreditrice(CaisseCreditriceException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "CAISSE_CREDITRICE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(ClotureCaisseDejaEffectueeException.class)

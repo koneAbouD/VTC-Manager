@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +29,11 @@ public class LigneRecette {
     private StatutLigneRecette statut;
     /** Motif saisi lors de l'annulation de la ligne (obligatoire à l'annulation). */
     private String motifAnnulation;
+    /**
+     * Moment de l'annulation. Sans lui, une ligne annulée disparaîtrait des
+     * états reconstitués à une date où elle était encore due.
+     */
+    private LocalDateTime annuleLe;
     @Builder.Default
     private List<Encaissement> encaissements = new ArrayList<>();
 
@@ -70,5 +76,6 @@ public class LigneRecette {
     public void annuler(String motif) {
         this.statut = StatutLigneRecette.ANNULEE;
         this.motifAnnulation = motif;
+        this.annuleLe = LocalDateTime.now();
     }
 }

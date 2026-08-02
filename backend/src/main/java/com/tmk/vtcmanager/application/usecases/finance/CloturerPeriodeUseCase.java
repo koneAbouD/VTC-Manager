@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.domain.finance.EtatsCloture;
 import com.tmk.vtcmanager.application.domain.tresorerie.ClotureCaisse;
 import com.tmk.vtcmanager.application.domain.tresorerie.CompteAvecSolde;
 import com.tmk.vtcmanager.application.domain.tresorerie.CompteTresorerie;
+import com.tmk.vtcmanager.application.domain.tresorerie.TypeCompteTresorerie;
 import com.tmk.vtcmanager.application.exception.PeriodeNonCloturableException;
 import com.tmk.vtcmanager.application.ports.persistence.CloturePeriodeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
@@ -90,17 +91,27 @@ public class CloturerPeriodeUseCase {
         return cloture;
     }
 
-    /** Aucune caisse laissée sans comptage, aucun écart laissé sans décision. */
+    /**
+     * Aucun compte laissé sans contrôle du solde réel, aucun écart laissé sans
+     * décision. Le contrôle attendu dépend du support — comptage d'espèces,
+     * relevé de l'opérateur mobile, rapprochement bancaire — et le message le
+     * nomme pour ce qu'il est ({@link TypeCompteTresorerie#libelleControle()}).
+     */
     private void verifierCaisses(LocalDate debut, LocalDate fin) {
         for (CompteTresorerie compte : compteTresorerieRepository.findByActifTrue()) {
             List<ClotureCaisse> clotures =
                     clotureCaisseRepository.findByCompteIdOrderByDateDesc(compte.getId());
+            String controle = compte.getType() != null
+                    ? compte.getType().libelleControle() : "comptage";
 
             boolean compteeDansLaPeriode = clotures.stream().anyMatch(c ->
                     !c.getDateCloture().isBefore(debut) && !c.getDateCloture().isAfter(fin));
             if (!compteeDansLaPeriode) {
+                String verbe = compte.getType() != null
+                        ? compte.getType().verbeControle() : "comptez-le";
                 throw new PeriodeNonCloturableException("Le compte « " + compte.getLibelle()
-                        + " » n'a pas été clôturé sur la période : comptez-le avant de clôturer le mois.");
+                        + " » n'a fait l'objet d'aucun " + controle + " sur la période : "
+                        + verbe + " avant de clôturer le mois.");
             }
 
             clotures.stream()
@@ -108,8 +119,8 @@ public class CloturerPeriodeUseCase {
                     .filter(ClotureCaisse::attendImputation)
                     .findFirst()
                     .ifPresent(c -> {
-                        throw new PeriodeNonCloturableException("L'écart de caisse du "
-                                + c.getDateCloture() + " sur « " + compte.getLibelle()
+                        throw new PeriodeNonCloturableException("L'écart constaté au " + controle
+                                + " du " + c.getDateCloture() + " sur « " + compte.getLibelle()
                                 + " » attend encore son imputation.");
                     });
         }
@@ -137,14 +148,16 @@ public class CloturerPeriodeUseCase {
             tresorerie = tresorerie.add(solde);
         }
 
-        // Créances et dette État : pris à l'instant de la clôture — la balance
-        // âgée ne se rejoue pas à une date passée.
-        BigDecimal creances = creanceRepository.getBalanceAgee().stream()
+        // Créances et dette État : arrêtées au dernier jour du mois, comme la
+        // trésorerie. Les prendre à l'instant de la clôture — souvent plusieurs
+        // jours après la fin du mois — ferait entrer à l'actif des mouvements
+        // du mois suivant, et l'actif archivé n'existerait à aucune date réelle.
+        BigDecimal creances = creanceRepository.getBalanceAgeeALaDate(fin).stream()
                 .map(CreanceChauffeur::getTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        // Même lecture qu'à l'écran : c'est le net de dépréciation qui entre à
-        // l'actif, sinon la photo et le bilan courant se contrediraient.
-        BigDecimal provision = getProvisionCreancesUseCase.executer().getProvisionTotale();
+        // C'est le net de dépréciation qui entre à l'actif ; la dépréciation est
+        // elle aussi appréciée à la date d'arrêté, sur la même balance.
+        BigDecimal provision = getProvisionCreancesUseCase.executer(fin).getProvisionTotale();
         BigDecimal creancesNettes = creances.subtract(provision);
         // Ce que le mois supporte : la variation par rapport à la photo du mois
         // précédent, pas le stock.
@@ -152,7 +165,7 @@ public class CloturerPeriodeUseCase {
                 YearMonth.of(annee, mois), provision);
 
         BigDecimal immobilisations = reportingRepository.immobilisationsNettes(fin);
-        BigDecimal detteEtat = creanceRepository.getMontantAReverserEtat();
+        BigDecimal detteEtat = creanceRepository.getMontantAReverserEtatALaDate(fin);
         // La dette fournisseurs, elle, se rejoue à la date : elle est arrêtée au
         // dernier jour de la période, comme la trésorerie.
         BigDecimal dettesFournisseurs = facturePartenaireRepository.detteALaDate(fin);

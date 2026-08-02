@@ -7,6 +7,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Entity
@@ -68,6 +69,20 @@ public class ContraventionEntity extends AbstractAuditEntity {
 
     @Column(name = "date_paiement")
     private LocalDate datePaiement;
+
+    /** Jour du reversement à l'État ; NULL tant que la somme est détenue. */
+    @Column(name = "date_reversement")
+    private LocalDate dateReversement;
+
+    /** Moment de l'annulation ; NULL tant que la contravention est due. */
+    @Column(name = "annule_le")
+    private LocalDateTime annuleLe;
+
+    @Column(name = "motif_annulation", columnDefinition = "TEXT")
+    private String motifAnnulation;
+
+    @Column(name = "annule_par", length = 255)
+    private String annulePar;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chauffeur_id")

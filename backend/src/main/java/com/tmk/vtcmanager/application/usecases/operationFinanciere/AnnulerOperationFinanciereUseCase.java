@@ -54,10 +54,13 @@ public class AnnulerOperationFinanciereUseCase {
             throw new IllegalStateException("L'opération est déjà extournée.");
         }
 
-        // L'écriture d'origine ne doit pas appartenir à une période close…
-        periodeClotureeGuard.verifier(origine.getDateOperation());
-        // …et la contre-passation, datée du jour, doit tomber dans une période
-        // ouverte : sinon la correction n'apparaîtrait dans aucun état.
+        // Seule la contre-passation est soumise au verrou de période : datée du
+        // jour, elle doit tomber dans une période ouverte, sinon la correction
+        // n'apparaîtrait dans aucun état. L'écriture d'origine, elle, peut
+        // appartenir à un mois déjà clos — c'est même le cas normal d'une erreur
+        // découverte après coup. Elle n'est pas retouchée : elle reste au journal
+        // avec sa date et son montant, les états publiés du mois clos ne bougent
+        // pas, et la correction pèse sur le mois où elle est décidée.
         LocalDate dateExtourne = LocalDate.now();
         periodeClotureeGuard.verifier(dateExtourne);
         // …et la caisse qu'elle mouvemente ne doit pas avoir déjà été comptée

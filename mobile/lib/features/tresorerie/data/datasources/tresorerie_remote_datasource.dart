@@ -157,14 +157,27 @@ class TresorerieRemoteDatasource {
     });
   }
 
+  /// Solde théorique du compte arrêté à [date] : c'est à lui que le serveur
+  /// comparera le comptage, et non au solde du jour.
+  Future<double> getSoldeALaDate(int compteId, DateTime date) async {
+    final data = await _client.get('/comptes-tresorerie/$compteId/solde',
+        query: {'date': _isoDate(date)});
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return (data['solde'] as num?)?.toDouble() ?? 0;
+  }
+
   Future<ClotureCaisseData> cloturerCaisse({
     required int compteId,
     required double soldeCompte,
     String? motifEcart,
+    DateTime? dateCloture,
   }) async {
     final data = await _client.post('/comptes-tresorerie/$compteId/clotures', {
       'soldeCompte': soldeCompte,
       if (motifEcart != null && motifEcart.isNotEmpty) 'motifEcart': motifEcart,
+      if (dateCloture != null) 'dateCloture': _isoDate(dateCloture),
     });
     return ClotureCaisseData.fromJson(data as Map<String, dynamic>);
   }

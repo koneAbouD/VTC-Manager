@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/bytes_downloader.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../domain/entities/compte_courant.dart';
 import '../providers/tresorerie_providers.dart';
@@ -23,21 +24,28 @@ class ArreteDetailPage extends ConsumerWidget {
     final annulable = arrete != null && arrete.statut == 'VALIDE';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Détail de l\'arrêté'),
-        actions: [
-          IconButton(
-            tooltip: 'Télécharger le décompte (PDF)',
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: arrete == null ? null : () => _telechargerPdf(context, ref),
-          ),
-          if (annulable)
-            IconButton(
-              tooltip: 'Annuler l\'arrêté',
-              icon: const Icon(Icons.cancel_outlined),
-              onPressed: () => _annuler(context, ref),
-            ),
-        ],
+      appBar: AppHeader(
+        title: 'Détail de l\'arrêté',
+        // Les actions n'apparaissent qu'une fois l'arrêté chargé : un bouton
+        // inerte pendant le chargement ne se distingue pas d'un bouton actif.
+        action: arrete == null
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppHeaderAction(
+                    icon: Icons.picture_as_pdf_outlined,
+                    onTap: () => _telechargerPdf(context, ref),
+                  ),
+                  if (annulable) ...[
+                    const SizedBox(width: 6),
+                    AppHeaderAction(
+                      icon: Icons.cancel_outlined,
+                      onTap: () => _annuler(context, ref),
+                    ),
+                  ],
+                ],
+              ),
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),

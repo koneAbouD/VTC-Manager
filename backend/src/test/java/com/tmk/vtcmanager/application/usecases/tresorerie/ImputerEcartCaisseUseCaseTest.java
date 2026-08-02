@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.when;
 class ImputerEcartCaisseUseCaseTest {
 
     private static final Long COMPTE_CAISSE = 7L;
+    private static final LocalDate JOUR_DU_COMPTAGE = LocalDate.of(2026, 7, 31);
 
     private ClotureCaisseRepository clotureCaisseRepository;
     private OperationFinanciereRepository operationRepository;
@@ -62,6 +64,7 @@ class ImputerEcartCaisseUseCaseTest {
         when(clotureCaisseRepository.findById(1L)).thenReturn(Optional.of(ClotureCaisse.builder()
                 .id(1L)
                 .compteId(COMPTE_CAISSE)
+                .dateCloture(JOUR_DU_COMPTAGE)
                 .ecart(BigDecimal.valueOf(ecart))
                 .responsable("caissier")
                 .imputationStatut(StatutImputationEcart.EN_ATTENTE)
@@ -114,6 +117,19 @@ class ImputerEcartCaisseUseCaseTest {
                 assertThat(o.getCompteTresorerieId()).isNull());
         assertThat(ecritures.get(0).getTypeOperation()).isEqualTo(TypeOperation.DEPENSE);
         assertThat(ecritures.get(1).getTypeOperation()).isEqualTo(TypeOperation.REVENU);
+    }
+
+    @Test
+    @DisplayName("Les écritures d'imputation portent la date du comptage, pas celle de la décision")
+    void ecritures_datees_du_comptage() {
+        ecartEnAttente(-50_000);
+
+        useCase.executer(1L, StatutImputationEcart.PERTE, "manquant non élucidé");
+
+        // Le fait générateur est la journée comptée : c'est le mois de ce
+        // comptage qui doit supporter l'écart, même si la décision tombe après.
+        assertThat(ecrituresGenerees(2)).allSatisfy(o ->
+                assertThat(o.getDateOperation()).isEqualTo(JOUR_DU_COMPTAGE));
     }
 
     @Test

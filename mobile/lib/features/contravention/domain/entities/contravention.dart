@@ -22,6 +22,9 @@ class Contravention {
   final String? documentSourcePath;
   final String? statutRattachement; // AUTO | MANUEL | A_RATTACHER
 
+  /// Pourquoi la contravention a été annulée ; null tant qu'elle est due.
+  final String? motifAnnulation;
+
   const Contravention({
     this.id,
     required this.dateInfraction,
@@ -43,6 +46,7 @@ class Contravention {
     this.codeInfraction,
     this.documentSourcePath,
     this.statutRattachement,
+    this.motifAnnulation,
   });
 
   bool get isPaid => statut == 'PAYEE' || statut == 'PAYE';
@@ -83,6 +87,7 @@ class Contravention {
     String? codeInfraction,
     String? documentSourcePath,
     String? statutRattachement,
+    String? motifAnnulation,
   }) {
     return Contravention(
       id: id ?? this.id,
@@ -105,6 +110,7 @@ class Contravention {
       codeInfraction: codeInfraction ?? this.codeInfraction,
       documentSourcePath: documentSourcePath ?? this.documentSourcePath,
       statutRattachement: statutRattachement ?? this.statutRattachement,
+      motifAnnulation: motifAnnulation ?? this.motifAnnulation,
     );
   }
 }

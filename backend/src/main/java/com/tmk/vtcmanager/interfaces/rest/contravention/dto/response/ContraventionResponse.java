@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.response.VehiculeResponse
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 public record ContraventionResponse(
@@ -27,5 +28,10 @@ public record ContraventionResponse(
         Integer vitesseRelevee,
         String codeInfraction,
         String documentSourcePath,
-        StatutRattachement statutRattachement
+        StatutRattachement statutRattachement,
+        /** Jour du reversement à l'État ; null tant que la somme est détenue. */
+        LocalDate dateReversement,
+        /** Renseignés dès lors que la contravention a été annulée. */
+        LocalDateTime annuleLe,
+        String motifAnnulation
 ) {}

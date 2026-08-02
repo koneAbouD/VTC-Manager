@@ -83,7 +83,7 @@ final _identiteCompteProvider = FutureProvider<_IdentiteCompte>((ref) async {
 });
 
 /// Volets dépliables de la page : un seul reste ouvert à la fois.
-enum _Volet { profil, parametres, notifications, aide }
+enum _Volet { profil, parametres, configurations, notifications, aide }
 
 /// Page des réglages de l'application.
 ///
@@ -207,6 +207,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               builder: (_) => const ParametresGenerauxPage()),
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: _kCardGap),
+                  // Réglages de l'application elle-même — par opposition aux
+                  // « Paramètres », qui portent les données métier.
+                  SettingsAccordion(
+                    icon: Icons.app_settings_alt_outlined,
+                    title: 'Configurations',
+                    ouvert: _volet == _Volet.configurations,
+                    onToggle: () => _basculer(_Volet.configurations),
+                    children: [
                       // Ce réglage n'a pas encore de mécanisme derrière lui :
                       // switch présent mais inerte (voir le rapport de
                       // livraison).
@@ -217,6 +228,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         trailing: Switch(value: false, onChanged: null),
                       ),
                       const _LigneBiometrie(),
+                      // Même situation que les notifications : l'entrée est
+                      // annoncée, le suivi de position n'est pas encore branché.
+                      const SettingsTile(
+                        icon: Icons.location_on_outlined,
+                        title: 'Géolocalisation',
+                        description: 'Suivi de position des chauffeurs en '
+                            'service',
+                        trailing: Switch(value: false, onChanged: null),
+                      ),
                       const SettingsTile(
                         icon: Icons.star_outline_rounded,
                         title: "Noter l'application",

@@ -13,6 +13,7 @@ import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepos
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class ReverseContraventionUseCase {
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final SequenceReferenceService sequenceReferenceService;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final CaisseCreditriceGuard caisseCreditriceGuard;
 
     @Transactional
     public Contravention execute(Long id) {
@@ -60,8 +62,9 @@ public class ReverseContraventionUseCase {
         }
         CategorieOperation categorie = categorieOperationRepository.findByCode(CODE_CATEGORIE).orElse(null);
 
-        caisseClotureeGuard.verifier(
-                compteTresorerieResolver.resoudre(null, ModePaiement.ESPECES), LocalDate.now());
+        Long compteId = compteTresorerieResolver.resoudre(null, ModePaiement.ESPECES);
+        caisseClotureeGuard.verifier(compteId, LocalDate.now());
+        caisseCreditriceGuard.verifier(compteId, montant, LocalDate.now());
 
         OperationFinanciere operation = OperationFinanciere.builder()
                 .typeOperation(TypeOperation.DEPENSE)
@@ -70,7 +73,7 @@ public class ReverseContraventionUseCase {
                 .vehicule(contravention.getVehicule())
                 .montant(montant)
                 .modePaiement(ModePaiement.ESPECES)
-                .compteTresorerieId(compteTresorerieResolver.resoudre(null, ModePaiement.ESPECES))
+                .compteTresorerieId(compteId)
                 .dateOperation(LocalDate.now())
                 .dateReference(contravention.getDateInfraction())
                 .commentaire("Reversement contravention " + (contravention.getTypeInfraction() != null

@@ -26,6 +26,7 @@ import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.RepartitionDetteMaintenanceService;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +53,7 @@ public class CompleteMaintenanceUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final CaisseCreditriceGuard caisseCreditriceGuard;
     private final FacturePartenaireRepository facturePartenaireRepository;
     private final EnregistrerFactureUseCase enregistrerFactureUseCase;
     private final RepartitionDetteMaintenanceService repartitionService;
@@ -66,9 +68,10 @@ public class CompleteMaintenanceUseCase {
         // À crédit, rien ne sort de la caisse : seule une intervention payée
         // comptant a besoin que la caisse du jour soit encore ouverte.
         if (!reglement.aCredit()) {
-            caisseClotureeGuard.verifier(
-                    compteTresorerieResolver.resoudre(null, reglement.modePaiementOuDefaut()),
-                    dateEffectuee);
+            Long compteRegle = compteTresorerieResolver.resoudre(
+                    null, reglement.modePaiementOuDefaut());
+            caisseClotureeGuard.verifier(compteRegle, dateEffectuee);
+            caisseCreditriceGuard.verifier(compteRegle, cout, dateEffectuee);
         }
         maintenance.terminer(cout, dateEffectuee);
         Maintenance saved = maintenanceRepository.save(maintenance);
