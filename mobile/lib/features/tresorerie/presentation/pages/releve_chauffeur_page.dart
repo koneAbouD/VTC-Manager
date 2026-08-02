@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/widgets/app_header.dart';
 import '../providers/tresorerie_providers.dart';
 import 'arrete_detail_page.dart';
 import 'arretes_history_page.dart' show fmtDate;
@@ -18,7 +19,7 @@ class ReleveChauffeurPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(releveChauffeurProvider(chauffeurId));
     return Scaffold(
-      appBar: AppBar(title: Text('Relevé — $nom')),
+      appBar: AppHeader(title: 'Relevé — $nom'),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(releveChauffeurProvider(chauffeurId).future),
         child: async.when(

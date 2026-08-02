@@ -55,6 +55,7 @@ public class RapportFinancierController {
     private List<OperationLigneResponse> toOperations(List<RapportFinancier.LigneOperation> lignes) {
         return lignes.stream()
                 .map(l -> new OperationLigneResponse(l.getId(), l.getType(), l.getDescription(),
+                        l.getCategorieCode(), l.getCategorieLibelle(),
                         l.getChauffeurNom(), l.getVehiculeLabel(), l.getMontant(), l.getDate()))
                 .toList();
     }

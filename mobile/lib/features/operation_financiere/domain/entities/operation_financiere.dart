@@ -1,3 +1,4 @@
+import '../../../../core/utils/libelle_operation.dart' as date_relative;
 import 'detail_maintenance.dart';
 import '../enums/mode_paiement.dart';
 import '../enums/statut_operation.dart';
@@ -79,27 +80,9 @@ class OperationFinanciere {
   /// (encaissement de période), sinon la date de l'opération.
   DateTime get dateAffichee => dateReference ?? dateOperation;
 
-  /// Connecteur de date relatif, recalculé à CHAQUE affichage (donc « hier »
-  /// devient « avant-hier » le lendemain, etc.) — aucune tâche planifiée requise :
-  ///   aujourd'hui   → "d'aujourd'hui"
-  ///   hier          → "d'hier"
-  ///   avant-hier    → "d'avant-hier"
-  ///   au-delà       → "du JJ/MM/AAAA"
-  /// Destiné à suffixer un libellé, ex. « Encaissement recettes d'hier ».
-  String get libelleDateRelative {
-    final d = dateAffichee;
-    final jour = DateTime(d.year, d.month, d.day);
-    final maintenant = DateTime.now();
-    final aujourdhui = DateTime(maintenant.year, maintenant.month, maintenant.day);
-    final ecartJours = aujourdhui.difference(jour).inDays;
-    String deux(int n) => n.toString().padLeft(2, '0');
-    return switch (ecartJours) {
-      0 => "d'aujourd'hui",
-      1 => "d'hier",
-      2 => "d'avant-hier",
-      _ => 'du ${deux(d.day)}/${deux(d.month)}/${d.year}',
-    };
-  }
+  /// Connecteur de date relatif de la date métier, ex. « d'hier ».
+  /// Voir [libelleDateRelative] (partagé avec le rapport financier).
+  String get libelleDateRelative => date_relative.libelleDateRelative(dateAffichee);
 
   /// Vrai si l'opération appartient au groupe "Maintenances"
   /// (déterminé par le libellé de la sous-catégorie côté backend,
@@ -110,17 +93,15 @@ class OperationFinanciere {
   /// Vrai si l'opération est un encaissement (recette / cotisation / pénalité).
   /// Seuls ces types conservent la date relative dans leur libellé de ligne ;
   /// les autres opérations (dépenses, maintenance…) s'affichent sans date.
-  bool get estEncaissement => const {
-        'ENCAISSEMENT_RECETTES',
-        'ENCAISSEMENT_COTISATIONS',
-        'ENCAISSEMENT_PENALITES',
-      }.contains(categorieCode?.toUpperCase());
+  bool get estEncaissement =>
+      date_relative.estCategorieEncaissement(categorieCode);
 
   /// Libellé du titre affiché sur les lignes d'opération (Accueil, liste des
-  /// opérations) : « Catégorie d'hier » pour un encaissement, « Catégorie »
-  /// seul sinon (pas de date dans le titre pour les non-encaissements).
-  String get libelleLigne {
-    final categorie = categorieLibelle ?? typeOperation.libelle;
-    return estEncaissement ? '$categorie $libelleDateRelative' : categorie;
-  }
+  /// opérations, rapport financier) : « Catégorie d'hier » pour un
+  /// encaissement, « Catégorie » seul sinon.
+  String get libelleLigne => date_relative.libelleLigneOperation(
+        categorieCode: categorieCode,
+        categorie: categorieLibelle ?? typeOperation.libelle,
+        date: dateAffichee,
+      );
 }

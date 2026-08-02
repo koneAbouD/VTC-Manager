@@ -94,6 +94,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
             labelStyle:
                 const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
             labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+            // Ordre référencé par FinanceTab (home_nav_provider) : le mettre à
+            // jour en même temps que les constantes.
             tabs: const [
               Tab(text: 'Trésorerie'),
               Tab(text: 'Créances'),

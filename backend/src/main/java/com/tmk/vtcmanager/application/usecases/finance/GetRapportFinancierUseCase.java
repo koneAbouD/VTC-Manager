@@ -103,6 +103,8 @@ public class GetRapportFinancierUseCase {
                     .id(op.getId())
                     .type(op.getTypeOperation() == null ? null : op.getTypeOperation().name())
                     .description(description(op))
+                    .categorieCode(op.getCategorie() == null ? null : op.getCategorie().getCode())
+                    .categorieLibelle(op.getCategorie() == null ? null : op.getCategorie().getLibelle())
                     .chauffeurNom(nomChauffeur(op))
                     .vehiculeLabel(labelVehicule(op))
                     .montant(montant(op))

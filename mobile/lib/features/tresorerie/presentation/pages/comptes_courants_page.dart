@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/widgets/app_header.dart';
 import '../../domain/entities/compte_courant.dart';
 import '../providers/tresorerie_providers.dart';
 import 'arrete_form_page.dart';
@@ -30,16 +31,13 @@ class _ComptesCourantsPageState extends ConsumerState<ComptesCourantsPage> {
     final async = ref.watch(comptesCourantsProvider(_perimetre));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Restitution des cotisations'),
-        actions: [
-          IconButton(
-            tooltip: 'Historique des arrêtés',
-            icon: const Icon(Icons.history_rounded),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const ArretesHistoryPage())),
-          ),
-        ],
+      appBar: AppHeader(
+        title: 'Restitution des cotisations',
+        action: AppHeaderAction(
+          icon: Icons.history_rounded,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const ArretesHistoryPage())),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(comptesCourantsProvider(_perimetre).future),

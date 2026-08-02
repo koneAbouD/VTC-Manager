@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/widgets/app_header.dart';
 import '../../domain/entities/compte_courant.dart';
 import '../providers/tresorerie_providers.dart';
 import 'arrete_detail_page.dart';
@@ -19,7 +20,7 @@ class ArretesHistoryPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(arretesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Arrêtés de compte')),
+      appBar: const AppHeader(title: 'Arrêtés de compte'),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(arretesProvider.future),
         child: async.when(

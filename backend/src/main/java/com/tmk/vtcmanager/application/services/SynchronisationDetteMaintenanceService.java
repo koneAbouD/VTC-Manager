@@ -132,9 +132,10 @@ public class SynchronisationDetteMaintenanceService {
     }
 
     private String description(Maintenance maintenance) {
-        return "Maintenance %s - %s".formatted(
-                maintenance.getType() != null ? maintenance.getType() : "AUTRE",
-                maintenance.getPartenaire() != null && maintenance.getPartenaire().getNom() != null
-                        ? maintenance.getPartenaire().getNom() : "Prestataire non renseigné");
+        // Sans partenaire, le libellé s'arrête au type (voir CompleteMaintenanceUseCase).
+        String prestataire = maintenance.getPartenaire() == null ? null : maintenance.getPartenaire().getNom();
+        return "Maintenance %s".formatted(
+                maintenance.getType() != null ? maintenance.getType() : "AUTRE")
+                + (prestataire == null || prestataire.isBlank() ? "" : " - " + prestataire);
     }
 }

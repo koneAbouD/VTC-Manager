@@ -74,10 +74,12 @@ public class CompleteMaintenanceUseCase {
         Maintenance saved = maintenanceRepository.save(maintenance);
 
         if (saved.getCout() != null && saved.getCout().compareTo(BigDecimal.ZERO) > 0) {
-            String commentaire = String.format("Maintenance %s - %s",
-                    saved.getType() != null ? saved.getType() : "AUTRE",
-                    saved.getPartenaire() != null && saved.getPartenaire().getNom() != null
-                            ? saved.getPartenaire().getNom() : "Prestataire non renseigné");
+            // Sans partenaire, le libellé s'arrête au type : « Prestataire non
+            // renseigné » n'apportait rien et polluait les listes d'opérations.
+            String prestataire = saved.getPartenaire() == null ? null : saved.getPartenaire().getNom();
+            String commentaire = String.format("Maintenance %s",
+                    saved.getType() != null ? saved.getType() : "AUTRE")
+                    + (prestataire == null || prestataire.isBlank() ? "" : " - " + prestataire);
 
             CategorieOperation categorie = categorieId != null
                     ? categorieRepository.findById(categorieId).orElse(null)

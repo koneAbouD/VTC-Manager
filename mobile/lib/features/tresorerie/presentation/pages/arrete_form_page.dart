@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/month_filter_pill.dart';
 import '../../domain/entities/compte_courant.dart';
 import '../providers/tresorerie_providers.dart';
@@ -202,7 +203,7 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
     final rien = apercu == null || apercu.lignes.isEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Arrêté — ${widget.libelle}')),
+      appBar: AppHeader(title: 'Arrêté — ${widget.libelle}'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
         children: [

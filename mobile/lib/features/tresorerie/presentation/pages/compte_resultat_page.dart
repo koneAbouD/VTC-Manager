@@ -22,6 +22,12 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
   int _annee = DateTime.now().year;
   String _base = 'CAISSE';
 
+  /// Amortissement pris en compte dans la marge par véhicule. Activé par
+  /// défaut : c'est la rentabilité réelle, une fois l'usure du véhicule payée.
+  /// Le désactiver revient à la marge sur coûts variables, utile pour comparer
+  /// l'exploitation de véhicules achetés à des prix très différents.
+  bool _amorti = true;
+
   @override
   Widget build(BuildContext context) {
     final crParams = (annee: _annee, mois: _mois, base: _base);
@@ -51,15 +57,27 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
             data: (cr) => _CascadeCard(cr: cr, base: _base),
           ),
           const SizedBox(height: 20),
-          const Text('Marge par véhicule',
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.dark)),
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Marge par véhicule',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.dark)),
+              ),
+              _AmortiToggle(
+                actif: _amorti,
+                onChanged: (v) => setState(() => _amorti = v),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
-          const Text(
-            'Produits − charges variables, sans imputation des charges fixes',
-            style: TextStyle(fontSize: 12, color: AppColors.label),
+          Text(
+            _amorti
+                ? 'Produits − charges variables − amortissement, sans imputation des charges fixes'
+                : 'Produits − charges variables, sans imputation des charges fixes',
+            style: const TextStyle(fontSize: 12, color: AppColors.label),
           ),
           const SizedBox(height: 8),
           asyncMarges.when(
@@ -74,7 +92,9 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
                         style: TextStyle(fontSize: 13, color: AppColors.label)),
                   )
                 : Column(
-                    children: [for (final m in marges) _MargeTile(m)],
+                    children: [
+                      for (final m in marges) _MargeTile(m, amorti: _amorti)
+                    ],
                   ),
           ),
         ],
@@ -124,6 +144,57 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
           label: const Text('Réessayer'),
         ),
       ],
+    );
+  }
+}
+
+/// Bascule « Amorti » de la marge par véhicule : pastille verte quand la
+/// dotation d'amortissement est retenue, grise quand elle est écartée.
+class _AmortiToggle extends StatelessWidget {
+  final bool actif;
+  final ValueChanged<bool> onChanged;
+
+  const _AmortiToggle({required this.actif, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: actif
+          ? 'Amortissement inclus dans la marge'
+          : 'Amortissement exclu de la marge',
+      child: InkWell(
+        onTap: () => onChanged(!actif),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: actif ? AppColors.primaryTint : AppColors.headerButton,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: actif ? AppColors.primary : AppColors.border,
+                width: 0.8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                actif
+                    ? Icons.check_circle_rounded
+                    : Icons.circle_outlined,
+                size: 14,
+                color: actif ? AppColors.primaryDark : AppColors.label,
+              ),
+              const SizedBox(width: 6),
+              Text('Amorti',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          actif ? AppColors.primaryDark : AppColors.label)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -281,13 +352,18 @@ class _CascadeCard extends StatelessWidget {
 
 class _MargeTile extends StatelessWidget {
   final MargeVehiculeData marge;
-  const _MargeTile(this.marge);
+
+  /// Amortissement retenu dans la marge affichée (bascule « Amorti »).
+  final bool amorti;
+
+  const _MargeTile(this.marge, {required this.amorti});
 
   @override
   Widget build(BuildContext context) {
-    // Rentabilité affichée = marge nette (après amortissement) dès qu'un
-    // amortissement s'applique ; sinon la marge sur coûts variables.
-    final aAmortissement = marge.dotationAmortissement > 0;
+    // Rentabilité affichée = marge nette (après amortissement) quand la bascule
+    // est active et qu'un amortissement s'applique ; sinon la marge sur coûts
+    // variables. Les deux montants viennent du backend, rien n'est recalculé ici.
+    final aAmortissement = amorti && marge.dotationAmortissement > 0;
     final valeurPrincipale = aAmortissement ? marge.margeNette : marge.marge;
     final negative = valeurPrincipale < 0;
     return Container(

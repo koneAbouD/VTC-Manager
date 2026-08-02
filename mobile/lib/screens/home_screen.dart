@@ -20,6 +20,9 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
+/// Index de l'onglet Accueil dans la barre de navigation principale.
+const _accueilNavIndex = 0;
+
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   static const _screens = <Widget>[
     AccueilScreen(),
@@ -61,21 +64,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           )
         : null;
 
-    return Scaffold(
-      appBar: AppHeader(
-        title: '',
-        showBack: false,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        leading: headerAction,
-      ),
-      body: IndexedStack(
-        index: currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: _FloatingNavBar(
-        selectedIndex: currentIndex,
-        onSelected: (i) =>
-            ref.read(homeTabIndexProvider.notifier).state = i,
+    // Les onglets n'ont pas de bouton retour : le retour système y ramène à
+    // l'Accueil au lieu de quitter l'application. Depuis l'Accueil lui-même,
+    // le geste garde son comportement normal (sortie de l'app).
+    return PopScope(
+      canPop: currentIndex == _accueilNavIndex,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        ref.read(homeTabIndexProvider.notifier).state = _accueilNavIndex;
+      },
+      child: Scaffold(
+        appBar: AppHeader(
+          title: '',
+          showBack: false,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          leading: headerAction,
+        ),
+        body: IndexedStack(
+          index: currentIndex,
+          children: _screens,
+        ),
+        bottomNavigationBar: _FloatingNavBar(
+          selectedIndex: currentIndex,
+          onSelected: (i) =>
+              ref.read(homeTabIndexProvider.notifier).state = i,
+        ),
       ),
     );
   }

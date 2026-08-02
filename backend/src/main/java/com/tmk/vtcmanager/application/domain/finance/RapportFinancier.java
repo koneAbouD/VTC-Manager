@@ -51,6 +51,10 @@ public class RapportFinancier {
         private Long id;
         private String type;
         private String description;
+        /** Code de la catégorie : permet au mobile de titrer les encaissements
+         *  comme la liste des opérations (« Encaissement recettes d'hier »). */
+        private String categorieCode;
+        private String categorieLibelle;
         private String chauffeurNom;
         private String vehiculeLabel;
         private BigDecimal montant;

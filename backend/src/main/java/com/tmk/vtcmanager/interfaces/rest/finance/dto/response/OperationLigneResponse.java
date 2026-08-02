@@ -7,6 +7,8 @@ public record OperationLigneResponse(
         Long id,
         String type,
         String description,
+        String categorieCode,
+        String categorieLibelle,
         String chauffeurNom,
         String vehiculeLabel,
         BigDecimal montant,

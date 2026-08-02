@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/widgets/app_header.dart';
+import '../../core/utils/libelle_operation.dart';
 import '../../core/widgets/month_filter_pill.dart';
 import '../../core/widgets/responsive_field_row.dart' show kFormPhoneBreakpoint;
 import '../home_nav_provider.dart';
@@ -31,6 +32,8 @@ class OperationLigne {
   final int id;
   final String type;
   final String? description;
+  final String? categorieCode;
+  final String? categorieLibelle;
   final String? chauffeurNom;
   final String? vehiculeLabel;
   final double montant;
@@ -39,6 +42,8 @@ class OperationLigne {
       {required this.id,
       required this.type,
       this.description,
+      this.categorieCode,
+      this.categorieLibelle,
       this.chauffeurNom,
       this.vehiculeLabel,
       required this.montant,
@@ -48,11 +53,30 @@ class OperationLigne {
         id: j['id'] ?? 0,
         type: j['type'] ?? '',
         description: j['description'],
+        categorieCode: j['categorieCode'],
+        categorieLibelle: j['categorieLibelle'],
         chauffeurNom: j['chauffeurNom'],
         vehiculeLabel: j['vehiculeLabel'],
         montant: (j['montant'] as num?)?.toDouble() ?? 0,
         date: j['date'] ?? '',
       );
+
+  /// Titre de la ligne, aligné sur la liste des opérations : un encaissement
+  /// affiche la période réglée (« Encaissement recettes d'hier »), les autres
+  /// opérations gardent leur description (commentaire / sous-catégorie).
+  String get titreLigne {
+    final jour = DateTime.tryParse(date);
+    if (estCategorieEncaissement(categorieCode) &&
+        categorieLibelle != null &&
+        jour != null) {
+      return libelleLigneOperation(
+        categorieCode: categorieCode,
+        categorie: categorieLibelle!,
+        date: jour,
+      );
+    }
+    return description ?? '—';
+  }
 }
 
 class RapportFinancierData {
@@ -602,14 +626,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                 style:
                     TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             TextButton(
-              // Revient au hub Finances et ouvre l'onglet Opérations déjà
-              // filtré sur le type courant (Revenus / Dépenses).
-              onPressed: () {
-                ref.read(operationsTypeFiltreProvider.notifier).state =
-                    _showRevenus ? 'REVENU' : 'DEPENSE';
-                ref.read(financeTabIndexProvider.notifier).state = 2;
-                Navigator.pop(context);
-              },
+              onPressed: _ouvrirOngletOperations,
               child: const Text('Tout afficher',
                   style: TextStyle(fontSize: 13)),
             ),
@@ -621,9 +638,18 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                 ? op.type == 'REVENU'
                 : op.type == 'DEPENSE')
             .take(10)
-            .map((op) => _OperationTile(op: op)),
+            .map((op) => _OperationTile(op: op, onTap: _ouvrirOngletOperations)),
       ],
     );
+  }
+
+  /// Revient au hub Finances et ouvre l'onglet Opérations déjà filtré sur le
+  /// type courant (Revenus / Dépenses).
+  void _ouvrirOngletOperations() {
+    ref.read(operationsTypeFiltreProvider.notifier).state =
+        _showRevenus ? 'REVENU' : 'DEPENSE';
+    ref.read(financeTabIndexProvider.notifier).state = FinanceTab.operations;
+    Navigator.pop(context);
   }
 
   void _toggleGroupBy() {
@@ -637,7 +663,12 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
 /// « véhicule - chauffeur · date ».
 class _OperationTile extends StatelessWidget {
   final OperationLigne op;
-  const _OperationTile({required this.op});
+
+  /// Ouvre l'onglet Opérations : le rapport ne connaît pas l'entité complète,
+  /// donc la ligne renvoie vers la liste plutôt que vers un détail.
+  final VoidCallback onTap;
+
+  const _OperationTile({required this.op, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -648,7 +679,7 @@ class _OperationTile extends StatelessWidget {
     // suffit à distinguer les revenus.
     final sign = isRevenu ? '' : '-';
 
-    final titre = op.description ?? '—';
+    final titre = op.titreLigne;
     final vehiculeChauffeur = [
       if (op.vehiculeLabel != null) op.vehiculeLabel!,
       if (op.chauffeurNom != null) op.chauffeurNom!,
@@ -659,7 +690,9 @@ class _OperationTile extends StatelessWidget {
     final dateLabel =
         parsed != null ? DateFormat('dd/MM', 'fr_FR').format(parsed) : op.date;
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -747,6 +780,7 @@ class _OperationTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

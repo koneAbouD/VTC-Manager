@@ -83,8 +83,9 @@ class AccueilScreen extends ConsumerWidget {
               child: TextButton.icon(
                 onPressed: () {
                   // Redirige vers le hub Finances (index 3) sur le sous-onglet
-                  // Opérations (index 2), au lieu d'ouvrir une page séparée.
-                  ref.read(financeTabIndexProvider.notifier).state = 2;
+                  // Opérations, au lieu d'ouvrir une page séparée.
+                  ref.read(financeTabIndexProvider.notifier).state =
+                      FinanceTab.operations;
                   ref.read(homeTabIndexProvider.notifier).state = 3;
                 },
                 icon: const Icon(Icons.unfold_more_rounded, size: 16),
