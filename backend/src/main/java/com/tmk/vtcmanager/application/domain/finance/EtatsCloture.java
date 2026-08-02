@@ -38,6 +38,15 @@ public class EtatsCloture {
 
     // Compte de résultat, base engagement
     private BigDecimal produitsEngagement;
+    /**
+     * Charges variables engagées sur le mois — factures partenaire reçues
+     * comprises, réglées ou non. {@code null} sur les photos antérieures à
+     * l'archivage des deux bases : la lecture retombe alors sur les charges
+     * caisse.
+     */
+    private BigDecimal chargesVariablesEngagement;
+    /** Charges fixes engagées sur le mois. Même convention de {@code null}. */
+    private BigDecimal chargesFixesEngagement;
     private BigDecimal resultatEngagement;
     private BigDecimal pontCreances;
 
@@ -54,6 +63,11 @@ public class EtatsCloture {
     private BigDecimal detteEtat;
     /** Reste dû aux fournisseurs au dernier jour de la période. */
     private BigDecimal dettesFournisseurs;
+    /**
+     * Cotisations détenues au dernier jour de la période, brutes de toute
+     * compensation avec les créances des chauffeurs.
+     */
+    private BigDecimal depotsCotisations;
     private BigDecimal situationNette;
 
     /** Justification de la ligne « trésorerie », compte par compte. */

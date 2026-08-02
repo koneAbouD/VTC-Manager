@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.application.usecases.finance;
 import com.tmk.vtcmanager.application.domain.finance.BilanGestion;
 import com.tmk.vtcmanager.application.domain.finance.CreanceChauffeur;
 import com.tmk.vtcmanager.application.domain.tresorerie.CompteAvecSolde;
+import com.tmk.vtcmanager.application.ports.persistence.CompteCourantRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.FacturePartenaireRepository;
@@ -21,6 +22,7 @@ public class GetBilanUseCase {
     private final FinanceReportingRepository reportingRepository;
     private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
     private final FacturePartenaireRepository facturePartenaireRepository;
+    private final CompteCourantRepository compteCourantRepository;
 
     /**
      * Bilan de gestion à aujourd'hui : chaque poste est un calcul dérivé
@@ -48,8 +50,14 @@ public class GetBilanUseCase {
         BigDecimal immobilisations = reportingRepository.immobilisationsNettes(aujourdHui);
         BigDecimal detteEtat = creanceRepository.getMontantAReverserEtat();
         BigDecimal dettesFournisseurs = facturePartenaireRepository.detteALaDate(aujourdHui);
+        // Les cotisations encaissées sont dans la trésorerie ci-dessus, mais
+        // elles ne sont pas à l'entreprise : leur contrepartie au passif est ce
+        // qui empêche la situation nette de les compter comme un gain.
+        BigDecimal depotsCotisations =
+                compteCourantRepository.fondsCotisationsALaDate(aujourdHui);
 
         BigDecimal totalActif = tresorerie.add(creancesNettes).add(immobilisations);
+        BigDecimal totalDettes = detteEtat.add(dettesFournisseurs).add(depotsCotisations);
 
         return BilanGestion.builder()
                 .date(aujourdHui)
@@ -61,7 +69,8 @@ public class GetBilanUseCase {
                 .totalActif(totalActif)
                 .detteEtatContraventions(detteEtat)
                 .dettesFournisseurs(dettesFournisseurs)
-                .situationNette(totalActif.subtract(detteEtat).subtract(dettesFournisseurs))
+                .depotsCotisations(depotsCotisations)
+                .situationNette(totalActif.subtract(totalDettes))
                 .build();
     }
 }

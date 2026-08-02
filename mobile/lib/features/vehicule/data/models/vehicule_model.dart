@@ -23,6 +23,8 @@ class VehiculeModel extends Vehicule {
     super.dateAchat,
     super.prixAchat,
     super.dureeAmortissementMois,
+    super.dureeAmortissementEffective,
+    super.valeurNetteComptable,
     super.dateProchaineMaintenance,
     super.dateMiseEnCirculation,
     super.dateEntreeFlotte,
@@ -75,6 +77,10 @@ class VehiculeModel extends Vehicule {
             : null,
         prixAchat: (json['prixAchat'] as num?)?.toDouble(),
         dureeAmortissementMois: json['dureeAmortissementMois'] as int?,
+        // Servis par la fiche détail seulement : la liste ne les porte pas.
+        dureeAmortissementEffective: json['dureeAmortissementEffective'] as int?,
+        valeurNetteComptable:
+            (json['valeurNetteComptable'] as num?)?.toDouble(),
         dateProchaineMaintenance: json['dateProchaineMaintenance'] != null
             ? DateTime.parse(json['dateProchaineMaintenance'] as String)
             : null,

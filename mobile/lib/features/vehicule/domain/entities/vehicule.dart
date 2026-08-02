@@ -38,8 +38,19 @@ class Vehicule {
   /// côté module Finances.
   final double? prixAchat;
 
-  /// Durée d'amortissement linéaire en mois (60 par défaut côté backend).
+  /// Durée d'amortissement linéaire en mois, propre au véhicule. `null` quand il
+  /// suit la durée globale des paramètres.
   final int? dureeAmortissementMois;
+
+  /// Durée réellement appliquée : l'override ci-dessus, sinon le paramètre
+  /// global, sinon 60. Calculée par le backend, `null` hors fiche détail.
+  final int? dureeAmortissementEffective;
+
+  /// Valeur nette comptable du jour, calculée par le backend sur le même plan
+  /// d'amortissement que l'actif du bilan — au prorata des jours écoulés depuis
+  /// l'entrée en flotte, pas des mois. `null` si le véhicule n'est pas
+  /// amortissable (prix d'achat absent) ou hors fiche détail.
+  final double? valeurNetteComptable;
   final DateTime? dateProchaineMaintenance;
   final DateTime? dateMiseEnCirculation;
   final DateTime? dateEntreeFlotte;
@@ -69,6 +80,8 @@ class Vehicule {
     this.dateAchat,
     this.prixAchat,
     this.dureeAmortissementMois,
+    this.dureeAmortissementEffective,
+    this.valeurNetteComptable,
     this.dateProchaineMaintenance,
     this.dateMiseEnCirculation,
     this.dateEntreeFlotte,
@@ -125,6 +138,10 @@ class Vehicule {
       prixAchat: prixAchat ?? this.prixAchat,
       dureeAmortissementMois:
           dureeAmortissementMois ?? this.dureeAmortissementMois,
+      // Calculées par le backend : jamais recopiées depuis l'appelant, mais
+      // conservées pour qu'une copie ne vide pas la VNC déjà affichée.
+      dureeAmortissementEffective: dureeAmortissementEffective,
+      valeurNetteComptable: valeurNetteComptable,
       dateProchaineMaintenance:
           dateProchaineMaintenance ?? this.dateProchaineMaintenance,
       dateMiseEnCirculation:
@@ -136,34 +153,6 @@ class Vehicule {
   }
 
   String get displayName => '$marque $modele';
-
-  /// Point de départ de l'amortissement : date d'achat, à défaut entrée flotte
-  /// puis mise en circulation (même règle que le backend).
-  DateTime? get _departAmortissement =>
-      dateAchat ?? dateEntreeFlotte ?? dateMiseEnCirculation;
-
-  /// Durée d'amortissement effective : override du véhicule, à défaut la durée
-  /// globale fournie, à défaut 60 mois. Aligné sur le COALESCE du backend.
-  int dureeAmortissementEffective(int? dureeGlobale) =>
-      dureeAmortissementMois ?? dureeGlobale ?? 60;
-
-  /// Valeur nette comptable estimée = prix × (1 − mois écoulés / durée), bornée
-  /// à 0. Amortissement linéaire, aligné sur le calcul du bilan côté backend.
-  /// [dureeGlobale] = paramètre global appliqué si le véhicule n'a pas d'override.
-  /// `null` si le prix d'achat ou le point de départ est inconnu (affichage
-  /// indicatif ; la source comptable reste le bilan du module Finances).
-  double? valeurNetteComptable({int? dureeGlobale}) {
-    final prix = prixAchat;
-    final depart = _departAmortissement;
-    final duree = dureeAmortissementEffective(dureeGlobale);
-    if (prix == null || depart == null || duree <= 0) return null;
-    final now = DateTime.now();
-    final moisEcoules =
-        (now.year - depart.year) * 12 + (now.month - depart.month);
-    if (moisEcoules <= 0) return prix;
-    final vnc = prix * (1 - moisEcoules / duree);
-    return vnc < 0 ? 0 : vnc;
-  }
 
   bool get isDisponible => statut == 'DISPONIBLE';
   bool get isEnService => statut == 'EN_SERVICE';

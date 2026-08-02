@@ -10,6 +10,7 @@ import com.tmk.vtcmanager.application.domain.tresorerie.CompteTresorerie;
 import com.tmk.vtcmanager.application.exception.PeriodeNonCloturableException;
 import com.tmk.vtcmanager.application.ports.persistence.CloturePeriodeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
+import com.tmk.vtcmanager.application.ports.persistence.CompteCourantRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
@@ -32,6 +33,7 @@ public class CloturerPeriodeUseCase {
     private final CloturePeriodeRepository cloturePeriodeRepository;
     private final ClotureCaisseRepository clotureCaisseRepository;
     private final CompteTresorerieRepository compteTresorerieRepository;
+    private final CompteCourantRepository compteCourantRepository;
     private final CreanceRepository creanceRepository;
     private final FinanceReportingRepository reportingRepository;
     private final EtatsClotureRepository etatsClotureRepository;
@@ -154,7 +156,12 @@ public class CloturerPeriodeUseCase {
         // La dette fournisseurs, elle, se rejoue à la date : elle est arrêtée au
         // dernier jour de la période, comme la trésorerie.
         BigDecimal dettesFournisseurs = facturePartenaireRepository.detteALaDate(fin);
+        // Les dépôts de cotisation se rejouent aussi : une cotisation restituée
+        // depuis était bien détenue au dernier jour du mois clôturé.
+        BigDecimal depotsCotisations = compteCourantRepository.fondsCotisationsALaDate(fin);
+
         BigDecimal totalActif = tresorerie.add(creancesNettes).add(immobilisations);
+        BigDecimal totalDettes = detteEtat.add(dettesFournisseurs).add(depotsCotisations);
 
         return EtatsCloture.builder()
                 .cloturePeriodeId(cloture.getId())
@@ -167,6 +174,12 @@ public class CloturerPeriodeUseCase {
                 .dotationProvisions(dotation)
                 .resultatCaisse(caisse.getResultatGestion())
                 .produitsEngagement(engagement.getProduitsExploitation())
+                // Les charges des deux bases sont archivées séparément : une
+                // facture reçue et non réglée dans le mois pèse sur l'engagement
+                // et pas sur la caisse. Croiser les deux jeux ferait diverger le
+                // mois relu du résultat publié.
+                .chargesVariablesEngagement(engagement.getChargesVariables())
+                .chargesFixesEngagement(engagement.getChargesFixes())
                 .resultatEngagement(engagement.getResultatGestion())
                 .pontCreances(caisse.getPontCreances())
                 .tresorerie(tresorerie)
@@ -177,7 +190,8 @@ public class CloturerPeriodeUseCase {
                 .totalActif(totalActif)
                 .detteEtat(detteEtat)
                 .dettesFournisseurs(dettesFournisseurs)
-                .situationNette(totalActif.subtract(detteEtat).subtract(dettesFournisseurs))
+                .depotsCotisations(depotsCotisations)
+                .situationNette(totalActif.subtract(totalDettes))
                 .soldes(soldes)
                 .build();
     }

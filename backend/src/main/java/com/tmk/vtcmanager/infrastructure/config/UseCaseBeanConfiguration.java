@@ -89,6 +89,7 @@ import com.tmk.vtcmanager.application.usecases.finance.GetCloturesPeriodeUseCase
 import com.tmk.vtcmanager.application.usecases.finance.GetCompteResultatUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCreancesChauffeurUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetCreancesVehiculeUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetAmortissementVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetMargesParVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetProvisionCreancesUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetRapportFinancierUseCase;
@@ -1456,11 +1457,10 @@ public class UseCaseBeanConfiguration {
             CategorieOperationRepository categorieOperationRepository,
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService,
-            AuteurCourant auteurCourant,
-            CaisseClotureeGuard caisseClotureeGuard) {
+            AuteurCourant auteurCourant) {
         return new ImputerEcartCaisseUseCase(clotureCaisseRepository, operationFinanciereRepository,
                 categorieOperationRepository, periodeClotureeGuard, sequenceReferenceService,
-                auteurCourant, caisseClotureeGuard);
+                auteurCourant);
     }
 
     @Bean
@@ -1523,6 +1523,12 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public GetAmortissementVehiculeUseCase getAmortissementVehiculeUseCase(
+            FinanceReportingRepository repo) {
+        return new GetAmortissementVehiculeUseCase(repo);
+    }
+
+    @Bean
     public GetRapportFinancierUseCase getRapportFinancierUseCase(OperationFinanciereRepository repo) {
         return new GetRapportFinancierUseCase(repo);
     }
@@ -1533,9 +1539,11 @@ public class UseCaseBeanConfiguration {
             CreanceRepository creanceRepository,
             FinanceReportingRepository reportingRepository,
             GetProvisionCreancesUseCase getProvisionCreancesUseCase,
-            FacturePartenaireRepository facturePartenaireRepository) {
+            FacturePartenaireRepository facturePartenaireRepository,
+            CompteCourantRepository compteCourantRepository) {
         return new GetBilanUseCase(compteTresorerieRepository, creanceRepository,
-                reportingRepository, getProvisionCreancesUseCase, facturePartenaireRepository);
+                reportingRepository, getProvisionCreancesUseCase, facturePartenaireRepository,
+                compteCourantRepository);
     }
 
     @Bean
@@ -1548,6 +1556,7 @@ public class UseCaseBeanConfiguration {
             CloturePeriodeRepository repo,
             ClotureCaisseRepository clotureCaisseRepository,
             CompteTresorerieRepository compteTresorerieRepository,
+            CompteCourantRepository compteCourantRepository,
             CreanceRepository creanceRepository,
             FinanceReportingRepository reportingRepository,
             EtatsClotureRepository etatsClotureRepository,
@@ -1556,7 +1565,7 @@ public class UseCaseBeanConfiguration {
             DotationProvisionService dotationProvisionService,
             FacturePartenaireRepository facturePartenaireRepository) {
         return new CloturerPeriodeUseCase(repo, clotureCaisseRepository, compteTresorerieRepository,
-                creanceRepository, reportingRepository, etatsClotureRepository,
+                compteCourantRepository, creanceRepository, reportingRepository, etatsClotureRepository,
                 getCompteResultatUseCase, getProvisionCreancesUseCase, dotationProvisionService, facturePartenaireRepository);
     }
 

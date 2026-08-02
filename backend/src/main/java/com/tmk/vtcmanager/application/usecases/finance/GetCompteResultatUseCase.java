@@ -100,21 +100,30 @@ public class GetCompteResultatUseCase {
 
     /** Relit la cascade telle qu'elle a été figée, sans rien recalculer. */
     private CompteResultat depuisArchive(EtatsCloture e, BaseComptable base) {
-        BigDecimal produits = base == BaseComptable.ENGAGEMENT
-                ? e.getProduitsEngagement() : e.getProduitsCaisse();
+        boolean engagement = base == BaseComptable.ENGAGEMENT;
+        BigDecimal produits = engagement ? e.getProduitsEngagement() : e.getProduitsCaisse();
+        // Chaque base relit ses propres charges : croiser des produits engagement
+        // avec des charges caisse ferait diverger le mois relu du résultat publié
+        // dès qu'une facture a été reçue sans être réglée dans le mois. Les
+        // photos antérieures à leur archivage n'ont que celles de la caisse — on
+        // les sert plutôt que de faire passer une donnée absente pour zéro.
+        BigDecimal chargesVariables = engagement && e.getChargesVariablesEngagement() != null
+                ? e.getChargesVariablesEngagement() : e.getChargesVariables();
+        BigDecimal chargesFixes = engagement && e.getChargesFixesEngagement() != null
+                ? e.getChargesFixesEngagement() : e.getChargesFixes();
         // Les photos antérieures à cette fonctionnalité n'ont pas de dotation.
         BigDecimal dotation = e.getDotationProvisions() != null
                 ? e.getDotationProvisions() : BigDecimal.ZERO;
-        BigDecimal marge = produits.subtract(e.getChargesVariables());
-        BigDecimal ebe = marge.subtract(e.getChargesFixes());
+        BigDecimal marge = produits.subtract(chargesVariables);
+        BigDecimal ebe = marge.subtract(chargesFixes);
         return CompteResultat.builder()
                 .annee(e.getAnnee())
                 .mois(e.getMois())
                 .base(base)
                 .produitsExploitation(produits)
-                .chargesVariables(e.getChargesVariables())
+                .chargesVariables(chargesVariables)
                 .margeSurCoutsVariables(marge)
-                .chargesFixes(e.getChargesFixes())
+                .chargesFixes(chargesFixes)
                 .excedentBrutExploitation(ebe)
                 .amortissements(e.getAmortissements())
                 .dotationProvisions(dotation)

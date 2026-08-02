@@ -28,21 +28,25 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
                 INSERT INTO etats_cloture_periode (
                     cloture_periode_id, produits_caisse, charges_variables, charges_fixes,
                     amortissements, dotation_provisions, resultat_caisse,
-                    produits_engagement, resultat_engagement,
+                    produits_engagement, charges_variables_engagement,
+                    charges_fixes_engagement, resultat_engagement,
                     pont_creances, tresorerie, creances_chauffeurs, provision_creances,
                     creances_nettes, immobilisations_nettes,
-                    total_actif, dette_etat, dettes_fournisseurs, situation_nette,
+                    total_actif, dette_etat, dettes_fournisseurs, depots_cotisations,
+                    situation_nette,
                     created_at, updated_at, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
                 RETURNING id
                 """, Long.class,
                 e.getCloturePeriodeId(), e.getProduitsCaisse(), e.getChargesVariables(),
                 e.getChargesFixes(), e.getAmortissements(), e.getDotationProvisions(),
                 e.getResultatCaisse(),
-                e.getProduitsEngagement(), e.getResultatEngagement(), e.getPontCreances(),
+                e.getProduitsEngagement(), e.getChargesVariablesEngagement(),
+                e.getChargesFixesEngagement(), e.getResultatEngagement(), e.getPontCreances(),
                 e.getTresorerie(), e.getCreancesChauffeurs(), e.getProvisionCreances(),
                 e.getCreancesNettes(), e.getImmobilisationsNettes(),
                 e.getTotalActif(), e.getDetteEtat(), e.getDettesFournisseurs(),
+                e.getDepotsCotisations(),
                 e.getSituationNette(), auteurCourant.nom());
         e.setId(id);
 
@@ -78,6 +82,10 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
                         .dotationProvisions(rs.getBigDecimal("dotation_provisions"))
                         .resultatCaisse(rs.getBigDecimal("resultat_caisse"))
                         .produitsEngagement(rs.getBigDecimal("produits_engagement"))
+                        // NULL sur les photos antérieures : la lecture retombe
+                        // alors sur les charges caisse.
+                        .chargesVariablesEngagement(rs.getBigDecimal("charges_variables_engagement"))
+                        .chargesFixesEngagement(rs.getBigDecimal("charges_fixes_engagement"))
                         .resultatEngagement(rs.getBigDecimal("resultat_engagement"))
                         .pontCreances(rs.getBigDecimal("pont_creances"))
                         .tresorerie(rs.getBigDecimal("tresorerie"))
@@ -88,6 +96,7 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
                         .totalActif(rs.getBigDecimal("total_actif"))
                         .detteEtat(rs.getBigDecimal("dette_etat"))
                         .dettesFournisseurs(rs.getBigDecimal("dettes_fournisseurs"))
+                        .depotsCotisations(rs.getBigDecimal("depots_cotisations"))
                         .situationNette(rs.getBigDecimal("situation_nette"))
                         .build(),
                 annee, mois);

@@ -17,6 +17,7 @@ import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/network_photo_viewer.dart';
 import '../../../../core/widgets/premium_select_field.dart';
 import '../../../../core/widgets/responsive_field_row.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 import '../../data/datasources/referentiel_datasource.dart';
 import '../../domain/entities/vehicule.dart';
 import '../providers/documents_by_vehicule_provider.dart';
@@ -635,6 +636,15 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     }
 
     if (!mounted) return;
+
+    // Le véhicule est une immobilisation : son prix d'achat, sa durée
+    // d'amortissement et ses dates d'entrée pilotent la dotation du compte de
+    // résultat et sa valeur nette au bilan. Saisir un prix doit donc mettre à
+    // jour les états tout de suite, sans attendre un retour par la barre
+    // d'onglets — seul déclencheur jusqu'ici. Après le garde `mounted` : les
+    // uploads qui précèdent peuvent avoir duré, et `ref` ne survit pas à la
+    // fermeture de l'écran.
+    refreshFinances(ref);
 
     if (_isEditing) {
       // Pas d'alerte de succès : la fermeture + le refresh de la liste suffisent.

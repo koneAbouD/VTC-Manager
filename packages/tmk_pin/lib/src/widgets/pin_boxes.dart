@@ -133,39 +133,46 @@ class _Box extends StatelessWidget {
       duration: _duration,
       curve: _curve,
       scale: active && !inError ? 1.05 : 1,
-      child: AnimatedContainer(
-        duration: _duration,
-        curve: _curve,
+      // Le côté est posé sec, hors de l'AnimatedContainer : quand la largeur
+      // disponible change (rotation, redimensionnement), la case doit adopter
+      // sa nouvelle taille au frame suivant. Animée, elle traînerait 180 ms à
+      // l'ancienne — cinq cases trop larges, donc une rangée qui déborde le
+      // temps de la transition. Seule la décoration s'anime.
+      child: SizedBox(
         width: size,
         height: size,
-        decoration: BoxDecoration(
-          color: filled ? theme.tintColor : theme.fillColor,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: borderColor,
-            width: active || filled ? 2 : 1.2,
-          ),
-          boxShadow: active && !inError
-              ? [
-                  BoxShadow(
-                    color: theme.accent.withValues(alpha: 0.18),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: AnimatedScale(
+        child: AnimatedContainer(
           duration: _duration,
-          curve: Curves.easeOutBack,
-          scale: filled ? 1 : 0,
-          child: Container(
-            width: size * 0.26,
-            height: size * 0.26,
-            decoration: BoxDecoration(
-              color: inError ? theme.error : theme.filled,
-              shape: BoxShape.circle,
+          curve: _curve,
+          decoration: BoxDecoration(
+            color: filled ? theme.tintColor : theme.fillColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: borderColor,
+              width: active || filled ? 2 : 1.2,
+            ),
+            boxShadow: active && !inError
+                ? [
+                    BoxShadow(
+                      color: theme.accent.withValues(alpha: 0.18),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: AnimatedScale(
+            duration: _duration,
+            curve: Curves.easeOutBack,
+            scale: filled ? 1 : 0,
+            child: Container(
+              width: size * 0.26,
+              height: size * 0.26,
+              decoration: BoxDecoration(
+                color: inError ? theme.error : theme.filled,
+                shape: BoxShape.circle,
+              ),
             ),
           ),
         ),

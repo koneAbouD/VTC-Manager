@@ -13,7 +13,6 @@ import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepos
 import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
-import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,12 +30,16 @@ import java.time.LocalDateTime;
  *       l'excédent (produit). L'écart entre alors dans le résultat, au mois de
  *       la décision.</li>
  *   <li>{@code RECOUVREE} : le responsable rembourse. Le compte d'attente est
- *       soldé sans passer par le résultat — l'encaissement du remboursement se
- *       saisit comme une recette ordinaire sur le compte de trésorerie.</li>
+ *       soldé sans passer par le résultat — la somme devient une créance sur
+ *       lui. L'encaissement du remboursement se saisit ensuite avec la
+ *       catégorie « Remboursement d'écart de caisse », hors résultat : c'est
+ *       l'extinction de cette créance, pas un produit.</li>
  * </ul>
  *
- * <p>Le montant de la caisse ne bouge plus : il a déjà été réaligné au comptage.
- * Cette écriture ne déplace donc pas de trésorerie, elle qualifie l'écart.
+ * <p>Aucune de ces écritures ne mouvemente le compte de trésorerie : la caisse a
+ * déjà été réalignée sur le comptage au moment de la clôture. Leur rattacher un
+ * compte reviendrait à faire entrer une seconde fois un argent qui n'a pas
+ * bougé — et, en {@code RECOUVREE}, à encaisser le remboursement deux fois.
  */
 @RequiredArgsConstructor
 public class ImputerEcartCaisseUseCase {
@@ -52,7 +55,6 @@ public class ImputerEcartCaisseUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final AuteurCourant auteurCourant;
-    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public ClotureCaisse executer(Long clotureId, StatutImputationEcart decision, String motif) {
@@ -72,7 +74,11 @@ public class ImputerEcartCaisseUseCase {
 
         LocalDate date = LocalDate.now();
         periodeClotureeGuard.verifier(date);
-        caisseClotureeGuard.verifier(cloture.getCompteId(), date);
+        // Pas de verrou de caisse ici : l'imputation ne mouvemente aucun compte
+        // de trésorerie, elle ne peut donc pas faire mentir un comptage. L'exiger
+        // interdirait au contraire d'imputer l'écart de la veille sur une caisse
+        // comptée quotidiennement — alors que la clôture du mois réclame
+        // justement qu'aucun écart ne reste en attente.
 
         boolean excedent = cloture.getEcart().compareTo(BigDecimal.ZERO) > 0;
         BigDecimal montant = cloture.getEcart().abs();
@@ -103,7 +109,7 @@ public class ImputerEcartCaisseUseCase {
                 .typeOperation(excedent ? TypeOperation.DEPENSE : TypeOperation.REVENU)
                 .categorie(attente)
                 .montant(montant)
-                .compteTresorerieId(cloture.getCompteId())
+                // Sans compte de trésorerie : voir l'en-tête de classe.
                 .dateOperation(date)
                 .statut(excedent ? StatutOperation.PAYE : StatutOperation.ENCAISSE)
                 .reference(sequenceReferenceService.suivante(
@@ -121,7 +127,7 @@ public class ImputerEcartCaisseUseCase {
                 .typeOperation(excedent ? TypeOperation.REVENU : TypeOperation.DEPENSE)
                 .categorie(resultat)
                 .montant(montant)
-                .compteTresorerieId(cloture.getCompteId())
+                // Sans compte de trésorerie : voir l'en-tête de classe.
                 .dateOperation(date)
                 .statut(excedent ? StatutOperation.ENCAISSE : StatutOperation.PAYE)
                 .reference(sequenceReferenceService.suivante(

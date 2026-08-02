@@ -22,6 +22,7 @@ import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CreanceVehiculeRe
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.LigneCreanceResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.MargeVehiculeResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -125,7 +126,8 @@ public class FinanceController {
                 bilan.getCreancesChauffeurs(), bilan.getProvisionCreances(),
                 bilan.getCreancesNettes(), bilan.getImmobilisationsNettes(),
                 bilan.getTotalActif(), bilan.getDetteEtatContraventions(),
-                bilan.getDettesFournisseurs(), bilan.getSituationNette());
+                bilan.getDettesFournisseurs(), bilan.getDepotsCotisations(),
+                bilan.getSituationNette());
     }
 
     /**
@@ -156,7 +158,13 @@ public class FinanceController {
 
     // ── Clôture de période ───────────────────────────────────────────────
 
+    /**
+     * Réservé à l'administrateur : clôturer fige définitivement un mois pour
+     * toute l'entreprise et publie ses états. Séparer cet acte de la saisie
+     * quotidienne est le minimum de séparation des tâches.
+     */
     @PostMapping("/clotures-periode")
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     public CloturePeriodeResponse cloturerPeriode(@RequestBody Map<String, Integer> body) {
         var cloture = cloturerPeriodeUseCase.executer(body.get("annee"), body.get("mois"));

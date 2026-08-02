@@ -136,16 +136,30 @@ class _EncaissementRapideSheetState
 
   // ── Montants restants ──────────────────────────────────────────────────────
 
-  double get _recetteRestant {
-    if (_ligneRecette == null) return 0;
-    return _ligneRecette!.montantRestant ?? double.maxFinite;
+  /// Restant de la recette, ou `null` s'il est inconnu (recette libre, sans
+  /// montant attendu).
+  static double? _restantRecette(LigneRecette? l) => l?.montantRestant;
+
+  static double? _restantCotisation(LigneCotisation? l) => l == null
+      ? null
+      : (l.montantRestant ?? (l.montantDu - l.montantEncaisse));
+
+  /// Somme des restants des lignes actives, ou `null` si aucun n'est connu.
+  static double? _totalRestant(LigneRecette? r, LigneCotisation? c) {
+    final rr = _restantRecette(r);
+    final cc = _restantCotisation(c);
+    if (rr == null && cc == null) return null;
+    return (rr ?? 0) + (cc ?? 0);
   }
 
-  double get _cotisationRestant {
-    if (_ligneCotisation == null) return 0;
-    final l = _ligneCotisation!;
-    return l.montantRestant ?? (l.montantDu - l.montantEncaisse);
-  }
+  double get _recetteRestant =>
+      _ligneRecette == null ? 0 : (_restantRecette(_ligneRecette) ?? double.maxFinite);
+
+  double get _cotisationRestant => _restantCotisation(_ligneCotisation) ?? 0;
+
+  /// Formatage brut (sans séparateur) pour rester saisissable et parsable.
+  static String _formatSaisie(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
 
   // ── Répartition : recette d'abord, cotisation ensuite ─────────────────────
 
@@ -205,11 +219,16 @@ class _EncaissementRapideSheetState
       err = 'Aucune ligne active (recette ou cotisation) pour ce véhicule';
     }
 
+    // Préremplissage : total restant des lignes actives trouvées.
+    final total = err != null ? null : _totalRestant(ligneR, ligneC);
+
     setState(() {
       _lignesStatus    = err != null ? _LignesStatus.error : _LignesStatus.loaded;
       _ligneRecette    = ligneR;
       _ligneCotisation = ligneC;
       _lignesError     = err;
+      _montantCtrl.text =
+          (total != null && total > 0) ? _formatSaisie(total) : '';
     });
   }
 
@@ -300,14 +319,7 @@ class _EncaissementRapideSheetState
     final lignesLoading  = _lignesStatus == _LignesStatus.loading;
     final lignesError    = _lignesStatus == _LignesStatus.error;
 
-    final recetteMax   = _ligneRecette?.montantRestant;
-    final cotisMax     = _ligneCotisation?.montantRestant ??
-        (_ligneCotisation != null
-            ? _ligneCotisation!.montantDu - _ligneCotisation!.montantEncaisse
-            : null);
-    final totalRestantConnu = (recetteMax != null && cotisMax != null)
-        ? recetteMax + cotisMax
-        : (recetteMax ?? cotisMax);
+    final totalRestantConnu = _totalRestant(_ligneRecette, _ligneCotisation);
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + keyboardHeight + bottomSafe),

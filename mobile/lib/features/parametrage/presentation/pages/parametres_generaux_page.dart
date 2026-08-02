@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/exception.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 import '../../data/parametrage_api.dart';
 import '../providers/parametrage_providers.dart';
 
@@ -43,6 +44,13 @@ class _ParametresGenerauxPageState
           .read(parametrageApiProvider)
           .mettreAJourParametre(p.cle, valeur);
       ref.invalidate(parametresProvider);
+      // Plusieurs paramètres pilotent directement les états : la durée
+      // d'amortissement commande la dotation et la valeur nette des véhicules
+      // qui n'ont pas de durée propre, les taux de provision commandent la
+      // dépréciation des créances. On rafraîchit sans distinguer la clé : ces
+      // réglages changent rarement, et une nouvelle clé financière serait
+      // sinon oubliée ici.
+      refreshFinances(ref);
       if (!mounted) return;
       _toast('Paramètre enregistré.');
     } catch (e) {

@@ -838,26 +838,19 @@ class _MaintenanceCard extends StatelessWidget {
                         fontSize: 14,
                         color: Color(0xFF1A1A1A))),
                 const SizedBox(height: 3),
-                Row(children: [
-                  Flexible(
-                    child: Text(
-                      m.vehiculeNom ?? 'Véhicule ${m.vehiculeId ?? '—'}',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade600),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (m.vehiculeImmatriculation?.isNotEmpty == true) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      m.vehiculeImmatriculation!,
-                      style: const TextStyle(
-                          fontSize: 10,
-                          color: _kPrimary,
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ]),
+                // Immatriculation seule : elle suffit à désigner le véhicule.
+                // Repli sur l'identifiant tant qu'elle n'est pas renseignée,
+                // pour que la carte ne reste jamais muette sur le véhicule.
+                Text(
+                  m.vehiculeImmatriculation?.isNotEmpty == true
+                      ? m.vehiculeImmatriculation!
+                      : 'Véhicule ${m.vehiculeId ?? '—'}',
+                  style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 4),
                 Row(children: [
                   Icon(Icons.calendar_today_outlined,

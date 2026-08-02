@@ -29,7 +29,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/network_photo_viewer.dart';
 import '../../../chauffeur/presentation/pages/chauffeur_detail_page.dart';
-import '../../../parametrage/presentation/providers/parametrage_providers.dart';
 
 enum _ToastType { success, error, warning, info }
 
@@ -1290,11 +1289,11 @@ class _InfoGeneralesTab extends ConsumerWidget {
     final derniereVidange =
         (vidanges != null && vidanges.isNotEmpty) ? vidanges.first : null;
 
-    // Durée d'amortissement globale (Paramètres) : sert de défaut pour les
-    // véhicules sans override, pour la VNC et l'affichage de la durée effective.
-    final dureeGlobale = ref.watch(dureeAmortissementGlobaleProvider);
-    final vnc = vehicule.valeurNetteComptable(dureeGlobale: dureeGlobale);
-    final dureeEffective = vehicule.dureeAmortissementEffective(dureeGlobale);
+    // Durée effective et VNC viennent du backend, calculées sur le plan
+    // d'amortissement qui alimente l'actif du bilan : la fiche et le bilan
+    // doivent afficher la même valeur, au jour près.
+    final vnc = vehicule.valeurNetteComptable;
+    final dureeEffective = vehicule.dureeAmortissementEffective;
     final dureeEstOverride = vehicule.dureeAmortissementMois != null;
 
     return ListView(
@@ -1349,12 +1348,19 @@ class _InfoGeneralesTab extends ConsumerWidget {
             _InfoRow(
                 label: "Durée d'amortissement",
                 icon: Icons.schedule_outlined,
-                value:
-                    '$dureeEffective mois${dureeEstOverride ? ' (spécifique)' : ' (par défaut)'}'),
+                value: dureeEffective == null
+                    ? null
+                    : '$dureeEffective mois${dureeEstOverride ? ' (spécifique)' : ' (par défaut)'}'),
             _InfoRow(
                 label: 'Valeur nette comptable',
                 icon: Icons.trending_down_outlined,
-                value: vnc != null ? '${_formatAmount(vnc)} XOF' : null),
+                // Sans prix d'achat, il n'y a pas d'amortissement à calculer :
+                // on le dit, plutôt que de laisser un tiret inexpliqué.
+                value: vnc != null
+                    ? '${_formatAmount(vnc)} XOF'
+                    : (vehicule.prixAchat == null
+                        ? "Prix d'achat non renseigné"
+                        : null)),
             _InfoRow(
                 label: 'N° châssis',
                 icon: Icons.numbers_outlined,

@@ -123,6 +123,19 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
   String? _submitError;
 
   @override
+  void initState() {
+    super.initState();
+    // Préremplissage : le cas courant est de solder la ligne d'un coup.
+    // Saisie brute (sans séparateur) pour rester éditable et parsable.
+    final restant = widget.montantRestant;
+    if (restant != null && restant > 0) {
+      _montantCtrl.text = restant == restant.roundToDouble()
+          ? restant.toStringAsFixed(0)
+          : restant.toStringAsFixed(2);
+    }
+  }
+
+  @override
   void dispose() {
     _montantCtrl.dispose();
     _commentCtrl.dispose();

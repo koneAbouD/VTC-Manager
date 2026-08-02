@@ -50,6 +50,10 @@ class BilanPage extends ConsumerWidget {
                   ('Trésorerie', bilan.tresorerie, 'Soldes des comptes actifs'),
                   ('Créances chauffeurs', bilan.creancesChauffeurs,
                       'Recettes, cotisations, pénalités, contraventions dues'),
+                  // En négatif : les lignes s'additionnent alors exactement
+                  // jusqu'au total, qui retient les créances nettes.
+                  ('Dépréciation des créances', -bilan.provisionCreances,
+                      'Part jugée non recouvrable selon l\'ancienneté'),
                   ('Immobilisations nettes', bilan.immobilisationsNettes,
                       'Véhicules : prix d\'achat − amortissement couru'),
                 ],
@@ -61,8 +65,12 @@ class BilanPage extends ConsumerWidget {
                 lignes: [
                   ('Dette État (contraventions)', bilan.detteEtatContraventions,
                       'Encaissé auprès des chauffeurs, non reversé'),
+                  ('Dettes fournisseurs', bilan.dettesFournisseurs,
+                      'Factures partenaires non soldées'),
+                  ('Cotisations à restituer', bilan.depotsCotisations,
+                      'Dépôts détenus pour le compte des chauffeurs'),
                 ],
-                total: null,
+                total: ('Total passif', bilan.totalPassif),
               ),
               const SizedBox(height: 12),
               Container(

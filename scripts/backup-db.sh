@@ -62,7 +62,10 @@ TS="$(date +%Y%m%d_%H%M%S)"
 OUT="$BACKUP_DIR/${DB_NAME}_${TS}.dump"
 
 echo "Sauvegarde de ${DB_NAME} sur ${DB_HOST}:${DB_PORT} → ${OUT}"
-trap 'rm -f "$OUT"' ERR   # pas de dump partiel en cas d'échec
+# Pas de dump partiel : ni en cas d'échec (ERR), ni en cas d'interruption
+# (Ctrl-C / kill), qui laisserait sinon un fichier vide pris pour une sauvegarde.
+trap 'rm -f "$OUT"' ERR
+trap 'rm -f "$OUT"; echo; echo "Sauvegarde interrompue : fichier incomplet supprimé." >&2; exit 130' INT TERM HUP
 
 if command -v pg_dump >/dev/null 2>&1; then
   pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME" -d "$DB_NAME" \
@@ -76,7 +79,7 @@ else
   exit 1
 fi
 
-trap - ERR
+trap - ERR INT TERM HUP
 
 if [ ! -s "$OUT" ]; then
   echo "ÉCHEC : le fichier de sauvegarde est vide." >&2

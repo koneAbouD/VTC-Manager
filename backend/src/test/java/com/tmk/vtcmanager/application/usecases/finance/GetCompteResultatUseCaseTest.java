@@ -78,7 +78,11 @@ class GetCompteResultatUseCaseTest {
                 .dotationProvisions(BigDecimal.valueOf(10_000))
                 .resultatCaisse(BigDecimal.valueOf(250_000))
                 .produitsEngagement(BigDecimal.valueOf(560_000))
-                .resultatEngagement(BigDecimal.valueOf(320_000))
+                // Une facture de 50 000 reçue en mars et réglée plus tard : elle
+                // pèse sur l'engagement, pas sur la caisse.
+                .chargesVariablesEngagement(BigDecimal.valueOf(130_000))
+                .chargesFixesEngagement(BigDecimal.valueOf(120_000))
+                .resultatEngagement(BigDecimal.valueOf(260_000))
                 .pontCreances(BigDecimal.valueOf(60_000))
                 .build();
     }
@@ -119,7 +123,7 @@ class GetCompteResultatUseCaseTest {
     }
 
     @Test
-    @DisplayName("Mois clos, base engagement : les produits archivés de l'engagement sont repris")
+    @DisplayName("Mois clos, base engagement : produits ET charges de l'engagement sont repris")
     void mois_clos_base_engagement() {
         when(etatsClotureRepository.findByPeriode(2026, 3)).thenReturn(Optional.of(archive()));
 
@@ -127,9 +131,40 @@ class GetCompteResultatUseCaseTest {
 
         assertThat(r.getBase()).isEqualTo(BaseComptable.ENGAGEMENT);
         assertThat(r.getProduitsExploitation()).isEqualByComparingTo("560000");
-        // 560 000 − 80 000 − 120 000 − 40 000 − 10 000
-        assertThat(r.getResultatGestion()).isEqualByComparingTo("310000");
+        // Les charges caisse (80 000) ne s'invitent pas dans la lecture engagement.
+        assertThat(r.getChargesVariables()).isEqualByComparingTo("130000");
+        assertThat(r.getChargesFixes()).isEqualByComparingTo("120000");
+        // 560 000 − 130 000 − 120 000 − 40 000 − 10 000
+        assertThat(r.getResultatGestion()).isEqualByComparingTo("260000");
         assertThat(r.getPontCreances()).isEqualByComparingTo("60000");
+    }
+
+    @Test
+    @DisplayName("Le résultat engagement relu est celui qui a été publié à la clôture")
+    void mois_clos_engagement_ne_diverge_pas_du_publie() {
+        EtatsCloture photo = archive();
+        when(etatsClotureRepository.findByPeriode(2026, 3)).thenReturn(Optional.of(photo));
+
+        CompteResultat r = useCase.executer(2026, 3, BaseComptable.ENGAGEMENT);
+
+        assertThat(r.getResultatGestion()).isEqualByComparingTo(photo.getResultatEngagement());
+    }
+
+    @Test
+    @DisplayName("Photo antérieure sans charges engagement : la lecture retombe sur la caisse")
+    void mois_clos_engagement_photo_ancienne() {
+        EtatsCloture ancienne = archive();
+        ancienne.setChargesVariablesEngagement(null);
+        ancienne.setChargesFixesEngagement(null);
+        when(etatsClotureRepository.findByPeriode(2026, 3)).thenReturn(Optional.of(ancienne));
+
+        CompteResultat r = useCase.executer(2026, 3, BaseComptable.ENGAGEMENT);
+
+        // Faute de mieux, les charges caisse — pas zéro, qui laisserait croire
+        // que le mois n'a supporté aucune charge.
+        assertThat(r.getChargesVariables()).isEqualByComparingTo("80000");
+        assertThat(r.getChargesFixes()).isEqualByComparingTo("120000");
+        assertThat(r.getResultatGestion()).isEqualByComparingTo("310000");
     }
 
     @Test

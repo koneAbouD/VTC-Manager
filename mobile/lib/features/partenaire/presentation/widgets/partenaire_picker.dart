@@ -28,6 +28,7 @@ Future<PartenaireChoix?> choisirPartenaire(
   return showModalBottomSheet<PartenaireChoix>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => _PartenaireSheet(
       selectionId: selectionId,
@@ -45,6 +46,10 @@ class _PartenaireSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final partenaires = ref.watch(partenairesProvider(true));
+    // `useSafeArea` n'immunise pas le bas : la barre de navigation système
+    // d'Android n'est pas protégée. Son inset est donc reporté au bas du
+    // contenu, pour que le dernier partenaire ne passe pas dessous.
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
 
     return Container(
       constraints: BoxConstraints(
@@ -79,19 +84,19 @@ class _PartenaireSheet extends ConsumerWidget {
           ),
           Flexible(
             child: partenaires.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
-                child: CircularProgressIndicator(strokeWidth: 2),
+              loading: () => Padding(
+                padding: EdgeInsets.fromLTRB(0, 40, 0, 40 + bottomSafe),
+                child: const CircularProgressIndicator(strokeWidth: 2),
               ),
               error: (e, _) => Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                padding: EdgeInsets.fromLTRB(20, 12, 20, 32 + bottomSafe),
                 child: Text('Partenaires indisponibles : $e',
                     style:
                         const TextStyle(fontSize: 13, color: AppColors.error)),
               ),
               data: (liste) => ListView(
                 shrinkWrap: true,
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: EdgeInsets.only(bottom: 24 + bottomSafe),
                 children: [
                   // Revenir au partenaire de l'intervention : la sortie la plus
                   // fréquente une fois qu'on a corrigé une ligne par erreur.

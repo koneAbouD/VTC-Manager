@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/image_viewer.dart';
+import '../../../../core/widgets/responsive_field_row.dart'
+    show kFormPhoneBreakpoint;
 import '../../domain/entities/catalogue_element_maintenance.dart';
 import '../../domain/entities/element_maintenance.dart';
 import '../../../partenaire/presentation/widgets/partenaire_picker.dart';
@@ -19,6 +21,18 @@ const _kDark = Color(0xFF1A1A2E);
 const _kBorder = Color(0xFFE3E6EE);
 const _kAccent = Color(0xFFE65100);
 const _kFieldFill = Color(0xFFF2F3F5);
+
+/// Sur tablette la ligne a de la largeur à revendre : la pilule « quantité »
+/// remonte alors à côté du montant plutôt que de s'empiler sous le libellé.
+bool _estTablette(BuildContext context) =>
+    MediaQuery.sizeOf(context).width >= kFormPhoneBreakpoint;
+
+// Ce que coûtent en hauteur les deux bandeaux fixes du haut, et le minimum
+// qu'on veut laisser à la liste. Estimations volontairement majorées : mieux
+// vaut retirer la recherche un cheveu trop tôt que déborder d'un cheveu.
+const double _kHauteurRecherche = 72;
+const double _kHauteurBandeau = 48;
+const double _kHauteurMinListe = 72;
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -185,104 +199,123 @@ class _ElementsMaintenancePageState
           icon: Icons.check_rounded,
         ),
       ),
-      body: Column(
-        children: [
-          // ── Barre de recherche (masquée au scroll vers le bas) ───────
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeInOut,
-            tween: Tween(begin: 1.0, end: _searchVisible ? 1.0 : 0.0),
-            builder: (_, v, child) => ClipRect(
-              child: Align(
-                alignment: Alignment.topCenter,
-                heightFactor: v,
-                child: Opacity(opacity: v, child: child),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: TextField(
-                onChanged: (v) => setState(() => _query = v),
-                style: const TextStyle(fontSize: 15, color: _kDark),
-                decoration: InputDecoration(
-                  hintText: 'Recherchez...',
-                  hintStyle: const TextStyle(color: _kHint, fontSize: 15),
-                  suffixIcon: const Icon(Icons.search, color: _kHint),
-                  filled: true,
-                  fillColor: const Color(0xFFF8F9FB),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _kBorder, width: 1),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _kBorder, width: 1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+      body: LayoutBuilder(builder: (context, contraintes) {
+        // Clavier ouvert sur un écran bas de plafond (paysage, fenêtre
+        // partagée) : la place ne suffit plus à porter la recherche, le
+        // bandeau et la liste à la fois. On retire le décor par ordre
+        // d'importance — bandeau puis recherche — plutôt que de déborder.
+        // Tout revient dès que le clavier se referme.
+        final echelle = MediaQuery.textScalerOf(context).scale(1);
+        final dispo = contraintes.maxHeight;
+        final rechercheVisible =
+            _searchVisible && dispo >= _kHauteurRecherche * echelle;
+        final reste =
+            dispo - (rechercheVisible ? _kHauteurRecherche * echelle : 0);
+        final bandeauVisible = _multiPresta &&
+            reste >= _kHauteurBandeau * echelle + _kHauteurMinListe;
+
+        return Column(
+          children: [
+            // ── Barre de recherche (masquée au scroll vers le bas) ───────
+            if (rechercheVisible)
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeInOut,
+                tween: Tween(begin: 1.0, end: _searchVisible ? 1.0 : 0.0),
+                builder: (_, v, child) => ClipRect(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    heightFactor: v,
+                    child: Opacity(opacity: v, child: child),
                   ),
                 ),
-              ),
-            ),
-          ),
-
-          // ── Plusieurs prestataires ──────────────────────────────────
-          // Rien tant que le mode dort : la grande majorité des
-          // interventions n'a qu'un prestataire, l'écran n'a pas à porter
-          // en permanence un réglage qui ne servira pas.
-          _buildBandeauMultiPresta(),
-
-          // ── Liste ────────────────────────────────────────────────────
-          Expanded(
-            child: catalogueAsync.when(
-              loading: () => const Center(
-                child:
-                    CircularProgressIndicator(color: _kPrimary, strokeWidth: 2),
-              ),
-              error: (_, __) => Center(
-                child: Text(
-                  'Impossible de charger le catalogue.',
-                  style: TextStyle(color: Colors.grey.shade500),
-                ),
-              ),
-              data: (_) {
-                final totalItems = _freeItems.length + filtered.length;
-                if (totalItems == 0) {
-                  return Center(
-                    child: Text(
-                      'Aucun élément trouvé',
-                      style: TextStyle(color: Colors.grey.shade500),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: TextField(
+                    onChanged: (v) => setState(() => _query = v),
+                    style: const TextStyle(fontSize: 15, color: _kDark),
+                    decoration: InputDecoration(
+                      hintText: 'Recherchez...',
+                      hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+                      suffixIcon: const Icon(Icons.search, color: _kHint),
+                      filled: true,
+                      fillColor: const Color(0xFFF8F9FB),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 13),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _kBorder, width: 1),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _kBorder, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            const BorderSide(color: _kPrimary, width: 1.5),
+                      ),
                     ),
-                  );
-                }
-                return ListView.builder(
-                  controller: _scrollCtrl,
-                  itemCount: totalItems,
-                  itemBuilder: (ctx, i) {
-                    if (i < _freeItems.length) {
-                      return _buildFreeRow(i);
-                    }
-                    final el = filtered[i - _freeItems.length];
-                    // Widget à état propre : cocher/décocher ne reconstruit que
-                    // cette ligne, pas toute la page (pas de « rechargement »).
-                    return _CatalogueRow(
-                      key: ValueKey('cat_${el.id}'),
-                      el: el,
-                      selection: _catalogueSel,
-                      multiPresta: _multiPresta,
-                      partenaireDefautNom: widget.partenaireDefautNom,
-                      onActiverMulti: _activerMultiPresta,
+                  ),
+                ),
+              ),
+
+            // ── Plusieurs prestataires ──────────────────────────────────
+            // Rien tant que le mode dort : la grande majorité des
+            // interventions n'a qu'un prestataire, l'écran n'a pas à porter
+            // en permanence un réglage qui ne servira pas.
+            if (bandeauVisible) _buildBandeauMultiPresta(),
+
+            // ── Liste ────────────────────────────────────────────────────
+            Expanded(
+              child: catalogueAsync.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(
+                      color: _kPrimary, strokeWidth: 2),
+                ),
+                error: (_, __) => Center(
+                  child: Text(
+                    'Impossible de charger le catalogue.',
+                    style: TextStyle(color: Colors.grey.shade500),
+                  ),
+                ),
+                data: (_) {
+                  final totalItems = _freeItems.length + filtered.length;
+                  if (totalItems == 0) {
+                    return Center(
+                      child: Text(
+                        'Aucun élément trouvé',
+                        style: TextStyle(color: Colors.grey.shade500),
+                      ),
                     );
-                  },
-                );
-              },
+                  }
+                  return ListView.builder(
+                    controller: _scrollCtrl,
+                    itemCount: totalItems,
+                    itemBuilder: (ctx, i) {
+                      if (i < _freeItems.length) {
+                        return _buildFreeRow(i);
+                      }
+                      final el = filtered[i - _freeItems.length];
+                      // Widget à état propre : cocher/décocher ne reconstruit
+                      // que cette ligne, pas toute la page (pas de
+                      // « rechargement »).
+                      return _CatalogueRow(
+                        key: ValueKey('cat_${el.id}'),
+                        el: el,
+                        selection: _catalogueSel,
+                        multiPresta: _multiPresta,
+                        partenaireDefautNom: widget.partenaireDefautNom,
+                        onActiverMulti: _activerMultiPresta,
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      }),
     );
   }
 
@@ -384,6 +417,7 @@ class _ElementsMaintenancePageState
 
   Widget _buildFreeRow(int index) {
     final item = _freeItems[index];
+    final tablette = _estTablette(context);
     return GestureDetector(
       // Appui long : cette ligne-là a son propre prestataire. Le geste ouvre
       // le mode et enchaîne sur le choix, plutôt que d'allumer un réglage et
@@ -426,11 +460,12 @@ class _ElementsMaintenancePageState
                               color: _kDark,
                               fontWeight: FontWeight.w500),
                         ),
-                        _QuantiteLigne(
-                          quantite: item.quantite,
-                          montantCtrl: item.montantCtrl,
-                          onChanged: (q) => setState(() => item.quantite = q),
-                        ),
+                        if (!tablette)
+                          _QuantiteLigne(
+                            quantite: item.quantite,
+                            montantCtrl: item.montantCtrl,
+                            onChanged: (q) => setState(() => item.quantite = q),
+                          ),
                         if (_multiPresta)
                           PrestatairePuce(
                             nom: item.partenaireNom,
@@ -459,6 +494,15 @@ class _ElementsMaintenancePageState
                 ],
               ),
             ),
+            if (tablette) ...[
+              _QuantiteLigne(
+                quantite: item.quantite,
+                montantCtrl: item.montantCtrl,
+                onChanged: (q) => setState(() => item.quantite = q),
+                inline: true,
+              ),
+              const SizedBox(width: 12),
+            ],
             _PriceField(ctrl: item.montantCtrl),
           ],
         ),
@@ -544,6 +588,7 @@ class _CatalogueRowState extends ConsumerState<_CatalogueRow> {
   @override
   Widget build(BuildContext context) {
     final isChecked = _sel.containsKey(_el.id);
+    final tablette = _estTablette(context);
     return GestureDetector(
       // Appui long : cette ligne-là a son propre prestataire. Le geste ouvre
       // le mode et enchaîne sur le choix, plutôt que d'allumer un réglage et
@@ -600,7 +645,7 @@ class _CatalogueRowState extends ConsumerState<_CatalogueRow> {
                   ),
                   // Quantité et prestataire n'ont de sens que sur une ligne
                   // retenue : décochée, elle ne coûte rien à personne.
-                  if (isChecked)
+                  if (isChecked && !tablette)
                     _QuantiteLigne(
                       quantite: _sel[_el.id]!.quantite,
                       montantCtrl: _sel[_el.id]!.montantCtrl,
@@ -616,6 +661,15 @@ class _CatalogueRowState extends ConsumerState<_CatalogueRow> {
                 ],
               ),
             ),
+            if (isChecked && tablette) ...[
+              _QuantiteLigne(
+                quantite: _sel[_el.id]!.quantite,
+                montantCtrl: _sel[_el.id]!.montantCtrl,
+                onChanged: (q) => setState(() => _sel[_el.id]!.quantite = q),
+                inline: true,
+              ),
+              const SizedBox(width: 12),
+            ],
             if (isChecked) _PriceField(ctrl: _sel[_el.id]!.montantCtrl),
           ],
         ),
@@ -625,9 +679,11 @@ class _CatalogueRowState extends ConsumerState<_CatalogueRow> {
 }
 
 // ── Quantité ─────────────────────────────────────────────────────────────────
-// Posée sous le libellé plutôt qu'à côté du prix : la ligne est déjà chargée à
-// droite (champ + devise), et la quantité se lit mieux collée à ce qu'elle
-// compte. N'apparaît que sur une ligne cochée.
+// Sur téléphone, posée sous le libellé plutôt qu'à côté du prix : la ligne est
+// déjà chargée à droite (champ + devise), et la quantité se lit mieux collée à
+// ce qu'elle compte. Sur tablette la largeur ne manque plus : la pilule remonte
+// à côté du montant (`inline`), quantité et prix se lisant d'un seul regard.
+// N'apparaît que sur une ligne cochée.
 
 /// Au-delà, ce n'est plus une intervention mais une commande : la borne évite
 /// surtout qu'un appui resté enfoncé parte à l'infini.
@@ -640,10 +696,15 @@ class _QuantiteLigne extends StatelessWidget {
   final TextEditingController montantCtrl;
   final ValueChanged<int> onChanged;
 
+  /// Rendu sur la ligne du prix (tablette) : plus de décalage vers le bas, qui
+  /// ne servait qu'à détacher la pilule du libellé au-dessus.
+  final bool inline;
+
   const _QuantiteLigne({
     required this.quantite,
     required this.montantCtrl,
     required this.onChanged,
+    this.inline = false,
   });
 
   void _pas(int delta) {
@@ -692,7 +753,7 @@ class _QuantiteLigne extends StatelessWidget {
   Widget build(BuildContext context) {
     final multiple = quantite > 1;
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: EdgeInsets.only(top: inline ? 0 : 4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -738,18 +799,24 @@ class _QuantiteLigne extends StatelessWidget {
             ),
           ),
           // Le total ne s'affiche qu'à partir de deux : à l'unité il répéterait
-          // le champ de droite.
+          // le champ de droite. `Flexible` parce qu'un gros total sur une
+          // colonne étroite déborderait : la pilule reste entière, c'est le
+          // montant qui s'abrège.
           if (multiple)
-            AnimatedBuilder(
-              animation: montantCtrl,
-              builder: (_, __) => Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Text(
-                  '= ${CurrencyFormatter.format(_lirePrix(montantCtrl) * quantite)}',
-                  style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _kAccent),
+            Flexible(
+              child: AnimatedBuilder(
+                animation: montantCtrl,
+                builder: (_, __) => Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    '= ${CurrencyFormatter.format(_lirePrix(montantCtrl) * quantite)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _kAccent),
+                  ),
                 ),
               ),
             ),
@@ -871,15 +938,20 @@ class PrestatairePuce extends StatelessWidget {
               Icon(Icons.storefront_outlined,
                   size: 12, color: propre ? _kAccent : _kHint),
               const SizedBox(width: 4),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 150),
-                child: Text(
-                  texte,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: propre ? _kAccent : _kHint,
-                    fontWeight: propre ? FontWeight.w600 : FontWeight.w400,
+              // `Flexible` autant que la borne à 150 : la borne empêche un nom
+              // à rallonge de manger la ligne, `Flexible` le rend coupable à
+              // l'ellipse quand la colonne du libellé est plus étroite encore.
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 150),
+                  child: Text(
+                    texte,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: propre ? _kAccent : _kHint,
+                      fontWeight: propre ? FontWeight.w600 : FontWeight.w400,
+                    ),
                   ),
                 ),
               ),

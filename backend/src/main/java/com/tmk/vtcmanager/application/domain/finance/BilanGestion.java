@@ -37,6 +37,12 @@ public class BilanGestion {
     private BigDecimal detteEtatContraventions;
     /** Reste dû aux fournisseurs sur les factures non soldées. */
     private BigDecimal dettesFournisseurs;
-    /** totalActif − dettes (État + fournisseurs). */
+    /**
+     * Cotisations encaissées et non encore restituées : un dépôt détenu pour le
+     * compte des chauffeurs, donc une dette. Porté pour son montant brut, sans
+     * compensation avec les créances qui figurent à l'actif.
+     */
+    private BigDecimal depotsCotisations;
+    /** totalActif − dettes (État + fournisseurs + dépôts de cotisation). */
     private BigDecimal situationNette;
 }

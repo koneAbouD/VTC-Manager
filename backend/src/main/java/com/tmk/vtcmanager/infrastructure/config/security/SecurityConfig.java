@@ -41,13 +41,19 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/api/auth/**"
                         ).permitAll()
+                        // Notification de l'agrégateur de paiement : appel serveur à
+                        // serveur, sans jeton. Sa légitimité tient à la vérification de
+                        // signature faite dans l'adapter, pas à une authentification.
+                        .requestMatchers("/api/payments/webhook/**").permitAll()
                         // App chauffeur : scope self-service réservé au rôle CHAUFFEUR.
                         // L'identité est dérivée du token, jamais d'un paramètre client.
                         .requestMatchers("/api/me/**").hasRole("CHAUFFEUR")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // Back-office gestionnaire : inchangé pour l'instant (à durcir
-                        // ultérieurement après audit de l'app de gestion existante).
-                        .requestMatchers("/api/**").permitAll()
+                        // Back-office : réservé aux comptes de gestion. Une écriture
+                        // comptable doit être imputable à quelqu'un — la piste d'audit
+                        // (created_by, annule_par, imputee_par) ne vaut que si l'appelant
+                        // est authentifié.
+                        .requestMatchers("/api/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

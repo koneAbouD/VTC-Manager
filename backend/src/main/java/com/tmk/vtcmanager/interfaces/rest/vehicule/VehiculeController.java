@@ -6,7 +6,9 @@ import com.tmk.vtcmanager.application.domain.vehicule.VehiculePhoto;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatus;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculePhotoRepository;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
+import com.tmk.vtcmanager.application.domain.finance.AmortissementVehicule;
 import com.tmk.vtcmanager.application.usecases.document.GetDocumentsByVehiculeUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetAmortissementVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.vehicule.CreateVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.vehicule.DeleteVehiculePhotoUseCase;
 import com.tmk.vtcmanager.application.usecases.vehicule.DeleteVehiculeUseCase;
@@ -47,6 +49,7 @@ public class VehiculeController {
     private final UploadVehiculePhotoUseCase uploadVehiculePhotoUseCase;
     private final DeleteVehiculePhotoUseCase deleteVehiculePhotoUseCase;
     private final GetDocumentsByVehiculeUseCase getDocumentsByVehiculeUseCase;
+    private final GetAmortissementVehiculeUseCase getAmortissementVehiculeUseCase;
     private final VehiculePhotoRepository photoRepository;
     private final FileStoragePort storage;
     private final VehiculeRestMapper mapper;
@@ -81,6 +84,11 @@ public class VehiculeController {
         VehiculeResponse base = mapper.toResponse(vehicule);
         List<DocumentResponse> documents = documentMapper
                 .toResponseList(getDocumentsByVehiculeUseCase.execute(id));
+        // Durée effective et VNC viennent du plan d'amortissement du reporting :
+        // la fiche affiche la part de l'actif du bilan qui revient au véhicule,
+        // et non une estimation reconstruite ailleurs.
+        AmortissementVehicule amortissement = getAmortissementVehiculeUseCase.executer(id)
+                .orElse(null);
         return new VehiculeDetailResponse(
                 base.id(), base.immatriculation(),
                 base.marque(), base.modele(),
@@ -89,6 +97,8 @@ public class VehiculeController {
                 base.couleur(), base.kilometrage(), base.statut(),
                 base.type(), base.activite(), base.groupe(),
                 base.dateAchat(), base.prixAchat(), vehicule.getDureeAmortissementMois(),
+                amortissement != null ? amortissement.dureeMois() : null,
+                amortissement != null ? amortissement.valeurNetteComptable() : null,
                 base.dateProchaineMaintenance(),
                 base.dateMiseEnCirculation(), base.dateEntreeFlotte(),
                 base.photos(), documents);

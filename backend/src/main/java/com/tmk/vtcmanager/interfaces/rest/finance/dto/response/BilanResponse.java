@@ -17,5 +17,7 @@ public record BilanResponse(
         BigDecimal detteEtatContraventions,
         /** Reste dû aux fournisseurs sur les factures non soldées. */
         BigDecimal dettesFournisseurs,
+        /** Cotisations encaissées non encore restituées, brutes de compensation. */
+        BigDecimal depotsCotisations,
         BigDecimal situationNette
 ) {}

@@ -26,18 +26,6 @@ final parametresProvider = FutureProvider<List<ParametreGeneral>>(
   (ref) => ref.watch(parametrageApiProvider).parametres(),
 );
 
-/// Durée d'amortissement globale (mois), dérivée des paramètres.
-/// `null` tant que non chargée ou si le paramètre est absent.
-final dureeAmortissementGlobaleProvider = Provider<int?>((ref) {
-  return ref.watch(parametresProvider).maybeWhen(
-        data: (params) {
-          for (final p in params) {
-            if (p.cle == kCleDureeAmortissement) {
-              return int.tryParse(p.valeur.trim());
-            }
-          }
-          return null;
-        },
-        orElse: () => null,
-      );
-});
+// La durée d'amortissement effective n'est plus dérivée ici : le backend la
+// sert avec la VNC dans la fiche véhicule, sur le plan qui alimente le bilan.
+// La recalculer côté client rouvrait un écart entre la fiche et l'actif.

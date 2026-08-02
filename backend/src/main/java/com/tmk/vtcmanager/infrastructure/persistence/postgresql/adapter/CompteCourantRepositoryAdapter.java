@@ -7,6 +7,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -104,5 +106,31 @@ public class CompteCourantRepositoryAdapter implements CompteCourantRepository {
                 WHERE COALESCE(f.fond, 0) > 0 OR COALESCE(c.total, 0) > 0
                 ORDER BY net DESC
                 """.formatted(STATUTS_FONDS), MAPPER);
+    }
+
+    /**
+     * Dépôts encore détenus à la date : la somme des cotisations encaissées
+     * jusque-là, moins celles qu'un arrêté avait déjà soldées.
+     *
+     * <p>Le statut courant de la ligne ne suffit pas à répondre pour une date
+     * passée : une cotisation restituée en mars était bien détenue au 31
+     * janvier. On rejoue donc les deux dates — celle de l'encaissement et celle
+     * de l'arrêté — comme le fait la dette fournisseurs.
+     */
+    @Override
+    public BigDecimal fondsCotisationsALaDate(LocalDate date) {
+        BigDecimal fonds = jdbcTemplate.queryForObject("""
+                SELECT COALESCE(SUM(ec.montant), 0)
+                FROM encaissements_cotisation ec
+                JOIN lignes_cotisation lc ON lc.id = ec.ligne_cotisation_id
+                WHERE ec.annule_le IS NULL
+                  AND ec.date_encaissement <= ?
+                  AND lc.statut <> 'ANNULEE'
+                  AND (lc.arrete_id IS NULL
+                       OR EXISTS (SELECT 1 FROM arretes_compte a
+                                   WHERE a.id = lc.arrete_id
+                                     AND (a.statut = 'ANNULE' OR a.date_arrete > ?)))
+                """, BigDecimal.class, date, date);
+        return fonds == null ? BigDecimal.ZERO : fonds;
     }
 }

@@ -101,31 +101,59 @@ class MargeVehiculeData {
 class BilanData {
   final DateTime date;
   final double tresorerie;
+
+  /// Créances brutes, avant dépréciation.
   final double creancesChauffeurs;
+
+  /// Dépréciation appliquée selon l'ancienneté des créances.
+  final double provisionCreances;
+
+  /// Ce qui entre réellement à l'actif : brutes − provision.
+  final double creancesNettes;
   final double immobilisationsNettes;
   final double totalActif;
   final double detteEtatContraventions;
+
+  /// Reste dû aux fournisseurs sur les factures non soldées.
+  final double dettesFournisseurs;
+
+  /// Cotisations encaissées non encore restituées : un dépôt détenu pour le
+  /// compte des chauffeurs, donc une dette. Brut de toute compensation avec
+  /// leurs créances, qui figurent à l'actif.
+  final double depotsCotisations;
   final double situationNette;
 
   const BilanData({
     required this.date,
     required this.tresorerie,
     required this.creancesChauffeurs,
+    required this.provisionCreances,
+    required this.creancesNettes,
     required this.immobilisationsNettes,
     required this.totalActif,
     required this.detteEtatContraventions,
+    required this.dettesFournisseurs,
+    required this.depotsCotisations,
     required this.situationNette,
   });
+
+  /// Total du passif : c'est lui qui, retranché de l'actif, donne la situation.
+  double get totalPassif =>
+      detteEtatContraventions + dettesFournisseurs + depotsCotisations;
 
   factory BilanData.fromJson(Map<String, dynamic> j) => BilanData(
         date: DateTime.parse(j['date']),
         tresorerie: (j['tresorerie'] as num?)?.toDouble() ?? 0,
         creancesChauffeurs: (j['creancesChauffeurs'] as num?)?.toDouble() ?? 0,
+        provisionCreances: (j['provisionCreances'] as num?)?.toDouble() ?? 0,
+        creancesNettes: (j['creancesNettes'] as num?)?.toDouble() ?? 0,
         immobilisationsNettes:
             (j['immobilisationsNettes'] as num?)?.toDouble() ?? 0,
         totalActif: (j['totalActif'] as num?)?.toDouble() ?? 0,
         detteEtatContraventions:
             (j['detteEtatContraventions'] as num?)?.toDouble() ?? 0,
+        dettesFournisseurs: (j['dettesFournisseurs'] as num?)?.toDouble() ?? 0,
+        depotsCotisations: (j['depotsCotisations'] as num?)?.toDouble() ?? 0,
         situationNette: (j['situationNette'] as num?)?.toDouble() ?? 0,
       );
 }

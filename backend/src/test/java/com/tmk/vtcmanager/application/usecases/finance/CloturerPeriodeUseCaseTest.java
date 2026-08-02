@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.domain.tresorerie.StatutImputationEcart;
 import com.tmk.vtcmanager.application.exception.PeriodeNonCloturableException;
 import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CloturePeriodeRepository;
+import com.tmk.vtcmanager.application.ports.persistence.CompteCourantRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CompteTresorerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.EtatsClotureRepository;
@@ -54,6 +55,7 @@ class CloturerPeriodeUseCaseTest {
     private CloturePeriodeRepository cloturePeriodeRepository;
     private ClotureCaisseRepository clotureCaisseRepository;
     private CompteTresorerieRepository compteTresorerieRepository;
+    private CompteCourantRepository compteCourantRepository;
     private CreanceRepository creanceRepository;
     private FinanceReportingRepository reportingRepository;
     private EtatsClotureRepository etatsClotureRepository;
@@ -71,6 +73,9 @@ class CloturerPeriodeUseCaseTest {
         cloturePeriodeRepository = mock(CloturePeriodeRepository.class);
         clotureCaisseRepository = mock(ClotureCaisseRepository.class);
         compteTresorerieRepository = mock(CompteTresorerieRepository.class);
+        compteCourantRepository = mock(CompteCourantRepository.class);
+        when(compteCourantRepository.fondsCotisationsALaDate(any()))
+                .thenReturn(BigDecimal.valueOf(120_000));
         creanceRepository = mock(CreanceRepository.class);
         reportingRepository = mock(FinanceReportingRepository.class);
         etatsClotureRepository = mock(EtatsClotureRepository.class);
@@ -114,17 +119,22 @@ class CloturerPeriodeUseCaseTest {
         caisseComptee(PERIODE.atDay(15), null);
 
         useCase = new CloturerPeriodeUseCase(cloturePeriodeRepository, clotureCaisseRepository,
-                compteTresorerieRepository, creanceRepository, reportingRepository,
-                etatsClotureRepository, getCompteResultatUseCase, getProvisionCreancesUseCase,
-                dotationProvisionService, facturePartenaireRepository);
+                compteTresorerieRepository, compteCourantRepository, creanceRepository,
+                reportingRepository, etatsClotureRepository, getCompteResultatUseCase,
+                getProvisionCreancesUseCase, dotationProvisionService, facturePartenaireRepository);
     }
 
     private CompteResultat resultat(BigDecimal produits) {
+        return resultat(produits, BigDecimal.valueOf(100_000), BigDecimal.valueOf(200_000));
+    }
+
+    private CompteResultat resultat(BigDecimal produits, BigDecimal chargesVariables,
+                                    BigDecimal chargesFixes) {
         return CompteResultat.builder()
                 .annee(ANNEE).mois(MOIS)
                 .produitsExploitation(produits)
-                .chargesVariables(BigDecimal.valueOf(100_000))
-                .chargesFixes(BigDecimal.valueOf(200_000))
+                .chargesVariables(chargesVariables)
+                .chargesFixes(chargesFixes)
                 .amortissements(BigDecimal.valueOf(50_000))
                 .resultatGestion(BigDecimal.valueOf(450_000))
                 .pontCreances(BigDecimal.valueOf(30_000))
@@ -207,6 +217,29 @@ class CloturerPeriodeUseCaseTest {
     }
 
     @Test
+    @DisplayName("Les charges des deux bases sont archivées séparément")
+    void archive_les_charges_des_deux_bases() {
+        when(getCompteResultatUseCase.executer(ANNEE, MOIS, CompteResultat.BaseComptable.CAISSE))
+                .thenReturn(resultat(BigDecimal.valueOf(800_000)));
+        // Une facture de 50 000 reçue dans le mois et non réglée : elle alourdit
+        // les charges variables de l'engagement, pas celles de la caisse.
+        when(getCompteResultatUseCase.executer(ANNEE, MOIS, CompteResultat.BaseComptable.ENGAGEMENT))
+                .thenReturn(resultat(BigDecimal.valueOf(830_000),
+                        BigDecimal.valueOf(150_000), BigDecimal.valueOf(200_000)));
+
+        useCase.executer(ANNEE, MOIS);
+
+        ArgumentCaptor<EtatsCloture> capture = ArgumentCaptor.forClass(EtatsCloture.class);
+        verify(etatsClotureRepository).save(capture.capture());
+        EtatsCloture e = capture.getValue();
+
+        assertThat(e.getChargesVariables()).isEqualByComparingTo("100000");
+        assertThat(e.getChargesVariablesEngagement()).isEqualByComparingTo("150000");
+        assertThat(e.getChargesFixes()).isEqualByComparingTo("200000");
+        assertThat(e.getChargesFixesEngagement()).isEqualByComparingTo("200000");
+    }
+
+    @Test
     @DisplayName("Le bilan archivé retient les créances nettes de provision, comme le bilan courant")
     void archive_les_creances_nettes() {
         useCase.executer(ANNEE, MOIS);
@@ -221,7 +254,18 @@ class CloturerPeriodeUseCaseTest {
         // Actif = trésorerie + créances NETTES + immobilisations.
         assertThat(e.getTotalActif()).isEqualByComparingTo("2916750");
         assertThat(e.getDettesFournisseurs()).isEqualByComparingTo("80000");
-        assertThat(e.getSituationNette()).isEqualByComparingTo("2786750");
+        // Passif = État 50 000 + fournisseurs 80 000 + dépôts de cotisation 120 000.
+        assertThat(e.getDepotsCotisations()).isEqualByComparingTo("120000");
+        assertThat(e.getSituationNette()).isEqualByComparingTo("2666750");
+    }
+
+    @Test
+    @DisplayName("Les dépôts de cotisation sont arrêtés au dernier jour du mois, bruts de créances")
+    void depots_cotisations_arretes_a_la_fin_du_mois() {
+        useCase.executer(ANNEE, MOIS);
+
+        verify(compteCourantRepository).fondsCotisationsALaDate(PERIODE.atEndOfMonth());
+        verify(compteCourantRepository, never()).getComptesCourantsParChauffeur();
     }
 
     @Test
