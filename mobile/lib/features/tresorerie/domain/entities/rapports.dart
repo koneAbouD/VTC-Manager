@@ -184,22 +184,32 @@ class CloturePeriodeData {
 /// Résultat d'une clôture de caisse.
 class ClotureCaisseData {
   final int id;
+  final DateTime? dateCloture;
   final double soldeTheorique;
   final double soldeCompte;
   final double ecart;
+
+  /// Renseigné quand le relevé a été annulé : il ne fait plus foi.
+  final DateTime? annuleLe;
 
   const ClotureCaisseData({
     required this.id,
     required this.soldeTheorique,
     required this.soldeCompte,
     required this.ecart,
+    this.dateCloture,
+    this.annuleLe,
   });
+
+  bool get estAnnule => annuleLe != null;
 
   factory ClotureCaisseData.fromJson(Map<String, dynamic> j) =>
       ClotureCaisseData(
         id: (j['id'] as num).toInt(),
+        dateCloture: DateTime.tryParse(j['dateCloture']?.toString() ?? ''),
         soldeTheorique: (j['soldeTheorique'] as num?)?.toDouble() ?? 0,
         soldeCompte: (j['soldeCompte'] as num?)?.toDouble() ?? 0,
         ecart: (j['ecart'] as num?)?.toDouble() ?? 0,
+        annuleLe: DateTime.tryParse(j['annuleLe']?.toString() ?? ''),
       );
 }

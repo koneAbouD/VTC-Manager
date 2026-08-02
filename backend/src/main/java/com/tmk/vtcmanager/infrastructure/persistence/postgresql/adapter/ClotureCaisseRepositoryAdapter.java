@@ -26,17 +26,18 @@ public class ClotureCaisseRepositoryAdapter implements ClotureCaisseRepository {
 
     @Override
     public boolean existsByCompteIdAndDateCloture(Long compteId, LocalDate date) {
-        return jpaRepository.existsByCompteIdAndDateCloture(compteId, date);
+        return jpaRepository.existsByCompteIdAndDateClotureAndAnnuleLeIsNull(compteId, date);
     }
 
     @Override
     public List<ClotureCaisse> findByCompteIdOrderByDateDesc(Long compteId) {
-        return mapper.toClotureCaisseDomainList(jpaRepository.findByCompteIdOrderByDateClotureDesc(compteId));
+        return mapper.toClotureCaisseDomainList(
+                jpaRepository.findByCompteIdAndAnnuleLeIsNullOrderByDateClotureDesc(compteId));
     }
 
     @Override
     public Optional<LocalDate> findDerniereDateCloture(Long compteId) {
-        return jpaRepository.findFirstByCompteIdOrderByDateClotureDesc(compteId)
+        return jpaRepository.findFirstByCompteIdAndAnnuleLeIsNullOrderByDateClotureDesc(compteId)
                 .map(ClotureCaisseEntity::getDateCloture);
     }
 

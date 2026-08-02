@@ -63,4 +63,14 @@ public class ClotureCaisseEntity extends AbstractEcritureAuditEntity {
 
     @Column(name = "operation_imputation_id")
     private Long operationImputationId;
+
+    /** Annulation du relevé ; NULL tant qu'il fait foi. */
+    @Column(name = "annule_le")
+    private LocalDateTime annuleLe;
+
+    @Column(name = "annule_par", length = 255)
+    private String annulePar;
+
+    @Column(name = "motif_annulation", columnDefinition = "TEXT")
+    private String motifAnnulation;
 }

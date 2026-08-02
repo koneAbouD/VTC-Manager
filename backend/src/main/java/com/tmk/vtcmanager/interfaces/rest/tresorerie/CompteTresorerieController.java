@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.domain.tresorerie.CompteAvecSolde;
 import com.tmk.vtcmanager.application.domain.tresorerie.CompteTresorerie;
 import com.tmk.vtcmanager.application.domain.tresorerie.TransfertTresorerie;
 import com.tmk.vtcmanager.application.usecases.finance.GetMontantAReverserEtatUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.AnnulerClotureCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CloturerCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CreateCompteTresorerieUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CreateTransfertUseCase;
@@ -14,6 +15,7 @@ import com.tmk.vtcmanager.application.usecases.tresorerie.GetComptesTresorerieUs
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetSoldeCompteALaDateUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetTransfertsUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.UpdateCompteTresorerieUseCase;
+import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.AnnulationClotureRequest;
 import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.ClotureCaisseRequest;
 import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.ImputationEcartRequest;
 import com.tmk.vtcmanager.interfaces.rest.tresorerie.dto.request.CompteTresorerieRequest;
@@ -48,6 +50,7 @@ public class CompteTresorerieController {
     private final GetCloturesCaisseUseCase getCloturesCaisseUseCase;
     private final ImputerEcartCaisseUseCase imputerEcartCaisseUseCase;
     private final GetSoldeCompteALaDateUseCase getSoldeCompteALaDateUseCase;
+    private final AnnulerClotureCaisseUseCase annulerClotureCaisseUseCase;
 
     @GetMapping
     public TresorerieSummaryResponse findAll(
@@ -147,6 +150,17 @@ public class CompteTresorerieController {
                 clotureId, request.decision(), request.motif()));
     }
 
+    /**
+     * Annule un relevé erroné — mauvaise date, mauvais compte, montant faux. Le
+     * procès-verbal reste au dossier ; il cesse simplement de faire foi, ce qui
+     * rouvre la journée au recomptage.
+     */
+    @PatchMapping("/clotures/{clotureId}/annuler")
+    public ClotureCaisseResponse annulerCloture(@PathVariable Long clotureId,
+                                                @Valid @RequestBody AnnulationClotureRequest request) {
+        return toResponse(annulerClotureCaisseUseCase.executer(clotureId, request.motif()));
+    }
+
     @GetMapping("/{id}/clotures")
     public List<ClotureCaisseResponse> getClotures(@PathVariable Long id) {
         return getCloturesCaisseUseCase.executer(id).stream().map(this::toResponse).toList();
@@ -162,7 +176,8 @@ public class CompteTresorerieController {
                 c.getSoldeTheorique(), c.getSoldeCompte(), c.getEcart(), c.getMotifEcart(),
                 c.getOperationId(), c.getResponsable(), c.getImputationStatut(),
                 c.getImputationMotif(), c.getImputeeLe(), c.getImputeePar(),
-                c.getOperationImputationId());
+                c.getOperationImputationId(), c.getAnnuleLe(), c.getAnnulePar(),
+                c.getMotifAnnulation());
     }
 
     private CompteTresorerieResponse toResponse(CompteAvecSolde avecSolde) {

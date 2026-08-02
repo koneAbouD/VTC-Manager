@@ -443,6 +443,11 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
   late double _theorique;
   bool _chargementSolde = false;
 
+  /// Dernier relevé en vigueur du compte : c'est lui qui verrouille la
+  /// chronologie — aucun comptage ne peut être daté avant lui. L'afficher est
+  /// le seul moyen de comprendre un refus, et de le défaire s'il est erroné.
+  ClotureCaisseData? _dernierReleve;
+
   bool _submitting = false;
   String? _submitError;
 
@@ -451,6 +456,50 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
     super.initState();
     _selection = widget.comptes.first;
     _theorique = _selection.solde;
+    _chargerDernierReleve();
+  }
+
+  Future<void> _chargerDernierReleve() async {
+    final compteId = _selection.id;
+    List<ClotureCaisseData> releves = const [];
+    try {
+      releves = await ref
+          .read(tresorerieDatasourceProvider)
+          .getCloturesCaisse(compteId);
+    } catch (_) {
+      // Information de confort : son absence ne doit pas empêcher de compter.
+    }
+    if (!mounted || compteId != _selection.id) return;
+    setState(() =>
+        _dernierReleve = releves.isNotEmpty ? releves.first : null);
+  }
+
+  Future<void> _annulerDernierReleve() async {
+    final releve = _dernierReleve;
+    if (releve == null) return;
+
+    final motif = await _demanderMotifAnnulation(context);
+    if (motif == null || !mounted) return;
+
+    try {
+      await ref
+          .read(tresorerieDatasourceProvider)
+          .annulerClotureCaisse(releve.id, motif);
+      refreshFinances(ref);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _submitError = e.message);
+      return;
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitError = 'Annulation impossible : $e');
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _submitError = null);
+    await _chargerDernierReleve();
+    if (mounted) _showToast(context, 'Relevé annulé — la journée est rouverte');
   }
 
   @override
@@ -614,8 +663,12 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
                     icon: Icons.payments_outlined,
                     label: (c) => c.libelle,
                     onChanged: (c) {
-                      setState(() => _selection = c);
+                      setState(() {
+                        _selection = c;
+                        _dernierReleve = null;
+                      });
                       _majTheorique();
+                      _chargerDernierReleve();
                     },
                   ),
                 ),
@@ -634,6 +687,13 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
                 if (!_estAujourdHui) ...[
                   const SizedBox(height: 8),
                   const _NoteAntidatage(),
+                ],
+                if (_dernierReleve != null) ...[
+                  const SizedBox(height: 8),
+                  _DernierReleve(
+                    releve: _dernierReleve!,
+                    onAnnuler: _annulerDernierReleve,
+                  ),
                 ],
               ],
             ),
@@ -745,6 +805,109 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
       ],
     );
   }
+}
+
+/// Dernier relevé en vigueur du compte, et sortie de secours.
+///
+/// C'est lui qui verrouille la chronologie : aucun comptage ne peut être daté
+/// avant. Un relevé saisi à la mauvaise date enfermerait donc l'utilisateur —
+/// d'où le retrait, qui rouvre la journée sans effacer le procès-verbal.
+class _DernierReleve extends StatelessWidget {
+  final ClotureCaisseData releve;
+  final VoidCallback onAnnuler;
+
+  const _DernierReleve({required this.releve, required this.onAnnuler});
+
+  @override
+  Widget build(BuildContext context) {
+    final date = releve.dateCloture;
+    final libelle = date != null
+        ? DateFormat('dd/MM/yyyy').format(date)
+        : 'date inconnue';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: _kFieldFill,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.history_rounded, size: 16, color: _kLabel),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Dernier relevé : $libelle — '
+              '${CurrencyFormatter.format(releve.soldeCompte)}. '
+              'Aucun comptage ne peut être daté avant.',
+              style: const TextStyle(
+                  fontSize: 12, height: 1.3, color: _kLabel),
+            ),
+          ),
+          TextButton(
+            onPressed: onAnnuler,
+            style: TextButton.styleFrom(
+              foregroundColor: _kError,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Retirer',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Demande le motif du retrait — il reste au dossier avec le relevé.
+Future<String?> _demanderMotifAnnulation(BuildContext context) async {
+  final controller = TextEditingController();
+  final motif = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Retirer ce relevé'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Le relevé restera au dossier, marqué de son motif et de son '
+            'auteur. Il cessera simplement de faire foi.',
+            style: TextStyle(fontSize: 13, height: 1.35, color: _kLabel),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: controller,
+            autofocus: true,
+            maxLines: 2,
+            minLines: 1,
+            style: const TextStyle(fontSize: 15, color: _kDark),
+            decoration: _fieldDeco('Ex. : saisi à la mauvaise date'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final saisie = controller.text.trim();
+            if (saisie.isEmpty) return;
+            Navigator.pop(ctx, saisie);
+          },
+          style: FilledButton.styleFrom(backgroundColor: _kError),
+          child: const Text('Retirer'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  return motif;
 }
 
 /// Journée comptée : aujourd'hui le plus souvent, mais un comptage en retard —

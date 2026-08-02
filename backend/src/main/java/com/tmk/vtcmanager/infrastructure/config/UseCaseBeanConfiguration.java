@@ -94,6 +94,7 @@ import com.tmk.vtcmanager.application.usecases.finance.GetMargesParVehiculeUseCa
 import com.tmk.vtcmanager.application.usecases.finance.GetProvisionCreancesUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetRapportFinancierUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetMontantAReverserEtatUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.AnnulerClotureCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CloturerCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetSoldeCompteALaDateUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CreateCompteTresorerieUseCase;
@@ -1509,6 +1510,16 @@ public class UseCaseBeanConfiguration {
     @Bean
     public GetCloturesCaisseUseCase getCloturesCaisseUseCase(ClotureCaisseRepository repo) {
         return new GetCloturesCaisseUseCase(repo);
+    }
+
+    @Bean
+    public AnnulerClotureCaisseUseCase annulerClotureCaisseUseCase(
+            ClotureCaisseRepository clotureCaisseRepository,
+            PeriodeClotureeGuard periodeClotureeGuard,
+            AnnulerOperationFinanciereUseCase annulerOperationFinanciereUseCase,
+            AuteurCourant auteurCourant) {
+        return new AnnulerClotureCaisseUseCase(clotureCaisseRepository, periodeClotureeGuard,
+                annulerOperationFinanciereUseCase, auteurCourant);
     }
 
     @Bean

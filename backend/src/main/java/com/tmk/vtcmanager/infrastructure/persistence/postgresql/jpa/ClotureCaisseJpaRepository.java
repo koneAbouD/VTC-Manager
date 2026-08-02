@@ -10,9 +10,15 @@ import java.util.List;
 @Repository
 public interface ClotureCaisseJpaRepository extends JpaRepository<ClotureCaisseEntity, Long> {
 
-    boolean existsByCompteIdAndDateCloture(Long compteId, LocalDate dateCloture);
+    /**
+     * Un relevé annulé ne fait plus foi : il reste au dossier, mais aucun
+     * contrôle ne s'appuie sur lui — ni l'unicité de la journée, ni la
+     * chronologie des comptages, ni l'exigence de clôture du mois.
+     */
+    boolean existsByCompteIdAndDateClotureAndAnnuleLeIsNull(Long compteId, LocalDate dateCloture);
 
-    List<ClotureCaisseEntity> findByCompteIdOrderByDateClotureDesc(Long compteId);
+    List<ClotureCaisseEntity> findByCompteIdAndAnnuleLeIsNullOrderByDateClotureDesc(Long compteId);
 
-    java.util.Optional<ClotureCaisseEntity> findFirstByCompteIdOrderByDateClotureDesc(Long compteId);
+    java.util.Optional<ClotureCaisseEntity>
+            findFirstByCompteIdAndAnnuleLeIsNullOrderByDateClotureDesc(Long compteId);
 }

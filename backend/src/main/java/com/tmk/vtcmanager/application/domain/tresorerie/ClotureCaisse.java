@@ -46,8 +46,35 @@ public class ClotureCaisse {
     /** Écriture qui a soldé le compte d'attente. */
     private Long operationImputationId;
 
+    /**
+     * Annulation du relevé — saisi à la mauvaise date, sur le mauvais compte,
+     * ou d'un montant erroné. Le procès-verbal n'est jamais supprimé : il reste
+     * au dossier, marqué, avec son motif et son auteur.
+     */
+    private LocalDateTime annuleLe;
+    private String annulePar;
+    private String motifAnnulation;
+
     /** Vrai si un écart reste à imputer. */
     public boolean attendImputation() {
         return imputationStatut == StatutImputationEcart.EN_ATTENTE;
+    }
+
+    /** Vrai si le relevé a été annulé : il ne fait plus foi. */
+    public boolean estAnnule() {
+        return annuleLe != null;
+    }
+
+    /** Vrai si l'écart a déjà été tranché : son annulation demanderait plus. */
+    public boolean ecartImpute() {
+        return imputationStatut == StatutImputationEcart.PERTE
+                || imputationStatut == StatutImputationEcart.RECOUVREE;
+    }
+
+    /** Marque le relevé annulé (validation dans le use case). */
+    public void annuler(String motif, String auteur) {
+        this.annuleLe = LocalDateTime.now();
+        this.annulePar = auteur;
+        this.motifAnnulation = motif;
     }
 }

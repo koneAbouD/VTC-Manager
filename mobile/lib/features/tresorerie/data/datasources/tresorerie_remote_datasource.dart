@@ -182,6 +182,22 @@ class TresorerieRemoteDatasource {
     return ClotureCaisseData.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Relevés en vigueur d'un compte, du plus récent au plus ancien.
+  Future<List<ClotureCaisseData>> getCloturesCaisse(int compteId) async {
+    final data = await _client.get('/comptes-tresorerie/$compteId/clotures');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => ClotureCaisseData.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Retire un relevé erroné — le procès-verbal reste au dossier, marqué.
+  Future<ClotureCaisseData> annulerClotureCaisse(int clotureId, String motif) async {
+    final data = await _client.patch(
+        '/comptes-tresorerie/clotures/$clotureId/annuler', {'motif': motif});
+    return ClotureCaisseData.fromJson(data as Map<String, dynamic>);
+  }
+
   // ── V2/V3 : rapports ─────────────────────────────────────────────────────
 
   Future<CompteResultatData> getCompteResultat({

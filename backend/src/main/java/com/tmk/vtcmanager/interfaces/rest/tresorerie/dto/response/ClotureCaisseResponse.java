@@ -21,5 +21,9 @@ public record ClotureCaisseResponse(
         String imputationMotif,
         LocalDateTime imputeeLe,
         String imputeePar,
-        Long operationImputationId
+        Long operationImputationId,
+        /** Renseignés quand le relevé a été annulé : il ne fait plus foi. */
+        LocalDateTime annuleLe,
+        String annulePar,
+        String motifAnnulation
 ) {}
