@@ -10,18 +10,19 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Verrou du sens débiteur des caisses.
+ * Verrou du sens débiteur des comptes sans découvert.
  *
- * <p>Un compte d'espèces ne peut jamais être créditeur : le tiroir ne rend pas
- * plus que ce qu'il contient. Là où une banque autorise un découvert, une caisse
- * négative n'est jamais un fait — c'est une erreur de saisie (recette oubliée,
- * dépense en double, compte mal choisi). Le contrôle ne s'applique donc qu'au
- * type {@link TypeCompteTresorerie#CAISSE}.
+ * <p>Une caisse d'espèces comme un portefeuille mobile money ne peuvent jamais
+ * être créditeurs : ni le tiroir ni l'opérateur ne rendent plus qu'ils ne
+ * détiennent. Là où une banque consent un découvert — un fait à enregistrer —,
+ * un solde négatif y est toujours une erreur de saisie : recette oubliée,
+ * dépense en double, compte mal choisi. Le partage est porté par le domaine
+ * ({@link TypeCompteTresorerie#supporteDecouvert()}).
  *
  * <p>Le solde est apprécié <em>à la date de l'écriture</em>, puisque c'est ce
- * jour-là que l'argent devait être en caisse. Une écriture antidatée est en
+ * jour-là que l'argent devait être disponible. Une écriture antidatée est en
  * outre confrontée au solde du jour : sans quoi elle pourrait creuser après coup
- * une caisse que les mouvements postérieurs ont déjà vidée.
+ * un compte que les mouvements postérieurs ont déjà vidé.
  */
 @RequiredArgsConstructor
 public class CaisseCreditriceGuard {
@@ -52,12 +53,13 @@ public class CaisseCreditriceGuard {
                 .findAvecSoldeALaDate(compteId, date)
                 .orElse(null);
         if (compte == null || compte.getCompte() == null) return;
-        if (compte.getCompte().getType() != TypeCompteTresorerie.CAISSE) return;
+        TypeCompteTresorerie type = compte.getCompte().getType();
+        if (type == null || type.supporteDecouvert()) return;
 
         BigDecimal solde = compte.getSolde() != null ? compte.getSolde() : BigDecimal.ZERO;
         if (solde.subtract(montant).signum() < 0) {
             throw new CaisseCreditriceException(
-                    compte.getCompte().getLibelle(), solde, montant, date);
+                    compte.getCompte().getLibelle(), type, solde, montant, date);
         }
     }
 }

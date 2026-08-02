@@ -518,13 +518,22 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
     return e != null && e != 0;
   }
 
-  bool get _valide {
-    if (_comptage == null) return false;
-    // Valider sur un solde théorique en cours de rafraîchissement afficherait
-    // un écart et en enregistrerait un autre.
-    if (_chargementSolde) return false;
-    if (_motifRequis && _motifCtrl.text.trim().isEmpty) return false;
-    return true;
+  bool get _valide => _blocage == null;
+
+  /// Ce qui manque encore pour pouvoir clôturer, `null` si le formulaire est
+  /// complet. Un bouton grisé sans explication laisse croire à une panne — le
+  /// cas le plus trompeur étant une caisse vide, où l'on n'a pas l'idée de
+  /// saisir un montant.
+  String? get _blocage {
+    if (_chargementSolde) return 'Lecture du solde à cette date…';
+    if (_comptage == null) {
+      return 'Saisissez le montant compté. Un compte vide se déclare « 0 ».';
+    }
+    if (_motifRequis && _motifCtrl.text.trim().isEmpty) {
+      return 'Le comptage diffère du solde théorique : précisez le motif de '
+          'l\'écart.';
+    }
+    return null;
   }
 
   Future<void> _submit() async {
@@ -705,6 +714,26 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
           ],
 
           const SizedBox(height: 4),
+          if (_blocage != null && !_submitting) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      size: 15, color: _kHint),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      _blocage!,
+                      style: const TextStyle(
+                          fontSize: 12, height: 1.3, color: _kLabel),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           _SubmitButton(
             label: 'Clôturer la caisse',
             icon: Icons.lock_rounded,

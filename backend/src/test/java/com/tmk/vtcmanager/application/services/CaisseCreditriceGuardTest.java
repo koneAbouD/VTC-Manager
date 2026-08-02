@@ -21,9 +21,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Une caisse d'espèces ne peut pas être créditrice : le tiroir ne rend pas plus
- * que ce qu'il contient. Les autres supports, eux, tolèrent un solde négatif —
- * une banque a un découvert, ce n'est pas une anomalie de saisie.
+ * Ni une caisse d'espèces ni un portefeuille mobile money ne peuvent être
+ * créditeurs : ils ne rendent pas plus qu'ils ne détiennent. Seule une banque
+ * tolère un solde négatif — un découvert y est une facilité consentie, pas une
+ * anomalie de saisie.
  */
 class CaisseCreditriceGuardTest {
 
@@ -39,10 +40,12 @@ class CaisseCreditriceGuardTest {
     }
 
     private void compte(TypeCompteTresorerie type, long solde) {
+        String libelle = type == TypeCompteTresorerie.MOBILE_MONEY
+                ? "Mobile money" : "Caisse espèces";
         when(compteRepository.findAvecSoldeALaDate(anyLong(), any()))
                 .thenReturn(Optional.of(CompteAvecSolde.builder()
                         .compte(CompteTresorerie.builder()
-                                .id(1L).libelle("Caisse espèces").type(type).build())
+                                .id(1L).libelle(libelle).type(type).build())
                         .solde(BigDecimal.valueOf(solde))
                         .build()));
     }
@@ -65,6 +68,18 @@ class CaisseCreditriceGuardTest {
 
         assertThatCode(() -> guard.verifier(1L, BigDecimal.valueOf(50_000), AUJOURD_HUI))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Un portefeuille mobile money ne se met pas davantage à découvert")
+    void mobile_money_controle() {
+        compte(TypeCompteTresorerie.MOBILE_MONEY, 0);
+
+        assertThatThrownBy(() ->
+                guard.verifier(1L, BigDecimal.valueOf(176_800), AUJOURD_HUI))
+                .isInstanceOf(CaisseCreditriceException.class)
+                .hasMessageContaining("Mobile money")
+                .hasMessageContaining("mobile money ne peut pas être à découvert");
     }
 
     @Test

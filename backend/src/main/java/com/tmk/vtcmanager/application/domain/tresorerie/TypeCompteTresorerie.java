@@ -39,4 +39,14 @@ public enum TypeCompteTresorerie {
             case BANQUE -> "rapprochez-le de son relevé";
         };
     }
+
+    /**
+     * Vrai si le support tolère un solde négatif. Seule une banque le peut : un
+     * découvert y est une facilité consentie, donc un fait. Des espèces comme un
+     * portefeuille mobile ne rendent jamais plus qu'ils ne détiennent — un solde
+     * négatif y est toujours une erreur de saisie, pas un fait à enregistrer.
+     */
+    public boolean supporteDecouvert() {
+        return this == BANQUE;
+    }
 }
