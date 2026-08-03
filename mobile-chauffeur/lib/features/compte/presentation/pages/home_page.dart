@@ -12,6 +12,8 @@ import '../../../cotisation/presentation/pages/cotisations_page.dart';
 import '../../../indisponibilite/presentation/pages/indisponibilites_page.dart';
 import '../../../operation/presentation/pages/operations_page.dart';
 import '../../../operation/presentation/providers/operation_providers.dart';
+import '../../../notification/presentation/pages/notifications_page.dart';
+import '../../../notification/presentation/providers/notification_providers.dart';
 import '../../../operation/presentation/widgets/operation_tile.dart';
 import '../../../paiement/presentation/pages/paiement_sheet.dart';
 import '../../../recette/presentation/pages/recettes_page.dart';
@@ -38,6 +40,10 @@ class HomePage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         actions: [
+          _Cloche(
+            nonLues: ref.watch(nonLuesProvider),
+            onTap: () => _push(context, const NotificationsPage()),
+          ),
           PopupMenuButton<String>(
             onSelected: (value) {
               switch (value) {
@@ -631,4 +637,52 @@ class _ErreurBloc extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// Cloche des notifications, avec sa pastille de non-lues.
+///
+/// La pastille disparaît à zéro : un compteur vide attire l'œil pour rien.
+/// Au-delà de 9, on s'arrête à « 9+ » — la pastille reste ronde et lisible sur
+/// une icône de barre d'application.
+class _Cloche extends StatelessWidget {
+  final int nonLues;
+  final VoidCallback onTap;
+
+  const _Cloche({required this.nonLues, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_none_rounded),
+          tooltip: 'Notifications',
+          onPressed: onTap,
+        ),
+        if (nonLues > 0)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              constraints: const BoxConstraints(minWidth: 17),
+              decoration: BoxDecoration(
+                color: AppColors.error,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                nonLues > 9 ? '9+' : '$nonLues',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }

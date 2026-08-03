@@ -11,6 +11,8 @@ import '../../../auth/presentation/pages/pin_setup_page.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/auth_state.dart';
 import '../../../jour_ferie/presentation/jours_feries_page.dart';
+import '../../../notification/presentation/pages/notifications_page.dart';
+import '../../../notification/presentation/providers/notification_providers.dart';
 import '../../../partenaire/presentation/pages/partenaires_liste_page.dart';
 import '../widgets/settings_tile.dart';
 import 'parametrage_hub_page.dart';
@@ -218,15 +220,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ouvert: _volet == _Volet.configurations,
                     onToggle: () => _basculer(_Volet.configurations),
                     children: [
-                      // Ce réglage n'a pas encore de mécanisme derrière lui :
-                      // switch présent mais inerte (voir le rapport de
-                      // livraison).
-                      const SettingsTile(
-                        icon: Icons.notifications_outlined,
-                        title: 'Notifications',
-                        description: 'Alertes documents, entretiens et impayés',
-                        trailing: Switch(value: false, onChanged: null),
-                      ),
+                      const _LigneNotifications(),
                       const _LigneBiometrie(),
                       // Même situation que les notifications : l'entrée est
                       // annoncée, le suivi de position n'est pas encore branché.
@@ -256,10 +250,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: 'Notifications',
                     ouvert: _volet == _Volet.notifications,
                     onToggle: () => _basculer(_Volet.notifications),
-                    children: const [
-                      SettingsPlaceholder(
-                        'Le centre de notifications arrive bientôt : '
-                        'documents à renouveler, entretiens dus et impayés.',
+                    children: [
+                      SettingsTile(
+                        icon: Icons.inbox_rounded,
+                        title: 'Centre de notifications',
+                        description: 'Alertes reçues, lues et non lues',
+                        trailing: _BadgeNonLues(ref.watch(nonLuesProvider)),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const NotificationsPage(),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -503,6 +504,94 @@ class _ProfileHeader extends StatelessWidget {
 /// biométrique y est effectivement enrôlée. À défaut, elle reste en retrait
 /// avec le motif — un appareil sans capteur n'a rien à proposer, un appareil
 /// sans empreinte enregistrée demande un geste dans les réglages du téléphone.
+/// Réception des notifications sur cet appareil.
+///
+/// Couper retire le jeton de l'appareil côté serveur : rien n'est filtré à
+/// l'arrivée, plus rien n'est envoyé. La bascule suppose donc un aller-retour
+/// réseau, d'où l'interrupteur qui se fige le temps de la réponse.
+class _LigneNotifications extends ConsumerStatefulWidget {
+  const _LigneNotifications();
+
+  @override
+  ConsumerState<_LigneNotifications> createState() =>
+      _LigneNotificationsState();
+}
+
+class _LigneNotificationsState extends ConsumerState<_LigneNotifications> {
+  /// `null` tant que la préférence n'est pas relue : la ligne garde sa place
+  /// sans afficher une position qu'elle ne connaît pas encore.
+  bool? _active;
+  bool _occupee = false;
+
+  /// Position visée pendant la bascule, pour que l'interrupteur suive le doigt
+  /// sans attendre le serveur.
+  bool? _cible;
+
+  @override
+  void initState() {
+    super.initState();
+    _charger();
+  }
+
+  Future<void> _charger() async {
+    final active = await ref.read(receptionPushProvider).estActive();
+    if (!mounted) return;
+    setState(() => _active = active);
+  }
+
+  Future<void> _basculer(bool active) async {
+    setState(() {
+      _occupee = true;
+      _cible = active;
+    });
+
+    final reception = ref.read(receptionPushProvider);
+    final erreur = active ? await reception.activer() : await reception.couper();
+
+    if (!mounted) return;
+    setState(() {
+      _occupee = false;
+      _cible = null;
+      // Une activation refusée par le système ne prend pas ; une coupure, si —
+      // son message éventuel n'est qu'un avertissement de synchronisation.
+      _active = active ? erreur == null : false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(erreur ??
+            (active
+                ? 'Notifications activées sur cet appareil.'
+                : 'Notifications coupées sur cet appareil.')),
+        backgroundColor: erreur == null ? AppColors.primary : AppColors.error,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _active;
+    final utilisable = active != null && !_occupee;
+
+    return SettingsTile(
+      icon: active == false
+          ? Icons.notifications_off_outlined
+          : Icons.notifications_outlined,
+      title: 'Notifications',
+      description: switch (active) {
+        null => 'Lecture du réglage…',
+        true => 'Recevoir les alertes de gestion sur cet appareil',
+        false => 'Cet appareil ne recevra aucune alerte',
+      },
+      onTap: utilisable ? () => _basculer(!active) : null,
+      trailing: Switch(
+        value: _cible ?? active ?? false,
+        onChanged: utilisable ? _basculer : null,
+      ),
+    );
+  }
+}
+
 class _LigneBiometrie extends ConsumerStatefulWidget {
   const _LigneBiometrie();
 
@@ -867,6 +956,38 @@ class _CorpsDefilant extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Pastille du nombre de notifications non lues.
+///
+/// Rien n'est affiché quand le compte est à zéro : un badge vide attire l'œil
+/// pour rien. Au-delà de 99, on s'arrête à « 99+ » plutôt que d'élargir la
+/// pastille au point de déformer la ligne.
+class _BadgeNonLues extends StatelessWidget {
+  final int nonLues;
+
+  const _BadgeNonLues(this.nonLues);
+
+  @override
+  Widget build(BuildContext context) {
+    if (nonLues <= 0) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Text(
+        nonLues > 99 ? '99+' : '$nonLues',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }

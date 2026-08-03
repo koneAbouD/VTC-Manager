@@ -34,9 +34,10 @@ dependencies:
   google_maps_flutter: ^2.6.1
   geolocator: ^12.0.0
 
-  # Notifications Firebase
-  firebase_core: ^3.3.0
-  firebase_messaging: ^15.0.4
+  # Notifications push, partagées avec l'app chauffeur (firebase_core et
+  # firebase_messaging sont portés par le paquet).
+  tmk_push:
+    path: ../packages/tmk_push
 
   # Functional programming / Either
   fpdart: ^1.1.0

@@ -14,6 +14,10 @@ class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        // Avant toute notification : une notification dont le canal n'existe
+        // pas encore est reçue mais reste silencieuse.
+        NotificationChannels.creer(applicationContext)
+
         // Verrouillage de l'appareil → verrouillage de l'application.
         EventChannel(
             flutterEngine.dartExecutor.binaryMessenger,

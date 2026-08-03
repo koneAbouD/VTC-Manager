@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tmk_pin/tmk_pin.dart';
+import 'package:tmk_push/tmk_push.dart';
 
 import '../../../../core/network/session_manager.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../notification/data/api_push_registrar.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories_impl/auth_repository_impl.dart';
 import '../../domain/entities/auth_tokens.dart';
@@ -175,9 +177,35 @@ class AuthController extends Notifier<AuthState> {
     // redemandera ([AuthPinResume]) au lieu d'en faire choisir un nouveau. Seul
     // « Code TMK oublié ? » efface le coffre (voir [forgetPin]).
     _pin.lock();
+    // Avant la purge des jetons : ensuite, la requête de retrait partirait sans
+    // en-tête d'autorisation et serait rejetée.
+    await PushService.instance.detacherSession();
     await _storage.clearTokens();
     await _storage.setLoggedOut(true);
     state = const AuthUnauthenticated();
+  }
+
+  // ── Notifications push ──────────────────────────────────────────────────
+
+  /// L'application vient de s'ouvrir : l'appareil est déclaré au backend et les
+  /// liens profonds retenus pendant le verrouillage peuvent s'ouvrir.
+  ///
+  /// Appelé à chaque entrée, connexion comme déverrouillage : l'application
+  /// relancée passe directement par le code d'accès, sans quoi l'appareil ne
+  /// serait jamais déclaré. Le réenregistrement est sans effet de bord, le
+  /// backend reconnaissant le jeton.
+  /// L'autorisation est demandée ici plutôt qu'au lancement : présentée avant
+  /// même l'écran de connexion, elle serait refusée par réflexe. Android ne
+  /// montre sa boîte de dialogue qu'une fois, les appels suivants se contentant
+  /// de rendre la réponse déjà donnée.
+  void _ouvrirNotifications() {
+    PushService.instance.marquerPrete();
+    final registrar = ApiPushRegistrar(ref.read(apiClientProvider));
+    unawaited(
+      PushService.instance
+          .demanderPermission()
+          .then((_) => PushService.instance.attacherSession(registrar)),
+    );
   }
 
   // ── Code d'accès ────────────────────────────────────────────────────────
@@ -220,7 +248,10 @@ class AuthController extends Notifier<AuthState> {
       displayName: displayName,
     );
     await _storage.setLoggedOut(false);
-    if (entrerDansLApplication) state = AuthAuthenticated(displayName);
+    if (entrerDansLApplication) {
+      state = AuthAuthenticated(displayName);
+      _ouvrirNotifications();
+    }
     return null;
   }
 
@@ -241,6 +272,9 @@ class AuthController extends Notifier<AuthState> {
   Future<void> lock({String? message}) async {
     SessionManager.instance.stop();
     _pin.lock();
+    // Une notification touchée pendant le verrouillage attendra le code : la
+    // page visée n'a pas à s'afficher derrière l'écran de saisie.
+    PushService.instance.marquerVerrouillee();
     await _storage.clearTokens();
     state = AuthLocked(
       displayName: await _pin.displayName(),
@@ -269,6 +303,7 @@ class AuthController extends Notifier<AuthState> {
       return;
     }
     SessionManager.instance.stop();
+    PushService.instance.marquerVerrouillee();
     await _storage.clearTokens();
     state = AuthUnauthenticated(
       reason == LockReason.inactivite
@@ -376,6 +411,7 @@ class AuthController extends Notifier<AuthState> {
           SessionManager.instance.start();
           await _syncVaultWithStoredToken();
           state = AuthAuthenticated(nom);
+          _ouvrirNotifications();
           return const UnlockOk();
         }
 
@@ -487,6 +523,7 @@ class AuthController extends Notifier<AuthState> {
         await _syncVaultWithStoredToken();
         await _storage.setLoggedOut(false);
         state = AuthAuthenticated(nom);
+        _ouvrirNotifications();
         return const UnlockOk();
     }
   }

@@ -95,6 +95,21 @@ app:
       client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:vtc-manager-admin}
       client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:ZxkzmwzbjcGRy1IZtEJ773vLJQ7B8qw1}
 
+  # Notifications push (Firebase Cloud Messaging), pour les deux applications.
+  # Avec enabled=false, le message est journalisé au lieu d'être envoyé : toute
+  # la chaîne — enregistrement, historique, événements — reste testable sans
+  # projet Firebase.
+  #
+  # La clé de compte de service se fournit encodée en base64 (production, via
+  # le .env) ou par un chemin de fichier (développement) :
+  #   base64 -i cle-service-firebase.json | pbcopy
+  push:
+    enabled: ${PUSH_ENABLED:true}
+    credentials-base64: ${FCM_CREDENTIALS_B64:}
+    credentials-path: ${FCM_CREDENTIALS_PATH:}
+    # Valide le message auprès de FCM sans le remettre aux appareils.
+    dry-run: ${PUSH_DRY_RUN:false}
+
   # Envoi des OTP de l'app chauffeur via WhatsApp Cloud API (Meta).
   # En dev (enabled=false), le code est journalisé au lieu d'être envoyé.
   whatsapp:

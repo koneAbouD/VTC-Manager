@@ -1,4 +1,4 @@
-package com.example.vtc_manager
+package com.tmk.vtc_manager
 
 import android.content.ContentValues
 import android.os.Build
@@ -21,6 +21,11 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Avant toute notification : une notification dont le canal n'existe
+        // pas encore est reçue mais reste silencieuse.
+        NotificationChannels.creer(applicationContext)
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, downloadsChannel)
             .setMethodCallHandler { call, result ->
                 if (call.method == "saveToDownloads") {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:tmk_push/tmk_push.dart';
 
 import 'core/network/session_manager.dart';
 import 'core/theme/app_theme.dart';
@@ -12,11 +13,16 @@ import 'features/auth/presentation/pages/pin_setup_page.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/providers/auth_state.dart';
 import 'features/auth/presentation/widgets/biometric_proposal.dart';
+import 'features/notification/presentation/push_router.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('fr_FR', null);
+  // Avant le premier écran : une notification ayant lancé l'application n'est
+  // rendue qu'une seule fois, au tout premier démarrage qui suit. Elle sera
+  // retenue jusqu'au déverrouillage.
+  await PushService.instance.initialiser();
   runApp(const ProviderScope(child: VtcManagerApp()));
 }
 
@@ -54,7 +60,11 @@ class VtcManagerApp extends ConsumerWidget {
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) => SessionManager.instance.recordActivity(),
-      child: MaterialApp(
+      // Autour de MaterialApp, jamais dedans : le routeur pousse sur le
+      // navigateur racine, qui doit déjà exister quand un lien arrive.
+      child: PushRouter(
+        navigatorKey: _navigatorKey,
+        child: MaterialApp(
         title: 'VTC Manager',
         navigatorKey: _navigatorKey,
         scaffoldMessengerKey: _scaffoldMessengerKey,
@@ -83,6 +93,7 @@ class VtcManagerApp extends ConsumerWidget {
             PinResumePage(displayName: displayName),
           _ => const LoginPage(),
         },
+        ),
       ),
     );
   }

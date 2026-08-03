@@ -1,4 +1,4 @@
-package com.example.vtc_manager
+package com.tmk.vtc_manager
 
 import android.app.KeyguardManager
 import android.content.BroadcastReceiver

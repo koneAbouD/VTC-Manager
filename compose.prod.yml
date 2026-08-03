@@ -45,6 +45,14 @@ services:
 
       # --- OCR des quittances (service Tesseract ci-dessous) ---
       OCR_URL: ${OCR_URL:-http://tesseract:8884}
+
+      # --- Notifications push (Firebase Cloud Messaging) ---
+      # FCM_CREDENTIALS_B64 : clé du compte de service Firebase encodée en
+      # base64 (base64 -w0 cle-service-firebase.json). Encodée plutôt que
+      # montée en volume pour rester dans le même modèle de secrets que le
+      # reste du service.
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
+      FCM_CREDENTIALS_B64: ${FCM_CREDENTIALS_B64:-}
     ports:
       - "${APP_PORT:-8081}:8081"
     networks:

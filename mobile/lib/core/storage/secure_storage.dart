@@ -7,6 +7,7 @@ class SecureStorage {
   static const _kRefreshToken = 'refresh_token';
   static const _kAccessExpiry = 'access_token_expiry'; // epoch ms
   static const _kLoggedOut = 'session_logged_out';
+  static const _kNotificationsCoupees = 'notifications_coupees';
 
   final FlutterSecureStorage _storage;
 
@@ -77,6 +78,25 @@ class SecureStorage {
       await _storage.write(key: _kLoggedOut, value: 'true');
     } else {
       await _storage.delete(key: _kLoggedOut);
+    }
+  }
+
+  /// L'utilisateur a coupé les notifications depuis les réglages.
+  ///
+  /// Le réglage vaut pour cet appareil et non pour le compte : c'est ce
+  /// téléphone-ci qu'on ne veut plus voir sonner. Il survit à la déconnexion,
+  /// sans quoi une reconnexion réinscrirait l'appareil dans le dos de celui qui
+  /// vient de le faire taire.
+  ///
+  /// Absent = notifications actives : ne rien avoir décidé, c'est les recevoir.
+  Future<bool> notificationsCoupees() async =>
+      (await _storage.read(key: _kNotificationsCoupees)) == 'true';
+
+  Future<void> setNotificationsCoupees(bool coupees) async {
+    if (coupees) {
+      await _storage.write(key: _kNotificationsCoupees, value: 'true');
+    } else {
+      await _storage.delete(key: _kNotificationsCoupees);
     }
   }
 }

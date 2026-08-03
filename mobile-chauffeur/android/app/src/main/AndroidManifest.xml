@@ -6,6 +6,10 @@
     <!-- local_auth : déverrouillage du code TMK par empreinte ou visage -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
 
+    <!-- Notifications push. Réclamée à l'exécution depuis Android 13 (API 33) ;
+         ignorée en dessous, où l'autorisation est implicite. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="VTC Chauffeur"
         android:name="${applicationName}"
@@ -33,6 +37,16 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Canal utilisé par les notifications reçues application fermée.
+             Doit porter le même identifiant que FcmPushAdapter.CANAL_ANDROID
+             côté backend et que PushService.canalAndroid côté Dart : un canal
+             inconnu prive la notification de son son et de sa priorité, sans
+             la moindre erreur visible. Le canal lui-même est créé par
+             MainActivity, seul endroit où l'on maîtrise son libellé. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="vtc_notifications_default" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

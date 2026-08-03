@@ -1,4 +1,7 @@
+import 'dart:math' show pi, sin;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Kit d'UI partagé pour les écrans d'authentification (Login / Inscription /
 /// Mot de passe oublié) — rendu « premium » cohérent.
@@ -55,6 +58,149 @@ void authToast(
               ? const Duration(seconds: 4)
               : const Duration(seconds: 2)),
     ));
+}
+
+// ── Bandeau de message inline ───────────────────────────────────────────────
+
+/// Message qui reste sous les yeux, à la place du toast qui s'efface au bout de
+/// quelques secondes : un refus de connexion doit rester lisible tant que
+/// l'utilisateur n'a pas retenté.
+///
+/// [tick] rejoue la secousse et le retour tactile — sans lui, deux refus
+/// identiques d'affilée ne se verraient pas, le bandeau étant déjà à l'écran.
+/// Reprend la mécanique des cases du code d'accès (`PinBoxes`).
+class AuthMessage extends StatefulWidget {
+  final String? message;
+  final AuthToastType type;
+
+  /// Icône de tête. À défaut, celle du [type].
+  final IconData? icon;
+
+  final int tick;
+
+  /// Espace conservé sous le bandeau. Il fait partie de ce qui apparaît et
+  /// disparaît : posé à l'extérieur, il laisserait un blanc quand le message
+  /// s'efface.
+  final EdgeInsetsGeometry margin;
+
+  const AuthMessage({
+    super.key,
+    this.message,
+    this.type = AuthToastType.error,
+    this.icon,
+    this.tick = 0,
+    this.margin = const EdgeInsets.only(bottom: 16),
+  });
+
+  @override
+  State<AuthMessage> createState() => _AuthMessageState();
+}
+
+class _AuthMessageState extends State<AuthMessage>
+    with SingleTickerProviderStateMixin {
+  // Créé dès l'entrée dans l'arbre, et non à la première lecture : sans
+  // message, `build` ne touche pas au contrôleur, et un `late` le ferait naître
+  // dans `dispose()` — sur un élément déjà démonté.
+  late final AnimationController _shake;
+
+  @override
+  void initState() {
+    super.initState();
+    _shake = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+  }
+
+  @override
+  void didUpdateWidget(AuthMessage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final aUnMessage = widget.message != null && widget.message!.isNotEmpty;
+    if (widget.tick != oldWidget.tick && aUnMessage) {
+      // Seuls les refus secouent : une information (« session expirée ») n'a
+      // pas à être assenée.
+      if (widget.type == AuthToastType.error) {
+        HapticFeedback.heavyImpact();
+        _shake.forward(from: 0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _shake.dispose();
+    super.dispose();
+  }
+
+  (Color, IconData) get _style => switch (widget.type) {
+        AuthToastType.error => (kAuthError, Icons.error_outline_rounded),
+        AuthToastType.warning =>
+          (const Color(0xFFE8590C), Icons.warning_amber_rounded),
+        AuthToastType.info =>
+          (const Color(0xFF1971C2), Icons.info_outline_rounded),
+        AuthToastType.success =>
+          (kAuthPrimaryDark, Icons.check_circle_outline_rounded),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final message = widget.message;
+    final vide = message == null || message.isEmpty;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: vide
+          ? const SizedBox(width: double.infinity)
+          : AnimatedBuilder(
+              animation: _shake,
+              builder: (context, child) => Transform.translate(
+                // Oscillation amortie : quatre allers-retours qui s'éteignent.
+                offset: Offset(
+                  sin(_shake.value * pi * 8) * 8 * (1 - _shake.value),
+                  0,
+                ),
+                child: child,
+              ),
+              child: _bandeau(message),
+            ),
+    );
+  }
+
+  Widget _bandeau(String message) {
+    final (couleur, icone) = _style;
+    return Padding(
+      padding: widget.margin,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: couleur.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: couleur.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(widget.icon ?? icone, size: 18, color: couleur),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: couleur,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ── Fond dégradé + back button optionnel ─────────────────────────────────────

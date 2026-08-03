@@ -1,0 +1,21 @@
+name: tmk_push
+description: "Notifications push (Firebase Cloud Messaging) partagées par les applications TMK : cycle de vie du jeton d'appareil, réception des messages et liens profonds différés."
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Initialisation du SDK Firebase et réception des messages FCM.
+  firebase_core: ^3.15.2
+  firebase_messaging: ^15.2.10
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0

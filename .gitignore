@@ -3,6 +3,14 @@
 .env.*
 !.env.example
 
+# Clé du compte de service Firebase : elle autorise l'envoi de notifications à
+# tout le parc. À ne jamais versionner — en production elle passe par le .env,
+# encodée en base64.
+# Le google-services.json des applications Android, lui, n'est PAS un secret :
+# il est embarqué dans l'APK et doit être versionné pour que le build passe.
+firebase-service-account*.json
+**/serviceAccountKey*.json
+
 # ===== Sauvegardes base de données (données sensibles) =====
 backups/
 scripts/backup.env

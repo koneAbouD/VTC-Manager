@@ -50,6 +50,10 @@ dependencies:
   tmk_pin:
     path: ../packages/tmk_pin
 
+  # Notifications push, partagées avec l'app gestionnaire
+  tmk_push:
+    path: ../packages/tmk_push
+
   # Format / dates (FCFA, locale fr)
   intl: ^0.20.2
 

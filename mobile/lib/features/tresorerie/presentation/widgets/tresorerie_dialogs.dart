@@ -863,51 +863,87 @@ class _DernierReleve extends StatelessWidget {
 }
 
 /// Demande le motif du retrait — il reste au dossier avec le relevé.
-Future<String?> _demanderMotifAnnulation(BuildContext context) async {
-  final controller = TextEditingController();
-  final motif = await showDialog<String>(
+Future<String?> _demanderMotifAnnulation(BuildContext context) {
+  return showDialog<String>(
     context: context,
-    builder: (ctx) => AlertDialog(
+    builder: (_) => const _MotifAnnulationDialog(),
+  );
+}
+
+/// Le champ de saisie vit et meurt avec la boîte de dialogue.
+///
+/// Son contrôleur ne peut pas être détruit par l'appelant dès que
+/// `showDialog` rend la main : la boîte est alors encore en train de se
+/// refermer et reconstruit son contenu — le champ se retrouverait branché sur
+/// un contrôleur déjà libéré.
+class _MotifAnnulationDialog extends StatefulWidget {
+  const _MotifAnnulationDialog();
+
+  @override
+  State<_MotifAnnulationDialog> createState() => _MotifAnnulationDialogState();
+}
+
+class _MotifAnnulationDialogState extends State<_MotifAnnulationDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _valider() {
+    final saisie = _controller.text.trim();
+    if (saisie.isEmpty) return;
+    Navigator.pop(context, saisie);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
       title: const Text('Retirer ce relevé'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Le relevé restera au dossier, marqué de son motif et de son '
-            'auteur. Il cessera simplement de faire foi.',
-            style: TextStyle(fontSize: 13, height: 1.35, color: _kLabel),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: controller,
-            autofocus: true,
-            maxLines: 2,
-            minLines: 1,
-            style: const TextStyle(fontSize: 15, color: _kDark),
-            decoration: _fieldDeco('Ex. : saisi à la mauvaise date'),
-          ),
-        ],
+      // Le clavier peut ne laisser que quelques dizaines de pixels : le
+      // contenu défile plutôt que de déborder.
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Le relevé restera au dossier, marqué de son motif et de son '
+              'auteur. Il cessera simplement de faire foi.',
+              style: TextStyle(fontSize: 13, height: 1.35, color: _kLabel),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLines: 2,
+              minLines: 1,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _valider(),
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(fontSize: 15, color: _kDark),
+              decoration: _fieldDeco('Ex. : saisi à la mauvaise date'),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(ctx),
+          onPressed: () => Navigator.pop(context),
           child: const Text('Annuler'),
         ),
         FilledButton(
-          onPressed: () {
-            final saisie = controller.text.trim();
-            if (saisie.isEmpty) return;
-            Navigator.pop(ctx, saisie);
-          },
+          // Le motif est obligatoire côté serveur : le bouton reste inerte
+          // tant qu'il manque, plutôt que d'aller chercher un refus.
+          onPressed: _controller.text.trim().isEmpty ? null : _valider,
           style: FilledButton.styleFrom(backgroundColor: _kError),
           child: const Text('Retirer'),
         ),
       ],
-    ),
-  );
-  controller.dispose();
-  return motif;
+    );
+  }
 }
 
 /// Journée comptée : aujourd'hui le plus souvent, mais un comptage en retard —

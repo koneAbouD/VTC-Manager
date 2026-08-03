@@ -20,6 +20,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.NotificationEncaissementService;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class CreateEncaissementUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final NotificationEncaissementService notificationEncaissementService;
 
     @Transactional
     public Encaissement executer(Long ligneRecetteId, Encaissement encaissement) {
@@ -73,6 +75,10 @@ public class CreateEncaissementUseCase {
         // statut = agrégat des encaissements de la ligne, en une instruction
         // atomique. Évite le double comptage de l'ancien rechargement en mémoire.
         ligneRecetteRepository.recalculerDepuisEncaissements(ligneRecetteId);
+
+        // Après le recalcul : le push part une fois la transaction validée, il
+        // ne doit annoncer que ce qui a effectivement été enregistré.
+        notificationEncaissementService.recetteEncaissee(ligne, saved);
 
         return saved;
     }

@@ -28,6 +28,14 @@ class ApiClient {
   Future<dynamic> post(String path, [Object? body]) =>
       _send('POST', path, body: body);
 
+  /// Seule écriture destructive de l'app chauffeur : le retrait de son appareil
+  /// des destinataires de notifications, à la déconnexion.
+  Future<dynamic> delete(String path) => _send('DELETE', path);
+
+  /// Modification partielle : marquer une notification comme lue.
+  Future<dynamic> patch(String path, [Object? body]) =>
+      _send('PATCH', path, body: body);
+
   /// Télécharge un binaire (ex. décompte PDF d'un arrêté).
   Future<Uint8List> getBytes(String path) async {
     final uri = _buildUri(path, null);

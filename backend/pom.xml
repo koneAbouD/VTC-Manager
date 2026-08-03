@@ -24,6 +24,8 @@
         <lombok.version>1.18.34</lombok.version>
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <springdoc.version>2.6.0</springdoc.version>
+        <firebase-admin.version>9.4.3</firebase-admin.version>
+        <google-http-client.version>1.45.3</google-http-client.version>
     </properties>
 
     <dependencies>
@@ -119,6 +121,40 @@
             <version>8.5.11</version>
         </dependency>
 
+        <!-- Firebase Admin : envoi des notifications push (FCM HTTP v1).
+             Le SDK gère l'obtention et le renouvellement du jeton OAuth2 à partir
+             de la clé de compte de service, et surtout il typait les erreurs de
+             livraison — UNREGISTERED / INVALID_ARGUMENT — dont dépend la purge
+             automatique des tokens d'appareils désinstallés.
+             Firestore et Cloud Storage sont exclus : seul le service Messaging
+             est utilisé, et ils pèsent l'essentiel du poids du SDK. -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>${firebase-admin.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-firestore</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-storage</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- FirebaseOptions instancie JacksonFactory à la construction : sans cet
+             artefact, l'initialisation du SDK échoue par NoClassDefFoundError. Il
+             arrivait transitivement par Firestore / Cloud Storage, exclus ci-dessus,
+             d'où cette déclaration directe. Version alignée sur le google-http-client
+             résolu par firebase-admin. -->
+        <dependency>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client-jackson2</artifactId>
+            <version>${google-http-client.version}</version>
+        </dependency>
+
         <!-- Extraction PDF : couche texte des relevés + rendu image des quittances
              scannées/photographiées, océrisées ensuite par Tesseract (binaire
              système : apt-get install -y tesseract-ocr tesseract-ocr-fra). -->
@@ -143,6 +179,39 @@
 
     <build>
         <plugins>
+            <!-- Purge des migrations Flyway copiées lors des builds précédents.
+                 maven-resources-plugin ne fait qu'ajouter/écraser : un fichier
+                 renommé dans src/main/resources (renumérotation d'une migration,
+                 typiquement V1.10.1 -> V1.10.2) laisse son ancienne copie dans
+                 target/classes, et Flyway voit alors deux migrations pour la même
+                 version — « Found more than one migration with version X » — alors
+                 que les sources sont saines. On vide donc le répertoire juste avant
+                 la copie des ressources : le coût est négligeable (quelques dizaines
+                 de fichiers SQL) et le classpath reflète toujours exactement src.
+                 excludeDefaultDirectories et les filesets sont volontairement portés
+                 par l'execution et non par le plugin, pour ne pas altérer le
+                 comportement de `mvn clean`. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>purge-migrations-obsoletes</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <configuration>
+                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                            <filesets>
+                                <fileset>
+                                    <directory>${project.build.outputDirectory}/db/migration</directory>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

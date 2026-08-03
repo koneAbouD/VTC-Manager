@@ -15,6 +15,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepositor
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.NotificationEncaissementService;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class CreateEncaissementCotisationUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final NotificationEncaissementService notificationEncaissementService;
 
     @Transactional
     public EncaissementCotisation executer(Long ligneCotisationId, EncaissementCotisation encaissement) {
@@ -66,6 +68,10 @@ public class CreateEncaissementCotisationUseCase {
 
         // Recalcul fiable depuis la BDD (source de vérité), une instruction atomique.
         ligneCotisationRepository.recalculerDepuisEncaissements(ligneCotisationId);
+
+        // Après le recalcul : le push part une fois la transaction validée, il
+        // ne doit annoncer que ce qui a effectivement été enregistré.
+        notificationEncaissementService.cotisationEncaissee(ligne, saved);
 
         return saved;
     }

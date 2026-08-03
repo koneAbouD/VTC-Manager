@@ -18,6 +18,17 @@ spring:
     hibernate:
       ddl-auto: validate
 
+app:
+  push:
+    # Clé de compte de service Firebase locale, non versionnée. Le chemin est
+    # relatif à la racine du dépôt : c'est le répertoire de travail d'IntelliJ.
+    # Lancé depuis backend/ (mvn spring-boot:run) ou clé rangée ailleurs ?
+    # surcharger FCM_CREDENTIALS_PATH — le démarrage indique alors le chemin
+    # absolu cherché.
+    # Pas de projet Firebase sous la main ? PUSH_ENABLED=false : la chaîne
+    # complète reste testable, le message est simplement journalisé.
+    credentials-path: ${FCM_CREDENTIALS_PATH:backend/firebase-service-account.json}
+
 logging:
   level:
     org.flywaydb: DEBUG

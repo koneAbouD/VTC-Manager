@@ -7,7 +7,17 @@ import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionTrav
 import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionTravailImpactUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.GetConditionsTravailUseCase;
 import com.tmk.vtcmanager.application.usecases.conditionTravail.UpdateConditionTravailUseCase;
+import com.tmk.vtcmanager.application.ports.notification.NotificationEventPublisher;
+import com.tmk.vtcmanager.application.ports.notification.PushNotificationPort;
+import com.tmk.vtcmanager.application.ports.persistence.DeviceTokenRepository;
+import com.tmk.vtcmanager.application.ports.persistence.NotificationRepository;
 import com.tmk.vtcmanager.application.usecases.dashboard.GetDashboardSummaryUseCase;
+import com.tmk.vtcmanager.application.usecases.notification.CreerNotificationUseCase;
+import com.tmk.vtcmanager.application.usecases.notification.EnregistrerDeviceTokenUseCase;
+import com.tmk.vtcmanager.application.usecases.notification.GetNotificationsUseCase;
+import com.tmk.vtcmanager.application.usecases.notification.MarquerNotificationLueUseCase;
+import com.tmk.vtcmanager.application.usecases.notification.PousserNotificationUseCase;
+import com.tmk.vtcmanager.application.usecases.notification.RevoquerDeviceTokenUseCase;
 import com.tmk.vtcmanager.application.usecases.etatparc.GetEtatParcUseCase;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
@@ -122,6 +132,7 @@ import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import com.tmk.vtcmanager.application.services.DotationProvisionService;
 import com.tmk.vtcmanager.application.services.ModificationEcritureGuard;
+import com.tmk.vtcmanager.application.services.NotificationEncaissementService;
 import com.tmk.vtcmanager.application.services.RepartitionDetteMaintenanceService;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import com.tmk.vtcmanager.application.services.SynchronisationDetteMaintenanceService;
@@ -773,11 +784,13 @@ public class UseCaseBeanConfiguration {
             CompteTresorerieResolver compteTresorerieResolver,
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService,
-            CaisseClotureeGuard caisseClotureeGuard) {
+            CaisseClotureeGuard caisseClotureeGuard,
+            NotificationEncaissementService notificationEncaissementService) {
         return new CreateEncaissementCotisationUseCase(
                 ligneCotisationRepository, encaissementCotisationRepository,
                 operationFinanciereRepository, categorieOperationRepository,
-                compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard);
+                compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard,
+                notificationEncaissementService);
     }
 
     @Bean
@@ -814,11 +827,13 @@ public class UseCaseBeanConfiguration {
             CompteTresorerieResolver compteTresorerieResolver,
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService,
-            CaisseClotureeGuard caisseClotureeGuard) {
+            CaisseClotureeGuard caisseClotureeGuard,
+            NotificationEncaissementService notificationEncaissementService) {
         return new CreateEncaissementUseCase(
                 ligneRecetteRepository, encaissementRepository,
                 configurationRecetteRepository, operationFinanciereRepository,
-                categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard);
+                categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard,
+                notificationEncaissementService);
     }
 
     @Bean
@@ -1640,5 +1655,50 @@ public class UseCaseBeanConfiguration {
     public SeedJoursFeriesUseCase seedJoursFeriesUseCase(
             JourFerieRepository repo, JoursFeriesCalculator calculator) {
         return new SeedJoursFeriesUseCase(repo, calculator);
+    }
+
+    // ----- Notifications push -----
+    @Bean
+    public EnregistrerDeviceTokenUseCase enregistrerDeviceTokenUseCase(DeviceTokenRepository repo) {
+        return new EnregistrerDeviceTokenUseCase(repo);
+    }
+
+    @Bean
+    public RevoquerDeviceTokenUseCase revoquerDeviceTokenUseCase(DeviceTokenRepository repo) {
+        return new RevoquerDeviceTokenUseCase(repo);
+    }
+
+    @Bean
+    public CreerNotificationUseCase creerNotificationUseCase(
+            NotificationRepository repo, NotificationEventPublisher eventPublisher) {
+        return new CreerNotificationUseCase(repo, eventPublisher);
+    }
+
+    @Bean
+    public PousserNotificationUseCase pousserNotificationUseCase(
+            NotificationRepository notificationRepository,
+            DeviceTokenRepository deviceTokenRepository,
+            PushNotificationPort pushNotificationPort) {
+        return new PousserNotificationUseCase(
+                notificationRepository, deviceTokenRepository, pushNotificationPort);
+    }
+
+    @Bean
+    public GetNotificationsUseCase getNotificationsUseCase(NotificationRepository repo) {
+        return new GetNotificationsUseCase(repo);
+    }
+
+    @Bean
+    public MarquerNotificationLueUseCase marquerNotificationLueUseCase(NotificationRepository repo) {
+        return new MarquerNotificationLueUseCase(repo);
+    }
+
+    @Bean
+    public NotificationEncaissementService notificationEncaissementService(
+            CreerNotificationUseCase creerNotificationUseCase,
+            ChauffeurRepository chauffeurRepository,
+            KeycloakAdminPort keycloakAdminPort) {
+        return new NotificationEncaissementService(
+                creerNotificationUseCase, chauffeurRepository, keycloakAdminPort);
     }
 }

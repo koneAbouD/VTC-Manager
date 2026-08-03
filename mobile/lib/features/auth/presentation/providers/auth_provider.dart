@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:tmk_pin/tmk_pin.dart';
+import 'package:tmk_push/tmk_push.dart';
 
+import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/session_manager.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../notification/data/api_push_registrar.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories_impl/auth_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -89,6 +92,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final PinService _pin;
   final BiometricService _biometrics;
   final SecureStorage _storage;
+  final PushRegistrar _push;
 
   /// Abonnement au signal d'expiration centralisé du [SessionManager].
   StreamSubscription<void>? _expirySub;
@@ -106,6 +110,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required PinService pin,
     required BiometricService biometrics,
     required SecureStorage storage,
+    required PushRegistrar push,
   })  : _login = login,
         _register = register,
         _logout = logout,
@@ -115,6 +120,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _pin = pin,
         _biometrics = biometrics,
         _storage = storage,
+        _push = push,
         super(const AuthInitial()) {
     // Le SessionManager émet quand il n'a pas pu renouveler les tokens. Le
     // coffre du code d'accès, lui, peut très bien être encore valide (tokens en
@@ -168,6 +174,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
     // Sans code d'accès, le comportement historique s'applique : déconnexion.
     SessionManager.instance.stop();
+    PushService.instance.marquerVerrouillee();
     await _storage.clearTokens();
     state = AuthUnauthenticated(
       reason == LockReason.inactivite
@@ -224,25 +231,56 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> login(String username, String password) async {
     state = const AuthLoading();
-    final result = await _login.call(username, password);
-    await result.fold(
-      (failure) async => state = AuthError(failure.message),
-      (_) async {
-        // Un code rattaché à un autre compte n'a rien à faire ici.
-        await _pin.resetIfOtherAccount(await _accountId());
-        SessionManager.instance.start();
+    try {
+      final result = await _login.call(username, password);
+      await result.fold(
+        (failure) async => state = _echecConnexion(failure),
+        (_) async {
+          // Un code rattaché à un autre compte n'a rien à faire ici.
+          await _pin.resetIfOtherAccount(await _accountId());
+          SessionManager.instance.start();
 
-        final displayName = await _displayName();
-        // Le code d'accès est le seul chemin de retour dans l'application. S'il
-        // existe déjà, on le redemande pour rouvrir le coffre et y ranger le
-        // nouveau refresh token ; sinon on le fait choisir. Dans les deux cas,
-        // pas d'entrée directe.
-        state = await _pin.isConfigured()
-            ? AuthPinResume(displayName: displayName)
-            : AuthPinSetup(displayName: displayName);
-      },
-    );
+          final displayName = await _displayName();
+          // Le code d'accès est le seul chemin de retour dans l'application. S'il
+          // existe déjà, on le redemande pour rouvrir le coffre et y ranger le
+          // nouveau refresh token ; sinon on le fait choisir. Dans les deux cas,
+          // pas d'entrée directe.
+          state = await _pin.isConfigured()
+              ? AuthPinResume(displayName: displayName)
+              : AuthPinSetup(displayName: displayName);
+        },
+      );
+    } catch (e) {
+      // Rien ne doit laisser l'écran sur son indicateur d'attente. Une réponse
+      // inattendue (corps illisible, coffre en erreur) échappe au découpage en
+      // [Failure] et figerait le bouton pour toujours : on rend la main, comme
+      // le déverrouillage relâche systématiquement le sien.
+      state = AuthError(messageFromError(e), indisponible: true);
+    }
   }
+
+  /// Qualifie l'échec d'une connexion. L'écran a besoin de la distinction que
+  /// fait déjà le déverrouillage : « le serveur a refusé » (la saisie est en
+  /// cause) ou « le serveur n'a pas répondu » (elle ne l'est pas).
+  AuthError _echecConnexion(Failure failure) => switch (failure) {
+        NetworkFailure() => AuthError(failure.message, indisponible: true),
+
+        // 503 : le backend a lui-même perdu Keycloak. Son message est rédigé
+        // pour l'utilisateur, on le reprend tel quel.
+        ServerFailure(statusCode: 503) =>
+          AuthError(failure.message, indisponible: true),
+
+        // Autre 5xx : le message remonté est technique (« Erreur
+        // d'authentification: 400 Bad Request… », renvoyé par exemple quand le
+        // compte est désactivé côté Keycloak). On n'en montre rien.
+        ServerFailure(:final statusCode) when (statusCode ?? 0) >= 500 =>
+          const AuthError(
+            'Le serveur a rencontré un problème. Réessayez dans un instant.',
+            indisponible: true,
+          ),
+
+        _ => AuthError(failure.message),
+      };
 
   // ── Code d'accès ────────────────────────────────────────────────────────
 
@@ -274,8 +312,47 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _storage.setLoggedOut(false);
     if (entrerDansLApplication) {
       state = AuthAuthenticated(displayName ?? '');
+      _ouvrirNotifications();
     }
     return null;
+  }
+
+  // ── Notifications push ──────────────────────────────────────────────────
+
+  /// L'application vient de s'ouvrir : l'appareil est déclaré au backend et les
+  /// liens profonds retenus pendant le verrouillage peuvent s'ouvrir.
+  ///
+  /// Appelé à chaque entrée dans l'application, connexion comme déverrouillage.
+  /// Un déverrouillage n'est pas précédé d'une connexion — l'application relancée
+  /// passe directement par le code d'accès — et sans cela l'appareil ne serait
+  /// jamais déclaré. Le réenregistrement est sans effet de bord : le backend
+  /// reconnaît le jeton et se contente d'en rafraîchir la date de dernière vue.
+  ///
+  /// L'autorisation est demandée ici plutôt qu'au lancement : présentée avant
+  /// même l'écran de connexion, elle serait refusée par réflexe. Android ne
+  /// montre sa boîte de dialogue qu'une fois, les appels suivants se contentant
+  /// de rendre la réponse déjà donnée.
+  ///
+  /// Volontairement non attendu : l'utilisateur n'a pas à patienter derrière un
+  /// appel réseau pour voir son accueil.
+  void _ouvrirNotifications() {
+    PushService.instance.marquerPrete();
+    unawaited(_alignerSurLeReglage());
+  }
+
+  /// Met l'appareil en conformité avec l'interrupteur des réglages.
+  ///
+  /// La coupure se rejoue à chaque ouverture, et pas seulement au moment où
+  /// l'utilisateur pousse l'interrupteur : c'est ce qui rattrape un retrait que
+  /// le réseau avait empêché, sans quoi l'appareil continuerait de sonner alors
+  /// que le réglage dit le contraire.
+  Future<void> _alignerSurLeReglage() async {
+    if (await _storage.notificationsCoupees()) {
+      await PushService.instance.couperReception(_push);
+      return;
+    }
+    await PushService.instance.demanderPermission();
+    await PushService.instance.attacherSession(_push);
   }
 
   /// Remet la session sous clé : les tokens en clair sont effacés, seul le
@@ -283,6 +360,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> lock({String? message}) async {
     SessionManager.instance.stop();
     _pin.lock();
+    // Une notification touchée pendant le verrouillage attendra le code : la
+    // page visée n'a pas à s'afficher derrière l'écran de saisie.
+    PushService.instance.marquerVerrouillee();
     await _storage.clearTokens();
     state = AuthLocked(
       displayName: await _pin.displayName(),
@@ -411,6 +491,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
             SessionManager.instance.start();
             unawaited(_syncVaultWithStoredToken());
             state = AuthAuthenticated(nom ?? '');
+            _ouvrirNotifications();
             return const UnlockOk();
           },
         );
@@ -505,6 +586,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         await _syncVaultWithStoredToken();
         await _storage.setLoggedOut(false);
         state = AuthAuthenticated(nom ?? '');
+        _ouvrirNotifications();
         return const UnlockOk();
     }
   }
@@ -531,6 +613,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// retour à la connexion complète.
   Future<void> forgetPin() async {
     await _pin.reset();
+    // Avant la purge des jetons : ensuite, la requête de retrait partirait sans
+    // en-tête d'autorisation et serait rejetée.
+    await PushService.instance.detacherSession();
     await _storage.clearTokens();
     await _storage.setLoggedOut(true);
     unawaited(_logout.call());
@@ -587,7 +672,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // Redirection immédiate : on bascule l'état AVANT l'appel réseau de
     // révocation (qui peut être lent), puis on révoque en arrière-plan.
     state = const AuthUnauthenticated();
-    unawaited(_logout.call());
+    // Retrait de l'appareil puis révocation, dans cet ordre : le retrait a
+    // besoin d'un jeton d'accès encore valide. Enchaînés plutôt qu'attendus,
+    // pour ne pas retarder le retour à l'écran de connexion.
+    unawaited(
+      PushService.instance.detacherSession().then((_) => _logout.call()),
+    );
   }
 
   Future<String?> forgotPassword(String email) async {
@@ -608,5 +698,6 @@ final authNotifierProvider =
     pin: ref.watch(pinServiceProvider),
     biometrics: ref.watch(biometricServiceProvider),
     storage: ref.watch(secureStorageProvider),
+    push: ApiPushRegistrar(ref.watch(apiClientProvider)),
   );
 });
