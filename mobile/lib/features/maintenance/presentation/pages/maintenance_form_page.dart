@@ -270,181 +270,207 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
               const SizedBox(height: 16),
             ],
 
-            // ── Planification ────────────────────────────────────
-            _FormCard(
-              icon: Icons.event_note_outlined,
-              accent: _kPrimary,
-              title: 'Planification',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _LabeledField(
-                    label: 'Type de maintenance',
-                    isRequired: true,
-                    child: _TypeDropdown(
-                      selected: _categorieType,
-                      onChanged: (cat) => setState(() => _categorieType = cat),
-                      initial: widget.initial,
-                      onInitResolved: (cat) {
-                        if (_categorieType == null && cat != null) {
-                          setState(() => _categorieType = cat);
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: _LabeledField(
-                          label: 'Date prévue',
-                          isRequired: true,
-                          child: _buildDateField(),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _LabeledField(
-                          label: 'Durée (h)',
-                          child: TextFormField(
-                            controller: _dureeCtrl,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(fontSize: 15, color: _kDark),
-                            decoration: _fieldDeco('ex: 3'),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Véhicule ─────────────────────────────────────────
-            _FormCard(
-              icon: Icons.directions_car_outlined,
-              accent: _kPrimary,
-              title: 'Véhicule',
-              child: _LabeledField(
-                label: 'Véhicule concerné',
-                child: _buildSelectorField(
-                  hint: 'Sélectionner un véhicule',
-                  value: _vehiculeNom,
-                  onTap: _openVehiculeSelector,
-                  onClear: _vehiculeNom != null
-                      ? () => setState(() {
-                            _vehiculeId = null;
-                            _vehiculeNom = null;
-                          })
-                      : null,
-                ),
-              ),
-            ),
-
-            // ── Éléments concernés ───────────────────────────────
+            // Une seule carte : le formulaire tient d'un bloc, les sections
+            // ne se distinguant plus que par leur en-tête et un filet.
             Container(
-              margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: _kBorder),
               ),
-              child: Column(children: [
-                GestureDetector(
-                  onTap: () =>
-                      setState(() => _elementsExpanded = !_elementsExpanded),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _kAccent.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.checklist_rounded,
-                            size: 18, color: _kAccent),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Éléments concernés',
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: _kDark,
-                                  letterSpacing: -0.2),
-                            ),
-                            if (_elements.isNotEmpty)
-                              Text(
-                                '${_elements.length} élément${_elements.length > 1 ? 's' : ''} · '
-                                '${_elements.fold(0.0, (s, e) => s + e.montant).toStringAsFixed(0)} XOF',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: _kAccent,
-                                    fontWeight: FontWeight.w500),
-                              ),
-                          ],
-                        ),
-                      ),
-                      AnimatedRotation(
-                        turns: _elementsExpanded ? 0.5 : 0.0,
-                        duration: const Duration(milliseconds: 250),
-                        child: const Icon(Icons.keyboard_arrow_down_rounded,
-                            size: 20, color: _kHint),
-                      ),
-                    ]),
-                  ),
-                ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeInOut,
-                  child: _elementsExpanded
-                      ? Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: _buildElementsSelector(),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ]),
-            ),
-
-            // ── Détails ──────────────────────────────────────────
-            _FormCard(
-              icon: Icons.notes_outlined,
-              accent: _kPrimary,
-              title: 'Détails',
+              // Le repli des éléments s'anime jusqu'aux bords : sans rognage,
+              // il déborderait des angles arrondis.
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Le partenaire de l'intervention ne se demande que s'il sert
-                  // encore : dès que chaque élément a son prestataire, il n'a
-                  // plus rien à couvrir et le champ disparaît.
-                  if (_partenaireUtile) ...[
-                    _LabeledField(
-                      label: _elementsRepartis
-                          ? 'Partenaire (éléments sans prestataire)'
-                          : 'Partenaire',
-                      child: _champPartenaire(),
+                  // ── Planification ────────────────────────────────────
+                  _FormSection(
+                    icon: Icons.event_note_outlined,
+                    accent: _kPrimary,
+                    title: 'Planification',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _LabeledField(
+                          label: 'Type de maintenance',
+                          isRequired: true,
+                          child: _TypeDropdown(
+                            selected: _categorieType,
+                            onChanged: (cat) =>
+                                setState(() => _categorieType = cat),
+                            initial: widget.initial,
+                            onInitResolved: (cat) {
+                              if (_categorieType == null && cat != null) {
+                                setState(() => _categorieType = cat);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: _LabeledField(
+                                label: 'Date prévue',
+                                isRequired: true,
+                                child: _buildDateField(),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _LabeledField(
+                                label: 'Durée (h)',
+                                child: TextFormField(
+                                  controller: _dureeCtrl,
+                                  keyboardType: TextInputType.number,
+                                  style: const TextStyle(
+                                      fontSize: 15, color: _kDark),
+                                  decoration: _fieldDeco('ex: 3'),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                  ] else ...[
-                    _bandeauPrestatairesRepartis(),
-                    const SizedBox(height: 12),
-                  ],
-                  _LabeledField(
-                    label: 'Description',
-                    child: TextFormField(
-                      controller: _descriptionCtrl,
-                      maxLines: 3,
-                      style: const TextStyle(fontSize: 15, color: _kDark),
-                      decoration: _fieldDeco('Travaux prévus…'),
+                  ),
+
+                  const _SeparateurSection(),
+
+                  // ── Véhicule ─────────────────────────────────────────
+                  _FormSection(
+                    icon: Icons.directions_car_outlined,
+                    accent: _kPrimary,
+                    title: 'Véhicule',
+                    child: _LabeledField(
+                      label: 'Véhicule concerné',
+                      child: _buildSelectorField(
+                        hint: 'Sélectionner un véhicule',
+                        value: _vehiculeNom,
+                        onTap: _openVehiculeSelector,
+                        onClear: _vehiculeNom != null
+                            ? () => setState(() {
+                                  _vehiculeId = null;
+                                  _vehiculeNom = null;
+                                })
+                            : null,
+                      ),
+                    ),
+                  ),
+
+                  const _SeparateurSection(),
+
+                  // ── Éléments concernés ───────────────────────────────
+                  // Seule section repliable : son en-tête est cliquable,
+                  // elle garde donc sa structure propre plutôt que de passer
+                  // par _FormSection.
+                  Column(children: [
+                    GestureDetector(
+                      onTap: () => setState(
+                          () => _elementsExpanded = !_elementsExpanded),
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: _kAccent.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.checklist_rounded,
+                                size: 18, color: _kAccent),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Éléments concernés',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: _kDark,
+                                      letterSpacing: -0.2),
+                                ),
+                                if (_elements.isNotEmpty)
+                                  Text(
+                                    '${_elements.length} élément'
+                                    '${_elements.length > 1 ? 's' : ''} · '
+                                    '${_totalElements.toStringAsFixed(0)}'
+                                    ' XOF',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: _kAccent,
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          AnimatedRotation(
+                            turns: _elementsExpanded ? 0.5 : 0.0,
+                            duration: const Duration(milliseconds: 250),
+                            child: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 20,
+                                color: _kHint),
+                          ),
+                        ]),
+                      ),
+                    ),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      child: _elementsExpanded
+                          ? Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: _buildElementsSelector(),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ]),
+
+                  const _SeparateurSection(),
+
+                  // ── Détails ──────────────────────────────────────────
+                  _FormSection(
+                    icon: Icons.notes_outlined,
+                    accent: _kPrimary,
+                    title: 'Détails',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Le partenaire de l'intervention ne se demande que
+                        // s'il sert encore : dès que chaque élément a son
+                        // prestataire, il n'a plus rien à couvrir et le champ
+                        // disparaît.
+                        if (_partenaireUtile) ...[
+                          _LabeledField(
+                            label: _elementsRepartis
+                                ? 'Partenaire (éléments sans prestataire)'
+                                : 'Partenaire',
+                            child: _champPartenaire(),
+                          ),
+                          const SizedBox(height: 12),
+                        ] else ...[
+                          _bandeauPrestatairesRepartis(),
+                          const SizedBox(height: 12),
+                        ],
+                        _LabeledField(
+                          label: 'Description',
+                          child: TextFormField(
+                            controller: _descriptionCtrl,
+                            maxLines: 3,
+                            style: const TextStyle(fontSize: 15, color: _kDark),
+                            decoration: _fieldDeco('Travaux prévus…'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -606,6 +632,10 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
   /// Vrai dès qu'un élément porte son propre prestataire.
   bool get _elementsRepartis => _elements.any((e) => e.partenaireId != null);
+
+  /// Coût cumulé des éléments retenus, résumé dans l'en-tête de la section.
+  double get _totalElements =>
+      _elements.fold(0.0, (s, e) => s + e.montant);
 
   /// Le partenaire de l'intervention couvre les éléments qui n'en ont pas —
   /// et l'écart éventuel entre le coût validé et la somme des lignes. Il ne
@@ -812,13 +842,16 @@ class _TypeDropdownState extends ConsumerState<_TypeDropdown> {
 
 // ── Widgets locaux ────────────────────────────────────────────────────────────
 
-class _FormCard extends StatelessWidget {
+/// Une section de la carte unique du formulaire : le chrome (fond, bordure,
+/// angles) appartient à la carte, la section n'apporte que son en-tête et ses
+/// champs.
+class _FormSection extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final String title;
   final Widget child;
 
-  const _FormCard({
+  const _FormSection({
     required this.icon,
     required this.accent,
     required this.title,
@@ -827,14 +860,8 @@ class _FormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+    return Padding(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorder),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -861,6 +888,16 @@ class _FormCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Filet séparant deux sections. Pleine largeur : les sections se lisent comme
+/// les rangées d'une même carte, non comme des blocs rapportés.
+class _SeparateurSection extends StatelessWidget {
+  const _SeparateurSection();
+
+  @override
+  Widget build(BuildContext context) =>
+      Container(height: 1, color: _kBorder);
 }
 
 class _LabeledField extends StatelessWidget {

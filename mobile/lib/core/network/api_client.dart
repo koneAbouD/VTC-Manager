@@ -518,7 +518,10 @@ class ApiClient {
   String? _extractMessage(Map<String, dynamic>? parsed, String rawBody) {
     if (parsed != null) {
       final msg = parsed['message'] ?? parsed['error'] ?? parsed['detail'];
-      if (msg is String && msg.trim().isNotEmpty) return msg.trim();
+      if (msg is String && msg.trim().isNotEmpty) {
+        final champs = _champsRefuses(parsed);
+        return champs == null ? msg.trim() : '${msg.trim()} : $champs';
+      }
     }
     final body = rawBody.trim();
     if (body.isEmpty) return null;
@@ -527,6 +530,26 @@ class ApiClient {
     // code HTTP prendre le relais.
     if (_ressembleAHtml(body)) return null;
     return body;
+  }
+
+  /// Champs refusés par la validation serveur, rendus lisibles :
+  /// « detailMaintenance.elements[0].montant: ne doit pas être nul » devient
+  /// « montant (ne doit pas être nul) ». Réservé aux erreurs de validation —
+  /// ailleurs (conflit d'affectation, par exemple), `details` porte des données
+  /// structurées destinées au code appelant et non à l'écran.
+  String? _champsRefuses(Map<String, dynamic> parsed) {
+    if (parsed['error'] != 'VALIDATION_ERROR') return null;
+    final details = (parsed['details'] as List?)?.whereType<String>() ?? const [];
+    final libelles = <String>[];
+    for (final d in details) {
+      final sep = d.indexOf(': ');
+      if (sep <= 0) continue;
+      final champ =
+          d.substring(0, sep).split('.').last.replaceAll(RegExp(r'\[\d+\]'), '');
+      final raison = d.substring(sep + 2).trim();
+      libelles.add(raison.isEmpty ? champ : '$champ ($raison)');
+    }
+    return libelles.isEmpty ? null : libelles.join(', ');
   }
 
   /// Heuristique simple : le corps commence par une balise et ressemble à un

@@ -94,7 +94,7 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ApiError> respond(HttpStatus status, String code, String message,
                                              HttpServletRequest request, List<String> details, Exception ex) {
-        logError(status, code, message, request, ex);
+        logError(status, code, message, request, details, ex);
         return ResponseEntity.status(status).body(
                 ApiError.builder()
                         .status(status.value())
@@ -113,14 +113,17 @@ public class GlobalExceptionHandler {
     }
 
     private void logError(HttpStatus status, String code, String message,
-                          HttpServletRequest request, Exception ex) {
+                          HttpServletRequest request, List<String> details, Exception ex) {
         String req = request.getMethod() + " " + request.getRequestURI();
+        // Sans les détails, un "Validation échouée" en prod ne dit pas quel champ
+        // a été refusé : on les joint à la ligne de log.
+        String suffixe = (details == null || details.isEmpty()) ? "" : " " + details;
         if (status.is5xxServerError()) {
-            log.error("[{}] {} ({}) -> {} {} : {}", req, ex.getClass().getSimpleName(), code,
-                    status.value(), status.getReasonPhrase(), message, ex);
+            log.error("[{}] {} ({}) -> {} {} : {}{}", req, ex.getClass().getSimpleName(), code,
+                    status.value(), status.getReasonPhrase(), message, suffixe, ex);
         } else {
-            log.warn("[{}] {} ({}) -> {} : {}", req, ex.getClass().getSimpleName(), code,
-                    status.value(), message);
+            log.warn("[{}] {} ({}) -> {} : {}{}", req, ex.getClass().getSimpleName(), code,
+                    status.value(), message, suffixe);
         }
     }
 
@@ -407,7 +410,9 @@ public class GlobalExceptionHandler {
         List<String> details = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .toList();
-        return respond(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.getReasonPhrase(),
+        // Code nommé plutôt que « Bad Request » : le client sait ainsi que les
+        // details sont des messages de champ, affichables tels quels.
+        return respond(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
                 "Validation échouée", request, details, ex);
     }
 

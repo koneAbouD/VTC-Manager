@@ -178,16 +178,10 @@ class _FloatingNavBar extends StatelessWidget {
         return GestureDetector(
           onTap: () => onSelected(i),
           behavior: HitTestBehavior.opaque,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
+          // Sans fond : l'onglet actif se signale par son icône pleine, sa
+          // couleur et la graisse de son libellé.
+          child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-            decoration: BoxDecoration(
-              color: selected
-                  ? const Color(0xFF43A047).withValues(alpha: 0.12)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../domain/entities/maintenance.dart';
 import '../../../operation_financiere/domain/entities/element_maintenance.dart';
 import '../providers/maintenance_provider.dart';
@@ -260,127 +261,21 @@ class _MaintenanceDetailPageState
                     ),
                   ),
 
-                  // ── Planification ─────────────────────────────────────
-                  _sectionCard(
-                    icon: Icons.event_note_outlined,
-                    title: 'Planification',
-                    rows: [
-                      _infoRow(
-                          Icons.calendar_today_outlined,
-                          'Date prévue',
-                          _fmtDate(_m.datePrevue)),
-                      if (_m.dateEffectuee != null)
-                        _infoRow(
-                            Icons.check_circle_outline_rounded,
-                            'Date effectuée',
-                            _fmtDate(_m.dateEffectuee!),
-                            valueColor: const Color(0xFF2E7D32)),
-                      if (_m.dureeHeures != null)
-                        _infoRow(Icons.timer_outlined, 'Durée',
-                            '${_m.dureeHeures} heure(s)'),
-                      if (_m.categorieTypeLibelle != null)
-                        _infoRow(Icons.label_outline_rounded, 'Catégorie',
-                            _m.categorieTypeLibelle!),
-                    ],
+                  // ── Rubriques de l'intervention ───────────────────────
+                  // Une seule carte : les rubriques se suivent, séparées par un
+                  // filet, au lieu de flotter chacune sur la sienne.
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _kBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _rubriques(),
+                    ),
                   ),
-
-                  // ── Véhicule ──────────────────────────────────────────
-                  if (_m.vehiculeNom != null || _m.vehiculeId != null)
-                    _sectionCard(
-                      icon: Icons.directions_car_outlined,
-                      title: 'Véhicule',
-                      rows: [
-                        _infoRow(
-                            Icons.directions_car_filled_rounded,
-                            'Véhicule',
-                            _m.vehiculeNom ??
-                                'Véhicule #${_m.vehiculeId}'),
-                      ],
-                    ),
-
-                  // ── Dette laissée par l'intervention ──────────────────
-                  if (_m.id != null) _blocDettes(),
-
-                  // ── Informations ──────────────────────────────────────
-                  if (_m.partenaireNom != null ||
-                      _m.kilometrageAuMoment != null ||
-                      _m.kilometrageProchaine != null ||
-                      _m.cout != null)
-                    _sectionCard(
-                      icon: Icons.info_outline_rounded,
-                      title: 'Informations',
-                      rows: [
-                        if (_m.partenaireNom != null)
-                          _infoRow(Icons.store_outlined, 'Partenaire',
-                              _m.partenaireNom!),
-                        if (_m.kilometrageAuMoment != null)
-                          _infoRow(Icons.speed_outlined, 'Kilométrage',
-                              '${_m.kilometrageAuMoment} km'),
-                        if (_m.kilometrageProchaine != null)
-                          _infoRow(Icons.arrow_forward_rounded,
-                              'Prochain entretien',
-                              '${_m.kilometrageProchaine} km'),
-                        if (_m.cout != null)
-                          _infoRow(Icons.payments_outlined, 'Coût',
-                              _fmtMontant(_m.cout!),
-                              valueColor: const Color(0xFFB71C1C)),
-                      ],
-                    ),
-
-                  // ── Description ───────────────────────────────────────
-                  if (_m.description != null && _m.description!.isNotEmpty)
-                    _card(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _sectionHeader(
-                              Icons.notes_outlined, 'Description'),
-                          const SizedBox(height: 12),
-                          Text(
-                            _m.description!,
-                            style: const TextStyle(
-                                fontSize: 14,
-                                color: _kDark,
-                                height: 1.5),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // ── Éléments ──────────────────────────────────────────
-                  if (_m.detailMaintenance != null &&
-                      _m.detailMaintenance!.elements.isNotEmpty)
-                    _card(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _sectionHeader(
-                              Icons.checklist_rounded, 'Éléments'),
-                          const SizedBox(height: 12),
-                          ..._m.detailMaintenance!.elements
-                              .map((e) => _elementRow(e)),
-                          const Divider(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Total',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: _kDark)),
-                              Text(
-                                _fmtMontant(_m.detailMaintenance!.elements
-                                    .fold(0.0, (s, e) => s + e.montant)),
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: _kAccent),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
 
                   const SizedBox(height: 8),
 
@@ -476,6 +371,122 @@ class _MaintenanceDetailPageState
         child: child,
       );
 
+  /// Les rubriques de la carte unique, dans l'ordre, chacune précédée d'un
+  /// filet. Seule la planification est toujours là : elle ouvre la carte, ce
+  /// qui dispense les suivantes de savoir si quelque chose les précède.
+  List<Widget> _rubriques() {
+    final rubriques = <Widget>[
+      _section(
+        icon: Icons.event_note_outlined,
+        title: 'Planification',
+        rows: [
+          _infoRow(Icons.calendar_today_outlined, 'Date prévue',
+              _fmtDate(_m.datePrevue)),
+          if (_m.dateEffectuee != null)
+            _infoRow(Icons.check_circle_outline_rounded, 'Date effectuée',
+                _fmtDate(_m.dateEffectuee!),
+                valueColor: const Color(0xFF2E7D32)),
+          if (_m.dureeHeures != null)
+            _infoRow(
+                Icons.timer_outlined, 'Durée', '${_m.dureeHeures} heure(s)'),
+          if (_m.categorieTypeLibelle != null)
+            _infoRow(Icons.label_outline_rounded, 'Catégorie',
+                _m.categorieTypeLibelle!),
+        ],
+      ),
+    ];
+
+    if (_m.vehiculeNom != null || _m.vehiculeId != null) {
+      rubriques
+        ..add(const _FiletRubrique())
+        ..add(_section(
+          icon: Icons.directions_car_outlined,
+          title: 'Véhicule',
+          rows: [
+            _infoRow(Icons.directions_car_filled_rounded, 'Véhicule',
+                _m.vehiculeNom ?? 'Véhicule #${_m.vehiculeId}'),
+          ],
+        ));
+    }
+
+    // Le reste à payer dépend d'une requête : il porte son propre filet, faute
+    // de savoir d'ici s'il aura quelque chose à afficher.
+    if (_m.id != null) rubriques.add(_blocDettes());
+
+    if (_m.partenaireNom != null ||
+        _m.kilometrageAuMoment != null ||
+        _m.kilometrageProchaine != null ||
+        _m.cout != null) {
+      rubriques
+        ..add(const _FiletRubrique())
+        ..add(_section(
+          icon: Icons.info_outline_rounded,
+          title: 'Informations',
+          rows: [
+            if (_m.partenaireNom != null)
+              _infoRow(Icons.store_outlined, 'Partenaire', _m.partenaireNom!),
+            if (_m.kilometrageAuMoment != null)
+              _infoRow(Icons.speed_outlined, 'Kilométrage',
+                  '${_m.kilometrageAuMoment} km'),
+            if (_m.kilometrageProchaine != null)
+              _infoRow(Icons.arrow_forward_rounded, 'Prochain entretien',
+                  '${_m.kilometrageProchaine} km'),
+            if (_m.cout != null)
+              _infoRow(Icons.payments_outlined, 'Coût', _fmtMontant(_m.cout!),
+                  valueColor: const Color(0xFFB71C1C)),
+          ],
+        ));
+    }
+
+    if (_m.description != null && _m.description!.isNotEmpty) {
+      rubriques
+        ..add(const _FiletRubrique())
+        ..add(_rubrique(
+          children: [
+            _sectionHeader(Icons.notes_outlined, 'Description'),
+            const SizedBox(height: 12),
+            Text(
+              _m.description!,
+              style: const TextStyle(fontSize: 14, color: _kDark, height: 1.5),
+            ),
+          ],
+        ));
+    }
+
+    final elements = _m.detailMaintenance?.elements ?? const [];
+    if (elements.isNotEmpty) {
+      rubriques
+        ..add(const _FiletRubrique())
+        ..add(_rubrique(
+          children: [
+            _sectionHeader(Icons.checklist_rounded, 'Éléments'),
+            const SizedBox(height: 12),
+            ...elements.map((e) => _elementRow(e)),
+            const Divider(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Total',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _kDark)),
+                Text(
+                  _fmtMontant(elements.fold(0.0, (s, e) => s + e.montant)),
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: _kAccent),
+                ),
+              ],
+            ),
+          ],
+        ));
+    }
+
+    return rubriques;
+  }
+
   /// Ce que l'intervention a laissé à payer. Silencieux quand elle a été
   /// réglée sur place — la majorité des cas.
   Widget _blocDettes() {
@@ -485,34 +496,47 @@ class _MaintenanceDetailPageState
       data: (liste) {
         final ouvertes = liste.where((f) => f.restantDu > 0).toList();
         if (ouvertes.isEmpty) return const SizedBox.shrink();
-        return _sectionCard(
-          icon: Icons.schedule_outlined,
-          title: ouvertes.length == 1 ? 'Reste à payer' : 'Restes à payer',
-          rows: [
-            for (final f in ouvertes)
-              _infoRow(Icons.store_outlined,
-                  f.partenaireNom ?? 'Partenaire', _fmtMontant(f.restantDu),
-                  valueColor: _kAccent),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _FiletRubrique(),
+            _section(
+              icon: Icons.schedule_outlined,
+              title: ouvertes.length == 1 ? 'Reste à payer' : 'Restes à payer',
+              rows: [
+                for (final f in ouvertes)
+                  _infoRow(Icons.store_outlined,
+                      f.partenaireNom ?? 'Partenaire', _fmtMontant(f.restantDu),
+                      valueColor: _kAccent),
+              ],
+            ),
           ],
         );
       },
     );
   }
 
-  Widget _sectionCard({
+  /// Une rubrique de la carte : le fond, la bordure et les angles appartiennent
+  /// à la carte, la rubrique n'apporte que son contenu et sa marge intérieure.
+  Widget _rubrique({required List<Widget> children}) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
+        ),
+      );
+
+  Widget _section({
     required IconData icon,
     required String title,
     required List<Widget> rows,
   }) =>
-      _card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sectionHeader(icon, title),
-            const SizedBox(height: 12),
-            ...rows,
-          ],
-        ),
+      _rubrique(
+        children: [
+          _sectionHeader(icon, title),
+          const SizedBox(height: 12),
+          ...rows,
+        ],
       );
 
   Widget _sectionHeader(IconData icon, String title) => Row(children: [
@@ -630,6 +654,15 @@ class _MaintenanceDetailPageState
       e.partenaireNom ?? _m.partenaireNom;
 }
 
+/// Filet séparant deux rubriques. Pleine largeur : elles se lisent comme les
+/// rangées d'une même carte, non comme des blocs rapportés.
+class _FiletRubrique extends StatelessWidget {
+  const _FiletRubrique();
+
+  @override
+  Widget build(BuildContext context) => Container(height: 1, color: _kBorder);
+}
+
 // ── Popup « Terminer la maintenance » (premium, alignée charte) ────────────────
 
 /// Ce que l'utilisateur a décidé en clôturant : payé sur place, ou laissé à
@@ -700,12 +733,16 @@ class _TerminerMaintenanceDialogState
   }
 
   Future<void> _choisirEcheance() async {
-    final picked = await showDatePicker(
+    // Le champ « Coût réel » a le focus dès l'ouverture : sans cela, le clavier
+    // recouvrirait la molette, qui s'ouvre elle aussi par le bas.
+    FocusScope.of(context).unfocus();
+    final picked = await showDialog<DateTime>(
       context: context,
-      initialDate: _echeance,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-      locale: const Locale('fr', 'FR'),
+      builder: (_) => SingleDatePickerDialog(
+        initialDate: _echeance,
+        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+        lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+      ),
     );
     if (picked != null) setState(() => _echeance = picked);
   }
@@ -920,7 +957,7 @@ class _SegmentReglement extends StatelessWidget {
         Expanded(
           child: _OptionReglement(
             icone: Icons.payments_outlined,
-            titre: 'Réglé',
+            titre: 'Payer',
             sousTitre: 'Sort de la caisse',
             actif: !aCredit,
             couleur: _kPrimary,
