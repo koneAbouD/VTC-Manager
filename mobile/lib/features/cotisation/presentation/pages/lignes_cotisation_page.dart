@@ -747,16 +747,16 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
         const SizedBox(height: 4),
       ]);
 
-  /// Palette des chips de statut, alignée sur celle de ContraventionsPage :
-  /// trois teintes seulement — gris pour l'attente et les fins de course
-  /// neutres, ambre pour ce qui est en cours, vert pour ce qui est soldé.
-  static const _ambre = Color(0xFF854F0B);
+  /// Palette des chips de statut : trois teintes seulement — gris pour
+  /// l'attente et les fins de course neutres, bleu pour l'encaissement
+  /// commencé mais pas terminé, vert pour ce qui est soldé.
+  static const _bleu = Color(0xFF1565C0);
   static const _vert = Color(0xFF2E7D32);
   static const _hint = Color(0xFF8A94A6);
 
   Color _couleur(StatutLigneCotisation s) => switch (s) {
         StatutLigneCotisation.enAttente             => _hint,
-        StatutLigneCotisation.partiellementEncaisse => _ambre,
+        StatutLigneCotisation.partiellementEncaisse => _bleu,
         StatutLigneCotisation.encaisse              => _vert,
         StatutLigneCotisation.annulee               => _hint,
       };
@@ -832,12 +832,9 @@ class _LigneCotisationCard extends StatelessWidget {
         (ligne.montantDu - ligne.montantEncaisse)
             .clamp(0, double.infinity)
             .toDouble();
-    // Encaissement partiel : c'est ce qui est déjà rentré qui intéresse, pas
-    // ce qui manque — le total reste rappelé juste en dessous.
-    final montantPrincipal =
-        ligne.statut == StatutLigneCotisation.partiellementEncaisse
-            ? ligne.montantEncaisse
-            : restant;
+    // Toujours ce qui manque, encaissement partiel compris : c'est le reste à
+    // recouvrer qui appelle une action. Le total est rappelé juste en dessous.
+    final montantPrincipal = restant;
 
     return GestureDetector(
       onTap: onTap,
@@ -942,7 +939,7 @@ class _LigneCotisationCard extends StatelessWidget {
   /// couleur du statut telle qu'elle est présentée en haut de page.
   Color _couleur(StatutLigneCotisation s) => switch (s) {
         StatutLigneCotisation.enAttente             => const Color(0xFF8A94A6),
-        StatutLigneCotisation.partiellementEncaisse => const Color(0xFF854F0B),
+        StatutLigneCotisation.partiellementEncaisse => const Color(0xFF1565C0),
         StatutLigneCotisation.encaisse              => const Color(0xFF2E7D32),
         StatutLigneCotisation.annulee               => const Color(0xFF8A94A6),
       };

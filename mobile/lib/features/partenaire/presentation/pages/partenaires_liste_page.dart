@@ -7,6 +7,13 @@ import '../../domain/entities/partenaire.dart';
 import '../providers/partenaire_providers.dart';
 import 'partenaire_form_page.dart';
 
+/// Facteur d'échelle des interrupteurs de la page.
+///
+/// Un [Switch] Material pèse lourd à côté d'un libellé de 12 px et d'une icône
+/// de 18 px : réduit, il s'accorde à la ligne sans la dominer. Même valeur que
+/// les bascules de `referentiel_liste_page`.
+const double _kSwitchScale = 0.70;
+
 /// Référentiel des partenaires.
 ///
 /// Un partenaire ne se supprime pas — il a un historique comptable — il se
@@ -51,10 +58,16 @@ class _PartenairesListePageState extends ConsumerState<PartenairesListePage> {
                   child: Text('Masquer les partenaires désactivés',
                       style: TextStyle(fontSize: 12.5, color: AppColors.label)),
                 ),
-                Switch(
-                  value: _actifsSeulement,
-                  activeThumbColor: AppColors.primary,
-                  onChanged: (v) => setState(() => _actifsSeulement = v),
+                Transform.scale(
+                  scale: _kSwitchScale,
+                  child: Switch(
+                    value: _actifsSeulement,
+                    activeThumbColor: AppColors.primary,
+                    // Sans cela, le Switch réserve 48 px de haut : la ligne
+                    // s'étirerait alors que l'interrupteur, lui, a rapetissé.
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    onChanged: (v) => setState(() => _actifsSeulement = v),
+                  ),
                 ),
               ],
             ),
@@ -139,15 +152,19 @@ class _PartenaireCard extends ConsumerWidget {
               onChanged();
             },
           ),
-          Switch(
-            value: partenaire.actif,
-            activeThumbColor: AppColors.primary,
-            onChanged: (v) async {
-              await ref
-                  .read(partenaireDatasourceProvider)
-                  .changerActivation(partenaire.id!, v);
-              onChanged();
-            },
+          Transform.scale(
+            scale: _kSwitchScale,
+            child: Switch(
+              value: partenaire.actif,
+              activeThumbColor: AppColors.primary,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              onChanged: (v) async {
+                await ref
+                    .read(partenaireDatasourceProvider)
+                    .changerActivation(partenaire.id!, v);
+                onChanged();
+              },
+            ),
           ),
         ],
       ),

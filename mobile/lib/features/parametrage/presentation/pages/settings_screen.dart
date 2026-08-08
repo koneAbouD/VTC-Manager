@@ -201,9 +201,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       SettingsTile(
                         icon: Icons.settings_suggest_outlined,
-                        title: 'Paramétrage généraux',
-                        description:
-                            "Réglages globaux : durée d'amortissement…",
+                        title: 'Paramètres généraux',
+                        description: 'Amortissement, provisions sur créances…',
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                               builder: (_) => const ParametresGenerauxPage()),
@@ -229,7 +228,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: 'Géolocalisation',
                         description: 'Suivi de position des chauffeurs en '
                             'service',
-                        trailing: Switch(value: false, onChanged: null),
+                        trailing: SettingsSwitch(value: false),
                       ),
                       const SettingsTile(
                         icon: Icons.star_outline_rounded,
@@ -391,87 +390,99 @@ class _ProfileHeader extends StatelessWidget {
                   horizontalPadding, 2, horizontalPadding, _kProfilPadding),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      AnimatedContainer(
-                        duration: _kTransition,
-                        curve: Curves.easeOutCubic,
-                        width: emailVisible ? 62 : 52,
-                        height: emailVisible ? 62 : 52,
-                        alignment: Alignment.center,
-                        // Même pastille blanche que le bouton « Mon profil ».
-                        decoration: const BoxDecoration(
-                          color: AppColors.surface,
-                          shape: BoxShape.circle,
-                        ),
-                        child: AnimatedDefaultTextStyle(
-                          duration: _kTransition,
-                          curve: Curves.easeOutCubic,
-                          style: TextStyle(
-                            fontSize: emailVisible ? 24 : 20,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primaryDark,
-                          ),
-                          child: Text(initiale),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              libelle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.dark,
-                                letterSpacing: -0.2,
-                              ),
+                  // Tout le bloc d'identité déplie le volet, pas seulement la
+                  // pilule « Mon profil » : c'est la carte entière que l'on
+                  // vise du pouce. Le bouton garde son propre `onTap`, qui
+                  // l'emporte sur celui-ci.
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onToggle,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Row(
+                        children: [
+                          AnimatedContainer(
+                            duration: _kTransition,
+                            curve: Curves.easeOutCubic,
+                            width: emailVisible ? 62 : 52,
+                            height: emailVisible ? 62 : 52,
+                            alignment: Alignment.center,
+                            // Même pastille blanche que le bouton « Mon profil ».
+                            decoration: const BoxDecoration(
+                              color: AppColors.surface,
+                              shape: BoxShape.circle,
                             ),
-                            if (identifiant.isNotEmpty) ...[
-                              const SizedBox(height: 3),
-                              Text(
-                                identifiant,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.label,
-                                ),
-                              ),
-                            ],
-                            // Apparition et disparition en douceur, au rythme
-                            // du volet.
-                            AnimatedSize(
+                            child: AnimatedDefaultTextStyle(
                               duration: _kTransition,
                               curve: Curves.easeOutCubic,
-                              alignment: Alignment.topLeft,
-                              child: emailVisible
-                                  ? Padding(
-                                      padding: const EdgeInsets.only(top: 2),
-                                      child: Text(
-                                        email,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.hint,
-                                        ),
-                                      ),
-                                    )
-                                  : const SizedBox.shrink(),
+                              style: TextStyle(
+                                fontSize: emailVisible ? 24 : 20,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primaryDark,
+                              ),
+                              child: Text(initiale),
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  libelle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.dark,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                if (identifiant.isNotEmpty) ...[
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    identifiant,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.label,
+                                    ),
+                                  ),
+                                ],
+                                // Apparition et disparition en douceur, au rythme
+                                // du volet.
+                                AnimatedSize(
+                                  duration: _kTransition,
+                                  curve: Curves.easeOutCubic,
+                                  alignment: Alignment.topLeft,
+                                  child: emailVisible
+                                      ? Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 2),
+                                          child: Text(
+                                            email,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.hint,
+                                            ),
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          _MonProfilBouton(ouvert: ouvert, onTap: onToggle),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      _MonProfilBouton(ouvert: ouvert, onTap: onToggle),
-                    ],
+                    ),
                   ),
                   // Repli/dépli des actions de compte.
                   AnimatedSize(
@@ -480,7 +491,12 @@ class _ProfileHeader extends StatelessWidget {
                     alignment: Alignment.topCenter,
                     child: ouvert
                         ? Padding(
-                            padding: const EdgeInsets.only(top: 14),
+                            // Même retrait que les lignes filles d'un
+                            // accordéon : icônes et libellés du profil
+                            // tombent sur la même verticale que ceux des
+                            // volets de la liste.
+                            padding: const EdgeInsets.only(
+                                top: 14, left: kSettingsChildIndent),
                             child: _ActionsProfil(
                               avecDescriptions: avecDescriptions,
                             ),
@@ -546,7 +562,8 @@ class _LigneNotificationsState extends ConsumerState<_LigneNotifications> {
     });
 
     final reception = ref.read(receptionPushProvider);
-    final erreur = active ? await reception.activer() : await reception.couper();
+    final erreur =
+        active ? await reception.activer() : await reception.couper();
 
     if (!mounted) return;
     setState(() {
@@ -584,7 +601,7 @@ class _LigneNotificationsState extends ConsumerState<_LigneNotifications> {
         false => 'Cet appareil ne recevra aucune alerte',
       },
       onTap: utilisable ? () => _basculer(!active) : null,
-      trailing: Switch(
+      trailing: SettingsSwitch(
         value: _cible ?? active ?? false,
         onChanged: utilisable ? _basculer : null,
       ),
@@ -685,7 +702,7 @@ class _LigneBiometrieState extends ConsumerState<_LigneBiometrie> {
       // occupe déjà l'écran, un cercle qui tourne derrière elle n'apprendrait
       // rien. L'interrupteur montre la position visée et n'accepte plus de
       // geste tant que l'OS n'a pas répondu.
-      trailing: Switch(
+      trailing: SettingsSwitch(
         value: _cible ?? _active,
         onChanged: utilisable ? _basculer : null,
       ),
@@ -696,8 +713,9 @@ class _LigneBiometrieState extends ConsumerState<_LigneBiometrie> {
 /// Actions de compte révélées par « Mon profil », une par ligne.
 ///
 /// Reprend les briques de la liste de réglages ([SettingsCard] /
-/// [SettingsTile]) — icône à gauche, chevron à droite — dont la surface
-/// blanche se détache du bandeau qui l'accueille.
+/// [SettingsTile]) — icône à gauche, chevron à droite — mais posées à même le
+/// bandeau : le bloc de profil garde une seule et même teinte, du nom jusqu'à
+/// la dernière action.
 class _ActionsProfil extends StatelessWidget {
   final bool avecDescriptions;
 
@@ -706,6 +724,7 @@ class _ActionsProfil extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SettingsCard(
+      sansFond: true,
       children: [
         // Aucune fiche utilisateur n'existe côté back-office : l'entrée est
         // affichée en retrait, comme « Notifications » et « Aide & support ».

@@ -26,7 +26,7 @@ public class ConditionTravail {
     String typeRecette;
     // Null si typeRecette == MONTANT_REEL
     BigDecimal montantJourSalaire;
-    // Prise en compte des jours fériés (suspend recette/cotisation ces jours-là)
+    // Prise en compte des jours fériés (recette spécifique ; cotisations dues normalement)
     boolean feriesConsideres;
     // Recette due le jour férié (recette fixe) ; null/0 = aucune recette due
     BigDecimal montantJourFerie;

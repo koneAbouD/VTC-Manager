@@ -6,9 +6,7 @@ import 'package:tmk_push/tmk_push.dart';
 
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../../auth/presentation/providers/auth_state.dart';
-import '../../cotisation/presentation/pages/lignes_cotisation_page.dart';
-import '../../maintenance/presentation/pages/lignes_maintenance_page.dart';
-import '../../recette/presentation/pages/lignes_recette_page.dart';
+import 'notification_destination.dart';
 import 'notification_style.dart';
 import 'pages/notifications_page.dart';
 import 'providers/notification_providers.dart';
@@ -115,12 +113,8 @@ class _PushRouterState extends ConsumerState<PushRouter>
   /// version installée depuis longtemps peut recevoir un type qu'elle ne
   /// connaît pas encore, et l'utilisateur doit malgré tout pouvoir lire ce
   /// qu'on lui a envoyé.
-  Widget _ecran(PushMessage message) => switch (message.type) {
-        'MAINTENANCE_A_VENIR' => const LignesMaintenancePage(),
-        'RECETTE_ENCAISSEE' => const LignesRecettePage(),
-        'COTISATION_ENCAISSEE' => const LignesCotisationPage(),
-        _ => const NotificationsPage(),
-      };
+  Widget _ecran(PushMessage message) =>
+      ecranNotification(message.type) ?? const NotificationsPage();
 
   @override
   Widget build(BuildContext context) {

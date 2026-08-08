@@ -67,11 +67,22 @@ class _CarteReglages extends StatelessWidget {
 class SettingsCard extends StatelessWidget {
   final List<Widget> children;
 
-  const SettingsCard({super.key, required this.children});
+  /// Pose les lignes à même le fond qui les accueille : ni surface propre ni
+  /// bordure, seuls les filets les séparent. Utile quand la carte est déjà
+  /// contenue dans un bloc coloré — une seconde surface y ferait boîte dans
+  /// la boîte.
+  final bool sansFond;
+
+  const SettingsCard({
+    super.key,
+    required this.children,
+    this.sansFond = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return _CarteReglages(child: Column(children: _separees(children)));
+    final contenu = Column(children: _separees(children));
+    return sansFond ? contenu : _CarteReglages(child: contenu);
   }
 }
 
@@ -137,7 +148,8 @@ class SettingsAccordion extends StatelessWidget {
                       // Retrait des lignes filles : la hiérarchie se lit d'un
                       // coup d'œil, sans surcharge.
                       Padding(
-                        padding: const EdgeInsets.only(left: _kChildIndent),
+                        padding:
+                            const EdgeInsets.only(left: kSettingsChildIndent),
                         child: Column(children: _separees(children)),
                       ),
                     ],
@@ -151,7 +163,10 @@ class SettingsAccordion extends StatelessWidget {
 }
 
 /// Retrait horizontal des lignes filles d'un accordéon déplié.
-const double _kChildIndent = 8;
+///
+/// Partagé pour que toute liste de [SettingsTile] posée hors accordéon — les
+/// actions du bandeau de profil, par exemple — s'aligne sur celles des volets.
+const double kSettingsChildIndent = 8;
 
 /// En-tête d'un [SettingsAccordion] : pastille pleine et titre coloré une fois
 /// déplié, retour au repos sinon. Toutes les bascules sont animées.
@@ -252,6 +267,39 @@ class _EnteteAccordion extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Facteur d'échelle des interrupteurs de la page.
+///
+/// Un [Switch] Material pèse lourd à côté d'une icône de 20 px : réduit, il
+/// s'accorde au reste de la ligne sans dominer le libellé. Un peu moins serré
+/// que les bascules des pages de référentiel : la ligne est ici plus haute.
+const double _kSwitchScale = 0.78;
+
+/// Interrupteur d'une [SettingsTile], à l'échelle de la ligne.
+///
+/// [Transform.scale] emporte la zone tactile avec lui ; la ligne entière reste
+/// cliquable via `onTap`, on ne perd donc rien à viser un peu plus petit.
+class SettingsSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  const SettingsSwitch({super.key, required this.value, this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.scale(
+      scale: _kSwitchScale,
+      child: Switch.adaptive(
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: AppColors.primary,
+        // Sans cela, le Switch réserve 48 px de haut : la ligne s'étirerait
+        // alors que l'interrupteur, lui, a rapetissé.
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }

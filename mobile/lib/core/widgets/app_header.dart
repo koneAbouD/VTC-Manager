@@ -29,8 +29,8 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   /// Surcharge du comportement du bouton retour.
   final VoidCallback? backOverride;
 
-  /// Widget affiché à droite. Si null et [showBack] est true → placeholder
-  /// invisible pour centrer le titre.
+  /// Widget affiché à droite. Sa largeur est libre : le titre reste centré sur
+  /// la barre quoi qu'il arrive.
   final Widget? action;
 
   /// Widget affiché à gauche sur les écrans racines (ex. : bouton menu de
@@ -61,8 +61,24 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     this.leading,
   });
 
+  /// Padding vertical de la barre, en haut comme en bas.
+  static const double _paddingVertical = 14;
+
+  /// Hauteur du contenu, paddings exclus : celle du bouton retour.
+  static const double _hauteurContenu = 38;
+
+  /// Hauteur du contenu avec badge : le titre (~24) et la pilule (~20)
+  /// s'empilent, séparés de 4. Sans ce supplément, la colonne déborde de
+  /// l'en-tête ("RenderFlex overflowed on the bottom").
+  static const double _hauteurContenuBadge = 62;
+
+  /// Hauteur du contenu selon la présence du badge.
+  double get _hauteurContenuEffective =>
+      badge == null ? _hauteurContenu : _hauteurContenuBadge;
+
   @override
-  Size get preferredSize => const Size.fromHeight(66);
+  Size get preferredSize =>
+      Size.fromHeight(_hauteurContenuEffective + _paddingVertical * 2);
 
   @override
   Widget build(BuildContext context) {
@@ -81,9 +97,6 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             ),
           )
         : null;
-
-    // Placeholder de même taille que le bouton pour centrer le titre.
-    const placeholder = SizedBox(width: 56, height: 38);
 
     final titleColumn = Column(
       mainAxisSize: MainAxisSize.min,
@@ -122,33 +135,33 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       ],
     );
 
-    // Layout selon la présence du bouton retour
-    final row = showBack
-        ? Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              backBtn!,
-              Expanded(child: titleColumn),
-              action ?? placeholder,
-            ],
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (leading != null) leading!,
-              Expanded(child: titleColumn),
-              // Placeholder symétrique du leading : le titre reste centré même
-              // sans action à droite.
-              if (action != null) action! else if (leading != null) placeholder,
-            ],
-          );
+    // Le titre est centré sur la barre, et non dans la place que lui laissent
+    // ses voisins : une action large (filtre, bouton « Modifier ») ne le
+    // décale donc plus. [NavigationToolbar] — la mécanique interne d'[AppBar] —
+    // s'en charge, et le repousse de lui-même le jour où le titre et une
+    // action se disputeraient la même place.
+    // Hauteur imposée : la toolbar cherche à remplir ce qu'on lui donne, et
+    // [AppHeader] ne sert pas qu'en `appBar:` — posé dans le corps d'une page
+    // (bandeau de profil des réglages), il reçoit une hauteur illimitée et
+    // s'étirerait à l'infini.
+    final row = SizedBox(
+      height: _hauteurContenuEffective,
+      child: NavigationToolbar(
+        leading: showBack ? backBtn : leading,
+        middle: titleColumn,
+        trailing: action,
+        centerMiddle: true,
+        middleSpacing: 8,
+      ),
+    );
 
     return Container(
       color: backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          padding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: _paddingVertical),
           child: row,
         ),
       ),
@@ -195,14 +208,12 @@ class AppHeaderAction extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget child;
     if (loading) {
-      child = const Center(
-        child: SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: AppColors.dark,
-          ),
+      child = const SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppColors.dark,
         ),
       );
     } else if (label != null) {
@@ -230,7 +241,11 @@ class AppHeaderAction extends StatelessWidget {
           color: AppColors.headerButton,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Center(child: child),
+        // `widthFactor: 1` : le bouton se règle sur son contenu. Un [Center]
+        // nu s'étirerait à toute la largeur offerte — sans conséquence dans une
+        // Row, mais la barre borne désormais ses côtés pour centrer le titre,
+        // et le bouton « Modifier » s'étalait alors sur tout l'en-tête.
+        child: Align(widthFactor: 1, heightFactor: 1, child: child),
       ),
     );
   }

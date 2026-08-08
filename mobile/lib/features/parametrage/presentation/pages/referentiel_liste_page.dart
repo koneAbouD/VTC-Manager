@@ -465,7 +465,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
                 // l'opacité de la tuile et la pastille grisée quand inactif.
                 if (d.gereActif && d.editable)
                   Transform.scale(
-                    scale: 0.78,
+                    scale: 0.70,
                     child: Switch.adaptive(
                       value: actif,
                       activeThumbColor: AppColors.primary,

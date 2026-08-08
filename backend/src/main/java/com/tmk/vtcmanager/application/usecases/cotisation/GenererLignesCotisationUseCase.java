@@ -7,7 +7,6 @@ import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeRepository;
-import com.tmk.vtcmanager.application.ports.persistence.JourFerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
@@ -31,22 +30,21 @@ public class GenererLignesCotisationUseCase {
     private final LigneCotisationRepository ligneCotisationRepository;
     private final IndisponibiliteSubstitutionService indisponibiliteSubstitutionService;
     private final IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
-    private final JourFerieRepository jourFerieRepository;
 
     @Transactional
     public List<LigneCotisation> executer(LocalDate date) {
         List<ProgrammeTravail> programmes = programmeTravailRepository.findAllWithChauffeurs();
         List<LigneCotisation> generees = new ArrayList<>();
-        boolean estFerie = jourFerieRepository.existsByDate(date);
 
         for (ProgrammeTravail programme : programmes) {
             if (programme.getChauffeurs() == null || programme.getChauffeurs().isEmpty()) continue;
             if (!programme.travailleCeJour(date)) continue;
             // Véhicule immobilisé (indisponibilité) ce jour → aucune cotisation due.
             if (indisponibiliteVehiculeRepository.isImmobiliseAt(programme.getVehiculeId(), date)) continue;
-            // Jour de salaire ou jour férié pris en compte : le chauffeur roule pour son
-            // propre compte → aucune cotisation due.
-            if (programme.estJourSalaire(date) || programme.suspendPourFerie(estFerie)) {
+            // Jour de salaire : le chauffeur roule pour son propre compte → aucune
+            // cotisation due. Un jour férié, en revanche, les cotisations restent dues
+            // comme un jour ordinaire (seule la recette applique le montant férié).
+            if (programme.estJourSalaire(date)) {
                 purgerCotisationsDuJour(programme.getVehiculeId(), date);
                 continue;
             }

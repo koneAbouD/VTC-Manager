@@ -795,7 +795,8 @@ class _ConditionTravailWizardPageState
           const _CardSectionTitle('Jours fériés', Icons.flag_rounded),
           const SizedBox(height: 6),
           Text(
-            'Suspend la recette et les cotisations les jours fériés (comme un jour de salaire).',
+            'Applique une recette spécifique les jours fériés. Les cotisations '
+            'restent dues comme un jour ordinaire.',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
           ),
           const SizedBox(height: 14),

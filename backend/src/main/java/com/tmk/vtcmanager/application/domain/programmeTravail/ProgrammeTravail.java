@@ -38,7 +38,7 @@ public class ProgrammeTravail {
     private Set<JourSemaine> joursTravailSemaine = new HashSet<>();
     private boolean jourSalaireActif;
     private JourSemaine jourSalaire;
-    /** Prise en compte des jours fériés : suspend recette/cotisation ces jours-là. */
+    /** Prise en compte des jours fériés : recette spécifique ces jours-là. */
     private boolean feriesActif;
     @Builder.Default
     private List<ProgrammeChauffeur> chauffeurs = new ArrayList<>();
@@ -299,9 +299,10 @@ public class ProgrammeTravail {
     }
 
     /**
-     * Vrai si un jour férié doit suspendre la recette/cotisation pour ce
+     * Vrai si un jour férié doit appliquer la recette spécifique pour ce
      * véhicule : la date est fériée (déterminé en amont) et l'option de prise
-     * en compte des fériés est active sur ce programme.
+     * en compte des fériés est active sur ce programme. Les cotisations, elles,
+     * restent dues comme un jour ordinaire.
      */
     public boolean suspendPourFerie(boolean estFerie) {
         return feriesActif && estFerie;

@@ -26,40 +26,6 @@ const _kBorder    = Color(0xFFE3E6EE);
 const _kDark      = Color(0xFF1A1A2E);
 const _kError     = Color(0xFFE03131);
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-
-void _showToast(BuildContext context, String message, {bool error = false}) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(
-      content: Row(children: [
-        Icon(
-          error
-              ? Icons.error_outline_rounded
-              : Icons.check_circle_outline_rounded,
-          color: Colors.white,
-          size: 20,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(message,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white)),
-        ),
-      ]),
-      backgroundColor:
-          error ? const Color(0xFFB71C1C) : const Color(0xFF1B5E20),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      duration:
-          error ? const Duration(seconds: 4) : const Duration(seconds: 2),
-    ));
-}
-
 // ── Entrée du bottom sheet ────────────────────────────────────────────────────
 
 Future<bool?> showEncaissementRapideDialog(BuildContext context) {
@@ -271,7 +237,6 @@ class _EncaissementRapideSheetState
 
     ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
     Navigator.pop(context, true);
-    _showToast(context, 'Encaissement effectué avec succès');
   }
 
   Future<String?> _encaisserRecette(

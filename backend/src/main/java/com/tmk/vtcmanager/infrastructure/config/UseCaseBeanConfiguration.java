@@ -763,11 +763,9 @@ public class UseCaseBeanConfiguration {
             ConfigurationRecetteRepository configurationRecetteRepository,
             LigneCotisationRepository ligneCotisationRepository,
             IndisponibiliteSubstitutionService indisponibiliteSubstitutionService,
-            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository,
-            JourFerieRepository jourFerieRepository) {
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository) {
         return new GenererLignesCotisationUseCase(programmeTravailRepository, configurationRecetteRepository,
-                ligneCotisationRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository,
-                jourFerieRepository);
+                ligneCotisationRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository);
     }
 
     @Bean

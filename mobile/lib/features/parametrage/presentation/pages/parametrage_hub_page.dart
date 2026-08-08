@@ -85,13 +85,11 @@ class _HubTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
+              // Icône nue, sans pastille. La boîte garde ses 44 px : c'est elle
+              // qui aligne les libellés d'une carte à l'autre.
+              SizedBox(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryTint,
-                  borderRadius: BorderRadius.circular(12),
-                ),
                 child: Icon(icon, color: AppColors.primaryDark, size: 22),
               ),
               const SizedBox(width: 14),

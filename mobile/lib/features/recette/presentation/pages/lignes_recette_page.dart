@@ -781,16 +781,16 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
     );
   }
 
-  /// Palette des chips de statut, alignée sur celle de ContraventionsPage :
-  /// trois teintes seulement — gris pour l'attente et les fins de course
-  /// neutres, ambre pour ce qui est en cours, vert pour ce qui est soldé.
-  static const _ambre = Color(0xFF854F0B);
+  /// Palette des chips de statut : trois teintes seulement — gris pour
+  /// l'attente et les fins de course neutres, bleu pour l'encaissement
+  /// commencé mais pas terminé, vert pour ce qui est soldé.
+  static const _bleu = Color(0xFF1565C0);
   static const _vert = Color(0xFF2E7D32);
   static const _hint = Color(0xFF8A94A6);
 
   Color _couleurStatut(StatutLigneRecette s) => switch (s) {
         StatutLigneRecette.enAttente => _hint,
-        StatutLigneRecette.partiellementEncaisse => _ambre,
+        StatutLigneRecette.partiellementEncaisse => _bleu,
         StatutLigneRecette.encaisse => _vert,
         StatutLigneRecette.annulee => _hint,
       };
@@ -885,10 +885,9 @@ class _LigneCard extends StatelessWidget {
     final montantRestant = ligne.montantAttendu != null
         ? (ligne.montantAttendu! - ligne.montantEncaisse).clamp(0, double.infinity)
         : null;
-    // Encaissement partiel : c'est ce qui est déjà rentré qui intéresse, pas
-    // ce qui manque — le total reste rappelé juste en dessous.
-    final partiel = ligne.statut == StatutLigneRecette.partiellementEncaisse;
-    final montantPrincipal = partiel ? ligne.montantEncaisse : montantRestant;
+    // Toujours ce qui manque, encaissement partiel compris : c'est le reste à
+    // recouvrer qui appelle une action. Le total est rappelé juste en dessous.
+    final montantPrincipal = montantRestant;
     final montantAttenduDifferent = montantPrincipal != null &&
         montantPrincipal != ligne.montantAttendu;
 
@@ -990,7 +989,7 @@ class _LigneCard extends StatelessWidget {
   /// couleur du statut telle qu'elle est présentée en haut de page.
   Color _couleurStatut(StatutLigneRecette s) => switch (s) {
         StatutLigneRecette.enAttente => const Color(0xFF8A94A6),
-        StatutLigneRecette.partiellementEncaisse => const Color(0xFF854F0B),
+        StatutLigneRecette.partiellementEncaisse => const Color(0xFF1565C0),
         StatutLigneRecette.encaisse => const Color(0xFF2E7D32),
         StatutLigneRecette.annulee => const Color(0xFF8A94A6),
       };
