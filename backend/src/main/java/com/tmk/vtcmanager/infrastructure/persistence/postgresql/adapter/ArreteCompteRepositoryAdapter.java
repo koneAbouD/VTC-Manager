@@ -14,6 +14,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -151,9 +153,20 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
     }
 
     @Override
-    public List<ArreteCompte> findAll() {
-        List<ArreteCompte> entetes = jdbcTemplate.query(
-                "SELECT * FROM arretes_compte ORDER BY date_arrete DESC, id DESC", ARRETE_MAPPER);
+    public List<ArreteCompte> findAll(LocalDate debut, LocalDate fin) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM arretes_compte WHERE 1 = 1");
+        List<Object> args = new ArrayList<>();
+        if (debut != null) {
+            sql.append(" AND date_arrete >= ?");
+            args.add(debut);
+        }
+        if (fin != null) {
+            sql.append(" AND date_arrete <= ?");
+            args.add(fin);
+        }
+        sql.append(" ORDER BY date_arrete DESC, id DESC");
+
+        List<ArreteCompte> entetes = jdbcTemplate.query(sql.toString(), ARRETE_MAPPER, args.toArray());
         for (ArreteCompte a : entetes) {
             a.setReglements(jdbcTemplate.query("""
                     SELECT r.*, TRIM(CONCAT(ch.prenom, ' ', ch.nom)) AS chauffeur_nom

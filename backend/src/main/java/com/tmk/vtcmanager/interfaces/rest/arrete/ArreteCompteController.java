@@ -95,9 +95,12 @@ public class ArreteCompteController {
         return new SelectionArrete(cotisationIds, creances);
     }
 
+    /** Historique, filtrable sur le mois d'arrêté (annee seule = année entière). */
     @GetMapping("/arretes")
-    public List<ArreteResponse> lister() {
-        return getArreteUseCase.lister().stream()
+    public List<ArreteResponse> lister(
+            @RequestParam(required = false) Integer annee,
+            @RequestParam(required = false) Integer mois) {
+        return getArreteUseCase.lister(annee, mois).stream()
                 .map(ArreteCompteController::toArrete)
                 .toList();
     }

@@ -109,8 +109,12 @@ class TresorerieRemoteDatasource {
     return ArreteCompte.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<List<ArreteCompte>> getArretes() async {
-    final data = await _client.get('/finances/arretes');
+  /// Historique des arrêtés, restreint au mois (annee + mois) si fourni.
+  Future<List<ArreteCompte>> getArretes({int? annee, int? mois}) async {
+    final data = await _client.get('/finances/arretes', query: {
+      if (annee != null) 'annee': '$annee',
+      if (mois != null) 'mois': '$mois',
+    });
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => ArreteCompte.fromJson(e as Map<String, dynamic>))

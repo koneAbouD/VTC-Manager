@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
 import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,8 +23,12 @@ public interface ArreteCompteRepository {
     /** Charge l'arrêté complet (en-tête + lignes + règlements). */
     Optional<ArreteCompte> findById(Long id);
 
-    /** Historique, du plus récent au plus ancien. */
-    List<ArreteCompte> findAll();
+    /**
+     * Historique, du plus récent au plus ancien, éventuellement restreint aux
+     * arrêtés dont la date d'arrêté tombe entre {@code debut} et {@code fin}
+     * (bornes incluses ; null = pas de borne).
+     */
+    List<ArreteCompte> findAll(LocalDate debut, LocalDate fin);
 
     /** Arrêtés dont un règlement concerne ce chauffeur (relevé de compte). */
     List<ArreteCompte> findByBeneficiaire(Long chauffeurId);

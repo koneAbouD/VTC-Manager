@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/month_filter_pill.dart';
 import '../../domain/entities/compte_courant.dart';
 import '../providers/tresorerie_providers.dart';
 import 'arrete_detail_page.dart';
@@ -12,44 +13,96 @@ String fmtDate(DateTime? d) => d == null
     ? '—'
     : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
-/// Historique des arrêtés de compte (le plus récent en premier).
-class ArretesHistoryPage extends ConsumerWidget {
+/// Historique des arrêtés de compte (le plus récent en premier), filtrable sur
+/// le mois d'arrêté (la date affichée sur chaque ligne).
+class ArretesHistoryPage extends ConsumerStatefulWidget {
   const ArretesHistoryPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(arretesProvider);
+  ConsumerState<ArretesHistoryPage> createState() => _ArretesHistoryPageState();
+}
+
+class _ArretesHistoryPageState extends ConsumerState<ArretesHistoryPage> {
+  /// Mois d'arrêté filtré ; null = tout l'historique.
+  int? _mois;
+  int? _annee;
+
+  ({int? annee, int? mois}) get _filtre => (annee: _annee, mois: _mois);
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(arretesProvider(_filtre));
     return Scaffold(
       appBar: const AppHeader(title: 'Arrêtés de compte'),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(arretesProvider.future),
-        child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ListView(children: [
-            const SizedBox(height: 120),
-            Center(
-                child: Text('Impossible de charger l\'historique',
-                    style: TextStyle(color: Colors.grey.shade600))),
-          ]),
-          data: (arretes) {
-            if (arretes.isEmpty) {
-              return ListView(children: [
-                const SizedBox(height: 120),
-                Icon(Icons.receipt_long_outlined,
-                    size: 56, color: Colors.grey.shade300),
-                const SizedBox(height: 12),
-                Center(
-                    child: Text('Aucun arrêté enregistré',
-                        style: TextStyle(fontSize: 15, color: Colors.grey.shade600))),
-              ]);
-            }
-            return ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-              itemCount: arretes.length,
-              itemBuilder: (_, i) => _ArreteTile(arrete: arretes[i]),
-            );
-          },
-        ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: MonthFilterPill(
+                    mois: _mois,
+                    annee: _annee,
+                    onChanged: (m, a) => setState(() {
+                      _mois = m;
+                      _annee = a;
+                    }),
+                    onEfface: () => setState(() {
+                      _mois = null;
+                      _annee = null;
+                    }),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  async.maybeWhen(
+                    data: (a) =>
+                        '${a.length} arrêté${a.length > 1 ? 's' : ''}',
+                    orElse: () => '',
+                  ),
+                  style: const TextStyle(fontSize: 12, color: AppColors.hint),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => ref.refresh(arretesProvider(_filtre).future),
+              child: async.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => ListView(children: [
+                  const SizedBox(height: 120),
+                  Center(
+                      child: Text('Impossible de charger l\'historique',
+                          style: TextStyle(color: Colors.grey.shade600))),
+                ]),
+                data: (arretes) {
+                  if (arretes.isEmpty) {
+                    return ListView(children: [
+                      const SizedBox(height: 120),
+                      Icon(Icons.receipt_long_outlined,
+                          size: 56, color: Colors.grey.shade300),
+                      const SizedBox(height: 12),
+                      Center(
+                          child: Text(
+                              _mois == null
+                                  ? 'Aucun arrêté enregistré'
+                                  : 'Aucun arrêté sur ce mois',
+                              style: TextStyle(
+                                  fontSize: 15, color: Colors.grey.shade600))),
+                    ]);
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                    itemCount: arretes.length,
+                    itemBuilder: (_, i) => _ArreteTile(arrete: arretes[i]),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

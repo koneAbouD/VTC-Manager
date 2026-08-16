@@ -26,6 +26,18 @@
         <springdoc.version>2.6.0</springdoc.version>
         <firebase-admin.version>9.4.3</firebase-admin.version>
         <google-http-client.version>1.45.3</google-http-client.version>
+        <!-- Non géré par le parent Spring Boot : la version est donc explicite. -->
+        <jacoco.version>0.8.12</jacoco.version>
+        <!-- Plancher de couverture des couches métier, vérifié en phase verify.
+             Calé juste sous la couverture atteinte (54,9 %) : la règle protège
+             l'acquis sans bloquer sur du bruit de mesure. À relever au fil de
+             l'enrichissement de la suite, jamais à abaisser pour faire passer une
+             build — une baisse signale une régression de couverture, c'est
+             précisément ce que la règle doit rendre visible.
+             Modules encore non couverts, à traiter pour viser 70 % : auth,
+             payment, dashboard, categorieOperation, document, groupe,
+             configurationRecette, jourFerie, admin, sousCategorieOperation. -->
+        <jacoco.couverture.minimale>0.54</jacoco.couverture.minimale>
     </properties>
 
     <dependencies>
@@ -223,6 +235,59 @@
                         </exclude>
                     </excludes>
                 </configuration>
+            </plugin>
+            <!-- Couverture de tests. L'agent instrumente la JVM de surefire, le
+                 rapport HTML atterrit dans target/site/jacoco, et `check` fait
+                 échouer `mvn verify` si les couches métier passent sous le
+                 plancher. La règle ne porte QUE sur application/usecases et
+                 application/services : c'est là que vit la règle de gestion.
+                 L'infrastructure (adaptateurs JPA, Keycloak, MinIO, FCM) et les
+                 contrôleurs REST relèvent de tests d'intégration, pas unitaires,
+                 et les inclure ferait tomber la moyenne sans rien garantir. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>preparer-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>rapport-couverture</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>plancher-couverture-metier</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <includes>
+                                <include>com/tmk/vtcmanager/application/usecases/**/*.class</include>
+                                <include>com/tmk/vtcmanager/application/services/*.class</include>
+                            </includes>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.couverture.minimale}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

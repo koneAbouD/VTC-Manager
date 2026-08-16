@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tmk_pin/tmk_pin.dart';
@@ -30,10 +32,6 @@ const double _kCardGap = 10;
 /// Arrondi du bas du bandeau de profil — même valeur que la barre de
 /// navigation flottante de l'accueil.
 const double _kHeaderRadius = 24;
-
-/// Marge intérieure sous l'identité : le bandeau porte déjà un avatar haut de
-/// 62 px, il n'a pas besoin d'autant d'air qu'une carte de la liste.
-const double _kProfilPadding = 16;
 
 /// Arrondi des pilules du bandeau, aligné sur les boutons d'[AppHeader].
 const double _kPillRadius = 20;
@@ -150,10 +148,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               hauteurMaxIdentite: hauteurMaxBandeau,
             ),
             Expanded(
-              // Padding bas incluant l'inset système pour que le pied de page ne
-              // passe pas sous la barre de navigation Android.
+              // Le bandeau se termine par sa poignée : la première carte prend
+              // ses distances pour que le trait garde son air. Padding bas
+              // incluant l'inset système pour que le pied de page ne passe pas
+              // sous la barre de navigation Android.
               child: _CorpsDefilant(
-                padding: EdgeInsets.fromLTRB(_kPagePadding, 8, _kPagePadding,
+                padding: EdgeInsets.fromLTRB(_kPagePadding, 18, _kPagePadding,
                     24 + MediaQuery.of(context).padding.bottom),
                 pied: _PiedDePage(
                   onLogout: () {
@@ -171,7 +171,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       SettingsTile(
                         icon: Icons.flag_outlined,
                         title: 'Jours fériés',
-                        description: 'Jours suspendant recettes et cotisations',
+                        description: 'Jours à recette spécifique',
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                               builder: (_) => const JoursFeriesPage()),
@@ -313,7 +313,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 /// la même teinte ([AppColors.headerButton]) que l'identité, ils forment une
 /// seule zone dont seul le bord bas est arrondi. Il occupe toute la largeur,
 /// son contenu restant aligné sur la liste de réglages.
-class _ProfileHeader extends StatelessWidget {
+class _ProfileHeader extends StatefulWidget {
   /// Prénom et nom du compte connecté.
   final String name;
 
@@ -353,13 +353,72 @@ class _ProfileHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final libelle = name.trim().isEmpty ? 'Mon compte' : name.trim();
-    final initiale = libelle.substring(0, 1).toUpperCase();
+  State<_ProfileHeader> createState() => _ProfileHeaderState();
+}
 
-    // L'e-mail n'accompagne que le volet ouvert ; l'avatar s'agrandit alors
-    // d'un cran pour rester à l'échelle du bloc d'identité.
-    final emailVisible = ouvert && email.isNotEmpty;
+class _ProfileHeaderState extends State<_ProfileHeader>
+    with SingleTickerProviderStateMixin {
+  /// Avancement du dépli, de 0 (replié) à 1 (déplié). Continu : glisser la
+  /// poignée le déplace au rythme du doigt, le reste du temps il est animé
+  /// d'une position à l'autre.
+  late final AnimationController _depli = AnimationController(
+    vsync: this,
+    duration: _kTransition,
+    value: widget.ouvert ? 1 : 0,
+  );
+
+  /// Posée sur le bloc d'actions : sa hauteur convertit les pixels parcourus
+  /// par le doigt en fraction d'ouverture.
+  final _contenuKey = GlobalKey();
+
+  @override
+  void didUpdateWidget(covariant _ProfileHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // La page reste maîtresse de l'état — elle ne laisse qu'un volet ouvert à
+    // la fois : le bandeau ne fait que rejoindre la position demandée, depuis
+    // là où le doigt l'a laissé.
+    if (widget.ouvert != oldWidget.ouvert) _rejoindre(widget.ouvert);
+  }
+
+  @override
+  void dispose() {
+    _depli.dispose();
+    super.dispose();
+  }
+
+  void _rejoindre(bool ouvert) =>
+      _depli.animateTo(ouvert ? 1 : 0, curve: Curves.easeOutCubic);
+
+  /// Course complète du dépli, en pixels. Vaut 1 tant que le bloc n'a pas été
+  /// mesuré, pour ne jamais diviser par zéro.
+  double get _course {
+    final boite = _contenuKey.currentContext?.findRenderObject() as RenderBox?;
+    final hauteur = boite?.size.height ?? 0;
+    return hauteur > 0 ? hauteur : 1;
+  }
+
+  /// Vers le bas on ouvre, vers le haut on referme : la carte descend du haut
+  /// de l'écran, c'est l'inverse d'une feuille modale.
+  void _glisser(DragUpdateDetails details) =>
+      _depli.value = (_depli.value + details.delta.dy / _course).clamp(0.0, 1.0);
+
+  void _relacher(DragEndDetails details) {
+    // Un geste franc l'emporte sur la distance parcourue : on suit sa
+    // direction. Sinon c'est la moitié de la course qui tranche.
+    final vitesse = details.velocity.pixelsPerSecond.dy;
+    final ouvrir = vitesse.abs() > 300 ? vitesse > 0 : _depli.value >= 0.5;
+    if (ouvrir == widget.ouvert) {
+      _rejoindre(ouvrir); // état inchangé : le volet se recale seul
+    } else {
+      widget.onToggle(); // la page bascule, `didUpdateWidget` fait le reste
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final libelle =
+        widget.name.trim().isEmpty ? 'Mon compte' : widget.name.trim();
+    final initiale = libelle.substring(0, 1).toUpperCase();
 
     return Container(
       width: double.infinity,
@@ -381,134 +440,202 @@ class _ProfileHeader extends StatelessWidget {
           backButtonColor: AppColors.surface,
         ),
         ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: hauteurMaxIdentite),
+          constraints: BoxConstraints(maxHeight: widget.hauteurMaxIdentite),
           child: SingleChildScrollView(
             child: Padding(
               // L'en-tête pose déjà 14 px sous le bouton retour : l'identité
-              // n'ajoute qu'un souffle avant l'avatar.
+              // n'ajoute qu'un souffle avant l'avatar. En bas, c'est la
+              // poignée qui tient lieu de marge.
               padding: EdgeInsets.fromLTRB(
-                  horizontalPadding, 2, horizontalPadding, _kProfilPadding),
-              child: Column(
-                children: [
-                  // Tout le bloc d'identité déplie le volet, pas seulement la
-                  // pilule « Mon profil » : c'est la carte entière que l'on
-                  // vise du pouce. Le bouton garde son propre `onTap`, qui
-                  // l'emporte sur celui-ci.
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: onToggle,
-                      borderRadius: BorderRadius.circular(14),
-                      child: Row(
-                        children: [
-                          AnimatedContainer(
-                            duration: _kTransition,
-                            curve: Curves.easeOutCubic,
-                            width: emailVisible ? 62 : 52,
-                            height: emailVisible ? 62 : 52,
-                            alignment: Alignment.center,
-                            // Même pastille blanche que le bouton « Mon profil ».
-                            decoration: const BoxDecoration(
-                              color: AppColors.surface,
-                              shape: BoxShape.circle,
-                            ),
-                            child: AnimatedDefaultTextStyle(
-                              duration: _kTransition,
-                              curve: Curves.easeOutCubic,
-                              style: TextStyle(
-                                fontSize: emailVisible ? 24 : 20,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primaryDark,
-                              ),
-                              child: Text(initiale),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  libelle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.dark,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                if (identifiant.isNotEmpty) ...[
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    identifiant,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.label,
-                                    ),
-                                  ),
-                                ],
-                                // Apparition et disparition en douceur, au rythme
-                                // du volet.
-                                AnimatedSize(
-                                  duration: _kTransition,
-                                  curve: Curves.easeOutCubic,
-                                  alignment: Alignment.topLeft,
-                                  child: emailVisible
-                                      ? Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 2),
-                                          child: Text(
-                                            email,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: AppColors.hint,
-                                            ),
-                                          ),
-                                        )
-                                      : const SizedBox.shrink(),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          _MonProfilBouton(ouvert: ouvert, onTap: onToggle),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Repli/dépli des actions de compte.
-                  AnimatedSize(
-                    duration: _kTransition,
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.topCenter,
-                    child: ouvert
-                        ? Padding(
-                            // Même retrait que les lignes filles d'un
-                            // accordéon : icônes et libellés du profil
-                            // tombent sur la même verticale que ceux des
-                            // volets de la liste.
-                            padding: const EdgeInsets.only(
-                                top: 14, left: kSettingsChildIndent),
-                            child: _ActionsProfil(
-                              avecDescriptions: avecDescriptions,
-                            ),
-                          )
-                        : const SizedBox(width: double.infinity),
-                  ),
-                ],
+                  widget.horizontalPadding, 2, widget.horizontalPadding, 0),
+              child: AnimatedBuilder(
+                animation: _depli,
+                builder: (context, _) => _identite(libelle, initiale),
               ),
             ),
           ),
         ),
+        _PoigneeDepli(
+          onTap: widget.onToggle,
+          onDragUpdate: _glisser,
+          onDragEnd: _relacher,
+        ),
       ]),
+    );
+  }
+
+  /// Bloc d'identité rendu à l'avancement courant : l'avatar grandit, l'e-mail
+  /// se déroule et les actions se découvrent d'un même mouvement.
+  Widget _identite(String libelle, String initiale) {
+    final t = _depli.value;
+    // L'e-mail n'accompagne que le volet déplié, et seulement s'il apporte
+    // quelque chose (cf. [_identiteCompteProvider]) ; l'avatar, qui s'agrandit
+    // d'un cran pour rester à l'échelle du bloc, suit son sort.
+    final tEmail = widget.email.isEmpty ? 0.0 : t;
+
+    return Column(
+      children: [
+        // Tout le bloc d'identité déplie le volet, pas seulement la pilule
+        // « Mon profil » : c'est la carte entière que l'on vise du pouce. Le
+        // bouton garde son propre `onTap`, qui l'emporte sur celui-ci.
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onToggle,
+            borderRadius: BorderRadius.circular(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 52 + 10 * tEmail,
+                  height: 52 + 10 * tEmail,
+                  alignment: Alignment.center,
+                  // Même pastille blanche que le bouton « Mon profil ».
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    initiale,
+                    style: TextStyle(
+                      fontSize: 20 + 4 * tEmail,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        libelle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      if (widget.identifiant.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          widget.identifiant,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.label,
+                          ),
+                        ),
+                      ],
+                      if (widget.email.isNotEmpty)
+                        _decouvrir(
+                          tEmail,
+                          alignment: Alignment.topLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              widget.email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.hint,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _MonProfilBouton(avancement: t, onTap: widget.onToggle),
+              ],
+            ),
+          ),
+        ),
+        // Actions de compte, découvertes de haut en bas.
+        _decouvrir(
+          t,
+          child: Padding(
+            key: _contenuKey,
+            // Même retrait que les lignes filles d'un accordéon : icônes et
+            // libellés du profil tombent sur la même verticale que ceux des
+            // volets de la liste.
+            padding:
+                const EdgeInsets.only(top: 14, left: kSettingsChildIndent),
+            child: _ActionsProfil(avecDescriptions: widget.avecDescriptions),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Laisse voir [child] à hauteur de [avancement] (0 → rien, 1 → tout), sans
+  /// jamais le redimensionner : il se découvre par le haut, comme une feuille
+  /// que l'on tire.
+  static Widget _decouvrir(
+    double avancement, {
+    required Widget child,
+    Alignment alignment = Alignment.topCenter,
+  }) {
+    return ClipRect(
+      child: Align(
+        alignment: alignment,
+        heightFactor: avancement,
+        child: Opacity(opacity: avancement, child: child),
+      ),
+    );
+  }
+}
+
+/// Poignée du bandeau de profil : le petit trait centré en bordure basse.
+///
+/// Même trait que les feuilles modales de l'application, mais dans l'autre
+/// sens : la carte descend du haut de l'écran, on la tire donc vers le bas
+/// pour l'ouvrir et vers le haut pour la refermer. Un appui simple bascule,
+/// comme un tap sur la poignée d'une feuille la referme.
+class _PoigneeDepli extends StatelessWidget {
+  final VoidCallback onTap;
+  final ValueChanged<DragUpdateDetails> onDragUpdate;
+  final ValueChanged<DragEndDetails> onDragEnd;
+
+  const _PoigneeDepli({
+    required this.onTap,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onVerticalDragUpdate: onDragUpdate,
+      onVerticalDragEnd: onDragEnd,
+      child: Container(
+        width: double.infinity,
+        // Zone de préhension bien plus large que le trait : c'est tout le bas
+        // du bandeau qui répond au pouce. Elle tient aussi lieu de marge sous
+        // l'identité.
+        padding: const EdgeInsets.only(top: 8, bottom: 10),
+        alignment: Alignment.center,
+        child: Container(
+          width: 40,
+          height: 4,
+          decoration: BoxDecoration(
+            // Un cran plus soutenu que [AppColors.border] : le bandeau est
+            // lui-même gris clair, le trait s'y perdrait.
+            color: AppColors.hint.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -762,47 +889,52 @@ class _ActionsProfil extends StatelessWidget {
 }
 
 /// Bouton « Mon profil » : déplie et replie les actions de compte.
+///
+/// Pastille purement décorative, sans réaction au doigt ni au pointeur : ni
+/// ondulation, ni assombrissement, ni survol. Le seul retour visuel du geste
+/// est le mouvement du volet lui-même, chevron compris — d'où un
+/// [GestureDetector] plutôt qu'un `InkWell`.
 class _MonProfilBouton extends StatelessWidget {
-  final bool ouvert;
+  /// Avancement du dépli, de 0 (replié) à 1 (déplié) : le chevron pivote au
+  /// rythme du volet, glissement de la poignée compris.
+  final double avancement;
   final VoidCallback onTap;
 
-  const _MonProfilBouton({required this.ouvert, required this.onTap});
+  const _MonProfilBouton({required this.avancement, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(_kPillRadius),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(_kPillRadius),
-        child: Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Mon profil',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.dark,
-                ),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(_kPillRadius),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Mon profil',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
               ),
-              const SizedBox(width: 4),
-              // Chevron vers le bas quand le volet est replié, vers le haut
-              // une fois ouvert.
-              AnimatedRotation(
-                turns: ouvert ? -0.25 : 0.25,
-                duration: _kTransition,
-                curve: Curves.easeOutCubic,
-                child: const Icon(Icons.chevron_right_rounded,
-                    size: 18, color: AppColors.dark),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 4),
+            // Chevron vers le bas quand le volet est replié, vers le haut
+            // une fois ouvert — et à mi-course entre les deux.
+            Transform.rotate(
+              angle: (0.25 - 0.5 * avancement) * 2 * math.pi,
+              child: const Icon(Icons.chevron_right_rounded,
+                  size: 18, color: AppColors.dark),
+            ),
+          ],
         ),
       ),
     );

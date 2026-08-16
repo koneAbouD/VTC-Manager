@@ -76,9 +76,13 @@ final comptesCourantsProvider =
       ref.watch(_tresorerieDatasourceProvider).getComptesCourants(perimetre),
 );
 
-/// Historique des arrêtés de compte (le plus récent en premier).
-final arretesProvider = FutureProvider<List<ArreteCompte>>(
-  (ref) => ref.watch(_tresorerieDatasourceProvider).getArretes(),
+/// Historique des arrêtés de compte (le plus récent en premier), filtré sur le
+/// mois d'arrêté quand `(annee, mois)` est fourni ; `(null, null)` = tout.
+final arretesProvider =
+    FutureProvider.family<List<ArreteCompte>, ({int? annee, int? mois})>(
+  (ref, p) => ref
+      .watch(_tresorerieDatasourceProvider)
+      .getArretes(annee: p.annee, mois: p.mois),
 );
 
 /// Détail complet d'un arrêté (en-tête + lignes + règlements).

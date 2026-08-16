@@ -129,18 +129,15 @@ public class GenererLignesRecetteUseCase {
 
     /**
      * Stratégie de résolution :
-     * 1. Si une ligne existe déjà pour ce chauffeur → mise à jour du montant attendu.
-     * 2. Si une ligne EN_ATTENTE existe pour un autre chauffeur (alternance changée)
-     *    → mise à jour du chauffeur et du montant attendu.
-     * 3. Sinon → création d'une nouvelle ligne.
-     * Les lignes ANNULÉES ne sont jamais modifiées.
-     */
-    /**
-     * Stratégie de résolution :
      * 1. Ligne déjà affectée à ce chauffeur (non annulée) → mise à jour du montant attendu.
-     * 2. Ligne EN_ATTENTE d'un autre chauffeur sans encaissement (alternance reconfigurée)
-     *    → réaffectation du chauffeur et mise à jour du montant attendu.
-     * 3. Aucune ligne réutilisable → création.
+     * 2. Aucune ligne réutilisable → création.
+     *
+     * <p>Une ligne appartenant à un <em>autre</em> chauffeur n'est jamais réaffectée :
+     * {@link #nettoyerLignesObsoletes} s'exécute avant la boucle et a déjà supprimé les
+     * lignes en attente des chauffeurs retirés du programme (celles qui portent un
+     * encaissement bloquent la génération en amont, celles annulées sont intouchables).
+     * Toute ligne encore présente appartient donc à un chauffeur actif, servi lui aussi
+     * dans cette boucle : la lui prendre ferait disparaître la recette qu'il doit.
      */
     private LigneRecette resoudreOuCreerLigne(
             List<LigneRecette> existantes, Long vehiculeId, Long chauffeurId,
@@ -156,21 +153,7 @@ public class GenererLignesRecetteUseCase {
             return memeChauffeur.get();
         }
 
-        // 2. Autre chauffeur, EN_ATTENTE, aucun encaissement → réaffecter
-        var autreEnAttente = existantes.stream()
-                .filter(l -> !chauffeurId.equals(l.getChauffeurId())
-                        && l.getStatut() == StatutLigneRecette.EN_ATTENTE
-                        && (l.getMontantEncaisse() == null
-                                || l.getMontantEncaisse().compareTo(BigDecimal.ZERO) == 0))
-                .findFirst();
-        if (autreEnAttente.isPresent()) {
-            LigneRecette ligne = autreEnAttente.get();
-            ligne.setChauffeurId(chauffeurId);
-            ligne.setMontantAttendu(montantAttendu);
-            return ligne;
-        }
-
-        // 3. Aucune ligne réutilisable → créer
+        // 2. Aucune ligne réutilisable → créer
         return LigneRecette.builder()
                 .vehiculeId(vehiculeId)
                 .chauffeurId(chauffeurId)

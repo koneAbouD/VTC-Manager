@@ -8,6 +8,8 @@ import com.tmk.vtcmanager.application.ports.persistence.CompteCourantRepository;
 import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,7 +21,28 @@ public class GetArreteUseCase {
     private final CompteCourantRepository compteCourantRepository;
 
     public List<ArreteCompte> lister() {
-        return arreteCompteRepository.findAll();
+        return lister(null, null);
+    }
+
+    /**
+     * Historique filtré sur la date d'arrêté : un mois précis (annee + mois),
+     * une année entière (annee seule) ou tout l'historique (annee nulle).
+     */
+    public List<ArreteCompte> lister(Integer annee, Integer mois) {
+        if (annee == null) {
+            if (mois != null) {
+                throw new IllegalArgumentException("Le filtre par mois exige aussi l'année");
+            }
+            return arreteCompteRepository.findAll(null, null);
+        }
+        if (mois == null) {
+            return arreteCompteRepository.findAll(LocalDate.of(annee, 1, 1), LocalDate.of(annee, 12, 31));
+        }
+        if (mois < 1 || mois > 12) {
+            throw new IllegalArgumentException("Mois invalide : " + mois);
+        }
+        YearMonth periode = YearMonth.of(annee, mois);
+        return arreteCompteRepository.findAll(periode.atDay(1), periode.atEndOfMonth());
     }
 
     /** Relevé de compte d'un chauffeur : tous les arrêtés où il est bénéficiaire. */
