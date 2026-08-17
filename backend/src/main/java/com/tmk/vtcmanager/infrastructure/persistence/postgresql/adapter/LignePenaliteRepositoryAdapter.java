@@ -14,6 +14,7 @@ import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.LigneRecette
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.PenaliteTemplateJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.VehiculeJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.LignePenalitePersistenceMapper;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -114,6 +115,8 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("dateGeneration"), filtres.getDateDebut()));
             if (filtres.getDateFin() != null)
                 predicates.add(cb.lessThanOrEqualTo(root.get("dateGeneration"), filtres.getDateFin()));
+            if (RechercheVehiculeChauffeur.estRenseignee(filtres.getRecherche()))
+                predicates.add(RechercheVehiculeChauffeur.predicat(root, cb, filtres.getRecherche()));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }

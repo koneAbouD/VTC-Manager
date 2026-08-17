@@ -77,6 +77,7 @@ public class LignePenaliteController {
             @RequestParam(required = false) StatutLignePenalite statut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         var result = getLignesUseCase.findPageByCriteres(
@@ -84,6 +85,7 @@ public class LignePenaliteController {
                         .vehiculeId(vehiculeId).chauffeurId(chauffeurId)
                         .typeSanction(typeSanction).statut(statut)
                         .dateDebut(dateDebut).dateFin(dateFin)
+                        .recherche(recherche)
                         .build(),
                 page, size).map(mapper::toResponse);
         return PageResponse.from(result);

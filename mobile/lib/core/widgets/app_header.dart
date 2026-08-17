@@ -41,6 +41,11 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   /// Pill colorée affichée sous le titre (ex. : "Sélection").
   final String? badge;
 
+  /// Contenu centré à la place du titre (ex. : pastilles d'onglets de la
+  /// Flotte). Occupe la place laissée libre par [leading] et [action] ;
+  /// [title] et [badge] sont alors ignorés.
+  final Widget? center;
+
   /// Couleur de fond (blanc par défaut).
   final Color? backgroundColor;
 
@@ -59,6 +64,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     this.backgroundColor,
     this.backButtonColor,
     this.leading,
+    this.center,
   });
 
   /// Padding vertical de la barre, en haut comme en bas.
@@ -148,10 +154,12 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       height: _hauteurContenuEffective,
       child: NavigationToolbar(
         leading: showBack ? backBtn : leading,
-        middle: titleColumn,
+        middle: center ?? titleColumn,
         trailing: action,
         centerMiddle: true,
-        middleSpacing: 8,
+        // Les pastilles d'onglets occupent toute la ligne : sans marge propre,
+        // elles colleraient un bouton latéral quand il y en a un.
+        middleSpacing: center != null ? 4 : 8,
       ),
     );
 

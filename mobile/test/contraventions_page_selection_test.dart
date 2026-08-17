@@ -47,6 +47,7 @@ class _FakeRepo implements ContraventionRepository {
     int? vehiculeId,
     String? dateDebut,
     String? dateFin,
+    String? recherche,
   }) async =>
       Right(PageResult<Contravention>(
         content: page == 0 ? _data() : const [],

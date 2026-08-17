@@ -9,8 +9,10 @@ import '../features/vehicule/presentation/providers/vehicule_provider.dart';
 import '../core/widgets/app_header.dart';
 import 'accueil/accueil_screen.dart';
 import 'finance/finance_screen.dart';
+import 'finance/finance_tabs_pills.dart';
 import 'home_nav_provider.dart';
 import 'fleet/fleet_screen.dart';
+import 'fleet/fleet_tabs_pills.dart';
 import '../features/parametrage/presentation/pages/settings_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -22,6 +24,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 /// Index de l'onglet Accueil dans la barre de navigation principale.
 const _accueilNavIndex = 0;
+
+/// Index des onglets dont les sous-onglets sont portés par l'en-tête.
+const _flotteNavIndex = 1;
+const _financesNavIndex = 3;
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   static const _screens = <Widget>[
@@ -79,6 +85,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           showBack: false,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           leading: headerAction,
+          // Flotte et Finances posent leurs sous-onglets sur la ligne de
+          // l'en-tête, restée libre (ni titre ni action sur ces onglets).
+          center: switch (currentIndex) {
+            _flotteNavIndex => const FleetTabsPills(),
+            _financesNavIndex => const FinanceTabsPills(),
+            _ => null,
+          },
         ),
         body: IndexedStack(
           index: currentIndex,
@@ -170,36 +183,47 @@ class _FloatingNavBar extends StatelessWidget {
   }
 
   Widget _items() {
+    // Chaque entrée occupe un quart de la barre : sur une fenêtre étroite
+    // (navigateur redimensionné), les libellés se resserrent au lieu de faire
+    // déborder la rangée.
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: List.generate(_navItems.length, (i) {
         final item = _navItems[i];
         final selected = i == selectedIndex;
-        return GestureDetector(
-          onTap: () => onSelected(i),
-          behavior: HitTestBehavior.opaque,
-          // Sans fond : l'onglet actif se signale par son icône pleine, sa
-          // couleur et la graisse de son libellé.
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  selected ? item.selectedIcon : item.icon,
-                  size: 22,
-                  color: selected ? const Color(0xFF43A047) : Colors.grey.shade500,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  item.label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected ? const Color(0xFF43A047) : Colors.grey.shade500,
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => onSelected(i),
+            behavior: HitTestBehavior.opaque,
+            // Sans fond : l'onglet actif se signale par son icône pleine, sa
+            // couleur et la graisse de son libellé.
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    selected ? item.selectedIcon : item.icon,
+                    size: 22,
+                    color:
+                        selected ? const Color(0xFF43A047) : Colors.grey.shade500,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 3),
+                  Text(
+                    item.label,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected
+                          ? const Color(0xFF43A047)
+                          : Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );

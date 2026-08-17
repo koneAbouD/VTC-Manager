@@ -14,6 +14,8 @@ abstract interface class LigneRecetteRepository {
     DateTime? dateFin,
   });
 
+  /// [recherche] : mot-clé libre confronté côté serveur à l'immatriculation du
+  /// véhicule et au nom/prénom du chauffeur.
   Future<Either<Failure, PageResult<LigneRecette>>> getLignesPage({
     int page,
     int size,
@@ -22,6 +24,7 @@ abstract interface class LigneRecetteRepository {
     StatutLigneRecette? statut,
     DateTime? dateDebut,
     DateTime? dateFin,
+    String? recherche,
   });
 
   Future<Either<Failure, LigneRecette>> getLigneById(int id);

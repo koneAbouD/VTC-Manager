@@ -7,6 +7,8 @@ import '../entities/contravention.dart';
 abstract interface class ContraventionRepository {
   Future<Either<Failure, List<Contravention>>> getContraventions();
 
+  /// [recherche] : mot-clé libre confronté côté serveur à l'immatriculation du
+  /// véhicule, au nom/prénom du chauffeur et au numéro de contravention.
   Future<Either<Failure, PageResult<Contravention>>> getContraventionsPage({
     int page,
     int size,
@@ -14,6 +16,7 @@ abstract interface class ContraventionRepository {
     int? vehiculeId,
     String? dateDebut,
     String? dateFin,
+    String? recherche,
   });
   Future<Either<Failure, Contravention>> getContraventionById(int id);
   Future<Either<Failure, Contravention>> createContravention(

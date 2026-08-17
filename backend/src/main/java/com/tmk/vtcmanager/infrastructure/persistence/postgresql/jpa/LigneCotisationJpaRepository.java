@@ -2,6 +2,10 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa;
 
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.LigneCotisationEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -22,6 +26,15 @@ public interface LigneCotisationJpaRepository
 
     @EntityGraph(attributePaths = {"vehicule", "chauffeur", "encaissements"})
     Optional<LigneCotisationEntity> findById(Long id);
+
+    /** Cf. {@link LigneRecetteJpaRepository#findAll} : évite le N+1 véhicule/chauffeur. */
+    @Override
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    Page<LigneCotisationEntity> findAll(Specification<LigneCotisationEntity> spec, Pageable pageable);
+
+    @Override
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    List<LigneCotisationEntity> findAll(Specification<LigneCotisationEntity> spec, Sort sort);
 
     List<LigneCotisationEntity> findByVehiculeIdAndDateCotisation(Long vehiculeId, LocalDate dateCotisation);
 

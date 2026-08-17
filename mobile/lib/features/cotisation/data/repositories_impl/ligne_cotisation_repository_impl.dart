@@ -41,6 +41,7 @@ class LigneCotisationRepositoryImpl implements LigneCotisationRepository {
         statut: _statutStr(f.statut),
         dateDebut: f.dateDebut?.toIso8601String().substring(0, 10),
         dateFin: f.dateFin?.toIso8601String().substring(0, 10),
+        recherche: f.recherche,
       ));
     } on ApiException catch (e) { return Left(_map(e)); }
     on NetworkException catch (e) { return Left(NetworkFailure(e.message)); }

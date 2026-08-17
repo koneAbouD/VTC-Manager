@@ -2,6 +2,10 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa;
 
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.LigneRecetteEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -22,6 +26,19 @@ public interface LigneRecetteJpaRepository
 
     @EntityGraph(attributePaths = {"vehicule", "chauffeur", "encaissements"})
     Optional<LigneRecetteEntity> findById(Long id);
+
+    /**
+     * Listes filtrées : véhicule et chauffeur sont chargés avec la page. Le
+     * mapper lit systématiquement l'immatriculation et le nom du chauffeur —
+     * sans ce graphe, chaque page déclenchait deux requêtes par ligne.
+     */
+    @Override
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    Page<LigneRecetteEntity> findAll(Specification<LigneRecetteEntity> spec, Pageable pageable);
+
+    @Override
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    List<LigneRecetteEntity> findAll(Specification<LigneRecetteEntity> spec, Sort sort);
 
     boolean existsByVehiculeIdAndChauffeurIdAndDateRecette(Long vehiculeId, Long chauffeurId, LocalDate dateRecette);
 

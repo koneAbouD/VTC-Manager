@@ -26,6 +26,7 @@ import 'vidanges_historique_page.dart';
 import 'vehicule_form_page.dart';
 import '../../../configuration_vehicule/presentation/pages/configuration_vehicule_page.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/amount_input_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/network_photo_viewer.dart';
 import '../../../chauffeur/presentation/pages/chauffeur_detail_page.dart';
@@ -219,10 +220,8 @@ class _VehiculeDetailPageState extends ConsumerState<VehiculeDetailPage>
 // ── Tabs alimentés par la condition de travail liée au véhicule ───────────
 // (recettes, cotisations, pénalités sont des champs de la condition de travail)
 
-String _formatAmount(double value) {
-  if (value == value.roundToDouble()) return value.toInt().toString();
-  return value.toStringAsFixed(0);
-}
+String _formatAmount(double value) =>
+    AmountInputFormatter.format(value.toStringAsFixed(0));
 
 String _modeEncaissementLabel(String? code) => switch (code) {
       'ESPECES' => 'Espèces',

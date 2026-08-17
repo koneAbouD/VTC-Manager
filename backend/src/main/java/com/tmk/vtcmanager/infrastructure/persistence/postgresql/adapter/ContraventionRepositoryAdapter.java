@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.ContraventionEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.ContraventionJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.ContraventionPersistenceMapper;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -53,7 +54,7 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
     @Override
     public PageResult<Contravention> findPage(Long chauffeurId, Long vehiculeId,
                                               java.time.LocalDate dateDebut, java.time.LocalDate dateFin,
-                                              int page, int size) {
+                                              String recherche, int page, int size) {
         Specification<ContraventionEntity> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (chauffeurId != null) {
@@ -67,6 +68,14 @@ public class ContraventionRepositoryAdapter implements ContraventionRepository {
             }
             if (dateFin != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("dateInfraction"), dateFin));
+            }
+            if (RechercheVehiculeChauffeur.estRenseignee(recherche)) {
+                // Le numéro de relevé rejoint le véhicule et le chauffeur : c'est
+                // ce que la barre de recherche annonce depuis toujours.
+                String motif = "%" + recherche.trim().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        RechercheVehiculeChauffeur.predicat(root, cb, recherche),
+                        cb.like(cb.lower(root.get("numeroContravention")), motif)));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

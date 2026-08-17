@@ -13,4 +13,6 @@ public class LigneRecetteFiltres {
     private StatutLigneRecette statut;
     private LocalDate dateDebut;
     private LocalDate dateFin;
+    /** Mot-clé libre : immatriculation du véhicule ou nom/prénom du chauffeur. */
+    private String recherche;
 }

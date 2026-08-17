@@ -4,6 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// 0 = Accueil, 1 = Flotte, 2 = Localisation, 3 = Finances.
 final homeTabIndexProvider = StateProvider<int>((ref) => 0);
 
+/// Index des sous-onglets du hub Flotte. Doit refléter l'ordre des onglets
+/// déclarés dans FleetScreen, dont les pastilles vivent dans l'en-tête
+/// (HomeScreen) : le provider est le seul lien entre les deux.
+abstract final class FleetTab {
+  static const etatParc = 0;
+  static const vehicules = 1;
+  static const chauffeurs = 2;
+}
+
+/// Sous-onglet actif du hub Flotte (FleetScreen). Voir [FleetTab].
+final fleetTabIndexProvider = StateProvider<int>((ref) => FleetTab.etatParc);
+
 /// Index des sous-onglets du hub Finances. Doit refléter l'ordre des onglets
 /// déclarés dans FinanceScreen : toute insertion d'onglet décale les suivants,
 /// et les écrans qui pilotent [financeTabIndexProvider] passent par ces

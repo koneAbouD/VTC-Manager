@@ -396,15 +396,21 @@ class _MaintenanceDetailPageState
       ),
     ];
 
-    if (_m.vehiculeNom != null || _m.vehiculeId != null) {
+    if (_m.vehiculeImmatriculation != null || _m.vehiculeId != null) {
       rubriques
         ..add(const _FiletRubrique())
         ..add(_section(
           icon: Icons.directions_car_outlined,
           title: 'Véhicule',
           rows: [
-            _infoRow(Icons.directions_car_filled_rounded, 'Véhicule',
-                _m.vehiculeNom ?? 'Véhicule #${_m.vehiculeId}'),
+            // L'immatriculation suffit à désigner le véhicule ; repli sur
+            // l'identifiant tant qu'elle n'est pas renseignée.
+            _infoRow(
+                Icons.directions_car_filled_rounded,
+                'Véhicule',
+                _m.vehiculeImmatriculation?.isNotEmpty == true
+                    ? _m.vehiculeImmatriculation!
+                    : 'Véhicule #${_m.vehiculeId}'),
           ],
         ));
     }

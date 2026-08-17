@@ -12,6 +12,7 @@ import '../../../auth/presentation/pages/pin_brand.dart';
 import '../../../auth/presentation/pages/pin_setup_page.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/auth_state.dart';
+import '../../../condition_travail/presentation/pages/condition_travail_liste_page.dart';
 import '../../../jour_ferie/presentation/jours_feries_page.dart';
 import '../../../notification/presentation/pages/notifications_page.dart';
 import '../../../notification/presentation/providers/notification_providers.dart';
@@ -168,6 +169,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ouvert: _volet == _Volet.parametres,
                     onToggle: () => _basculer(_Volet.parametres),
                     children: [
+                      SettingsTile(
+                        icon: Icons.assignment_outlined,
+                        title: 'Conditions de travail',
+                        description:
+                            'Programmes de recette, cotisations et pénalités',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  const ConditionTravailListePage()),
+                        ),
+                      ),
                       SettingsTile(
                         icon: Icons.flag_outlined,
                         title: 'Jours fériés',

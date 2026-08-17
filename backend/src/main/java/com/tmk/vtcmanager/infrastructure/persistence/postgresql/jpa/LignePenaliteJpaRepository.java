@@ -4,6 +4,11 @@ import com.tmk.vtcmanager.application.domain.conditionTravail.TypePenalite;
 import com.tmk.vtcmanager.application.domain.conditionTravail.TypeSanction;
 import com.tmk.vtcmanager.application.domain.penalite.StatutLignePenalite;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.LignePenaliteEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -17,6 +22,15 @@ import java.util.List;
 
 public interface LignePenaliteJpaRepository
         extends JpaRepository<LignePenaliteEntity, Long>, JpaSpecificationExecutor<LignePenaliteEntity> {
+
+    /** Cf. {@link LigneRecetteJpaRepository#findAll} : évite le N+1 véhicule/chauffeur. */
+    @Override
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    Page<LignePenaliteEntity> findAll(Specification<LignePenaliteEntity> spec, Pageable pageable);
+
+    @Override
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    List<LignePenaliteEntity> findAll(Specification<LignePenaliteEntity> spec, Sort sort);
 
     @Query("""
             SELECT CASE WHEN COUNT(l) > 0 THEN true ELSE false END

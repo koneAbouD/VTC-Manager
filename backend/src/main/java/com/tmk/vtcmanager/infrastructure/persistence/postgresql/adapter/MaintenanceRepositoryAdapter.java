@@ -80,10 +80,11 @@ public class MaintenanceRepositoryAdapter implements MaintenanceRepository {
 
     @Override
     public PageResult<Maintenance> findPageByFiltres(LocalDate dateDebut, LocalDate dateFin,
-                                                     MaintenanceStatus statut, Long vehiculeId, int page, int size) {
+                                                     MaintenanceStatus statut, Long vehiculeId,
+                                                     String recherche, int page, int size) {
         // Le tri (datePrevue) est porté par la Specification → PageRequest sans Sort.
         Page<Maintenance> result = jpaRepository
-                .findAll(MaintenanceSpecs.byFiltres(dateDebut, dateFin, statut, vehiculeId),
+                .findAll(MaintenanceSpecs.byFiltres(dateDebut, dateFin, statut, vehiculeId, recherche),
                         PageRequest.of(page, size))
                 .map(mapper::toDomain);
         return new PageResult<>(

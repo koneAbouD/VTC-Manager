@@ -295,7 +295,7 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
     );
   }
 
-  // Contrôle segmenté aligné sur le style des onglets de FleetScreen :
+  // Contrôle segmenté aligné sur le style des onglets de FinanceScreen :
   // conteneur gris clair, indicateur blanc à ombre légère, libellé actif en vert.
   Widget _segmented() {
     return Container(

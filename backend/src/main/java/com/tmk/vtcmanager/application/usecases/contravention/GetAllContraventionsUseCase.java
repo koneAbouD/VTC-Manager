@@ -21,7 +21,8 @@ public class GetAllContraventionsUseCase {
 
     public PageResult<Contravention> executePage(Long chauffeurId, Long vehiculeId,
                                                  LocalDate dateDebut, LocalDate dateFin,
-                                                 int page, int size) {
-        return contraventionRepository.findPage(chauffeurId, vehiculeId, dateDebut, dateFin, page, size);
+                                                 String recherche, int page, int size) {
+        return contraventionRepository.findPage(
+                chauffeurId, vehiculeId, dateDebut, dateFin, recherche, page, size);
     }
 }

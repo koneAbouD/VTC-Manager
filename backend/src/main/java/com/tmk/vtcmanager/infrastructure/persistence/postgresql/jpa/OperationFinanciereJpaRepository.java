@@ -3,6 +3,10 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.OperationFinanciereEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +21,17 @@ import java.util.List;
 public interface OperationFinanciereJpaRepository
         extends JpaRepository<OperationFinanciereEntity, Long>,
                 JpaSpecificationExecutor<OperationFinanciereEntity> {
+
+    /**
+     * Liste filtrée : les cinq associations que le mapper lit pour chaque ligne
+     * voyagent avec la page. Sans ce graphe, une page de 20 opérations
+     * déclenchait jusqu'à cinq requêtes supplémentaires par ligne.
+     */
+    @Override
+    @EntityGraph(attributePaths = {
+            "categorie", "sousCategorie", "chauffeur", "vehicule", "partenaire"})
+    Page<OperationFinanciereEntity> findAll(Specification<OperationFinanciereEntity> spec,
+                                            Pageable pageable);
 
     List<OperationFinanciereEntity> findByChauffeurId(Long chauffeurId);
 

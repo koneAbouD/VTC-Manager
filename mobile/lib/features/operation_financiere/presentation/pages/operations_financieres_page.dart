@@ -4,10 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../chauffeur/domain/entities/chauffeur.dart';
-import '../../../vehicule/domain/entities/vehicule.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
 import '../../domain/entities/operation_financiere.dart';
 import '../../domain/enums/statut_operation.dart';
@@ -85,8 +82,6 @@ class _OperationsFinancieresPageState
   DateTime _periodeFin = DateTime.now();
   String _recherche = '';
   _CategorieFiltre? _categorieFiltre;
-  Vehicule? _vehiculeFiltre;
-  Chauffeur? _chauffeurFiltre;
 
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
@@ -143,8 +138,6 @@ class _OperationsFinancieresPageState
           fin: finStr,
           categorieCode: _categorieFiltre?.categorieCodeParam,
           sousCategorieLibelle: _categorieFiltre?.sousCategorieLibelleParam,
-          vehiculeId: _vehiculeFiltre?.id,
-          chauffeurId: _chauffeurFiltre?.id,
           recherche: recherche,
         );
     // Montants par catégorie : mêmes filtres SANS le filtre catégorie, pour que
@@ -153,8 +146,6 @@ class _OperationsFinancieresPageState
           typeOperation: ref.read(operationsTypeFiltreProvider),
           debut: debutStr,
           fin: finStr,
-          vehiculeId: _vehiculeFiltre?.id,
-          chauffeurId: _chauffeurFiltre?.id,
           recherche: recherche,
         );
   }
@@ -259,24 +250,6 @@ class _OperationsFinancieresPageState
   void _removeOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
-  }
-
-  // ── Popup filtre véhicule / chauffeur ─────────────────────────────────────
-
-  Future<void> _showFiltreAvance() async {
-    final result = await showFiltreVehiculeChauffeurDialog(
-      context,
-      vehiculeInitial:  _vehiculeFiltre,
-      chauffeurInitial: _chauffeurFiltre,
-    );
-
-    if (result != null && mounted) {
-      setState(() {
-        _vehiculeFiltre  = result.vehicule;
-        _chauffeurFiltre = result.chauffeur;
-      });
-      _loadWithFilters();
-    }
   }
 
   Future<void> _pickPeriode() async {
@@ -423,9 +396,6 @@ class _OperationsFinancieresPageState
                             child: _SearchBarWidget(
                               controller: _searchController,
                               onChanged: _onSearchChanged,
-                              onTunePressed: _showFiltreAvance,
-                              hasActiveFilter: _vehiculeFiltre != null ||
-                                  _chauffeurFiltre != null,
                             ),
                           ),
 
@@ -669,14 +639,9 @@ class _DatePill extends StatelessWidget {
 class _SearchBarWidget extends StatefulWidget {
   final TextEditingController controller;
   final void Function(String) onChanged;
-  final VoidCallback? onTunePressed;
-  final bool hasActiveFilter;
-
   const _SearchBarWidget({
     required this.controller,
     required this.onChanged,
-    this.onTunePressed,
-    this.hasActiveFilter = false,
   });
 
   @override
@@ -727,7 +692,7 @@ class _SearchBarWidgetState extends State<_SearchBarWidget> {
               onChanged: widget.onChanged,
               style: const TextStyle(fontSize: 14),
               decoration: const InputDecoration(
-                hintText: 'Rechercher une opération...',
+                hintText: 'Immatriculation, chauffeur, référence…',
                 hintStyle:
                     TextStyle(color: Color(0xFF8A8A8E), fontSize: 14),
                 border: InputBorder.none,
@@ -735,9 +700,20 @@ class _SearchBarWidgetState extends State<_SearchBarWidget> {
               ),
             ),
           ),
-          TuneFilterButton(
-            onTap:  widget.onTunePressed,
-            active: widget.hasActiveFilter,
+          // Croix d'effacement : la recherche partant au serveur, il faut
+          // pouvoir revenir à la liste complète sans effacer au clavier.
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: widget.controller,
+            builder: (_, value, __) => value.text.isEmpty
+                ? const SizedBox.shrink()
+                : GestureDetector(
+                    onTap: () {
+                      widget.controller.clear();
+                      widget.onChanged('');
+                    },
+                    child: const Icon(Icons.close_rounded,
+                        size: 18, color: Color(0xFF8A8A8E)),
+                  ),
           ),
         ],
       ),

@@ -330,7 +330,12 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
         _chauffeurNom = result.displayName;
         if (result.vehiculeId != null) {
           _vehiculeId = result.vehiculeId;
-          _vehiculeNom = result.vehiculeNom ?? result.vehiculeModele;
+          // Le véhicule attaché au chauffeur se désigne par son
+          // immatriculation, comme partout ailleurs ; repli sur la marque et le
+          // modèle pour ne pas laisser le champ muet si elle manque.
+          _vehiculeNom = result.vehiculeMatricule ??
+              result.vehiculeNom ??
+              result.vehiculeModele;
         }
       });
     }

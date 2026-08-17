@@ -16,8 +16,13 @@ public interface MaintenanceRepository {
 
     List<Maintenance> findAll();
 
+    /**
+     * @param recherche mot-clé libre (type de maintenance, immatriculation du
+     *                  véhicule, nom du prestataire) ; ignoré s'il est vide
+     */
     PageResult<Maintenance> findPageByFiltres(LocalDate dateDebut, LocalDate dateFin,
-                                              MaintenanceStatus statut, Long vehiculeId, int page, int size);
+                                              MaintenanceStatus statut, Long vehiculeId,
+                                              String recherche, int page, int size);
 
     List<Maintenance> findByVehiculeId(Long vehiculeId);
 

@@ -18,6 +18,7 @@ class PenaliteRemoteDatasource {
     String? statut,
     String? dateDebut,
     String? dateFin,
+    String? recherche,
   }) async {
     final query = <String, String>{
       'page': '$page',
@@ -28,6 +29,8 @@ class PenaliteRemoteDatasource {
       if (statut != null) 'statut': statut,
       if (dateDebut != null) 'dateDebut': dateDebut,
       if (dateFin != null) 'dateFin': dateFin,
+      if (recherche != null && recherche.trim().isNotEmpty)
+        'recherche': recherche.trim(),
     };
     final data = await _client.get('/penalites/lignes/page', query: query);
     if (data is! Map<String, dynamic>) {

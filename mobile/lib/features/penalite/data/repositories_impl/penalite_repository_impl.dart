@@ -49,6 +49,7 @@ class PenaliteRepositoryImpl implements PenaliteRepository {
         statut: _statutToString(filtres.statut),
         dateDebut: filtres.dateDebut?.toIso8601String().substring(0, 10),
         dateFin: filtres.dateFin?.toIso8601String().substring(0, 10),
+        recherche: filtres.recherche,
       );
       return Right(result);
     } on ApiException catch (e) {

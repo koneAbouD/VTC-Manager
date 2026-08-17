@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -109,6 +111,14 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
   OverlayEntry? _overlayEntry;
   final _filtreButtonKey = GlobalKey();
 
+  /// La recherche part au serveur : on attend une pause de frappe pour ne pas
+  /// lancer une requête par caractère.
+  Timer? _debounceRecherche;
+
+  /// Mot-clé effectivement envoyé : celui du hub s'il pilote la page, sinon
+  /// celui de la barre de recherche interne.
+  String get _rechercheEffective => widget.externalSearch ?? _recherche;
+
   @override
   void initState() {
     super.initState();
@@ -117,11 +127,29 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
   }
 
   @override
+  void didUpdateWidget(covariant ContraventionsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.externalSearch != widget.externalSearch) _load();
+  }
+
+  @override
   void dispose() {
+    _debounceRecherche?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     _overlayEntry?.remove();
     super.dispose();
+  }
+
+  /// Frappe dans la barre de recherche : on laisse retomber la saisie avant
+  /// d'interroger le serveur.
+  void _onRechercheChanged(String valeur) {
+    _debounceRecherche?.cancel();
+    _debounceRecherche = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted || valeur.trim() == _recherche.trim()) return;
+      setState(() => _recherche = valeur);
+      _load();
+    });
   }
 
   // ── Logique date ────────────────────────────────────────────────────────
@@ -308,6 +336,7 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
             size: size,
             dateDebut: dateDebut != null ? _iso(dateDebut) : null,
             dateFin: dateFin != null ? _iso(dateFin) : null,
+            recherche: _rechercheEffective,
           ),
         );
   }
@@ -566,49 +595,19 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
         _ => true,
       };
 
-  List<Contravention> _filtrer(List<Contravention> all) {
-    final base =
-        _statutFiltre == null ? all : all.where(_matchStatut).toList();
-    final query = (widget.externalSearch ?? _recherche).trim().toLowerCase();
-    if (query.isEmpty) return base;
-    return base.where((c) {
-      final hay = [
-        c.numeroContravention ?? '',
-        c.vehiculeNom ?? '',
-        c.chauffeurNom ?? '',
-        c.typeInfraction ?? '',
-        c.codeInfraction ?? '',
-        c.lieu ?? '',
-      ].join(' ').toLowerCase();
-      return hay.contains(query);
-    }).toList();
-  }
-
-  /// Filtre recherche seul (sans le statut) — base pour les montants par statut.
-  List<Contravention> _filtrerRechercheSeule(List<Contravention> all) {
-    final query = (widget.externalSearch ?? _recherche).trim().toLowerCase();
-    if (query.isEmpty) return all;
-    return all.where((c) {
-      final hay = [
-        c.numeroContravention ?? '',
-        c.vehiculeNom ?? '',
-        c.chauffeurNom ?? '',
-        c.typeInfraction ?? '',
-        c.codeInfraction ?? '',
-        c.lieu ?? '',
-      ].join(' ').toLowerCase();
-      return hay.contains(query);
-    }).toList();
-  }
+  /// Seul le statut se filtre encore côté client : la recherche est faite par
+  /// le serveur, sur l'ensemble du registre et non la seule page chargée.
+  List<Contravention> _filtrer(List<Contravention> all) =>
+      _statutFiltre == null ? all : all.where(_matchStatut).toList();
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(contraventionsListeProvider);
     final items = _filtrer(state.items);
 
-    // Montant par statut sur les items filtrés par date (serveur) + recherche,
-    // hors filtre statut, pour que chaque chip affiche son propre total.
-    final baseStatut = _filtrerRechercheSeule(state.items);
+    // Montant par statut sur les contraventions chargées, hors filtre statut,
+    // pour que chaque chip affiche son propre total.
+    final baseStatut = state.items;
     double sommeCtv(bool Function(Contravention) t) =>
         baseStatut.where(t).fold(0.0, (s, c) => s + c.montant);
     final montantsStatut = <String?, double>{
@@ -652,7 +651,7 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
       SliverToBoxAdapter(
         child: _SearchBar(
           controller: _searchController,
-          onChanged: (v) => setState(() => _recherche = v),
+          onChanged: _onRechercheChanged,
         ),
       ),
       SliverToBoxAdapter(

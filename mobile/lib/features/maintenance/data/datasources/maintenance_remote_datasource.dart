@@ -15,6 +15,7 @@ class MaintenanceRemoteDatasource {
     String? dateFin,
     String? statut,
     int? vehiculeId,
+    String? recherche,
   }) async {
     final query = <String, String>{
       'page': '$page',
@@ -23,6 +24,8 @@ class MaintenanceRemoteDatasource {
       if (dateFin != null) 'dateFin': dateFin,
       if (statut != null) 'statut': statut,
       if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
+      if (recherche != null && recherche.trim().isNotEmpty)
+        'recherche': recherche.trim(),
     };
     final data = await _client.get('/maintenances/page', query: query);
     if (data is! Map<String, dynamic>) {

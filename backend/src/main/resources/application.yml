@@ -16,6 +16,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        # Les associations paresseuses restées hors du graphe (encaissements
+        # d'une page de recettes, de cotisations, de pénalités) se chargent par
+        # lots de 50 au lieu d'une requête par ligne.
+        default_batch_fetch_size: 50
 
   # Limites de taille des documents uploadés (carte grise, assurance, etc.)
   servlet:

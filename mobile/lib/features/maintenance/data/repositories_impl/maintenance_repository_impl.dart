@@ -44,6 +44,7 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
     String? dateFin,
     String? statut,
     int? vehiculeId,
+    String? recherche,
   }) async {
     try {
       final result = await _datasource.getMaintenancesPage(
@@ -53,6 +54,7 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
         dateFin: dateFin,
         statut: statut,
         vehiculeId: vehiculeId,
+        recherche: recherche,
       );
       return Right(result);
     } on ApiException catch (e) {

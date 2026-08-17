@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
@@ -10,6 +10,7 @@ import 'package:pdfx/pdfx.dart';
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/utils/amount_input_formatter.dart';
 import '../../../../core/utils/image_source_bottom_sheet.dart';
 import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/app_header.dart';
@@ -335,12 +336,14 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
 
   void _onTextChanged() => setState(() {});
 
-  /// Pré-remplit le champ prix : montant XOF sans décimales si entier.
+  /// Pré-remplit le champ prix : montant XOF sans décimales si entier,
+  /// avec les espaces séparateurs de milliers.
   String _formatPrixInitial(double? prix) {
     if (prix == null) return '';
-    return prix == prix.roundToDouble()
+    final texte = prix == prix.roundToDouble()
         ? prix.toInt().toString()
         : prix.toString();
+    return AmountInputFormatter.format(texte);
   }
 
   /// Parse la saisie (espaces / séparateurs de milliers tolérés) en montant.
@@ -1472,6 +1475,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                     hint: 'Ex. 7 500 000',
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: const [AmountInputFormatter()],
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return null;
                       final parsed = _parsePrix(v);
@@ -2853,6 +2857,7 @@ class _PlainField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
   final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
 
   const _PlainField({
     required this.controller,
@@ -2861,6 +2866,7 @@ class _PlainField extends StatelessWidget {
     this.onChanged,
     this.keyboardType,
     this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
   });
 
   @override
@@ -2871,6 +2877,7 @@ class _PlainField extends StatelessWidget {
       onChanged: onChanged,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
+      inputFormatters: inputFormatters,
       style: const TextStyle(fontSize: 15, color: Colors.black87),
       decoration: InputDecoration(
         hintText: hint,

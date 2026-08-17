@@ -10,6 +10,7 @@ import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.ChauffeurJpa
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.LigneRecetteJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.VehiculeJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.LigneRecettePersistenceMapper;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -90,6 +91,9 @@ public class LigneRecetteRepositoryAdapter implements LigneRecetteRepository {
             }
             if (filtres.getDateFin() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("dateRecette"), filtres.getDateFin()));
+            }
+            if (RechercheVehiculeChauffeur.estRenseignee(filtres.getRecherche())) {
+                predicates.add(RechercheVehiculeChauffeur.predicat(root, cb, filtres.getRecherche()));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

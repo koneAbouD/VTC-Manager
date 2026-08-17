@@ -66,57 +66,17 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
       });
     }
 
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: TabBar(
-            controller: _tab,
-            indicator: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            dividerColor: Colors.transparent,
-            labelColor: const Color(0xFF43A047),
-            unselectedLabelColor: Colors.grey.shade600,
-            labelStyle:
-                const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-            // Ordre référencé par FinanceTab (home_nav_provider) : le mettre à
-            // jour en même temps que les constantes.
-            tabs: const [
-              Tab(text: 'Trésorerie'),
-              Tab(text: 'Créances'),
-              Tab(text: 'Partenaires'),
-              Tab(text: 'Opérations'),
-              Tab(text: 'Rapports'),
-            ],
-          ),
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tab,
-            children: const [
-              TresorerieTab(),
-              CreancesTab(),
-              PartenairesTab(),
-              OperationsFinancieresPage(),
-              RapportsTab(),
-            ],
-          ),
-        ),
+    // Les onglets sont pilotés depuis l'en-tête (FinanceTabsPills) ; l'ordre
+    // est référencé par FinanceTab (home_nav_provider) : le mettre à jour en
+    // même temps que les constantes.
+    return TabBarView(
+      controller: _tab,
+      children: const [
+        TresorerieTab(),
+        CreancesTab(),
+        PartenairesTab(),
+        OperationsFinancieresPage(),
+        RapportsTab(),
       ],
     );
   }

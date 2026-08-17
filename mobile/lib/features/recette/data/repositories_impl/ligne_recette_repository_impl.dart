@@ -48,6 +48,7 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
     StatutLigneRecette? statut,
     DateTime? dateDebut,
     DateTime? dateFin,
+    String? recherche,
   }) async {
     try {
       final result = await _datasource.getLignesPage(
@@ -58,6 +59,7 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
         statut: _statutToString(statut),
         dateDebut: dateDebut?.toIso8601String().substring(0, 10),
         dateFin: dateFin?.toIso8601String().substring(0, 10),
+        recherche: recherche,
       );
       return Right(result);
     } on ApiException catch (e) {

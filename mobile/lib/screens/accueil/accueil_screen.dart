@@ -6,7 +6,6 @@ import 'package:vtc_manager/features/maintenance/presentation/pages/lignes_maint
 import 'package:vtc_manager/features/contravention/presentation/pages/contraventions_hub_page.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../features/condition_travail/presentation/pages/condition_travail_liste_page.dart';
 import '../../features/operation_financiere/domain/entities/operation_financiere.dart';
 import '../../features/operation_financiere/domain/entities/solde_periode.dart';
 import '../../features/operation_financiere/domain/enums/statut_operation.dart';
@@ -17,7 +16,6 @@ import 'widgets/encaissement_rapide_dialog.dart';
 import '../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import '../../features/operation_financiere/presentation/providers/operation_financiere_state.dart';
 import '../../features/recette/presentation/pages/lignes_recette_page.dart';
-import '../fleet/fleet_action_selector_page.dart';
 import '../home_nav_provider.dart';
 import '../../features/indisponibilite/presentation/pages/indisponibilites_page.dart';
 import '../../core/widgets/date_filter_dialogs.dart';
@@ -612,11 +610,6 @@ class _AccesRapides extends StatelessWidget {
   Widget build(BuildContext context) {
     final shortcuts = <({IconData icon, String label, VoidCallback onTap})>[
       (
-        icon: Icons.directions_car_outlined,
-        label: 'Veh/Chauf',
-        onTap: () => _push(context, const FleetActionSelectorPage()),
-      ),
-      (
         icon: Icons.gavel_outlined,
         label: 'Contraventions',
         onTap: () => _push(context, const ContraventionsHubPage()),
@@ -635,11 +628,6 @@ class _AccesRapides extends StatelessWidget {
         icon: Icons.analytics_outlined,
         label: 'Cotisations',
         onTap: () => _push(context, const LignesCotisationPage()),
-      ),
-      (
-        icon: Icons.assignment_outlined,
-        label: 'Contrats',
-        onTap: () => _push(context, const ConditionTravailListePage()),
       ),
       (
         icon: Icons.event_busy_outlined,

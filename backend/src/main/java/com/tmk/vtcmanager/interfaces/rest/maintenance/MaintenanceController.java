@@ -65,10 +65,11 @@ public class MaintenanceController {
             @RequestParam(required = false) LocalDate dateDebut,
             @RequestParam(required = false) LocalDate dateFin,
             @RequestParam(required = false) MaintenanceStatus statut,
+            @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         var result = getAllMaintenancesUseCase
-                .executePage(vehiculeId, dateDebut, dateFin, statut, page, size)
+                .executePage(vehiculeId, dateDebut, dateFin, statut, recherche, page, size)
                 .map(mapper::toResponse);
         return PageResponse.from(result);
     }

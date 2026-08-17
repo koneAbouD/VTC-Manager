@@ -1,11 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/widgets/date_filter_dialogs.dart';
-import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
-import '../../../../features/vehicule/domain/entities/vehicule.dart';
 import '../../domain/entities/maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
@@ -43,12 +43,15 @@ class _LignesMaintenancePageState
   DateTime _periodeFin         = DateTime.now();
   String?  _statutFiltre;
   String   _recherche          = '';
-  Vehicule? _vehiculeFiltre;
 
   final _searchController  = TextEditingController();
   final _scrollController  = ScrollController();
   OverlayEntry? _overlayEntry;
   final _filtreButtonKey   = GlobalKey();
+
+  /// La recherche part au serveur : on attend une pause de frappe pour ne pas
+  /// lancer une requête par caractère.
+  Timer? _debounceRecherche;
 
   static const _statuts = ['PLANIFIEE', 'TERMINEE', 'ANNULEE'];
 
@@ -61,6 +64,7 @@ class _LignesMaintenancePageState
 
   @override
   void dispose() {
+    _debounceRecherche?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     _overlayEntry?.remove();
@@ -75,21 +79,18 @@ class _LignesMaintenancePageState
     }
   }
 
-  Future<void> _showFiltreAvance() async {
-    final result = await showFiltreVehiculeChauffeurDialog(
-      context,
-      vehiculeInitial: _vehiculeFiltre,
-      avecChauffeur:   false,
-    );
-    if (result != null && mounted) {
-      setState(() {
-        _vehiculeFiltre = result.vehicule;
-      });
+  /// Frappe dans la barre de recherche : on laisse retomber la saisie avant
+  /// d'interroger le serveur.
+  void _onRechercheChanged(String valeur) {
+    _debounceRecherche?.cancel();
+    _debounceRecherche = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted || valeur.trim() == _recherche.trim()) return;
+      setState(() => _recherche = valeur);
       _load();
-    }
+    });
   }
 
-  // ── Chargement (filtres serveur : date + statut + véhicule) ────────────────
+  // ── Chargement (filtres serveur : date + statut + recherche) ──────────────
 
   void _load() {
     final (debut, fin) = _plageActive();
@@ -102,7 +103,7 @@ class _LignesMaintenancePageState
                 debut != null ? DateFormat('yyyy-MM-dd').format(debut) : null,
             dateFin: fin != null ? DateFormat('yyyy-MM-dd').format(fin) : null,
             statut: _statutFiltre,
-            vehiculeId: _vehiculeFiltre?.id,
+            recherche: _recherche,
           ),
         );
   }
@@ -121,22 +122,6 @@ class _LignesMaintenancePageState
         _FiltreMode.jour    => (_jourSelectionne, _jourSelectionne),
         _FiltreMode.periode => (_periodeDebut, _periodeFin),
       };
-
-  // Recherche texte : filtre client sur les éléments déjà chargés (le backend
-  // maintenance n'expose pas de recherche libre). Date/statut/véhicule = serveur.
-  List<Maintenance> _filtrerRecherche(List<Maintenance> all) {
-    if (_recherche.trim().isEmpty) return all;
-    final q = _recherche.toLowerCase();
-    return all.where((m) {
-      final hay = [
-        m.type,
-        m.vehiculeNom ?? '',
-        m.vehiculeImmatriculation ?? '',
-        m.partenaireNom ?? '',
-      ].join(' ').toLowerCase();
-      return hay.contains(q);
-    }).toList();
-  }
 
   // ── Overlay filtre mode ───────────────────────────────────────────────────
 
@@ -290,9 +275,9 @@ class _LignesMaintenancePageState
     final money = NumberFormat.currency(
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
     final state = ref.watch(maintenancesListeProvider);
-    final filtered = _filtrerRecherche(state.items);
+    final filtered = state.items;
 
-    // Montant (coût) par statut sur les items filtrés (date + recherche), null = total.
+    // Montant (coût) par statut sur les maintenances chargées, null = total.
     double sommeCout(bool Function(Maintenance) test) =>
         filtered.where(test).fold(0.0, (s, m) => s + (m.cout ?? 0));
     final montantsStatut = <String?, double>{
@@ -389,16 +374,13 @@ class _LignesMaintenancePageState
                           SliverToBoxAdapter(
                             child: _SearchAndStatutBar(
                               controller:        _searchController,
-                              onSearchChanged:   (v) =>
-                                  setState(() => _recherche = v),
+                              onSearchChanged:   _onRechercheChanged,
                               statutSelectionne: _statutFiltre,
                               onStatutChanged:   (s) {
                                 setState(() => _statutFiltre = s);
                                 _load();
                               },
                               statuts: _statuts,
-                              onTunePressed:    _showFiltreAvance,
-                              hasActiveFilter:  _vehiculeFiltre != null,
                               montantsStatut:   montantsStatut,
                               money:            money,
                             ),
@@ -606,8 +588,6 @@ class _SearchAndStatutBar extends StatefulWidget {
   final String? statutSelectionne;
   final void Function(String?) onStatutChanged;
   final List<String> statuts;
-  final VoidCallback? onTunePressed;
-  final bool hasActiveFilter;
   final Map<String?, double> montantsStatut;
   final NumberFormat money;
 
@@ -617,8 +597,6 @@ class _SearchAndStatutBar extends StatefulWidget {
     required this.statutSelectionne,
     required this.onStatutChanged,
     required this.statuts,
-    this.onTunePressed,
-    this.hasActiveFilter = false,
     required this.montantsStatut,
     required this.money,
   });
@@ -671,7 +649,7 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
               onChanged: widget.onSearchChanged,
               style: const TextStyle(fontSize: 14),
               decoration: const InputDecoration(
-                hintText: 'Rechercher type, véhicule, prestataire…',
+                hintText: 'Type, immatriculation, prestataire…',
                 hintStyle:
                     TextStyle(color: Color(0xFF8A8A8E), fontSize: 14),
                 border: InputBorder.none,
@@ -679,9 +657,20 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
               ),
             ),
           ),
-          TuneFilterButton(
-            onTap:  widget.onTunePressed,
-            active: widget.hasActiveFilter,
+          // Croix d'effacement : la recherche partant au serveur, il faut
+          // pouvoir revenir à la liste complète sans effacer au clavier.
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: widget.controller,
+            builder: (_, value, __) => value.text.isEmpty
+                ? const SizedBox.shrink()
+                : GestureDetector(
+                    onTap: () {
+                      widget.controller.clear();
+                      widget.onSearchChanged('');
+                    },
+                    child: const Icon(Icons.close_rounded,
+                        size: 18, color: Color(0xFF8A8A8E)),
+                  ),
           ),
         ]),
       ),

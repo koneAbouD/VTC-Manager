@@ -88,10 +88,11 @@ public class ContraventionController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         var result = getAllContraventionsUseCase
-                .executePage(chauffeurId, vehiculeId, dateDebut, dateFin, page, size)
+                .executePage(chauffeurId, vehiculeId, dateDebut, dateFin, recherche, page, size)
                 .map(mapper::toResponse);
         return PageResponse.from(result);
     }

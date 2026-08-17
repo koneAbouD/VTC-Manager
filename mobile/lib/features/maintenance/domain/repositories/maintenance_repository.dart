@@ -12,6 +12,8 @@ abstract interface class MaintenanceRepository {
     int? vehiculeId,
   });
 
+  /// [recherche] : mot-clé libre confronté côté serveur au type de maintenance,
+  /// à l'immatriculation du véhicule et au nom du prestataire.
   Future<Either<Failure, PageResult<Maintenance>>> getMaintenancesPage({
     int page,
     int size,
@@ -19,6 +21,7 @@ abstract interface class MaintenanceRepository {
     String? dateFin,
     String? statut,
     int? vehiculeId,
+    String? recherche,
   });
   Future<Either<Failure, Maintenance>> getMaintenanceById(int id);
   Future<Either<Failure, Maintenance>> createMaintenance(Maintenance maintenance);

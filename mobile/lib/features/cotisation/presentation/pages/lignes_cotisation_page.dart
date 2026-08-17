@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,9 +12,6 @@ import '../providers/ligne_cotisation_provider.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
-import '../../../../core/widgets/filtre_vehicule_chauffeur_dialog.dart';
-import '../../../../features/chauffeur/domain/entities/chauffeur.dart';
-import '../../../../features/vehicule/domain/entities/vehicule.dart';
 import 'ligne_cotisation_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
@@ -51,16 +50,18 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
   DateTime    _periodeDebut       = DateTime.now().subtract(const Duration(days: 30));
   DateTime    _periodeFin         = DateTime.now();
 
-  // ── Filtres client ─────────────────────────────────────────────────────
+  // ── Filtres serveur (statut + recherche) ───────────────────────────────
   StatutLigneCotisation? _statut;
   String _recherche = '';
-  Vehicule?  _vehiculeFiltre;
-  Chauffeur? _chauffeurFiltre;
 
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   OverlayEntry? _overlayEntry;
   final _filtreButtonKey = GlobalKey();
+
+  /// La recherche part au serveur : on attend une pause de frappe pour ne pas
+  /// lancer une requête par caractère.
+  Timer? _debounceRecherche;
 
   @override
   void initState() {
@@ -71,6 +72,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
 
   @override
   void dispose() {
+    _debounceRecherche?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     _overlayEntry?.remove();
@@ -85,20 +87,15 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
     }
   }
 
-  Future<void> _showFiltreAvance() async {
-    final result = await showFiltreVehiculeChauffeurDialog(
-      context,
-      vehiculeInitial:  _vehiculeFiltre,
-      chauffeurInitial: _chauffeurFiltre,
-      avecChauffeur:    true,
-    );
-    if (result != null && mounted) {
-      setState(() {
-        _vehiculeFiltre  = result.vehicule;
-        _chauffeurFiltre = result.chauffeur;
-      });
+  /// Frappe dans la barre de recherche : on laisse retomber la saisie avant
+  /// d'interroger le serveur.
+  void _onRechercheChanged(String valeur) {
+    _debounceRecherche?.cancel();
+    _debounceRecherche = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted || valeur.trim() == _recherche.trim()) return;
+      setState(() => _recherche = valeur);
       _load();
-    }
+    });
   }
 
   // ── Logique date ────────────────────────────────────────────────────────
@@ -118,38 +115,22 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
         _FiltreMode.periode => (_periodeDebut, _periodeFin),
       };
 
-  // Filtres serveur (date + statut + véhicule + chauffeur), page par page.
+  // Filtres serveur (date + statut + recherche), page par page.
   void _load() {
     final (debut, fin) = _plageActive();
     final repo = ref.read(ligneCotisationRepositoryProvider);
     ref.read(lignesCotisationListeProvider.notifier).load(
           (page, size) => repo.getLignesPage(
             LigneCotisationFiltres(
-              vehiculeId: _vehiculeFiltre?.id,
-              chauffeurId: _chauffeurFiltre?.id,
               statut: _statut,
               dateDebut: debut,
               dateFin: fin,
+              recherche: _recherche,
             ),
             page: page,
             size: size,
           ),
         );
-  }
-
-  // Recherche texte : filtre client sur les éléments déjà chargés (le backend
-  // cotisation n'expose pas de recherche libre). Autres filtres = serveur.
-  List<LigneCotisation> _filtrerRecherche(List<LigneCotisation> all) {
-    final query = _recherche.trim().toLowerCase();
-    if (query.isEmpty) return all;
-    return all.where((l) {
-      final hay = [
-        l.vehiculeImmatriculation ?? '',
-        l.nomCotisation,
-        l.statut.label,
-      ].join(' ').toLowerCase();
-      return hay.contains(query);
-    }).toList();
   }
 
   // ── Overlay filtre mode ─────────────────────────────────────────────────
@@ -333,9 +314,9 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
     final money = NumberFormat.currency(
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
     final state = ref.watch(lignesCotisationListeProvider);
-    final filtered = _filtrerRecherche(state.items);
+    final filtered = state.items;
 
-    // Montant (dû) par statut sur les items filtrés (date + recherche), null = total.
+    // Montant (dû) par statut sur les lignes chargées, null = total.
     double sommeCot(bool Function(LigneCotisation) test) =>
         filtered.where(test).fold(0.0, (s, l) => s + l.montantDu);
     final montantsStatut = <StatutLigneCotisation?, double>{
@@ -430,19 +411,16 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                                 ),
                               ),
 
-                              // ── Recherche + Statut (filtre client) ───
+                              // ── Recherche + Statut ───────────────────
                               SliverToBoxAdapter(
                                 child: _SearchAndStatutBar(
                                   controller: _searchController,
-                                  onSearchChanged: (v) =>
-                                      setState(() => _recherche = v),
+                                  onSearchChanged: _onRechercheChanged,
                                   statutSelectionne: _statut,
                                   onStatutChanged: (s) {
                                     setState(() => _statut = s);
                                     _load();
                                   },
-                                  onTunePressed:   _showFiltreAvance,
-                                  hasActiveFilter: _vehiculeFiltre != null || _chauffeurFiltre != null,
                                   montantsStatut: montantsStatut,
                                   money: money,
                                 ),
@@ -642,8 +620,6 @@ class _SearchAndStatutBar extends StatefulWidget {
   final void Function(String) onSearchChanged;
   final StatutLigneCotisation? statutSelectionne;
   final void Function(StatutLigneCotisation?) onStatutChanged;
-  final VoidCallback? onTunePressed;
-  final bool hasActiveFilter;
   final Map<StatutLigneCotisation?, double> montantsStatut;
   final NumberFormat money;
 
@@ -652,8 +628,6 @@ class _SearchAndStatutBar extends StatefulWidget {
     required this.onSearchChanged,
     required this.statutSelectionne,
     required this.onStatutChanged,
-    this.onTunePressed,
-    this.hasActiveFilter = false,
     required this.montantsStatut,
     required this.money,
   });
@@ -706,7 +680,7 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
                 onChanged: widget.onSearchChanged,
                 style: const TextStyle(fontSize: 14),
                 decoration: const InputDecoration(
-                  hintText: 'Véhicule, cotisation...',
+                  hintText: 'Immatriculation, chauffeur…',
                   hintStyle:
                       TextStyle(color: Color(0xFF8A8A8E), fontSize: 14),
                   border: InputBorder.none,
@@ -714,9 +688,20 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
                 ),
               ),
             ),
-            TuneFilterButton(
-              onTap:  widget.onTunePressed,
-              active: widget.hasActiveFilter,
+            // Croix d'effacement : la recherche partant au serveur, il faut
+            // pouvoir revenir à la liste complète sans effacer au clavier.
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: widget.controller,
+              builder: (_, value, __) => value.text.isEmpty
+                  ? const SizedBox.shrink()
+                  : GestureDetector(
+                      onTap: () {
+                        widget.controller.clear();
+                        widget.onSearchChanged('');
+                      },
+                      child: const Icon(Icons.close_rounded,
+                          size: 18, color: Color(0xFF8A8A8E)),
+                    ),
             ),
           ]),
         ),

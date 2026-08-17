@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa;
 
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciereFiltres;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.OperationFinanciereEntity;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -56,16 +57,19 @@ public class OperationFinanciereSpecs {
                 predicates.add(cb.equal(cb.lower(sc.get("libelle")), f.sousCategorieLibelle().toLowerCase()));
             }
             if (hasRecherche) {
-                String pattern = "%" + f.recherche().toLowerCase() + "%";
-                predicates.add(cb.or(
-                    cb.like(cb.lower(root.get("reference")),    pattern),
-                    cb.like(cb.lower(cat.get("libelle")),       pattern),
-                    cb.like(cb.lower(sc.get("libelle")),        pattern),
-                    cb.like(cb.lower(ch.get("nom")),            pattern),
-                    cb.like(cb.lower(ch.get("prenom")),         pattern),
-                    cb.like(cb.lower(v.get("immatriculation")), pattern),
-                    cb.like(cb.lower(p.get("nom")),             pattern)
+                String pattern = RechercheVehiculeChauffeur.motif(f.recherche());
+                // Ce qui identifie l'opération elle-même, puis — via le socle
+                // commun aux autres listes — le véhicule et le chauffeur, nom
+                // complet compris dans les deux ordres.
+                List<Predicate> alternatives = new ArrayList<>(List.of(
+                    cb.like(cb.lower(root.get("reference")), pattern),
+                    cb.like(cb.lower(cat.get("libelle")),    pattern),
+                    cb.like(cb.lower(sc.get("libelle")),     pattern),
+                    cb.like(cb.lower(p.get("nom")),          pattern)
                 ));
+                alternatives.addAll(
+                        RechercheVehiculeChauffeur.predicats(cb, v, ch, pattern));
+                predicates.add(cb.or(alternatives.toArray(new Predicate[0])));
             }
 
             // Tri uniquement sur les requêtes de sélection (pas les count)

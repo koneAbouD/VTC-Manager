@@ -89,7 +89,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   String? _partenaireNom;
 
   int? _vehiculeId;
-  String? _vehiculeNom;
+  /// Le véhicule s'affiche par son immatriculation, seule mention qui le
+  /// désigne sans ambiguïté dans une flotte de mêmes marques et modèles.
+  String? _vehiculeImmatriculation;
 
   bool _elementsExpanded = true;
   List<ElementMaintenance> _elements = [];
@@ -122,7 +124,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       _partenaireId = m.partenaireId;
       _partenaireNom = m.partenaireNom;
       _vehiculeId = m.vehiculeId;
-      _vehiculeNom = m.vehiculeNom;
+      _vehiculeImmatriculation = m.vehiculeImmatriculation;
       if (m.detailMaintenance != null) {
         _elements = List.from(m.detailMaintenance!.elements);
       }
@@ -160,7 +162,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     if (result != null && mounted) {
       setState(() {
         _vehiculeId = result.id;
-        _vehiculeNom = result.immatriculation;
+        _vehiculeImmatriculation = result.immatriculation;
       });
     }
   }
@@ -349,12 +351,12 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                       label: 'Véhicule concerné',
                       child: _buildSelectorField(
                         hint: 'Sélectionner un véhicule',
-                        value: _vehiculeNom,
+                        value: _vehiculeImmatriculation,
                         onTap: _openVehiculeSelector,
-                        onClear: _vehiculeNom != null
+                        onClear: _vehiculeImmatriculation != null
                             ? () => setState(() {
                                   _vehiculeId = null;
-                                  _vehiculeNom = null;
+                                  _vehiculeImmatriculation = null;
                                 })
                             : null,
                       ),

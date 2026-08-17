@@ -61,12 +61,14 @@ public class LigneCotisationController {
             @RequestParam(required = false) StatutLigneCotisation statut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         var result = getLignesCotisationUseCase.findPageByCriteres(
                 LigneCotisationFiltres.builder()
                         .vehiculeId(vehiculeId).chauffeurId(chauffeurId)
                         .statut(statut).dateDebut(dateDebut).dateFin(dateFin)
+                        .recherche(recherche)
                         .build(),
                 page, size).map(mapper::toResponse);
         return PageResponse.from(result);

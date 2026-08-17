@@ -24,7 +24,9 @@ public class GetAllMaintenancesUseCase {
     }
 
     public PageResult<Maintenance> executePage(Long vehiculeId, LocalDate dateDebut, LocalDate dateFin,
-                                               MaintenanceStatus statut, int page, int size) {
-        return maintenanceRepository.findPageByFiltres(dateDebut, dateFin, statut, vehiculeId, page, size);
+                                               MaintenanceStatus statut, String recherche,
+                                               int page, int size) {
+        return maintenanceRepository.findPageByFiltres(
+                dateDebut, dateFin, statut, vehiculeId, recherche, page, size);
     }
 }

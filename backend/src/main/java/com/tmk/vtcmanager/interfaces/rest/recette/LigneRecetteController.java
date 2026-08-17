@@ -67,6 +67,7 @@ public class LigneRecetteController {
             @RequestParam(required = false) StatutLigneRecette statut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         LigneRecetteFiltres filtres = LigneRecetteFiltres.builder()
@@ -75,6 +76,7 @@ public class LigneRecetteController {
                 .statut(statut)
                 .dateDebut(dateDebut)
                 .dateFin(dateFin)
+                .recherche(recherche)
                 .build();
         var result = getLignesRecetteUseCase.findPageByCriteres(filtres, page, size)
                 .map(mapper::toResponse);

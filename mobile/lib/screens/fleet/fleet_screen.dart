@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_config.dart';
 import '../../core/storage/secure_storage.dart';
-import '../../core/utils/csv_downloader.dart';
 import '../../features/chauffeur/domain/entities/chauffeur.dart';
 import '../../features/chauffeur/domain/enums/chauffeur_status.dart';
 import '../../features/chauffeur/presentation/providers/chauffeur_provider.dart';
@@ -19,50 +18,38 @@ import '../../features/vehicule/presentation/providers/vehicule_provider.dart';
 import '../../features/vehicule/presentation/providers/vehicule_state.dart';
 import '../../features/vehicule/presentation/pages/vehicule_form_page.dart';
 import '../../features/vehicule/presentation/pages/vehicule_detail_page.dart';
-import 'fleet_csv.dart';
+import '../home_nav_provider.dart';
 
-// ── Bouton d'export CSV (barre de recherche des onglets Véhicules/Chauffeurs) ─
+// ── Bouton d'ajout (barre de recherche des onglets Véhicules/Chauffeurs) ─────
 
-class _ExportButton extends StatelessWidget {
+/// Ouvre le formulaire de création de l'onglet courant (véhicule ou chauffeur).
+class _AddButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _ExportButton({required this.onTap});
+  final String tooltip;
+  const _AddButton({required this.onTap, required this.tooltip});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 46,
-        width: 46,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200, width: 1),
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 46,
+          width: 46,
+          alignment: Alignment.center,
+          // Mêmes couleurs que l'ancien bouton d'export : carré blanc bordé de
+          // gris, icône grise — le bouton se fond dans la barre de recherche.
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
+          ),
+          child: Icon(Icons.add_rounded, size: 22, color: Colors.grey.shade600),
         ),
-        child: Icon(Icons.file_download_outlined,
-            size: 20, color: Colors.grey.shade600),
       ),
     );
   }
-}
-
-// Feedback commun après un export CSV depuis un onglet de la flotte.
-void _showFleetExportSnack(BuildContext context, String message,
-    {String? path}) {
-  final detail = path != null ? '\n$path' : '';
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Row(children: [
-        const Icon(Icons.check_circle_outline_rounded,
-            color: Colors.white, size: 18),
-        const SizedBox(width: 8),
-        Expanded(child: Text('$message$detail')),
-      ]),
-      duration: const Duration(seconds: 4),
-      behavior: SnackBarBehavior.floating,
-    ),
-  );
 }
 
 // ── Helpers couleur statut ───────────────────────────────────────────────────
@@ -93,6 +80,12 @@ class _FleetScreenState extends ConsumerState<FleetScreen>
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
+    // Le glissement entre onglets doit remonter aux pastilles de l'en-tête.
+    _tab.addListener(() {
+      if (!_tab.indexIsChanging) {
+        ref.read(fleetTabIndexProvider.notifier).state = _tab.index;
+      }
+    });
   }
 
   @override
@@ -103,65 +96,25 @@ class _FleetScreenState extends ConsumerState<FleetScreen>
 
   @override
   Widget build(BuildContext context) {
-    final vehiculeState = ref.watch(vehiculeNotifierProvider);
-    final chauffeurState = ref.watch(chauffeurNotifierProvider);
+    // Les onglets sont pilotés depuis l'en-tête (FleetTabsPills) : on suit le
+    // provider partagé, comme le hub Finances.
+    final requestedTab = ref.watch(fleetTabIndexProvider);
+    if (requestedTab != _tab.index) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _tab.index != requestedTab) {
+          _tab.animateTo(requestedTab);
+        }
+      });
+    }
 
-    final vCount = switch (vehiculeState) {
-      VehiculeLoaded(:final vehicules) => vehicules.length,
-      VehiculeActionSuccess(:final vehicules) => vehicules.length,
-      _ => 0,
-    };
-    final cCount = switch (chauffeurState) {
-      ChauffeurLoaded(:final chauffeurs) => chauffeurs.length,
-      ChauffeurActionSuccess(:final chauffeurs) => chauffeurs.length,
-      _ => 0,
-    };
-
-    return Column(
+    // Ordre référencé par FleetTab (home_nav_provider) : le mettre à jour en
+    // même temps que les constantes.
+    return TabBarView(
+      controller: _tab,
       children: [
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: TabBar(
-            controller: _tab,
-            indicator: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            dividerColor: Colors.transparent,
-            labelColor: const Color(0xFF43A047),
-            unselectedLabelColor: Colors.grey.shade600,
-            labelStyle:
-                const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-            tabs: [
-              const Tab(text: 'État de parc'),
-              Tab(text: 'Véhicules ($vCount)'),
-              Tab(text: 'Chauffeurs ($cCount)'),
-            ],
-          ),
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tab,
-            children: [
-              const EtatParcTab(),
-              _VehiculeTab(),
-              _ChauffeurTab(),
-            ],
-          ),
-        ),
+        const EtatParcTab(),
+        _VehiculeTab(),
+        _ChauffeurTab(),
       ],
     );
   }
@@ -244,17 +197,9 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
     );
   }
 
-  Future<void> _exportCsv() async {
-    final all = switch (ref.read(vehiculeNotifierProvider)) {
-      VehiculeLoaded(:final vehicules) => vehicules,
-      VehiculeActionSuccess(:final vehicules) => vehicules,
-      _ => <Vehicule>[],
-    };
-    final vehicules = _filter(all);
-    final path = await downloadCsvFile(vehiculesToCsv(vehicules), 'vehicules.csv');
-    if (!mounted) return;
-    _showFleetExportSnack(
-        context, '${vehicules.length} véhicule(s) exporté(s)', path: path);
+  void _ajouterVehicule() {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const VehiculeFormPage()));
   }
 
   Widget _buildSearchHeader(BuildContext context) {
@@ -370,8 +315,8 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
             ),
           ),
           const SizedBox(width: 8),
-          // ── Bouton d'export (à droite) ───────────────────────────────
-          _ExportButton(onTap: _exportCsv),
+          // ── Bouton d'ajout (à droite) ────────────────────────────────
+          _AddButton(onTap: _ajouterVehicule, tooltip: 'Ajouter un véhicule'),
         ],
       ),
     );
@@ -611,6 +556,7 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
       final matchQuery = q.isEmpty ||
           c.displayName.toLowerCase().contains(q) ||
           (c.telephone?.contains(q) ?? false) ||
+          (c.vehiculeMatricule?.toLowerCase().contains(q) ?? false) ||
           (c.vehiculeNom?.toLowerCase().contains(q) ?? false);
       final matchStatut =
           _statutFilter == null || c.statut == _statutFilter;
@@ -641,18 +587,9 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
     );
   }
 
-  Future<void> _exportCsv() async {
-    final all = switch (ref.read(chauffeurNotifierProvider)) {
-      ChauffeurLoaded(:final chauffeurs) => chauffeurs,
-      ChauffeurActionSuccess(:final chauffeurs) => chauffeurs,
-      _ => <Chauffeur>[],
-    };
-    final chauffeurs = _filter(all);
-    final path =
-        await downloadCsvFile(chauffeursToCsv(chauffeurs), 'chauffeurs.csv');
-    if (!mounted) return;
-    _showFleetExportSnack(
-        context, '${chauffeurs.length} chauffeur(s) exporté(s)', path: path);
+  void _ajouterChauffeur() {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const ChauffeurFormPage()));
   }
 
   Widget _buildSearchHeader(BuildContext context) {
@@ -778,8 +715,8 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
             ),
           ),
           const SizedBox(width: 8),
-          // ── Bouton d'export (à droite) ───────────────────────────────
-          _ExportButton(onTap: _exportCsv),
+          // ── Bouton d'ajout (à droite) ────────────────────────────────
+          _AddButton(onTap: _ajouterChauffeur, tooltip: 'Ajouter un chauffeur'),
         ],
       ),
     );
@@ -867,6 +804,13 @@ class _ChauffeurCard extends StatelessWidget {
         '${chauffeur.prenom.isNotEmpty ? chauffeur.prenom[0] : ''}'
                 '${chauffeur.nom.isNotEmpty ? chauffeur.nom[0] : ''}'
             .toUpperCase();
+    // L'immatriculation identifie le véhicule ; la marque/modèle ne sert
+    // qu'en repli si la projection ne porte pas l'immatriculation.
+    final matricule = chauffeur.vehiculeMatricule?.trim();
+    final nomVehicule = chauffeur.vehiculeNom?.trim();
+    final vehiculeLabel = (matricule != null && matricule.isNotEmpty)
+        ? matricule
+        : (nomVehicule != null && nomVehicule.isNotEmpty ? nomVehicule : null);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -939,11 +883,10 @@ class _ChauffeurCard extends StatelessWidget {
                                       label: chauffeur.telephone!,
                                       color: Colors.grey.shade700,
                                     ),
-                                  if (chauffeur.vehiculeNom != null &&
-                                      chauffeur.vehiculeNom!.isNotEmpty)
+                                  if (vehiculeLabel != null)
                                     _MetaChip(
                                       icon: Icons.directions_car_outlined,
-                                      label: chauffeur.vehiculeNom!,
+                                      label: vehiculeLabel,
                                       color: Colors.grey.shade700,
                                     ),
                                 ]),

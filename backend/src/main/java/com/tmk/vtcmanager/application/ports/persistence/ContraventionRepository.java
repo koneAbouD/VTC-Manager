@@ -16,9 +16,13 @@ public interface ContraventionRepository {
 
     List<Contravention> findAll();
 
+    /**
+     * @param recherche mot-clé libre (immatriculation, nom/prénom du chauffeur,
+     *                  numéro de contravention) ; ignoré s'il est vide
+     */
     PageResult<Contravention> findPage(Long chauffeurId, Long vehiculeId,
                                        LocalDate dateDebut, LocalDate dateFin,
-                                       int page, int size);
+                                       String recherche, int page, int size);
 
     List<Contravention> findByChauffeurId(Long chauffeurId);
 

@@ -34,6 +34,7 @@ class ContraventionRepositoryImpl implements ContraventionRepository {
     int? vehiculeId,
     String? dateDebut,
     String? dateFin,
+    String? recherche,
   }) async {
     try {
       final result = await _datasource.getContraventionsPage(
@@ -43,6 +44,7 @@ class ContraventionRepositoryImpl implements ContraventionRepository {
         vehiculeId: vehiculeId,
         dateDebut: dateDebut,
         dateFin: dateFin,
+        recherche: recherche,
       );
       return Right(result);
     } on ApiException catch (e) {
