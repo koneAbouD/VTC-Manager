@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
 import com.tmk.vtcmanager.application.domain.finance.AmortissementVehicule;
+import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
 import com.tmk.vtcmanager.application.domain.finance.MargeVehicule;
 import com.tmk.vtcmanager.application.ports.persistence.FinanceReportingRepository;
 import lombok.RequiredArgsConstructor;
@@ -202,19 +203,78 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
         return resultats.stream().findFirst();
     }
 
+    /**
+     * Produits et charges variables d'un véhicule (alias {@code v}) en base
+     * CAISSE : les opérations encaissées ou payées de la période. Deux
+     * paramètres : <b>début</b> puis <b>fin</b>.
+     */
+    private static final String AGREGAT_VEHICULE_CAISSE = """
+            SELECT COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'PRODUIT_EXPLOITATION'), 0) AS produits,
+                   COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'CHARGE_VARIABLE'), 0)      AS charges,
+                   COUNT(*)                                                                              AS nb_ops
+            FROM operations_financieres o
+            JOIN categories_operation c
+                   ON c.id = o.categorie_id
+                  AND c.nature_resultat IN ('PRODUIT_EXPLOITATION', 'CHARGE_VARIABLE')
+            WHERE o.vehicule_id = v.id
+              AND o.statut IN ('ENCAISSE', 'PAYE')
+              AND o.date_operation BETWEEN ? AND ?
+            """;
+
+    /**
+     * Même agrégat en base ENGAGEMENT, aux mêmes sources que la cascade : produits
+     * dus (recettes attendues + amendes, cotisations exclues car hors résultat) et
+     * charges engagées (factures partenaires reçues + dépenses réglées sans
+     * facture, pour ne pas compter deux fois une charge déjà facturée). Huit
+     * paramètres, quatre couples <b>début, fin</b> dans l'ordre des blocs.
+     */
+    private static final String AGREGAT_VEHICULE_ENGAGEMENT = """
+            SELECT rec.montant + amende.montant AS produits,
+                   fact.montant + hors.montant  AS charges,
+                   rec.nb + amende.nb + fact.nb + hors.nb AS nb_ops
+            FROM (SELECT COALESCE(SUM(lr.montant_attendu), 0) AS montant, COUNT(*) AS nb
+                  FROM lignes_recette lr
+                  WHERE lr.vehicule_id = v.id
+                    AND lr.statut <> 'ANNULEE'
+                    AND lr.montant_attendu IS NOT NULL
+                    AND lr.date_recette BETWEEN ? AND ?) rec,
+                 (SELECT COALESCE(SUM(lp.montant), 0) AS montant, COUNT(*) AS nb
+                  FROM lignes_penalite lp
+                  WHERE lp.vehicule_id = v.id
+                    AND lp.statut <> 'ANNULEE'
+                    AND lp.type_sanction = 'AMENDE'
+                    AND COALESCE(lp.date_faute, lp.date_generation) BETWEEN ? AND ?) amende,
+                 (SELECT COALESCE(SUM(f.montant), 0) AS montant, COUNT(*) AS nb
+                  FROM factures_partenaire f
+                  JOIN categories_operation c ON c.id = f.categorie_id
+                  WHERE f.vehicule_id = v.id
+                    AND f.statut <> 'ANNULEE'
+                    AND c.nature_resultat = 'CHARGE_VARIABLE'
+                    AND f.date_facture BETWEEN ? AND ?) fact,
+                 (SELECT COALESCE(SUM(o.montant), 0) AS montant, COUNT(*) AS nb
+                  FROM operations_financieres o
+                  JOIN categories_operation c ON c.id = o.categorie_id
+                  WHERE o.vehicule_id = v.id
+                    AND o.statut IN ('ENCAISSE', 'PAYE')
+                    AND o.facture_partenaire_id IS NULL
+                    AND c.nature_resultat = 'CHARGE_VARIABLE'
+                    AND o.date_operation BETWEEN ? AND ?) hors
+            """;
+
     @Override
-    public List<MargeVehicule> margesParVehicule(LocalDate debut, LocalDate fin) {
-        // Piloté PAR véhicule (LEFT JOIN opérations) pour que les véhicules
-        // immobilisés SANS aucune opération sur la période apparaissent quand même :
-        // on garde une ligne dès qu'il y a une opération produit/charge OU des jours
-        // d'immobilisation. Les véhicules sans activité ni immobilisation sont exclus.
+    public List<MargeVehicule> margesParVehicule(LocalDate debut, LocalDate fin, BaseComptable base) {
+        boolean engagement = base == BaseComptable.ENGAGEMENT;
+        // Piloté PAR véhicule (agrégat latéral) pour que les véhicules immobilisés
+        // SANS aucune opération sur la période apparaissent quand même : on garde une
+        // ligne dès qu'il y a un mouvement produit/charge OU des jours d'immobilisation.
+        // Les véhicules sans activité ni immobilisation sont exclus.
         return jdbcTemplate.query("""
                 SELECT t.id, t.immatriculation, t.produits, t.charges, t.jours_immo, t.dotation
                 FROM (
                     SELECT v.id AS id, v.immatriculation AS immatriculation,
-                           COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'PRODUIT_EXPLOITATION'), 0) AS produits,
-                           COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'CHARGE_VARIABLE'), 0)      AS charges,
-                           COUNT(o.id) FILTER (WHERE c.nature_resultat IS NOT NULL)                              AS nb_ops,
+                           agg.produits AS produits,
+                           agg.charges  AS charges,
+                           agg.nb_ops   AS nb_ops,
                            COALESCE((
                                SELECT SUM(GREATEST(0,
                                           (LEAST(COALESCE(iv.date_fin, ?), ?) - GREATEST(iv.date_debut, ?)) + 1))
@@ -237,21 +297,16 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                                          / (p.fin_exclue - a.depart)
                                     ELSE 0 END AS montant
                     ) dot
-                    LEFT JOIN operations_financieres o
-                           ON o.vehicule_id = v.id
-                          AND o.statut IN ('ENCAISSE', 'PAYE')
-                          AND o.date_operation BETWEEN ? AND ?
-                    LEFT JOIN categories_operation c
-                           ON c.id = o.categorie_id
-                          AND c.nature_resultat IN ('PRODUIT_EXPLOITATION', 'CHARGE_VARIABLE')
-                    GROUP BY v.id, v.immatriculation, dot.montant
+                    CROSS JOIN LATERAL ({{AGREGAT}}) agg
                 ) t
                 WHERE t.nb_ops > 0 OR t.jours_immo > 0
                 ORDER BY (t.produits - t.charges - t.dotation) DESC
                 """
                 .replace("{{JOURS}}", JOURS_AMORTIS_PERIODE)
                 .replace("{{PLAN}}", PLAN_AMORTISSEMENT)
-                .replace("{{EXPLOITABLE}}", PLAN_EXPLOITABLE),
+                .replace("{{EXPLOITABLE}}", PLAN_EXPLOITABLE)
+                .replace("{{AGREGAT}}", engagement
+                        ? AGREGAT_VEHICULE_ENGAGEMENT : AGREGAT_VEHICULE_CAISSE),
                 (rs, i) -> {
                     BigDecimal produits = rs.getBigDecimal("produits");
                     BigDecimal charges = rs.getBigDecimal("charges");
@@ -268,11 +323,24 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                             .margeNette(marge.subtract(dotation))
                             .build();
                 },
-                // Sous-requête jours_immo : fin (LEAST/COALESCE), fin (LEAST), debut (GREATEST),
-                // fin (date_debut <=), debut (date_fin >=) ; dotation : fin (départ <=), debut
-                // (plan non achevé), puis jours amortis fin, debut ; JOIN opérations : debut, fin.
+                parametresMargesParVehicule(debut, fin, engagement));
+    }
+
+    /**
+     * Paramètres de {@link #margesParVehicule}, dans l'ordre d'apparition :
+     * jours_immo (fin, fin, debut, fin, debut), dotation (fin, debut puis jours
+     * amortis fin, debut), enfin l'agrégat — un couple debut/fin en base caisse,
+     * quatre en base engagement.
+     */
+    private static Object[] parametresMargesParVehicule(
+            LocalDate debut, LocalDate fin, boolean engagement) {
+        List<Object> params = new java.util.ArrayList<>(List.of(
                 fin, fin, debut, fin, debut,
-                fin, debut, fin, debut,
-                debut, fin);
+                fin, debut, fin, debut));
+        for (int i = 0; i < (engagement ? 4 : 1); i++) {
+            params.add(debut);
+            params.add(fin);
+        }
+        return params.toArray();
     }
 }

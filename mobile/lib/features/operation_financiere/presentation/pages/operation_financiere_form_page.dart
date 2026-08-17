@@ -840,6 +840,20 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
 
                   _kCardDivider,
 
+                  // — Catégorie ──────────────────────────────
+                  // Juste sous le type : c'est elle qui commande le reste de la
+                  // saisie (maintenance, sous-catégorie), on la choisit d'abord.
+                  _LabeledField(
+                    label: 'Catégorie',
+                    isRequired: true,
+                    child: _buildSelectorField(
+                      hint: 'Sélectionner une catégorie',
+                      value: _categorie?.libelle,
+                      onTap: _openCategorieSelector,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   // — Chauffeur & Véhicule ───────────────────
                   ResponsiveFieldRow(
                     left: _LabeledField(
@@ -873,18 +887,6 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                   _LabeledField(
                     label: 'Partenaire',
                     child: _buildPartenaireField(),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // — Catégorie ──────────────────────────────
-                  _LabeledField(
-                    label: 'Catégorie',
-                    isRequired: true,
-                    child: _buildSelectorField(
-                      hint: 'Sélectionner une catégorie',
-                      value: _categorie?.libelle,
-                      onTap: _openCategorieSelector,
-                    ),
                   ),
 
                   // — Accordion Éléments concernés ──────────────

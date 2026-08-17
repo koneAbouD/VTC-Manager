@@ -222,13 +222,11 @@ class PremiumEncaissementTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
+          // Icône nue : la boîte garde ses dimensions pour que les montants
+          // restent alignés d'une tuile à l'autre.
+          SizedBox(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.primaryTint,
-              borderRadius: BorderRadius.circular(12),
-            ),
             child: Icon(especes ? Icons.payments_outlined : Icons.smartphone,
                 size: 21, color: AppColors.primaryDark),
           ),

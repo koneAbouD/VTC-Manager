@@ -217,9 +217,10 @@ class TresorerieRemoteDatasource {
   Future<List<MargeVehiculeData>> getMargesParVehicule({
     required int annee,
     required int mois,
+    required String base,
   }) async {
     final data = await _client.get('/finances/compte-resultat/par-vehicule',
-        query: {'annee': '$annee', 'mois': '$mois'});
+        query: {'annee': '$annee', 'mois': '$mois', 'base': base});
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => MargeVehiculeData.fromJson(e as Map<String, dynamic>))

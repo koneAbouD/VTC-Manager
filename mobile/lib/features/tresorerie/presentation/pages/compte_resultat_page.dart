@@ -31,7 +31,9 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
   @override
   Widget build(BuildContext context) {
     final crParams = (annee: _annee, mois: _mois, base: _base);
-    final margeParams = (annee: _annee, mois: _mois);
+    // La liste par véhicule est le découpage de la cascade : elle se lit dans la
+    // même base, sinon les deux blocs de l'écran se contrediraient.
+    final margeParams = (annee: _annee, mois: _mois, base: _base);
     final asyncCr = ref.watch(compteResultatProvider(crParams));
     final asyncMarges = ref.watch(margesVehiculesProvider(margeParams));
 
@@ -73,10 +75,12 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
             ],
           ),
           const SizedBox(height: 4),
+          // La base est rappelée ici : deux véhicules identiques n'affichent pas
+          // la même marge selon qu'on lit le dû ou l'encaissé.
           Text(
-            _amorti
-                ? 'Produits − charges variables − amortissement, sans imputation des charges fixes'
-                : 'Produits − charges variables, sans imputation des charges fixes',
+            '${_base == 'ENGAGEMENT' ? 'Produits dus' : 'Produits encaissés'} '
+            '− charges variables${_amorti ? ' − amortissement' : ''}, '
+            'sans imputation des charges fixes',
             style: const TextStyle(fontSize: 12, color: AppColors.label),
           ),
           const SizedBox(height: 8),
@@ -215,9 +219,11 @@ class _CascadeCard extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // Les cotisations sont un dépôt restitué en fin de période, pas un
+          // produit : elles sont hors résultat dans les deux bases.
           _ligne('Produits d\'exploitation', cr.produitsExploitation,
               sousTitre: base == 'ENGAGEMENT'
-                  ? 'Montants dus de la période (recettes, cotisations, pénalités)'
+                  ? 'Montants dus de la période (recettes, amendes)'
                   : 'Montants encaissés sur la période'),
           _ligne('− Charges variables', -cr.chargesVariables,
               sousTitre: 'Maintenance, pièces — varie avec le roulage',

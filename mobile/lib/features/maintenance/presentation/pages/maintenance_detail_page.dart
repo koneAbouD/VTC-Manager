@@ -212,49 +212,46 @@ class _MaintenanceDetailPageState
         children: [
 
                   // ── Hero ─────────────────────────────────────────────
+                  // Type et statut sur une même ligne : le badge est poussé au
+                  // bord droit par l'Expanded du titre, tout restant centré
+                  // verticalement sur la hauteur de la pastille.
                   _card(
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          width: 60, height: 60,
+                          width: 42, height: 42,
                           decoration: BoxDecoration(
                             color: statColor.withValues(alpha: 0.12),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(_iconeType(_m.type),
-                              color: statColor, size: 28),
+                              color: statColor, size: 20),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _displayType(),
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: _kDark,
-                                    letterSpacing: -0.3),
-                              ),
-                              const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: statColor.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  _labelStatut(_m.statut),
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: statColor),
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            _displayType(),
+                            style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: _kDark,
+                                letterSpacing: -0.3),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: statColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _labelStatut(_m.statut),
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: statColor),
                           ),
                         ),
                       ],
@@ -266,6 +263,10 @@ class _MaintenanceDetailPageState
                   // filet, au lieu de flotter chacune sur la sienne.
                   Container(
                     margin: const EdgeInsets.only(bottom: 12),
+                    // La marge verticale appartient à la carte : les rubriques
+                    // n'espacent plus qu'horizontalement, sinon deux d'entre
+                    // elles laisseraient un trou là où le filet se trouvait.
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
@@ -371,123 +372,96 @@ class _MaintenanceDetailPageState
         child: child,
       );
 
-  /// Les rubriques de la carte unique, dans l'ordre, chacune précédée d'un
-  /// filet. Seule la planification est toujours là : elle ouvre la carte, ce
-  /// qui dispense les suivantes de savoir si quelque chose les précède.
+  /// Les rubriques de la carte unique, dans l'ordre. Les rubriques de simples
+  /// couples libellé/valeur n'ont ni titre ni filet : elles se lisent comme une
+  /// seule liste continue. Description et Éléments gardent leur en-tête, qui
+  /// suffit alors à les détacher de ce qui précède.
   List<Widget> _rubriques() {
     final rubriques = <Widget>[
-      _section(
-        icon: Icons.event_note_outlined,
-        title: 'Planification',
-        rows: [
-          _infoRow(Icons.calendar_today_outlined, 'Date prévue',
-              _fmtDate(_m.datePrevue)),
-          if (_m.dateEffectuee != null)
-            _infoRow(Icons.check_circle_outline_rounded, 'Date effectuée',
-                _fmtDate(_m.dateEffectuee!),
-                valueColor: const Color(0xFF2E7D32)),
-          if (_m.dureeHeures != null)
-            _infoRow(
-                Icons.timer_outlined, 'Durée', '${_m.dureeHeures} heure(s)'),
-          if (_m.categorieTypeLibelle != null)
-            _infoRow(Icons.label_outline_rounded, 'Catégorie',
-                _m.categorieTypeLibelle!),
-        ],
-      ),
+      _section(rows: [
+        _infoRow(Icons.calendar_today_outlined, 'Date prévue',
+            _fmtDate(_m.datePrevue)),
+        if (_m.dateEffectuee != null)
+          _infoRow(Icons.check_circle_outline_rounded, 'Date effectuée',
+              _fmtDate(_m.dateEffectuee!)),
+        if (_m.dureeHeures != null)
+          _infoRow(Icons.timer_outlined, 'Durée', '${_m.dureeHeures} heure(s)'),
+        if (_m.categorieTypeLibelle != null)
+          _infoRow(Icons.label_outline_rounded, 'Catégorie',
+              _m.categorieTypeLibelle!),
+      ]),
     ];
 
     if (_m.vehiculeImmatriculation != null || _m.vehiculeId != null) {
-      rubriques
-        ..add(const _FiletRubrique())
-        ..add(_section(
-          icon: Icons.directions_car_outlined,
-          title: 'Véhicule',
-          rows: [
-            // L'immatriculation suffit à désigner le véhicule ; repli sur
-            // l'identifiant tant qu'elle n'est pas renseignée.
-            _infoRow(
-                Icons.directions_car_filled_rounded,
-                'Véhicule',
-                _m.vehiculeImmatriculation?.isNotEmpty == true
-                    ? _m.vehiculeImmatriculation!
-                    : 'Véhicule #${_m.vehiculeId}'),
-          ],
-        ));
+      rubriques.add(_section(rows: [
+        // L'immatriculation suffit à désigner le véhicule ; repli sur
+        // l'identifiant tant qu'elle n'est pas renseignée.
+        _infoRow(
+            Icons.directions_car_filled_rounded,
+            'Véhicule',
+            _m.vehiculeImmatriculation?.isNotEmpty == true
+                ? _m.vehiculeImmatriculation!
+                : 'Véhicule #${_m.vehiculeId}'),
+      ]));
     }
-
-    // Le reste à payer dépend d'une requête : il porte son propre filet, faute
-    // de savoir d'ici s'il aura quelque chose à afficher.
-    if (_m.id != null) rubriques.add(_blocDettes());
 
     if (_m.partenaireNom != null ||
         _m.kilometrageAuMoment != null ||
-        _m.kilometrageProchaine != null ||
-        _m.cout != null) {
-      rubriques
-        ..add(const _FiletRubrique())
-        ..add(_section(
-          icon: Icons.info_outline_rounded,
-          title: 'Informations',
-          rows: [
-            if (_m.partenaireNom != null)
-              _infoRow(Icons.store_outlined, 'Partenaire', _m.partenaireNom!),
-            if (_m.kilometrageAuMoment != null)
-              _infoRow(Icons.speed_outlined, 'Kilométrage',
-                  '${_m.kilometrageAuMoment} km'),
-            if (_m.kilometrageProchaine != null)
-              _infoRow(Icons.arrow_forward_rounded, 'Prochain entretien',
-                  '${_m.kilometrageProchaine} km'),
-            if (_m.cout != null)
-              _infoRow(Icons.payments_outlined, 'Coût', _fmtMontant(_m.cout!),
-                  valueColor: const Color(0xFFB71C1C)),
-          ],
-        ));
+        _m.kilometrageProchaine != null) {
+      rubriques.add(_section(rows: [
+        if (_m.partenaireNom != null)
+          _infoRow(Icons.store_outlined, 'Partenaire', _m.partenaireNom!),
+        if (_m.kilometrageAuMoment != null)
+          _infoRow(Icons.speed_outlined, 'Kilométrage',
+              '${_m.kilometrageAuMoment} km'),
+        if (_m.kilometrageProchaine != null)
+          _infoRow(Icons.arrow_forward_rounded, 'Prochain entretien',
+              '${_m.kilometrageProchaine} km'),
+      ]));
     }
 
+    if (_m.id != null) rubriques.add(_blocDettes());
+
     if (_m.description != null && _m.description!.isNotEmpty) {
-      rubriques
-        ..add(const _FiletRubrique())
-        ..add(_rubrique(
-          children: [
-            _sectionHeader(Icons.notes_outlined, 'Description'),
-            const SizedBox(height: 12),
-            Text(
-              _m.description!,
-              style: const TextStyle(fontSize: 14, color: _kDark, height: 1.5),
-            ),
-          ],
-        ));
+      rubriques.add(_rubrique(
+        children: [
+          const SizedBox(height: 6),
+          _labelRubrique(Icons.notes_outlined, 'Description'),
+          const SizedBox(height: 10),
+          Text(
+            _m.description!,
+            style: const TextStyle(fontSize: 14, color: _kDark, height: 1.5),
+          ),
+        ],
+      ));
     }
 
     final elements = _m.detailMaintenance?.elements ?? const [];
     if (elements.isNotEmpty) {
-      rubriques
-        ..add(const _FiletRubrique())
-        ..add(_rubrique(
-          children: [
-            _sectionHeader(Icons.checklist_rounded, 'Éléments'),
-            const SizedBox(height: 12),
-            ...elements.map((e) => _elementRow(e)),
-            const Divider(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Total',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: _kDark)),
-                Text(
-                  _fmtMontant(elements.fold(0.0, (s, e) => s + e.montant)),
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: _kAccent),
-                ),
-              ],
-            ),
-          ],
-        ));
+      rubriques.add(_rubrique(
+        children: [
+          const SizedBox(height: 6),
+          _labelRubrique(Icons.checklist_rounded, 'Éléments'),
+          const SizedBox(height: 10),
+          ...elements.map((e) => _elementRow(e)),
+          const Divider(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Total',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _kDark)),
+              Text(
+                _fmtMontant(elements.fold(0.0, (s, e) => s + e.montant)),
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w800, color: _kAccent),
+              ),
+            ],
+          ),
+        ],
+      ));
     }
 
     return rubriques;
@@ -502,65 +476,42 @@ class _MaintenanceDetailPageState
       data: (liste) {
         final ouvertes = liste.where((f) => f.restantDu > 0).toList();
         if (ouvertes.isEmpty) return const SizedBox.shrink();
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const _FiletRubrique(),
-            _section(
-              icon: Icons.schedule_outlined,
-              title: ouvertes.length == 1 ? 'Reste à payer' : 'Restes à payer',
-              rows: [
-                for (final f in ouvertes)
-                  _infoRow(Icons.store_outlined,
-                      f.partenaireNom ?? 'Partenaire', _fmtMontant(f.restantDu),
-                      valueColor: _kAccent),
-              ],
-            ),
-          ],
-        );
+        // Le titre de rubrique ayant disparu, c'est le libellé de la ligne qui
+        // porte le sens du montant : sans lui, un chiffre en face d'un nom de
+        // partenaire ne dirait pas qu'il reste dû.
+        return _section(rows: [
+          for (final f in ouvertes)
+            _infoRow(
+                Icons.schedule_outlined,
+                'Reste à payer · ${f.partenaireNom ?? 'Partenaire'}',
+                _fmtMontant(f.restantDu)),
+        ]);
       },
     );
   }
 
-  /// Une rubrique de la carte : le fond, la bordure et les angles appartiennent
-  /// à la carte, la rubrique n'apporte que son contenu et sa marge intérieure.
+  /// Une rubrique de la carte : le fond, la bordure, les angles et la marge
+  /// verticale appartiennent à la carte ; la rubrique n'apporte que son contenu
+  /// et son retrait latéral.
   Widget _rubrique({required List<Widget> children}) => Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: children,
         ),
       );
 
-  Widget _section({
-    required IconData icon,
-    required String title,
-    required List<Widget> rows,
-  }) =>
-      _rubrique(
-        children: [
-          _sectionHeader(icon, title),
-          const SizedBox(height: 12),
-          ...rows,
-        ],
-      );
+  /// Rubrique de couples libellé/valeur : sans en-tête, ses lignes prolongent
+  /// celles de la rubrique précédente.
+  Widget _section({required List<Widget> rows}) => _rubrique(children: rows);
 
-  Widget _sectionHeader(IconData icon, String title) => Row(children: [
-        Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            color: _kPrimary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 15, color: _kPrimary),
-        ),
+  /// En-tête de rubrique au style d'une ligne d'info — mêmes icône fine et
+  /// libellé discret que « Coût » —, pour une rubrique qui se lit dans la
+  /// continuité des couples libellé/valeur.
+  Widget _labelRubrique(IconData icon, String label) => Row(children: [
+        Icon(icon, size: 15, color: _kLabel),
         const SizedBox(width: 10),
-        Text(title,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _kDark,
-                letterSpacing: -0.2)),
+        Text(label, style: const TextStyle(fontSize: 13, color: _kLabel)),
       ]);
 
   Widget _infoRow(IconData icon, String label, String value,
@@ -662,13 +613,6 @@ class _MaintenanceDetailPageState
 
 /// Filet séparant deux rubriques. Pleine largeur : elles se lisent comme les
 /// rangées d'une même carte, non comme des blocs rapportés.
-class _FiletRubrique extends StatelessWidget {
-  const _FiletRubrique();
-
-  @override
-  Widget build(BuildContext context) => Container(height: 1, color: _kBorder);
-}
-
 // ── Popup « Terminer la maintenance » (premium, alignée charte) ────────────────
 
 /// Ce que l'utilisateur a décidé en clôturant : payé sur place, ou laissé à

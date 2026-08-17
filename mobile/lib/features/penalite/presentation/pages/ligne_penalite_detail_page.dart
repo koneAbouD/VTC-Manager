@@ -7,6 +7,7 @@ import '../providers/penalite_provider.dart';
 import 'encaissement_penalite_form_page.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../screens/finance/finance_refresh.dart';
@@ -94,92 +95,69 @@ class _DetailBody extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        PremiumHero(
-          amount: estAmende ? fmt.format(ligne.montant) : ligne.typeSanction.label,
-          footerIcon: Icons.directions_car_outlined,
-          footer: [
-            ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}',
-            if (ligne.chauffeurNomComplet != null) ligne.chauffeurNomComplet!,
-          ].join('  ·  '),
-          chips: [
-            PremiumChip(statutLabel, statutColor),
-            if (estAmende) PremiumChip(ligne.typeSanction.label, AppColors.info),
-            if (estAmende && restant != null && restant > 0)
-              PremiumChip('Restant ${fmt.format(restant)}', AppColors.warning),
-          ],
-        ),
-        const SizedBox(height: 14),
-
-        // ── Infos générales ──────────────────────────────────────────────
-        PremiumSection(
-          title: 'Sanction',
+        // Une sanction non pécuniaire n'a pas de montant à mettre en titre :
+        // c'est alors la nature de la sanction qui nomme la page.
+        DetailHeroCard(
           icon: Icons.gavel_outlined,
-          children: [
-            PremiumRow('Type', ligne.typeSanction.label),
-            PremiumRow('Pénalité', _typePenaliteLabel(ligne.typePenalite)),
-            PremiumRow('Statut', statutLabel, valueColor: statutColor),
-            PremiumRow('Véhicule',
-                ligne.vehiculeImmatriculation ?? '#${ligne.vehiculeId}'),
-            PremiumRow('Chauffeur', ligne.chauffeurNomComplet),
-            PremiumRow(
-                'Date de faute',
-                ligne.dateFaute != null
-                    ? dateFmt.format(ligne.dateFaute!)
-                    : null),
-            PremiumRow('Généré le', dateFmt.format(ligne.dateGeneration)),
-            PremiumRow('Commentaire', ligne.commentaire),
-            PremiumRow('Motif annulation', ligne.motifAnnulation,
-                valueColor: AppColors.error),
-          ],
+          titre:
+              estAmende ? fmt.format(ligne.montant) : ligne.typeSanction.label,
+          statutLabel: statutLabel,
+          statutColor: statutColor,
         ),
-
-        // ── Infos spécifiques selon le type ──────────────────────────────
-        if (estAmende)
-          PremiumSection(
-            title: 'Montants',
-            icon: Icons.payments_outlined,
-            children: [
-              PremiumRow('Montant total', fmt.format(ligne.montant)),
-              PremiumRow('Encaissé', fmt.format(ligne.montantEncaisse),
-                  valueColor: AppColors.success),
-              PremiumRow(
-                  'Restant',
-                  restant != null && restant > 0 ? fmt.format(restant) : null,
-                  valueColor: AppColors.warning),
-            ],
-          ),
-        if (ligne.typeSanction == TypeSanctionLigne.buzzer &&
-            ligne.dureeSanctionSecondes != null)
-          PremiumSection(
-            title: 'Buzzer',
-            icon: Icons.notifications_active_outlined,
-            children: [
-              PremiumRow('Durée buzzer', '${ligne.dureeSanctionSecondes}s'),
-            ],
-          ),
-        if (ligne.typeSanction == TypeSanctionLigne.immobilisation)
-          PremiumSection(
-            title: 'Immobilisation',
-            icon: Icons.block_outlined,
-            accent: AppColors.error,
-            children: [
-              PremiumRow(
-                  'Durée prévue',
-                  ligne.dureeImmobilisationMinutes != null
-                      ? '${ligne.dureeImmobilisationMinutes} min'
-                      : null),
-              PremiumRow(
-                  'Début',
-                  ligne.dateDebutImmobilisation != null
-                      ? dtFmt.format(ligne.dateDebutImmobilisation!)
-                      : null),
-              PremiumRow(
-                  'Fin',
-                  ligne.dateFinImmobilisation != null
-                      ? dtFmt.format(ligne.dateFinImmobilisation!)
-                      : null),
-            ],
-          ),
+        DetailInfoCard(children: [
+          DetailInfoRow(Icons.category_outlined, 'Type',
+              ligne.typeSanction.label),
+          DetailInfoRow(Icons.gavel_outlined, 'Pénalité',
+              _typePenaliteLabel(ligne.typePenalite)),
+          DetailInfoRow(Icons.directions_car_filled_rounded, 'Véhicule',
+              ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}'),
+          DetailInfoRow(Icons.person_outline_rounded, 'Chauffeur',
+              ligne.chauffeurNomComplet),
+          DetailInfoRow(Icons.event_busy_outlined, 'Date de faute',
+              ligne.dateFaute != null ? dateFmt.format(ligne.dateFaute!) : null),
+          DetailInfoRow(Icons.calendar_today_outlined, 'Généré le',
+              dateFmt.format(ligne.dateGeneration)),
+          // Montants : seule l'amende en a.
+          if (estAmende) ...[
+            DetailInfoRow(Icons.payments_outlined, 'Montant total',
+                fmt.format(ligne.montant)),
+            DetailInfoRow(Icons.check_circle_outline_rounded, 'Encaissé',
+                fmt.format(ligne.montantEncaisse)),
+            DetailInfoRow(Icons.schedule_outlined, 'Restant',
+                restant != null && restant > 0 ? fmt.format(restant) : null),
+          ],
+          if (ligne.typeSanction == TypeSanctionLigne.buzzer)
+            DetailInfoRow(
+                Icons.notifications_active_outlined,
+                'Durée buzzer',
+                ligne.dureeSanctionSecondes != null
+                    ? '${ligne.dureeSanctionSecondes}s'
+                    : null),
+          if (ligne.typeSanction == TypeSanctionLigne.immobilisation) ...[
+            DetailInfoRow(
+                Icons.block_outlined,
+                'Durée prévue',
+                ligne.dureeImmobilisationMinutes != null
+                    ? '${ligne.dureeImmobilisationMinutes} min'
+                    : null),
+            DetailInfoRow(
+                Icons.play_arrow_outlined,
+                'Début',
+                ligne.dateDebutImmobilisation != null
+                    ? dtFmt.format(ligne.dateDebutImmobilisation!)
+                    : null),
+            DetailInfoRow(
+                Icons.stop_outlined,
+                'Fin',
+                ligne.dateFinImmobilisation != null
+                    ? dtFmt.format(ligne.dateFinImmobilisation!)
+                    : null),
+          ],
+          DetailInfoRow(
+              Icons.notes_outlined, 'Commentaire', ligne.commentaire),
+          DetailInfoRow(Icons.info_outline_rounded, 'Motif annulation',
+              ligne.motifAnnulation),
+        ]),
 
         // ── Boutons d'action (Annuler + action principale sur une ligne) ──
         if (primaire != null && annulable)
@@ -219,7 +197,8 @@ class _DetailBody extends ConsumerWidget {
         // ── Historique encaissements (AMENDE) ────────────────────────────
         if (estAmende) ...[
           const SizedBox(height: 10),
-          PremiumListHeader('Encaissements (${ligne.encaissements.length})'),
+          DetailLabel(Icons.receipt_outlined,
+              'Encaissements (${ligne.encaissements.length})'),
           if (ligne.encaissements.isEmpty)
             const PremiumEmpty('Aucun encaissement enregistré.')
           else

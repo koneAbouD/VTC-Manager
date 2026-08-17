@@ -4,6 +4,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/datasources/operation_financiere_remote_datasource.dart';
 import '../../domain/entities/montants_categories.dart';
+import '../../domain/entities/operation_financiere.dart';
 import '../../domain/entities/solde_periode.dart';
 import '../../data/repositories_impl/operation_financiere_repository_impl.dart';
 import '../../domain/repositories/operation_financiere_repository.dart';
@@ -30,6 +31,18 @@ final _opDatasourceProvider =
 final operationFinanciereRepositoryProvider =
     Provider<OperationFinanciereRepository>((ref) =>
         OperationFinanciereRepositoryImpl(ref.watch(_opDatasourceProvider)));
+
+// ── Lecture unitaire ───────────────────────────────────────────────────────
+
+/// Une opération chargée par son identifiant, pour les écrans qui n'en
+/// connaissent que l'id — le rapport financier ne porte que des lignes
+/// agrégées, pas les entités.
+final operationFinanciereByIdProvider =
+    FutureProvider.family<OperationFinanciere, int>((ref, id) async {
+  final result =
+      await ref.watch(operationFinanciereRepositoryProvider).getById(id);
+  return result.fold((f) => throw Exception(f.message), (op) => op);
+});
 
 // ── Use Cases ──────────────────────────────────────────────────────────────
 

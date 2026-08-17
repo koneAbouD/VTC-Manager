@@ -109,8 +109,9 @@ public class FinanceController {
 
     @GetMapping("/compte-resultat/par-vehicule")
     public List<MargeVehiculeResponse> getMargesParVehicule(
-            @RequestParam int annee, @RequestParam int mois) {
-        return getMargesParVehiculeUseCase.executer(annee, mois).stream()
+            @RequestParam int annee, @RequestParam int mois,
+            @RequestParam(defaultValue = "CAISSE") BaseComptable base) {
+        return getMargesParVehiculeUseCase.executer(annee, mois, base).stream()
                 .map(m -> new MargeVehiculeResponse(m.getVehiculeId(), m.getImmatriculation(),
                         m.getProduits(), m.getChargesVariables(), m.getMarge(),
                         m.getDotationAmortissement(), m.getMargeNette(), m.getJoursImmobilisation()))

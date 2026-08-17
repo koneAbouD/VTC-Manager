@@ -8,6 +8,7 @@ import '../providers/ligne_recette_provider.dart';
 import 'encaissement_form_page.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../screens/finance/finance_refresh.dart';
@@ -69,50 +70,34 @@ class _DetailBody extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
-        PremiumHero(
-          amount: fmt.format(ligne.montantAttendu ?? ligne.montantEncaisse),
-          footerIcon: Icons.directions_car_outlined,
-          footer: [
-            ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}',
-            if (ligne.chauffeurNom != null) ligne.chauffeurNom!,
-          ].join('  ·  '),
-          chips: [
-            PremiumChip(statutLabel, statutColor),
-            if (restant != null && restant > 0)
-              PremiumChip('Restant ${fmt.format(restant)}', AppColors.warning),
-          ],
-        ),
-        const SizedBox(height: 14),
-        PremiumSection(
-          title: 'Recette',
+        // Le statut n'est plus une ligne d'info : le badge de l'en-tête le dit
+        // déjà, et le répéter en dessous n'apprenait rien.
+        DetailHeroCard(
           icon: Icons.receipt_long_outlined,
-          children: [
-            PremiumRow('Date', dateFmt.format(ligne.dateRecette)),
-            PremiumRow('Véhicule',
-                ligne.vehiculeImmatriculation ?? '#${ligne.vehiculeId}'),
-            PremiumRow('Chauffeur', ligne.chauffeurNom),
-            PremiumRow('Statut', statutLabel, valueColor: statutColor),
-            PremiumRow('Motif annulation', ligne.motifAnnulation,
-                valueColor: AppColors.error),
-          ],
+          titre: fmt.format(ligne.montantAttendu ?? ligne.montantEncaisse),
+          statutLabel: statutLabel,
+          statutColor: statutColor,
         ),
-        PremiumSection(
-          title: 'Montants',
-          icon: Icons.payments_outlined,
-          children: [
-            PremiumRow('Attendu',
-                ligne.montantAttendu != null
-                    ? fmt.format(ligne.montantAttendu)
-                    : null),
-            PremiumRow('Encaissé', fmt.format(ligne.montantEncaisse),
-                valueColor: AppColors.success),
-            PremiumRow(
-              'Restant',
-              restant != null ? fmt.format(restant) : null,
-              valueColor: (restant ?? 0) > 0 ? AppColors.warning : AppColors.success,
-            ),
-          ],
-        ),
+        DetailInfoCard(children: [
+          DetailInfoRow(Icons.calendar_today_outlined, 'Date',
+              dateFmt.format(ligne.dateRecette)),
+          DetailInfoRow(Icons.directions_car_filled_rounded, 'Véhicule',
+              ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}'),
+          DetailInfoRow(
+              Icons.person_outline_rounded, 'Chauffeur', ligne.chauffeurNom),
+          DetailInfoRow(
+              Icons.payments_outlined,
+              'Attendu',
+              ligne.montantAttendu != null
+                  ? fmt.format(ligne.montantAttendu)
+                  : null),
+          DetailInfoRow(Icons.check_circle_outline_rounded, 'Encaissé',
+              fmt.format(ligne.montantEncaisse)),
+          DetailInfoRow(Icons.schedule_outlined, 'Restant',
+              restant != null ? fmt.format(restant) : null),
+          DetailInfoRow(Icons.info_outline_rounded, 'Motif annulation',
+              ligne.motifAnnulation),
+        ]),
         if (ligne.estActive && ligne.montantAttendu == null)
           PremiumButton(
             label: 'Confirmer le versement',
@@ -137,7 +122,8 @@ class _DetailBody extends ConsumerWidget {
             ),
           ]),
         const SizedBox(height: 10),
-        PremiumListHeader('Encaissements (${ligne.encaissements.length})'),
+        DetailLabel(Icons.receipt_outlined,
+            'Encaissements (${ligne.encaissements.length})'),
         if (ligne.encaissements.isEmpty)
           const PremiumEmpty('Aucun encaissement enregistré.')
         else

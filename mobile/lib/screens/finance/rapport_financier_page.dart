@@ -10,6 +10,7 @@ import '../../core/widgets/app_header.dart';
 import '../../core/utils/libelle_operation.dart';
 import '../../core/widgets/month_filter_pill.dart';
 import '../../core/widgets/responsive_field_row.dart' show kFormPhoneBreakpoint;
+import '../../features/operation_financiere/presentation/pages/operation_financiere_detail_page.dart';
 import '../home_nav_provider.dart';
 
 // ── Modèles ──────────────────────────────────────────────────────────────────
@@ -638,8 +639,24 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                 ? op.type == 'REVENU'
                 : op.type == 'DEPENSE')
             .take(10)
-            .map((op) => _OperationTile(op: op, onTap: _ouvrirOngletOperations)),
+            .map((op) => _OperationTile(op: op, onTap: () => _ouvrirDetail(op))),
       ],
+    );
+  }
+
+  /// Ouvre le détail de l'opération. Le rapport ne porte que des lignes
+  /// agrégées : la page se charge de relire l'entité à partir de l'identifiant.
+  /// Sans identifiant exploitable, on retombe sur la liste des opérations.
+  void _ouvrirDetail(OperationLigne op) {
+    if (op.id <= 0) {
+      _ouvrirOngletOperations();
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OperationFinanciereDetailPage.parId(id: op.id),
+      ),
     );
   }
 
@@ -664,8 +681,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
 class _OperationTile extends StatelessWidget {
   final OperationLigne op;
 
-  /// Ouvre l'onglet Opérations : le rapport ne connaît pas l'entité complète,
-  /// donc la ligne renvoie vers la liste plutôt que vers un détail.
+  /// Ouvre le détail de l'opération.
   final VoidCallback onTap;
 
   const _OperationTile({required this.op, required this.onTap});

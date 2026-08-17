@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
 import com.tmk.vtcmanager.application.domain.finance.AmortissementVehicule;
+import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
 import com.tmk.vtcmanager.application.domain.finance.MargeVehicule;
 
 import java.math.BigDecimal;
@@ -28,8 +29,8 @@ public interface FinanceReportingRepository {
 
     /**
      * Base engagement : produits dus de la période par date métier
-     * (recettes attendues + cotisations + pénalités AMENDE émises),
-     * lignes annulées exclues.
+     * (recettes attendues + pénalités AMENDE émises), lignes annulées exclues.
+     * Les cotisations sont un dépôt hors résultat : elles n'y figurent pas.
      */
     BigDecimal produitsEngagement(LocalDate debut, LocalDate fin);
 
@@ -46,6 +47,11 @@ public interface FinanceReportingRepository {
      */
     Optional<AmortissementVehicule> amortissementVehicule(Long vehiculeId, LocalDate date);
 
-    /** Marge sur coûts variables par véhicule (base caisse), triée décroissante. */
-    List<MargeVehicule> margesParVehicule(LocalDate debut, LocalDate fin);
+    /**
+     * Marge sur coûts variables par véhicule, triée décroissante, dans la même
+     * base que le compte de résultat : CAISSE lit les opérations encaissées et
+     * payées de la période, ENGAGEMENT les recettes et amendes dues plus les
+     * factures reçues. Seuls les montants rattachés à un véhicule sont imputés.
+     */
+    List<MargeVehicule> margesParVehicule(LocalDate debut, LocalDate fin, BaseComptable base);
 }

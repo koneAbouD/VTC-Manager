@@ -13,7 +13,8 @@ IconData iconeNotification(String type) => switch (type) {
       'ARRETE_COMPTE_DISPONIBLE' => Icons.receipt_long_rounded,
       'MAINTENANCE_A_VENIR' => Icons.build_circle_outlined,
       'RECETTE_ENCAISSEE' => Icons.payments_rounded,
-      'COTISATION_ENCAISSEE' => Icons.savings_rounded,
+      // Même icône que le bouton « Cotisations » de l'accueil.
+      'COTISATION_ENCAISSEE' => Icons.analytics_outlined,
       _ => Icons.notifications_none_rounded,
     };
 

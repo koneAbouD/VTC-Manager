@@ -8,6 +8,7 @@ import '../providers/ligne_cotisation_provider.dart';
 import 'encaissement_cotisation_form_page.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../screens/finance/finance_refresh.dart';
@@ -63,45 +64,32 @@ class _Body extends ConsumerWidget {
     final (statutLabel, statutColor) = _statut;
 
     return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), children: [
-      PremiumHero(
-        amount: fmt.format(ligne.montantDu),
-        footerIcon: Icons.directions_car_outlined,
-        footer: [
-          ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}',
-          if (ligne.chauffeurNom != null) ligne.chauffeurNom!,
-        ].join('  ·  '),
-        chips: [
-          PremiumChip(statutLabel, statutColor),
-          if (restant > 0)
-            PremiumChip('Restant ${fmt.format(restant)}', AppColors.warning),
-        ],
+      // Le statut n'est plus une ligne d'info : le badge de l'en-tête le dit
+      // déjà, et le répéter en dessous n'apprenait rien.
+      DetailHeroCard(
+        // Même icône que le bouton « Cotisations » de l'accueil.
+        icon: Icons.analytics_outlined,
+        titre: fmt.format(ligne.montantDu),
+        statutLabel: statutLabel,
+        statutColor: statutColor,
       ),
-      const SizedBox(height: 14),
-      PremiumSection(
-        title: 'Cotisation',
-        icon: Icons.savings_outlined,
-        children: [
-          PremiumRow('Cotisation', ligne.nomCotisation),
-          PremiumRow('Date', dateFmt.format(ligne.dateCotisation)),
-          PremiumRow('Véhicule',
-              ligne.vehiculeImmatriculation ?? '#${ligne.vehiculeId}'),
-          PremiumRow('Chauffeur', ligne.chauffeurNom),
-          PremiumRow('Statut', statutLabel, valueColor: statutColor),
-          PremiumRow('Motif annulation', ligne.motifAnnulation,
-              valueColor: AppColors.error),
-        ],
-      ),
-      PremiumSection(
-        title: 'Montants',
-        icon: Icons.payments_outlined,
-        children: [
-          PremiumRow('Dû', fmt.format(ligne.montantDu)),
-          PremiumRow('Encaissé', fmt.format(ligne.montantEncaisse),
-              valueColor: AppColors.success),
-          PremiumRow('Restant', fmt.format(restant),
-              valueColor: restant > 0 ? AppColors.warning : AppColors.success),
-        ],
-      ),
+      DetailInfoCard(children: [
+        DetailInfoRow(
+            Icons.label_outline_rounded, 'Cotisation', ligne.nomCotisation),
+        DetailInfoRow(Icons.calendar_today_outlined, 'Date',
+            dateFmt.format(ligne.dateCotisation)),
+        DetailInfoRow(Icons.directions_car_filled_rounded, 'Véhicule',
+            ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}'),
+        DetailInfoRow(
+            Icons.person_outline_rounded, 'Chauffeur', ligne.chauffeurNom),
+        DetailInfoRow(Icons.payments_outlined, 'Dû', fmt.format(ligne.montantDu)),
+        DetailInfoRow(Icons.check_circle_outline_rounded, 'Encaissé',
+            fmt.format(ligne.montantEncaisse)),
+        DetailInfoRow(
+            Icons.schedule_outlined, 'Restant', fmt.format(restant)),
+        DetailInfoRow(Icons.info_outline_rounded, 'Motif annulation',
+            ligne.motifAnnulation),
+      ]),
       if (ligne.estActive)
         PremiumButtonRow(buttons: [
           PremiumButton(
@@ -120,7 +108,8 @@ class _Body extends ConsumerWidget {
           ),
         ]),
       const SizedBox(height: 10),
-      PremiumListHeader('Encaissements (${ligne.encaissements.length})'),
+      DetailLabel(Icons.receipt_outlined,
+          'Encaissements (${ligne.encaissements.length})'),
       if (ligne.encaissements.isEmpty)
         const PremiumEmpty('Aucun encaissement enregistré.')
       else

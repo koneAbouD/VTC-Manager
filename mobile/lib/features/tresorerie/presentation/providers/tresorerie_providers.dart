@@ -49,12 +49,14 @@ final compteResultatProvider = FutureProvider.family<CompteResultatData,
       .getCompteResultat(annee: p.annee, mois: p.mois, base: p.base),
 );
 
-/// Marge sur coûts variables par véhicule pour (mois, annee).
+/// Marge sur coûts variables par véhicule pour (mois, annee, base). La base suit
+/// celle du compte de résultat : le détail doit se lire dans la même comptabilité
+/// que la cascade dont il est le découpage.
 final margesVehiculesProvider = FutureProvider.family<List<MargeVehiculeData>,
-    ({int annee, int mois})>(
+    ({int annee, int mois, String base})>(
   (ref, p) => ref
       .watch(_tresorerieDatasourceProvider)
-      .getMargesParVehicule(annee: p.annee, mois: p.mois),
+      .getMargesParVehicule(annee: p.annee, mois: p.mois, base: p.base),
 );
 
 /// Bilan de gestion à aujourd'hui.

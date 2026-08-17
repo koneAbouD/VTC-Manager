@@ -7,7 +7,7 @@ import 'package:pdfx/pdfx.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../../../core/widgets/detail_premium.dart';
+import '../../../../core/widgets/detail_carte.dart';
 import '../../domain/entities/contravention.dart';
 import '../providers/contravention_provider.dart';
 import 'contravention_form_page.dart';
@@ -344,61 +344,47 @@ class _ContraventionDetailPageState
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          PremiumHero(
-            amount: _fmtXof(c.montant),
-            footerIcon: Icons.directions_car_outlined,
-            footer: [
-              c.vehiculeNom ?? 'Véhicule non défini',
-              if (c.chauffeurNom != null) c.chauffeurNom!,
-            ].join('  ·  '),
-            chips: [
-              PremiumChip(statutLabel, statutColor),
-            ],
-          ),
-          const SizedBox(height: 14),
-          PremiumSection(
-            title: 'Infraction',
+          DetailHeroCard(
             icon: Icons.gavel_outlined,
-            children: [
-              PremiumRow('Numéro', c.numeroContravention),
-              PremiumRow('Code', c.codeInfraction),
-              PremiumRow("Type d'infraction", c.typeInfraction),
-              PremiumRow('Date', _fmtDate(c.dateInfraction)),
-              PremiumRow('Heure', _fmtHeure(c.heureInfraction)),
-              PremiumRow('Vitesse relevée',
-                  c.vitesseRelevee != null ? '${c.vitesseRelevee} km/h' : null),
-              PremiumRow('Lieu', c.lieu),
-              PremiumRow('Description', c.description),
-            ],
+            titre: _fmtXof(c.montant),
+            statutLabel: statutLabel,
+            statutColor: statutColor,
           ),
-          PremiumSection(
-            title: 'Véhicule et chauffeur',
-            icon: Icons.directions_car_outlined,
-            children: [
-              PremiumRow('Véhicule', c.vehiculeNom),
-              PremiumRow('Chauffeur', c.chauffeurNom),
-            ],
-          ),
-          PremiumSection(
-            title: 'Montants',
-            icon: Icons.payments_outlined,
-            children: [
-              PremiumRow('Montant', _fmtXof(c.montant), strong: true),
-              PremiumRow('Cotisation',
-                  c.cotisation != null ? _fmtXof(c.cotisation!) : null),
-              PremiumRow('Déjà payé',
-                  c.montantPaye != null ? _fmtXof(c.montantPaye!) : null),
-              PremiumRow('Reste à payer',
-                  c.isPaid ? _fmtXof(0) : _fmtXof(_reste)),
-              PremiumRow('Statut', statutLabel, valueColor: statutColor),
-              PremiumRow('Date de paiement',
-                  c.datePaiement != null ? _fmtDate(c.datePaiement!) : null),
-              // Une contravention annulée reste consultable : le motif dit
-              // pourquoi elle a cessé d'être due.
-              if (c.isCancelled)
-                PremiumRow("Motif de l'annulation", c.motifAnnulation),
-            ],
-          ),
+          DetailInfoCard(children: [
+            DetailInfoRow(
+                Icons.tag_outlined, 'Numéro', c.numeroContravention),
+            DetailInfoRow(Icons.qr_code_2_outlined, 'Code', c.codeInfraction),
+            DetailInfoRow(Icons.gavel_outlined, "Type d'infraction",
+                c.typeInfraction),
+            DetailInfoRow(Icons.calendar_today_outlined, 'Date',
+                _fmtDate(c.dateInfraction)),
+            DetailInfoRow(
+                Icons.schedule_outlined, 'Heure', _fmtHeure(c.heureInfraction)),
+            DetailInfoRow(Icons.speed_outlined, 'Vitesse relevée',
+                c.vitesseRelevee != null ? '${c.vitesseRelevee} km/h' : null),
+            DetailInfoRow(Icons.place_outlined, 'Lieu', c.lieu),
+            DetailInfoRow(
+                Icons.notes_outlined, 'Description', c.description),
+            DetailInfoRow(
+                Icons.directions_car_filled_rounded, 'Véhicule', c.vehiculeNom),
+            DetailInfoRow(
+                Icons.person_outline_rounded, 'Chauffeur', c.chauffeurNom),
+            DetailInfoRow(
+                Icons.payments_outlined, 'Montant', _fmtXof(c.montant)),
+            DetailInfoRow(Icons.savings_outlined, 'Cotisation',
+                c.cotisation != null ? _fmtXof(c.cotisation!) : null),
+            DetailInfoRow(Icons.check_circle_outline_rounded, 'Déjà payé',
+                c.montantPaye != null ? _fmtXof(c.montantPaye!) : null),
+            DetailInfoRow(Icons.hourglass_bottom_outlined, 'Reste à payer',
+                c.isPaid ? _fmtXof(0) : _fmtXof(_reste)),
+            DetailInfoRow(Icons.event_available_outlined, 'Date de paiement',
+                c.datePaiement != null ? _fmtDate(c.datePaiement!) : null),
+            // Une contravention annulée reste consultable : le motif dit
+            // pourquoi elle a cessé d'être due.
+            if (c.isCancelled)
+              DetailInfoRow(Icons.info_outline_rounded,
+                  "Motif de l'annulation", c.motifAnnulation),
+          ]),
           if (c.documentSourcePath != null && c.id != null)
             _documentCard(onTap: () => _openDocument(c.id!)),
           const SizedBox(height: 2),
