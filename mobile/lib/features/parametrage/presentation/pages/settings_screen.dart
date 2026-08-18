@@ -17,6 +17,8 @@ import '../../../jour_ferie/presentation/jours_feries_page.dart';
 import '../../../notification/presentation/pages/notifications_page.dart';
 import '../../../notification/presentation/providers/notification_providers.dart';
 import '../../../partenaire/presentation/pages/partenaires_liste_page.dart';
+import '../../../profil/presentation/pages/mon_profil_page.dart';
+import '../../../profil/presentation/providers/profil_providers.dart';
 import '../widgets/settings_tile.dart';
 import 'parametrage_hub_page.dart';
 import 'parametres_generaux_page.dart';
@@ -40,48 +42,6 @@ const double _kPillRadius = 20;
 /// Durée des transitions du bandeau (dépli, avatar, chevron). Assez lente pour
 /// rester douce à l'œil, assez courte pour ne pas faire attendre.
 const _kTransition = Duration(milliseconds: 240);
-
-/// Première lettre en majuscule, le reste inchangé — sauf si la valeur est
-/// entièrement capitalisée (« ABOU »), auquel cas elle repasse en casse
-/// normale plutôt que de crier.
-String _capitaliser(String valeur) {
-  final v = valeur.trim();
-  if (v.isEmpty) return v;
-  final base = v == v.toUpperCase() ? v.toLowerCase() : v;
-  return base[0].toUpperCase() + base.substring(1);
-}
-
-/// Identité du compte connecté, lue dans le jeton courant : il n'existe pas de
-/// fiche utilisateur côté back-office, le jeton est la seule source.
-typedef _IdentiteCompte = ({
-  String nomComplet,
-  String identifiant,
-  String email,
-});
-
-final _identiteCompteProvider = FutureProvider<_IdentiteCompte>((ref) async {
-  final token = await ref.watch(secureStorageProvider).getAccessToken();
-  final claims = JwtClaims.parse(token);
-
-  // Prénom + nom (`given_name` / `family_name`), présentés « Prénom NOM » ;
-  // à défaut le `name` complet que Keycloak compose lui-même.
-  final prenomNom = [
-    _capitaliser(claims.givenName ?? ''),
-    (claims.string('family_name') ?? '').toUpperCase(),
-  ].where((part) => part.isNotEmpty).join(' ');
-
-  final identifiant = claims.preferredUsername ?? '';
-  final email = claims.string('email') ?? '';
-
-  return (
-    nomComplet:
-        prenomNom.isNotEmpty ? prenomNom : (claims.string('name') ?? ''),
-    identifiant: identifiant,
-    // Beaucoup de comptes se connectent avec leur e-mail : on ne l'affiche
-    // qu'une fois.
-    email: email.toLowerCase() == identifiant.toLowerCase() ? '' : email,
-  );
-});
 
 /// Volets dépliables de la page : un seul reste ouvert à la fois.
 enum _Volet { profil, parametres, configurations, notifications, aide }
@@ -112,7 +72,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final isWide = MediaQuery.sizeOf(context).width >= kFormPhoneBreakpoint;
 
     final auth = ref.watch(authNotifierProvider);
-    final identite = ref.watch(_identiteCompteProvider).valueOrNull;
+
+    // Deux sources pour la même identité : la fiche du référentiel, à jour dès
+    // qu'elle a été modifiée, et le jeton — immédiat et disponible hors ligne.
+    // Le jeton reste en retard d'une modification jusqu'à son renouvellement,
+    // d'où la préférence donnée à la fiche quand elle a répondu.
+    final fiche = ref.watch(monProfilProvider).valueOrNull;
+    final identite = fiche == null
+        ? ref.watch(identiteCompteProvider).valueOrNull
+        : composerIdentite(
+            prenom: fiche.prenom,
+            nom: fiche.nom,
+            identifiant: fiche.identifiant,
+            email: fiche.email,
+          );
 
     // Le jeton porte le nom complet ; l'état d'authentification (prénom seul)
     // prend le relais tant qu'il n'est pas lu, ou s'il ne le renseigne pas.
@@ -329,11 +302,12 @@ class _ProfileHeader extends StatefulWidget {
   /// Prénom et nom du compte connecté.
   final String name;
 
-  /// Identifiant de connexion Keycloak — l'application ne dispose d'aucune
-  /// fiche utilisateur, donc d'aucun numéro de téléphone.
+  /// Identifiant de connexion Keycloak. Le bandeau s'en tient au strict
+  /// nécessaire : le reste de la fiche vit dans « Mes informations
+  /// personnelles ».
   final String identifiant;
 
-  /// Adresse e-mail du compte, si le jeton la porte et qu'elle ne fait pas
+  /// Adresse e-mail du compte, si elle est connue et qu'elle ne fait pas
   /// double emploi avec l'identifiant.
   final String email;
 
@@ -481,7 +455,7 @@ class _ProfileHeaderState extends State<_ProfileHeader>
   Widget _identite(String libelle, String initiale) {
     final t = _depli.value;
     // L'e-mail n'accompagne que le volet déplié, et seulement s'il apporte
-    // quelque chose (cf. [_identiteCompteProvider]) ; l'avatar, qui s'agrandit
+    // quelque chose (cf. [composerIdentite]) ; l'avatar, qui s'agrandit
     // d'un cran pour rester à l'échelle du bloc, suit son sort.
     final tEmail = widget.email.isEmpty ? 0.0 : t;
 
@@ -865,16 +839,17 @@ class _ActionsProfil extends StatelessWidget {
     return SettingsCard(
       sansFond: true,
       children: [
-        // Aucune fiche utilisateur n'existe côté back-office : l'entrée est
-        // affichée en retrait, comme « Notifications » et « Aide & support ».
+        // La fiche vit dans le référentiel d'identité, pas en base : l'écran
+        // lit et écrit `/v1/utilisateurs/moi`, cadré sur le jeton.
         SettingsTile(
           icon: Icons.person_outline_rounded,
           title: 'Mes informations personnelles',
           description: avecDescriptions
-              ? 'Nom, identifiant de connexion et adresse e-mail'
+              ? 'Nom, adresse e-mail et téléphone du compte'
               : null,
-          trailing:
-              const Icon(Icons.chevron_right_rounded, color: AppColors.hint),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const MonProfilPage()),
+          ),
         ),
         SettingsTile(
           icon: Icons.dialpad_rounded,

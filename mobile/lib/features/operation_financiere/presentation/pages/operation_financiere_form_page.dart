@@ -818,7 +818,11 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          // Retrait bas incluant l'inset de la barre de navigation Android
+          // (gestes / 3 boutons) : sans lui, le dernier champ du formulaire
+          // passe dessous et devient difficile à atteindre.
+          padding: EdgeInsets.fromLTRB(
+              16, 16, 16, 32 + MediaQuery.of(context).padding.bottom),
           children: [
             if (_submitError != null) ...[
               AppErrorBanner(

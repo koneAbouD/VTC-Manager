@@ -32,6 +32,18 @@ abstract final class FinanceTab {
 final financeTabIndexProvider =
     StateProvider<int>((ref) => FinanceTab.tresorerie);
 
+/// Vrai quand la ligne « montant du solde + bouton Encaisser » de la carte
+/// (Accueil) est sortie de l'écran par le haut : l'en-tête prend alors le
+/// relais. Piloté par le scroll d'AccueilScreen, seul lien avec HomeScreen qui
+/// porte l'en-tête.
+final soldeHorsEcranProvider = StateProvider<bool>((ref) => false);
+
+/// Solde tel que l'affiche la carte de l'Accueil : montant formaté, « •••••• »
+/// quand l'œil est fermé, « … » au premier chargement d'une période. Publié par
+/// la carte pour que l'en-tête le reprenne à l'identique, sans refaire ni le
+/// calcul de période ni le formatage.
+final soldeAccueilTexteProvider = StateProvider<String>((ref) => '');
+
 /// Filtre par type appliqué à l'onglet Opérations ('REVENU' / 'DEPENSE'),
 /// null = tous. Permet à un autre écran (ex. « Tout afficher » du Rapport
 /// financier) d'ouvrir l'onglet Opérations déjà filtré.

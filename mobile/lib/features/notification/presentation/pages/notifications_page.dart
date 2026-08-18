@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../data/notification_api.dart';
-import '../notification_destination.dart';
 import '../notification_style.dart';
 import '../providers/notification_providers.dart';
 
@@ -150,7 +149,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 )
               : _ListeGroupee(
                   journees: _parJournee(liste),
-                  onTap: _ouvrir,
+                  onTap: _marquerLue,
                 ),
         ),
       ],
@@ -173,28 +172,18 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     ref.invalidate(centreNotificationsProvider);
   }
 
-  Future<void> _ouvrir(NotificationItem notification) async {
-    if (!notification.lue) {
-      // Un marquage qui échoue ne doit pas retenir la navigation : la
-      // notification reste non lue, ce qui est la vérité, et l'écran demandé
-      // s'ouvre quand même.
-      try {
-        await ref.read(notificationApiProvider).marquerLue(notification.id);
-        ref.invalidate(centreNotificationsProvider);
-      } catch (_) {
-        // Sans conséquence pour la suite.
-      }
+  /// Un appui vaut accusé de lecture, rien de plus : la ligne perd son fond
+  /// teinté et sa pastille, et l'on reste sur la liste. Le texte complet est
+  /// déjà sous les yeux — partir vers un autre écran faisait perdre le fil de
+  /// ce qu'on était en train de dépiler.
+  Future<void> _marquerLue(NotificationItem notification) async {
+    if (notification.lue) return;
+    try {
+      await ref.read(notificationApiProvider).marquerLue(notification.id);
+      ref.invalidate(centreNotificationsProvider);
+    } catch (_) {
+      // Sans conséquence : la notification reste non lue, ce qui est la vérité.
     }
-
-    if (!mounted) return;
-    final ecran = ecranNotification(notification.type);
-    // Type sans écran associé : on est déjà là où le texte complet s'affiche,
-    // il n'y a rien de plus à montrer.
-    if (ecran == null) return;
-
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => ecran),
-    );
   }
 }
 
@@ -388,18 +377,17 @@ class _Ligne extends StatelessWidget {
                     ),
                     // Le détail — chauffeur, véhicule, montants — n'existe que
                     // sur cet écran : il n'a jamais été poussé vers le
-                    // téléphone. C'est ce qui distingue deux encaissements
-                    // successifs, d'où l'appui typographique.
+                    // téléphone. Il se lit dans la continuité du corps, au même
+                    // style : le noir et la graisse restent au titre seul.
                     if (notification.detail case final detail?
                         when detail.isNotEmpty) ...[
                       const SizedBox(height: 5),
                       Text(
                         detail,
                         style: const TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 13,
                           height: 1.35,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.dark,
+                          color: AppColors.label,
                         ),
                       ),
                     ],

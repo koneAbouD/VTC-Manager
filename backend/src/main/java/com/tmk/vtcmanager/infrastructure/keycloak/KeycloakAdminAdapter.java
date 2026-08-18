@@ -29,6 +29,9 @@ import java.util.stream.Collectors;
 @Component
 public class KeycloakAdminAdapter implements KeycloakAdminPort {
 
+    /** Attribut Keycloak portant le téléphone, posé dès la création du compte. */
+    private static final String ATTRIBUT_TELEPHONE = "phoneNumber";
+
     private final Keycloak keycloak;
     private final String realm;
 
@@ -192,6 +195,7 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
             if (userInfo.getFirstName() != null) user.setFirstName(userInfo.getFirstName());
             if (userInfo.getLastName() != null) user.setLastName(userInfo.getLastName());
             if (userInfo.getUsername() != null) user.setUsername(userInfo.getUsername());
+            if (userInfo.getPhone() != null) appliquerTelephone(user, userInfo.getPhone());
 
             userResource.update(user);
             log.info("Utilisateur mis à jour: {}", userId);
@@ -200,7 +204,32 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
         } catch (NotFoundException e) {
             throw new com.tmk.vtcmanager.application.exception.ResourceNotFoundException(
                     "Utilisateur non trouvé: " + userId);
+        } catch (jakarta.ws.rs.ClientErrorException e) {
+            // Keycloak refuse un e-mail ou un identifiant déjà porté par un autre
+            // compte : sans ce filet, le 409 remonterait en erreur serveur muette.
+            if (e.getResponse() != null && e.getResponse().getStatus() == 409) {
+                throw new com.tmk.vtcmanager.application.exception.ResourceAlreadyExistsException(
+                        "Cet e-mail ou cet identifiant est déjà utilisé par un autre compte");
+            }
+            throw e;
         }
+    }
+
+    /**
+     * Pose (ou retire) le téléphone dans les attributs, sans écraser les autres.
+     * Une valeur vide vaut effacement : c'est ainsi que le formulaire signale
+     * un numéro supprimé.
+     */
+    private void appliquerTelephone(UserRepresentation user, String phone) {
+        java.util.Map<String, List<String>> attributs = user.getAttributes() == null
+                ? new java.util.HashMap<>()
+                : new java.util.HashMap<>(user.getAttributes());
+        if (phone.isBlank()) {
+            attributs.remove(ATTRIBUT_TELEPHONE);
+        } else {
+            attributs.put(ATTRIBUT_TELEPHONE, List.of(phone.trim()));
+        }
+        user.setAttributes(attributs);
     }
 
     @Override
@@ -299,8 +328,21 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
+                .phone(premierAttribut(user, ATTRIBUT_TELEPHONE))
                 .enabled(user.isEnabled())
                 .build();
+    }
+
+    /**
+     * Première valeur d'un attribut, ou {@code null}. La liste brève renvoyée
+     * par {@code users().list()} ne porte pas les attributs : le téléphone n'est
+     * donc garanti que sur les lectures unitaires ({@link #getUserById}).
+     */
+    private String premierAttribut(UserRepresentation user, String cle) {
+        var attributs = user.getAttributes();
+        if (attributs == null) return null;
+        var valeurs = attributs.get(cle);
+        return (valeurs == null || valeurs.isEmpty()) ? null : valeurs.get(0);
     }
 
     private String extractUserId(Response response) {

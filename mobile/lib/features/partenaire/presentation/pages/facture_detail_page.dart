@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/detail_carte.dart';
+import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import '../../domain/entities/facture_partenaire.dart';
@@ -73,116 +75,80 @@ class _Corps extends ConsumerWidget {
     }
   }
 
+  /// Couleur du statut, reprise par la pastille et le badge de l'en-tête.
+  Color get _statutColor => switch (facture.statut) {
+        StatutFacture.aPayer => AppColors.warning,
+        StatutFacture.partiellementPayee => AppColors.info,
+        StatutFacture.payee => AppColors.success,
+        StatutFacture.annulee => AppColors.error,
+      };
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reglements = ref.watch(reglementsFactureProvider(facture.id!));
     final retard = facture.joursDeRetard(DateTime.now());
+    final dateFmt = DateFormat('dd/MM/yyyy');
+    final annulable = facture.statut.estOuverte && facture.montantPaye == 0;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      padding: EdgeInsets.fromLTRB(
+          16, 16, 16, 32 + MediaQuery.of(context).padding.bottom),
       children: [
-        // ── Ce qu'il reste à payer, en tête : c'est la question du jour.
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: facture.statut.estOuverte
-                ? AppColors.surface
-                : const Color(0xFFF2F5F2),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(facture.partenaireNom ?? 'Partenaire',
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.dark)),
-              const SizedBox(height: 2),
-              Text(facture.reference ?? '',
-                  style:
-                      const TextStyle(fontSize: 11.5, color: AppColors.hint)),
-              const SizedBox(height: 14),
-              Text(
-                  facture.statut.estOuverte
-                      ? CurrencyFormatter.format(facture.restantDu)
-                      : facture.statut.label,
-                  style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.dark)),
-              const SizedBox(height: 2),
-              Text(facture.statut.estOuverte ? 'Restant dû' : 'Facture soldée',
-                  style: const TextStyle(fontSize: 12, color: AppColors.label)),
-              if (retard > 0) ...[
-                const SizedBox(height: 10),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFBE9E9),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text('En retard de $retard jour(s)',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFB71C1C))),
-                ),
-              ],
-            ],
-          ),
+        // Tant que la facture pèse sur la dette, c'est le restant dû qui est la
+        // question du jour ; une fois soldée, son montant la nomme mieux qu'un
+        // zéro.
+        DetailHeroCard(
+          icon: Icons.receipt_long_outlined,
+          titre: CurrencyFormatter.format(
+              facture.statut.estOuverte ? facture.restantDu : facture.montant),
+          statutLabel: facture.statut.label,
+          statutColor: _statutColor,
         ),
-        const SizedBox(height: 12),
-
-        _Bloc(
-          titre: 'La facture',
-          lignes: [
-            ('Montant', CurrencyFormatter.format(facture.montant)),
-            ('Déjà réglé', CurrencyFormatter.format(facture.montantPaye)),
-            (
-              'Date de la facture',
-              DateFormat('dd/MM/yyyy').format(facture.dateFacture)
-            ),
-            ('Échéance', DateFormat('dd/MM/yyyy').format(facture.dateEcheance)),
-            if (facture.numeroPiece?.isNotEmpty == true)
-              ('N° de pièce', facture.numeroPiece!),
-            if (facture.categorieLibelle != null)
-              ('Catégorie', facture.categorieLibelle!),
-            if (facture.vehiculeImmatriculation != null)
-              ('Véhicule', facture.vehiculeImmatriculation!),
-          ],
-        ),
+        DetailInfoCard(children: [
+          DetailInfoRow(Icons.store_outlined, 'Partenaire',
+              facture.partenaireNom ?? 'Partenaire'),
+          DetailInfoRow(Icons.tag_outlined, 'Référence', facture.reference),
+          DetailInfoRow(Icons.payments_outlined, 'Montant',
+              CurrencyFormatter.format(facture.montant)),
+          DetailInfoRow(Icons.check_circle_outline_rounded, 'Déjà réglé',
+              CurrencyFormatter.format(facture.montantPaye)),
+          DetailInfoRow(Icons.hourglass_bottom_outlined, 'Restant dû',
+              CurrencyFormatter.format(facture.restantDu)),
+          DetailInfoRow(Icons.calendar_today_outlined, 'Date de la facture',
+              dateFmt.format(facture.dateFacture)),
+          DetailInfoRow(Icons.event_outlined, 'Échéance',
+              dateFmt.format(facture.dateEcheance)),
+          // Le retard n'est plus un bandeau rouge : il se lit dans la suite des
+          // dates, là où on cherche l'échéance.
+          DetailInfoRow(Icons.warning_amber_rounded, 'Retard',
+              retard > 0 ? '$retard jour(s)' : null),
+          DetailInfoRow(
+              Icons.description_outlined, 'N° de pièce', facture.numeroPiece),
+          DetailInfoRow(Icons.label_outline_rounded, 'Catégorie',
+              facture.categorieLibelle),
+          DetailInfoRow(Icons.directions_car_filled_rounded, 'Véhicule',
+              facture.vehiculeImmatriculation),
+          DetailInfoRow(
+              Icons.notes_outlined, 'Description', facture.description),
+          DetailInfoRow(Icons.info_outline_rounded, "Motif d'annulation",
+              facture.motifAnnulation),
+        ]),
 
         // Le détail de l'intervention : ce que cette dette paie exactement.
         if (facture.lignes.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _Bloc(
-            titre: facture.issueDeMaintenance
-                ? "Ce que couvre la dette (intervention)"
-                : 'Ce que couvre la dette',
-            lignes: [
-              for (final l in facture.lignes)
-                (l.libelle, CurrencyFormatter.format(l.montant)),
-            ],
-          ),
+          const SizedBox(height: 2),
+          DetailLabel(
+              Icons.checklist_rounded,
+              facture.issueDeMaintenance
+                  ? 'Ce que couvre la dette (intervention)'
+                  : 'Ce que couvre la dette'),
+          DetailInfoCard(children: [
+            for (final l in facture.lignes)
+              DetailInfoRow(Icons.build_outlined, l.libelle,
+                  CurrencyFormatter.format(l.montant)),
+          ]),
         ],
 
-        if (facture.description?.isNotEmpty == true) ...[
-          const SizedBox(height: 12),
-          _Bloc(titre: 'Description', texte: facture.description!),
-        ],
-
-        if (facture.motifAnnulation?.isNotEmpty == true) ...[
-          const SizedBox(height: 12),
-          _Bloc(
-              titre: 'Motif d\'annulation',
-              texte: facture.motifAnnulation!,
-              accent: AppColors.error),
-        ],
-
-        const SizedBox(height: 12),
         // ── Historique : ce qui explique le restant dû.
         reglements.when(
           loading: () => const Center(
@@ -198,37 +164,34 @@ class _Corps extends ConsumerWidget {
           data: (liste) => _Historique(reglements: liste),
         ),
 
-        const SizedBox(height: 20),
-        if (facture.statut.estOuverte) ...[
-          FilledButton.icon(
-            onPressed: () => showReglementFactureDialog(context, ref, facture),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: const Icon(Icons.payments_outlined, size: 18),
-            label: const Text('Régler cette facture',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 10),
+        const SizedBox(height: 8),
+        if (facture.statut.estOuverte)
           // L'annulation n'a de sens que sur une facture jamais réglée : au-delà,
           // il faut d'abord extourner le règlement.
-          if (facture.montantPaye == 0)
-            OutlinedButton.icon(
-              onPressed: () => _annuler(context, ref),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: const BorderSide(color: AppColors.border),
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: const Icon(Icons.block_rounded, size: 18),
-              label: const Text('Annuler la facture'),
-            ),
-        ],
+          annulable
+              ? PremiumButtonRow(buttons: [
+                  PremiumButton(
+                    label: 'Annuler',
+                    icon: Icons.block_rounded,
+                    color: AppColors.error,
+                    filled: false,
+                    expanded: true,
+                    onPressed: () => _annuler(context, ref),
+                  ),
+                  PremiumButton(
+                    label: 'Régler',
+                    icon: Icons.payments_outlined,
+                    expanded: true,
+                    onPressed: () =>
+                        showReglementFactureDialog(context, ref, facture),
+                  ),
+                ])
+              : PremiumButton(
+                  label: 'Régler cette facture',
+                  icon: Icons.payments_outlined,
+                  onPressed: () =>
+                      showReglementFactureDialog(context, ref, facture),
+                ),
       ],
     );
   }
@@ -240,125 +203,73 @@ class _Historique extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (reglements.isEmpty) {
-      return const _Bloc(
-          titre: 'Règlements', texte: 'Aucun règlement pour le moment.');
-    }
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Règlements',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.label)),
-          const SizedBox(height: 10),
-          ...reglements.map((r) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Icon(
-                        r.extourne
-                            ? Icons.undo_rounded
-                            : Icons.check_circle_outline_rounded,
-                        size: 16,
-                        color: r.extourne ? AppColors.hint : AppColors.primary),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(DateFormat('dd/MM/yyyy').format(r.date),
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  color: r.extourne
-                                      ? AppColors.hint
-                                      : AppColors.dark,
-                                  decoration: r.extourne
-                                      ? TextDecoration.lineThrough
-                                      : null)),
-                          if (r.modePaiement != null)
-                            Text(
-                                r.modePaiement == 'MOBILE_MONEY'
-                                    ? 'Mobile money'
-                                    : 'Espèces',
-                                style: const TextStyle(
-                                    fontSize: 11, color: AppColors.hint)),
-                        ],
-                      ),
-                    ),
-                    Text(CurrencyFormatter.format(r.montant),
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: r.extourne ? AppColors.hint : AppColors.dark,
-                            decoration: r.extourne
-                                ? TextDecoration.lineThrough
-                                : null)),
-                  ],
-                ),
-              )),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 2),
+        DetailLabel(Icons.receipt_outlined, 'Règlements (${reglements.length})'),
+        if (reglements.isEmpty)
+          const DetailInfoCard(children: [
+            DetailInfoRow(Icons.hourglass_empty_rounded, 'Règlements',
+                'Aucun pour le moment'),
+          ])
+        else
+          DetailInfoCard(
+            children: [
+              for (final r in reglements) _ligne(r),
+            ],
+          ),
+      ],
     );
   }
-}
 
-/// Bloc d'information : soit une liste libellé/valeur, soit un texte libre.
-class _Bloc extends StatelessWidget {
-  final String titre;
-  final List<(String, String)>? lignes;
-  final String? texte;
-  final Color? accent;
-
-  const _Bloc({required this.titre, this.lignes, this.texte, this.accent});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent ?? AppColors.border),
-      ),
-      child: Column(
+  /// Un règlement : date et mode à gauche, montant à droite. Une extourne reste
+  /// visible mais barrée — c'est ce qui explique un restant dû qui remonte.
+  Widget _ligne(ReglementFacture r) {
+    final couleur = r.extourne ? AppColors.hint : AppColors.dark;
+    final barre = r.extourne ? TextDecoration.lineThrough : null;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(titre,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: accent ?? AppColors.label)),
-          const SizedBox(height: 10),
-          if (texte != null)
-            Text(texte!,
-                style: const TextStyle(fontSize: 13, color: AppColors.dark)),
-          if (lignes != null)
-            ...lignes!.map((l) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(l.$1,
-                            style: const TextStyle(
-                                fontSize: 12.5, color: AppColors.label)),
-                      ),
-                      Text(l.$2,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.dark)),
-                    ],
-                  ),
-                )),
+          Icon(
+              r.extourne
+                  ? Icons.undo_rounded
+                  : Icons.check_circle_outline_rounded,
+              size: 15,
+              color: AppColors.label),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(DateFormat('dd/MM/yyyy').format(r.date),
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.label,
+                        decoration: barre)),
+                if (r.modePaiement != null)
+                  Text(
+                      r.modePaiement == 'MOBILE_MONEY'
+                          ? 'Mobile money'
+                          : 'Espèces',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.hint)),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(CurrencyFormatter.format(r.montant),
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: couleur,
+                    decoration: barre)),
+          ),
         ],
       ),
     );

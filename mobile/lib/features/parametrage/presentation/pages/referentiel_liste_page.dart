@@ -249,20 +249,31 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
           height: 2,
           child: _busy ? const LinearProgressIndicator(minHeight: 2) : null,
         ),
-        if (afficherRecherche) _barreRecherche(liste.length),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _rafraichir,
             color: AppColors.primary,
-            child: filtree.isEmpty
-                ? _vide(rechercheActive: q.isNotEmpty)
-                : ListView.separated(
+            // La recherche est le premier sliver, pas un bandeau figé : elle
+            // défile avec la liste et lui rend sa place dès qu'on la parcourt.
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                if (afficherRecherche)
+                  SliverToBoxAdapter(child: _barreRecherche(liste.length)),
+                if (filtree.isEmpty)
+                  SliverToBoxAdapter(
+                      child: _vide(rechercheActive: q.isNotEmpty))
+                else
+                  SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: filtree.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) => _tuile(filtree[i]),
+                    sliver: SliverList.separated(
+                      itemCount: filtree.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) => _tuile(filtree[i]),
+                    ),
                   ),
+              ],
+            ),
           ),
         ),
       ],
@@ -309,32 +320,30 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
     );
   }
 
+  /// Message d'absence de résultat. Le pull-to-refresh reste acquis : c'est le
+  /// [CustomScrollView] qui porte désormais le défilement.
   Widget _vide({required bool rechercheActive}) {
-    // Scrollable pour conserver le pull-to-refresh même quand c'est vide.
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.22),
-        Center(
-          child: Column(
-            children: [
-              Icon(
-                  rechercheActive
-                      ? Icons.search_off_rounded
-                      : Icons.inbox_rounded,
-                  size: 44,
-                  color: AppColors.hint),
-              const SizedBox(height: 10),
-              Text(
+    return Padding(
+      padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.22),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
                 rechercheActive
-                    ? 'Aucun résultat pour « $_query ».'
-                    : 'Aucune valeur. Ajoutez-en une.',
-                style: const TextStyle(color: AppColors.label),
-              ),
-            ],
-          ),
+                    ? Icons.search_off_rounded
+                    : Icons.inbox_rounded,
+                size: 44,
+                color: AppColors.hint),
+            const SizedBox(height: 10),
+            Text(
+              rechercheActive
+                  ? 'Aucun résultat pour « $_query ».'
+                  : 'Aucune valeur. Ajoutez-en une.',
+              style: const TextStyle(color: AppColors.label),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 

@@ -8,6 +8,7 @@ public record UserInfoDto(
         String email,
         String firstName,
         String lastName,
+        String phone,
         boolean enabled,
         List<String> roles
 ) {}

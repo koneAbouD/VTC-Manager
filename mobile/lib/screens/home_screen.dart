@@ -85,11 +85,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           showBack: false,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           leading: headerAction,
+          // Accueil : relais du bouton « Encaisser » de la carte solde, qui
+          // s'affiche ici dès qu'il quitte l'écran au scroll.
+          action: currentIndex == _accueilNavIndex
+              ? const EncaisserHeaderButton()
+              : null,
           // Flotte et Finances posent leurs sous-onglets sur la ligne de
           // l'en-tête, restée libre (ni titre ni action sur ces onglets).
           center: switch (currentIndex) {
             _flotteNavIndex => const FleetTabsPills(),
             _financesNavIndex => const FinanceTabsPills(),
+            // Accueil : le solde y remonte au scroll, sur grand écran seulement.
+            _accueilNavIndex => const SoldeHeaderLabel(),
             _ => null,
           },
         ),

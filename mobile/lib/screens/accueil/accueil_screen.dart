@@ -20,11 +20,81 @@ import '../home_nav_provider.dart';
 import '../../features/indisponibilite/presentation/pages/indisponibilites_page.dart';
 import '../../core/widgets/date_filter_dialogs.dart';
 
-class AccueilScreen extends ConsumerWidget {
+class AccueilScreen extends ConsumerStatefulWidget {
   const AccueilScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AccueilScreen> createState() => _AccueilScreenState();
+}
+
+class _AccueilScreenState extends ConsumerState<AccueilScreen> {
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _listeKey = GlobalKey();
+  final GlobalKey _ligneSoldeKey = GlobalKey();
+
+  /// Offset de scroll à partir duquel la ligne « montant + Encaisser » de la
+  /// carte solde est entièrement passée sous l'en-tête. Mesuré tant que la
+  /// ligne est montée, et conservé ensuite : la liste recycle ce qui sort du
+  /// viewport, la mesure n'est donc plus possible une fois la ligne loin
+  /// au-dessus.
+  double? _seuilMasquage;
+
+  /// Évite d'empiler plusieurs mesures sur un même frame (le scroll notifie
+  /// bien plus souvent qu'il n'y a d'images à l'écran).
+  bool _mesurePlanifiee = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_planifierMesure);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Reporte la mesure après le rendu : pendant le scroll, les positions des
+  /// RenderBox datent encore du frame précédent alors que l'offset, lui, est
+  /// déjà à jour — les comparer donnerait un seuil faux d'une image.
+  void _planifierMesure() {
+    if (_mesurePlanifiee) return;
+    _mesurePlanifiee = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mesurePlanifiee = false;
+      if (mounted) _mesurerEtAppliquer();
+    });
+  }
+
+  void _mesurerEtAppliquer() {
+    final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+
+    final ligne =
+        _ligneSoldeKey.currentContext?.findRenderObject() as RenderBox?;
+    final liste = _listeKey.currentContext?.findRenderObject() as RenderBox?;
+    if (ligne != null &&
+        ligne.hasSize &&
+        ligne.attached &&
+        liste != null &&
+        liste.hasSize) {
+      final basLigne = ligne.localToGlobal(Offset.zero).dy + ligne.size.height;
+      final hautListe = liste.localToGlobal(Offset.zero).dy;
+      _seuilMasquage = offset + basLigne - hautListe;
+    }
+
+    final masque = _seuilMasquage != null && offset >= _seuilMasquage!;
+    if (ref.read(soldeHorsEcranProvider) != masque) {
+      ref.read(soldeHorsEcranProvider.notifier).state = masque;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // La carte solde change de hauteur au fil des chargements (montants, filtre
+    // de période) : on re-mesure à chaque rendu plutôt qu'une seule fois.
+    _planifierMesure();
+
     final money = NumberFormat.currency(
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
 
@@ -54,11 +124,14 @@ class AccueilScreen extends ConsumerWidget {
       onRefresh: () =>
           ref.read(operationFinanciereNotifierProvider.notifier).loadAll(),
       child: ListView(
+        key: _listeKey,
+        controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 2, 16, 80),
         children: [
           // ── Carte solde ─────────────────────────────────────────────────
           _SoldeCard(
             money: money,
+            ligneSoldeKey: _ligneSoldeKey,
           ),
           const SizedBox(height: 24),
 
@@ -110,6 +183,104 @@ class AccueilScreen extends ConsumerWidget {
   }
 }
 
+// ── Relais de la carte solde dans l'en-tête ───────────────────────────────────
+
+/// Largeur à partir de laquelle l'en-tête a la place d'accueillir le montant du
+/// solde en plus du menu et du bouton « Encaisser ». Même seuil que la grille
+/// des accès rapides.
+const double _seuilTablette = 600;
+
+/// Solde repris dans l'en-tête (HomeScreen) quand la carte est sortie de
+/// l'écran. Réservé aux grands écrans : sur téléphone, la barre est déjà prise
+/// par le menu et le bouton « Encaisser ».
+class SoldeHeaderLabel extends ConsumerWidget {
+  const SoldeHeaderLabel({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final large = MediaQuery.sizeOf(context).width >= _seuilTablette;
+    final visible = large && ref.watch(soldeHorsEcranProvider);
+    final texte = ref.watch(soldeAccueilTexteProvider);
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(scale: animation, child: child),
+      ),
+      child: visible && texte.isNotEmpty
+          ? Text(
+              texte,
+              // Clé sur la valeur : le montant se remplace en fondu quand la
+              // période change ou qu'on rouvre l'œil.
+              key: ValueKey(texte),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              // Gabarit du titre d'en-tête (AppHeader).
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: AppColors.dark,
+                letterSpacing: -0.3,
+              ),
+            )
+          : const SizedBox(key: ValueKey('vide')),
+    );
+  }
+}
+
+/// Bouton « Encaisser » de l'en-tête (HomeScreen) : n'apparaît que lorsque
+/// celui de la carte solde est sorti de l'écran par le haut, pour garder
+/// l'encaissement rapide à portée quel que soit le scroll.
+class EncaisserHeaderButton extends ConsumerWidget {
+  const EncaisserHeaderButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final visible = ref.watch(soldeHorsEcranProvider);
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(scale: animation, child: child),
+      ),
+      child: visible
+          ? GestureDetector(
+              key: const ValueKey('encaisser'),
+              onTap: () => showEncaissementRapideDialog(context),
+              child: Container(
+                // Même gabarit que les boutons d'en-tête (AppHeaderAction),
+                // en vert : c'est la même action que sur la carte.
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade600,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, size: 16, color: Colors.white),
+                    SizedBox(width: 6),
+                    Text(
+                      'Encaisser',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : const SizedBox(key: ValueKey('vide'), height: 38),
+    );
+  }
+}
+
 // ── Helpers carte solde ───────────────────────────────────────────────────────
 
 enum _CardFiltre { mois, semaine, jour }
@@ -125,8 +296,13 @@ String _cardFiltreLabel(_CardFiltre m) => switch (m) {
 class _SoldeCard extends ConsumerStatefulWidget {
   final NumberFormat money;
 
+  /// Clé posée sur la ligne « montant + Encaisser » : sert à l'Accueil pour
+  /// savoir à quel offset de scroll elle quitte l'écran.
+  final Key ligneSoldeKey;
+
   const _SoldeCard({
     required this.money,
+    required this.ligneSoldeKey,
   });
 
   @override
@@ -347,6 +523,17 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
       return widget.money.format(v);
     }
 
+    // Le solde est republié pour l'en-tête, qui le reprend tel quel quand la
+    // carte sort de l'écran (après le rendu : on ne touche pas à un provider
+    // pendant un build).
+    final texteSolde = afficher(solde, '••••••');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(soldeAccueilTexteProvider) != texteSolde) {
+        ref.read(soldeAccueilTexteProvider.notifier).state = texteSolde;
+      }
+    });
+
     return Container(
       decoration: BoxDecoration(
         gradient: AppColors.cardBorderGradient,
@@ -443,6 +630,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
 
             // ── Ligne 2 : montant (gauche) | Encaisser (droite) — symétriques ─
             Row(
+              key: widget.ligneSoldeKey,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Moitié gauche : montant + œil

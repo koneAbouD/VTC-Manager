@@ -195,7 +195,10 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
     return RefreshIndicator(
       onRefresh: _charger,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        // Retrait bas incluant l'inset de la barre de navigation Android
+        // (gestes / 3 boutons) : sans lui, le dernier jour férié passe dessous.
+        padding: EdgeInsets.fromLTRB(
+            16, 4, 16, 24 + MediaQuery.of(context).padding.bottom),
         itemCount: _feries.length,
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, i) => _carte(_feries[i]),
@@ -388,12 +391,19 @@ class _AjoutJourFerieSheetState extends State<_AjoutJourFerieSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    // Clavier ouvert : c'est lui qui commande le dégagement. Clavier fermé :
+    // c'est la barre de navigation Android. On retient le plus grand des deux
+    // plutôt que leur somme, qui creuserait un vide pendant la saisie.
+    final degagement = mq.viewInsets.bottom > mq.padding.bottom
+        ? mq.viewInsets.bottom
+        : mq.padding.bottom;
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
         top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom: degagement + 20,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

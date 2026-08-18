@@ -17,6 +17,8 @@ public class UserInfo {
     private String email;
     private String firstName;
     private String lastName;
+    /** Téléphone, stocké côté Keycloak dans l'attribut {@code phoneNumber}. */
+    private String phone;
     private boolean enabled;
     private List<String> roles;
 }
