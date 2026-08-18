@@ -54,11 +54,6 @@ public class MaintenanceEntity extends AbstractAuditEntity {
     @Column(length = 30)
     private MaintenanceStatus statut;
 
-    /** Statut d'avant complétion, pour restaurer la maintenance à l'annulation. */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "statut_avant_completion", length = 30)
-    private MaintenanceStatus statutAvantCompletion;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vehicule_id")
     private VehiculeEntity vehicule;

@@ -108,8 +108,10 @@ class _Body extends ConsumerWidget {
           ),
         ]),
       const SizedBox(height: 10),
+      // Le compteur ne retient que les versements qui tiennent encore : un
+      // encaissement extourné reste listé, barré, mais il ne compte plus.
       DetailLabel(Icons.receipt_outlined,
-          'Encaissements (${ligne.encaissements.length})'),
+          'Encaissements (${ligne.encaissements.where((e) => !e.estAnnule).length})'),
       if (ligne.encaissements.isEmpty)
         const PremiumEmpty('Aucun encaissement enregistré.')
       else
@@ -120,6 +122,8 @@ class _Body extends ConsumerWidget {
                   '${e.modeEncaissement.label} · ${dateFmt.format(e.dateEncaissement)}'
                   '${e.reference != null ? ' · ${e.reference}' : ''}',
               commentaire: e.commentaire,
+              annule: e.estAnnule,
+              motifAnnulation: e.motifAnnulation,
             )),
     ]);
   }

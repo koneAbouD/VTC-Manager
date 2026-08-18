@@ -176,6 +176,12 @@ class _DetailBody extends ConsumerWidget {
         const SizedBox(height: 8),
 
         // ── Actions (masquées si l'opération est déjà annulée) ────────────
+        //
+        // « Modifier » ne s'affiche que si le serveur accepte encore de
+        // retoucher l'écriture : un encaissement et une dépense de maintenance
+        // en sont exclus, leur montant appartient à la créance ou à
+        // l'intervention qui les a produits. Pour ceux-là, la seule voie est
+        // l'annulation, qui repositionne la source, puis la ressaisie.
         if (op.statut != StatutOperation.ANNULEE)
           PremiumButtonRow(buttons: [
             PremiumButton(
@@ -186,20 +192,21 @@ class _DetailBody extends ConsumerWidget {
               expanded: true,
               onPressed: () => _supprimer(context, ref),
             ),
-            PremiumButton(
-              label: 'Modifier',
-              icon: Icons.edit_outlined,
-              expanded: true,
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => OperationFinanciereFormPage(
-                    initialType: op.typeOperation,
-                    initial: op,
+            if (op.modifiable)
+              PremiumButton(
+                label: 'Modifier',
+                icon: Icons.edit_outlined,
+                expanded: true,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OperationFinanciereFormPage(
+                      initialType: op.typeOperation,
+                      initial: op,
+                    ),
                   ),
                 ),
               ),
-            ),
           ]),
       ],
     );

@@ -191,8 +191,8 @@ class _AccueilScreenState extends ConsumerState<AccueilScreen> {
 const double _seuilTablette = 600;
 
 /// Solde repris dans l'en-tête (HomeScreen) quand la carte est sortie de
-/// l'écran. Réservé aux grands écrans : sur téléphone, la barre est déjà prise
-/// par le menu et le bouton « Encaisser ».
+/// l'écran, avec son œil de masquage. Réservé aux grands écrans : sur
+/// téléphone, la barre est déjà prise par le menu et le bouton « Encaisser ».
 class SoldeHeaderLabel extends ConsumerWidget {
   const SoldeHeaderLabel({super.key});
 
@@ -201,6 +201,7 @@ class SoldeHeaderLabel extends ConsumerWidget {
     final large = MediaQuery.sizeOf(context).width >= _seuilTablette;
     final visible = large && ref.watch(soldeHorsEcranProvider);
     final texte = ref.watch(soldeAccueilTexteProvider);
+    final soldeVisible = ref.watch(soldeVisibleProvider);
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),
@@ -209,21 +210,49 @@ class SoldeHeaderLabel extends ConsumerWidget {
         child: ScaleTransition(scale: animation, child: child),
       ),
       child: visible && texte.isNotEmpty
-          ? Text(
-              texte,
-              // Clé sur la valeur : le montant se remplace en fondu quand la
-              // période change ou qu'on rouvre l'œil.
-              key: ValueKey(texte),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              // Gabarit du titre d'en-tête (AppHeader).
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: AppColors.dark,
-                letterSpacing: -0.3,
-              ),
+          ? Row(
+              key: const ValueKey('solde'),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: AnimatedSwitcher(
+                    // Second fondu, sur la valeur seule : le montant se
+                    // remplace quand la période change ou qu'on rouvre l'œil,
+                    // sans faire clignoter l'œil posé à côté.
+                    duration: const Duration(milliseconds: 200),
+                    child: Text(
+                      texte,
+                      key: ValueKey(texte),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      // Gabarit du titre d'en-tête (AppHeader).
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => ref.read(soldeVisibleProvider.notifier).state =
+                      !soldeVisible,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Icon(
+                      soldeVisible
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: Colors.grey.shade500,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
             )
           : const SizedBox(key: ValueKey('vide')),
     );
@@ -310,7 +339,6 @@ class _SoldeCard extends ConsumerStatefulWidget {
 }
 
 class _SoldeCardState extends ConsumerState<_SoldeCard> {
-  bool _visible = false;
   _CardFiltre _filtre = _CardFiltre.semaine;
   int _moisSelectionne = DateTime.now().month;
   int _anneeSelectionnee = DateTime.now().year;
@@ -514,11 +542,14 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
     final chargementInitial =
         soldeAsync.isLoading && soldeAsync.valueOrNull == null;
     final filtreLabel = _cardFiltreLabel(_filtre);
+    // Œil partagé avec l'en-tête, qui reprend le solde et son bouton de
+    // masquage quand la carte sort de l'écran.
+    final soldeVisible = ref.watch(soldeVisibleProvider);
 
     // Rendu d'un montant : masqué (œil fermé), « … » pendant le 1er chargement,
     // sinon la valeur formatée.
     String afficher(double v, String masque) {
-      if (!_visible) return masque;
+      if (!soldeVisible) return masque;
       if (chargementInitial) return '…';
       return widget.money.format(v);
     }
@@ -654,14 +685,15 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () =>
-                            setState(() => _visible = !_visible),
+                        onTap: () => ref
+                            .read(soldeVisibleProvider.notifier)
+                            .state = !soldeVisible,
                         behavior: HitTestBehavior.opaque,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 4),
                           child: Icon(
-                            _visible
+                            soldeVisible
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
                             color: Colors.grey.shade500,

@@ -69,6 +69,9 @@ public class PayContraventionUseCase {
                 .reference(sequenceReferenceService.suivante(
                         SequenceReferenceService.Journal.CONTRAVENTION))
                 .statut(StatutOperation.ENCAISSE)
+                // Trace du règlement : à l'annulation de l'écriture, elle seule
+                // permet de rendre la contravention à son état antérieur.
+                .contraventionId(contravention.getId())
                 .build();
 
         operationFinanciereRepository.save(operation);

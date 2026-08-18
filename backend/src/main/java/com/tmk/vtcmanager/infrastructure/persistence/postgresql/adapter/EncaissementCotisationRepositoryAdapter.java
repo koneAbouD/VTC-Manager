@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
 import com.tmk.vtcmanager.application.domain.cotisation.EncaissementCotisation;
+import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.EncaissementCotisationRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.EncaissementCotisationEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.EncaissementCotisationJpaRepository;
@@ -23,20 +24,36 @@ public class EncaissementCotisationRepositoryAdapter implements EncaissementCoti
     private final OperationFinanciereJpaRepository operationFinanciereJpaRepository;
     private final EncaissementCotisationPersistenceMapper mapper;
 
+    /**
+     * Un encaissement déjà enregistré est <b>relu puis muté</b>, jamais
+     * reconstruit : sans son identifiant, JPA insérerait un second
+     * encaissement au lieu de corriger le premier — et l'annulation, au lieu
+     * de retirer le versement de la ligne, l'y compterait deux fois.
+     */
     @Override
     @Transactional
     public EncaissementCotisation save(EncaissementCotisation encaissement) {
-        EncaissementCotisationEntity entity = EncaissementCotisationEntity.builder()
-                .ligneCotisation(ligneCotisationJpaRepository.getReferenceById(encaissement.getLigneCotisationId()))
-                .operationFinanciere(encaissement.getOperationFinanciereId() != null
-                        ? operationFinanciereJpaRepository.getReferenceById(encaissement.getOperationFinanciereId())
-                        : null)
-                .montant(encaissement.getMontant())
-                .modeEncaissement(encaissement.getModeEncaissement())
-                .dateEncaissement(encaissement.getDateEncaissement())
-                .reference(encaissement.getReference())
-                .commentaire(encaissement.getCommentaire())
-                .build();
+        EncaissementCotisationEntity entity = encaissement.getId() != null
+                ? jpaRepository.findById(encaissement.getId())
+                        .orElseThrow(() -> ResourceNotFoundException.of(
+                                "Encaissement de cotisation", encaissement.getId()))
+                : new EncaissementCotisationEntity();
+
+        if (encaissement.getLigneCotisationId() != null) {
+            entity.setLigneCotisation(
+                    ligneCotisationJpaRepository.getReferenceById(encaissement.getLigneCotisationId()));
+        }
+        entity.setOperationFinanciere(encaissement.getOperationFinanciereId() != null
+                ? operationFinanciereJpaRepository.getReferenceById(encaissement.getOperationFinanciereId())
+                : null);
+        entity.setMontant(encaissement.getMontant());
+        entity.setModeEncaissement(encaissement.getModeEncaissement());
+        entity.setDateEncaissement(encaissement.getDateEncaissement());
+        entity.setReference(encaissement.getReference());
+        entity.setCommentaire(encaissement.getCommentaire());
+        entity.setAnnuleLe(encaissement.getAnnuleLe());
+        entity.setAnnulePar(encaissement.getAnnulePar());
+        entity.setMotifAnnulation(encaissement.getMotifAnnulation());
 
         return mapper.toDomain(jpaRepository.save(entity));
     }

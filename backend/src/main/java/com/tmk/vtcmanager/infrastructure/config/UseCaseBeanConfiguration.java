@@ -26,6 +26,7 @@ import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeR
 import com.tmk.vtcmanager.application.ports.persistence.JourFerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
+import com.tmk.vtcmanager.application.services.AnnulationContraventionService;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
 import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
@@ -508,10 +509,9 @@ public class UseCaseBeanConfiguration {
             MaintenanceRepository repo,
             CategorieOperationRepository categorieOperationRepository,
             VehiculeStatutEventPublisher statutEventPublisher,
-            PeriodeClotureeGuard periodeClotureeGuard,
             SynchronisationDetteMaintenanceService synchronisationDetteMaintenanceService) {
         return new UpdateMaintenanceUseCase(repo, categorieOperationRepository, statutEventPublisher,
-                periodeClotureeGuard, synchronisationDetteMaintenanceService);
+                synchronisationDetteMaintenanceService);
     }
 
     /** Une seule règle de répartition, partagée par la clôture et la correction. */
@@ -910,6 +910,12 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public AnnulationContraventionService annulationContraventionService(
+            ContraventionRepository contraventionRepository) {
+        return new AnnulationContraventionService(contraventionRepository);
+    }
+
+    @Bean
     public AnnulationMaintenanceService annulationMaintenanceService(
             MaintenanceRepository maintenanceRepository,
             VehiculeStatutEventPublisher statutEventPublisher) {
@@ -920,14 +926,16 @@ public class UseCaseBeanConfiguration {
     public AnnulerOperationFinanciereUseCase annulerOperationFinanciereUseCase(
             OperationFinanciereRepository repo,
             AnnulationEncaissementService annulationEncaissementService,
+            AnnulationContraventionService annulationContraventionService,
             AnnulationMaintenanceService annulationMaintenanceService,
             PeriodeClotureeGuard periodeClotureeGuard,
             SequenceReferenceService sequenceReferenceService,
             AuteurCourant auteurCourant,
             CaisseClotureeGuard caisseClotureeGuard) {
         return new AnnulerOperationFinanciereUseCase(
-                repo, annulationEncaissementService, annulationMaintenanceService,
-                periodeClotureeGuard, sequenceReferenceService, auteurCourant, caisseClotureeGuard);
+                repo, annulationEncaissementService, annulationContraventionService,
+                annulationMaintenanceService, periodeClotureeGuard, sequenceReferenceService,
+                auteurCourant, caisseClotureeGuard);
     }
 
     // ----- Penalite -----

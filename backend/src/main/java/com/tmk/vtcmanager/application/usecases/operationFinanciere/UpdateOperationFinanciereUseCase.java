@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.application.usecases.operationFinanciere;
 
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
+import com.tmk.vtcmanager.application.exception.EcritureFigeeException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.ModificationEcritureGuard;
@@ -11,9 +12,16 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Modification d'une écriture existante.
  *
- * <p>Ce qui reste modifiable dépend de l'état des livres : voir
- * {@link ModificationEcritureGuard}. Pour corriger un montant figé, la voie est
- * l'extourne puis la ressaisie — elle laisse une trace.
+ * <p>Deux familles n'y ont pas droit du tout : les encaissements (recette,
+ * cotisation, pénalité, contravention) et les dépenses issues d'une
+ * complétion de maintenance. Leur montant appartient à la ligne ou à
+ * l'intervention qui les a produites ; le corriger ici les désaccorderait en
+ * silence. Pour ces écritures, la voie est l'annulation — qui repositionne la
+ * source à son état antérieur — puis la ressaisie depuis le module d'origine.
+ *
+ * <p>Pour les autres, ce qui reste modifiable dépend de l'état des livres :
+ * voir {@link ModificationEcritureGuard}. Pour corriger un montant figé, la
+ * voie est l'extourne puis la ressaisie — elle laisse une trace.
  */
 @RequiredArgsConstructor
 public class UpdateOperationFinanciereUseCase {
@@ -28,6 +36,17 @@ public class UpdateOperationFinanciereUseCase {
 
         if (existing.getStatut() == StatutOperation.ANNULEE) {
             throw new IllegalStateException("Impossible de modifier une opération annulée.");
+        }
+
+        if (existing.estUnEncaissement()) {
+            throw new EcritureFigeeException("Un encaissement ne se modifie pas : son montant est"
+                    + " celui du versement enregistré sur la créance. Annulez-le — la créance"
+                    + " redevient due — puis ressaisissez l'encaissement.");
+        }
+        if (existing.estIssueDUneMaintenance()) {
+            throw new EcritureFigeeException("Cette dépense provient d'une maintenance : elle ne se"
+                    + " modifie pas ici. Annulez-la — la maintenance repasse en planifiée — puis"
+                    + " terminez-la de nouveau avec les bonnes valeurs.");
         }
 
         // Période close, caisse comptée, écriture déjà extournée : le garde-fou

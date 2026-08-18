@@ -1,9 +1,11 @@
 package com.tmk.vtcmanager.application.usecases.operationFinanciere;
 
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
+import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
+import com.tmk.vtcmanager.application.services.AnnulationContraventionService;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
@@ -30,6 +32,7 @@ public class AnnulerOperationFinanciereUseCase {
 
     private final OperationFinanciereRepository operationRepository;
     private final AnnulationEncaissementService annulationEncaissementService;
+    private final AnnulationContraventionService annulationContraventionService;
     private final AnnulationMaintenanceService annulationMaintenanceService;
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
@@ -52,6 +55,12 @@ public class AnnulerOperationFinanciereUseCase {
         }
         if (origine.estExtournee()) {
             throw new IllegalStateException("L'opération est déjà extournée.");
+        }
+        // Neutralisée par ailleurs — l'annulation d'un arrêté de compte, par
+        // exemple, passe ses écritures en ANNULEE sans les extourner. La
+        // repasser ici décompterait une seconde fois la créance qu'elle réglait.
+        if (origine.getStatut() == StatutOperation.ANNULEE) {
+            throw new IllegalStateException("L'opération est déjà annulée.");
         }
 
         // Seule la contre-passation est soumise au verrou de période : datée du
@@ -76,10 +85,15 @@ public class AnnulerOperationFinanciereUseCase {
         operationRepository.save(construireExtourne(origineSauvee, dateExtourne, motif));
 
         // L'encaissement sous-jacent (recette / cotisation / pénalité) est marqué
-        // annulé — jamais supprimé — et la ligne recalculée sans lui.
+        // annulé — jamais supprimé — et la ligne recalculée sans lui : elle
+        // retrouve son statut EN_ATTENTE ou PARTIELLEMENT_ENCAISSE.
         annulationEncaissementService.annulerEncaissementLie(origineSauvee, auteur, motif);
 
-        // Une dépense issue d'une maintenance rouvre la maintenance.
+        // Même principe pour une contravention réglée : le montant versé
+        // redescend et la créance redevient due.
+        annulationContraventionService.annulerPaiementLie(origineSauvee);
+
+        // Une dépense issue d'une maintenance la rouvre : elle repart PLANIFIEE.
         annulationMaintenanceService.reouvrirMaintenanceLiee(origineSauvee);
 
         return origineSauvee;

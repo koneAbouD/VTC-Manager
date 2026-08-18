@@ -35,6 +35,10 @@ public interface ContraventionRestMapper {
     // Renseignés côté serveur uniquement (jamais depuis une saisie).
     @Mapping(target = "documentSourcePath", ignore = true)
     @Mapping(target = "statutRattachement", ignore = true)
+    @Mapping(target = "dateReversement", ignore = true)
+    @Mapping(target = "annuleLe", ignore = true)
+    @Mapping(target = "motifAnnulation", ignore = true)
+    @Mapping(target = "annulePar", ignore = true)
     @Mapping(target = "chauffeur", source = "chauffeurId", qualifiedByName = "contraventionChauffeurFromId")
     @Mapping(target = "vehicule", source = "vehiculeId", qualifiedByName = "contraventionVehiculeFromId")
     Contravention toDomain(ContraventionRequest request);
@@ -65,6 +69,10 @@ public interface ContraventionRestMapper {
     @Mapping(target = "cotisation", ignore = true)
     @Mapping(target = "montantPaye", ignore = true)
     @Mapping(target = "datePaiement", ignore = true)
+    @Mapping(target = "dateReversement", ignore = true)
+    @Mapping(target = "annuleLe", ignore = true)
+    @Mapping(target = "motifAnnulation", ignore = true)
+    @Mapping(target = "annulePar", ignore = true)
     @Mapping(target = "description", source = "typeInfraction")
     @Mapping(target = "chauffeur", source = "chauffeurId", qualifiedByName = "contraventionChauffeurFromId")
     @Mapping(target = "vehicule", source = "vehiculeId", qualifiedByName = "contraventionVehiculeFromId")

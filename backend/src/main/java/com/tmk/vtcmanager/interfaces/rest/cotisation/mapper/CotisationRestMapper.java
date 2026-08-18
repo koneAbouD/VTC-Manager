@@ -17,6 +17,9 @@ public interface CotisationRestMapper {
     @Mapping(target = "id",                  ignore = true)
     @Mapping(target = "ligneCotisationId",    ignore = true)
     @Mapping(target = "operationFinanciereId", ignore = true)
+    @Mapping(target = "motifAnnulation",      ignore = true)
+    @Mapping(target = "annulePar",            ignore = true)
+    @Mapping(target = "annuleLe",             ignore = true)
     EncaissementCotisation toDomain(EncaissementCotisationRequest request);
 
     EncaissementCotisationResponse toResponse(EncaissementCotisation encaissement);

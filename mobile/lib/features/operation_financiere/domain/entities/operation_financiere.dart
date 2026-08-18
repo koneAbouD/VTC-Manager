@@ -42,6 +42,12 @@ class OperationFinanciere {
   final DateTime? annuleLe;
   final String? motifAnnulation;
 
+  /// Faux pour une écriture que le backend refuse de retoucher en place :
+  /// encaissement (recette, cotisation, pénalité, contravention), dépense issue
+  /// d'une maintenance, extourne ou écriture déjà extournée. L'action
+  /// « Modifier » est alors masquée ; l'annulation, elle, reste ouverte.
+  final bool modifiable;
+
   /// Cette écriture est une contre-passation.
   bool get estUneExtourne => extourneDeId != null;
 
@@ -74,6 +80,7 @@ class OperationFinanciere {
     this.extourneDeId,
     this.annuleLe,
     this.motifAnnulation,
+    this.modifiable = false,
   });
 
   /// Date à afficher sur les lignes d'opération : la date métier si présente

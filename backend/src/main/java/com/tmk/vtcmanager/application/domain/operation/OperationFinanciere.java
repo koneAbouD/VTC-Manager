@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @Builder
@@ -58,6 +59,14 @@ public class OperationFinanciere {
     private Long maintenanceId;
 
     /**
+     * Contravention réglée par cette écriture (remboursement encaissé auprès du
+     * chauffeur, ou compensation lors d'un arrêté de compte). Null pour les
+     * autres opérations. Sert à repositionner la contravention lorsqu'on annule
+     * l'opération.
+     */
+    private Long contraventionId;
+
+    /**
      * Écriture contre-passée par celle-ci. Renseigné sur l'extourne seule, dont
      * le montant est l'opposé de l'origine — le couple s'annule dans tous les
      * agrégats sans qu'aucune écriture ne disparaisse.
@@ -84,5 +93,44 @@ public class OperationFinanciere {
     /** Vrai si cette écriture est elle-même une contre-passation. */
     public boolean estUneExtourne() {
         return extourneDeId != null;
+    }
+
+    /**
+     * Catégories dont l'écriture solde une créance tenue ailleurs : ligne de
+     * recette, de cotisation, de pénalité, ou contravention. Leur montant et
+     * leur rattachement ne s'éditent pas en place — ils sont le reflet d'un
+     * versement enregistré dans le module d'origine.
+     */
+    private static final Set<String> CODES_ENCAISSEMENT = Set.of(
+            "ENCAISSEMENT_RECETTES",
+            "ENCAISSEMENT_COTISATIONS",
+            "ENCAISSEMENT_PENALITES",
+            "CONTRAVENTION_REMBOURSEMENT");
+
+    /** Vrai si l'écriture règle une créance suivie dans un autre module. */
+    public boolean estUnEncaissement() {
+        return categorie != null && categorie.getCode() != null
+                && CODES_ENCAISSEMENT.contains(categorie.getCode().toUpperCase());
+    }
+
+    /** Vrai si l'écriture est la dépense née de la complétion d'une maintenance. */
+    public boolean estIssueDUneMaintenance() {
+        return maintenanceId != null;
+    }
+
+    /**
+     * Vrai si l'écriture peut encore être retouchée en place.
+     *
+     * <p>Un encaissement et une dépense de maintenance en sont exclus : leur
+     * montant appartient à la ligne ou à l'intervention qui les a produits, et
+     * le corriger ici les désaccorderait en silence. La voie est l'annulation,
+     * qui repositionne la source, puis la ressaisie.
+     */
+    public boolean isModifiable() {
+        return statut != StatutOperation.ANNULEE
+                && !estUneExtourne()
+                && !estExtournee()
+                && !estUnEncaissement()
+                && !estIssueDUneMaintenance();
     }
 }

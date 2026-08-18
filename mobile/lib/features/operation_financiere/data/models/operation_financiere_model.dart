@@ -31,6 +31,7 @@ class OperationFinanciereModel extends OperationFinanciere {
     super.extourneDeId,
     super.annuleLe,
     super.motifAnnulation,
+    super.modifiable,
   });
 
   factory OperationFinanciereModel.fromJson(Map<String, dynamic> json) {
@@ -90,6 +91,9 @@ class OperationFinanciereModel extends OperationFinanciere {
           ? DateTime.tryParse(json['annuleLe'] as String)
           : null,
       motifAnnulation: json['motifAnnulation'] as String?,
+      // Absent = on n'affiche pas « Modifier » : mieux vaut une action
+      // manquante qu'une action que le serveur refusera.
+      modifiable: json['modifiable'] as bool? ?? false,
     );
   }
 }

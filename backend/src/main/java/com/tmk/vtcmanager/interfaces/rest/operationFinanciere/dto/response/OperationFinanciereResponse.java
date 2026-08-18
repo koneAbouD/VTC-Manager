@@ -27,6 +27,12 @@ public record OperationFinanciereResponse(
         String commentaire,
         StatutOperation statut,
         DetailMaintenanceResponse detailMaintenance,
+        /**
+         * Faux pour une écriture qui ne se retouche pas en place : encaissement,
+         * dépense issue d'une maintenance, extourne ou écriture extournée. Le
+         * client masque alors l'action « Modifier » ; l'annulation reste ouverte.
+         */
+        boolean modifiable,
         /** Écriture contre-passée par celle-ci : non nul sur une extourne. */
         Long extourneDeId,
         /** Renseignés sur une écriture qui a été extournée. */

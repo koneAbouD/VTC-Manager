@@ -30,6 +30,8 @@ public interface FinanceReportingRepository {
     /**
      * Base engagement : produits dus de la période par date métier
      * (recettes attendues + pénalités AMENDE émises), lignes annulées exclues.
+     * Les recettes au réel n'ayant pas de montant attendu, elles comptent pour
+     * ce qui en a été versé, rattaché à leur date de recette.
      * Les cotisations sont un dépôt hors résultat : elles n'y figurent pas.
      */
     BigDecimal produitsEngagement(LocalDate debut, LocalDate fin);

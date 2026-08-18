@@ -10,6 +10,8 @@ class EncaissementPenaliteModel extends EncaissementPenalite {
     required super.dateEncaissement,
     super.reference,
     super.commentaire,
+    super.annuleLe,
+    super.motifAnnulation,
   });
 
   factory EncaissementPenaliteModel.fromJson(Map<String, dynamic> j) =>
@@ -24,6 +26,10 @@ class EncaissementPenaliteModel extends EncaissementPenalite {
             : DateTime.now(),
         reference: j['reference'] as String?,
         commentaire: j['commentaire'] as String?,
+        annuleLe: j['annuleLe'] != null
+            ? DateTime.tryParse(j['annuleLe'] as String)
+            : null,
+        motifAnnulation: j['motifAnnulation'] as String?,
       );
 
   Map<String, dynamic> toJson() => {

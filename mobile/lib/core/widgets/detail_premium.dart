@@ -195,11 +195,17 @@ class PremiumListHeader extends StatelessWidget {
 
 /// Tuile d'un encaissement : pastille + montant + mode·date·réf, et le
 /// commentaire de saisie s'il existe.
+///
+/// Un versement extourné (`annule`) reste affiché — il a bien eu lieu — mais
+/// son montant est barré et son motif rappelé : il ne compte plus dans ce que
+/// la ligne a encaissé, et rien ne doit laisser croire le contraire.
 class PremiumEncaissementTile extends StatelessWidget {
   final String montant;
   final String meta;
   final String? commentaire;
   final bool especes;
+  final bool annule;
+  final String? motifAnnulation;
 
   const PremiumEncaissementTile({
     super.key,
@@ -207,17 +213,23 @@ class PremiumEncaissementTile extends StatelessWidget {
     required this.meta,
     this.commentaire,
     required this.especes,
+    this.annule = false,
+    this.motifAnnulation,
   });
 
   @override
   Widget build(BuildContext context) {
+    final couleurTexte = annule ? AppColors.hint : AppColors.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 0.8),
+        border: Border.all(
+            color: annule ? AppColors.error.withValues(alpha: 0.35) : AppColors.border,
+            width: 0.8),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,19 +239,45 @@ class PremiumEncaissementTile extends StatelessWidget {
           SizedBox(
             width: 42,
             height: 42,
-            child: Icon(especes ? Icons.payments_outlined : Icons.smartphone,
-                size: 21, color: AppColors.primaryDark),
+            child: Icon(
+                annule
+                    ? Icons.cancel_outlined
+                    : (especes ? Icons.payments_outlined : Icons.smartphone),
+                size: 21,
+                color: annule ? AppColors.error : AppColors.primaryDark),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(montant,
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.dark)),
+                Row(children: [
+                  Flexible(
+                    child: Text(montant,
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: couleurTexte,
+                            decoration:
+                                annule ? TextDecoration.lineThrough : null)),
+                  ),
+                  if (annule) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text('Annulé',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.error)),
+                    ),
+                  ],
+                ]),
                 const SizedBox(height: 2),
                 Text(meta,
                     style:
@@ -247,11 +285,19 @@ class PremiumEncaissementTile extends StatelessWidget {
                 if (commentaire != null && commentaire!.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(commentaire!,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12.5,
                           height: 1.3,
                           fontStyle: FontStyle.italic,
-                          color: AppColors.dark)),
+                          color: couleurTexte)),
+                ],
+                if (annule &&
+                    motifAnnulation != null &&
+                    motifAnnulation!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('Motif : ${motifAnnulation!}',
+                      style: const TextStyle(
+                          fontSize: 12, height: 1.3, color: AppColors.error)),
                 ],
               ],
             ),

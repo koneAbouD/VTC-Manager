@@ -81,13 +81,25 @@ public class Contravention {
     }
 
     /**
-     * Contre-passe un paiement (annulation d'un arrêté de compte) : diminue le
-     * montant payé et recalcule le statut.
+     * Contre-passe un paiement (extourne de l'encaissement, annulation d'un
+     * arrêté de compte) : diminue le montant payé et repositionne la
+     * contravention à l'état où le versement l'avait trouvée — EN_ATTENTE si
+     * plus rien n'a été versé, PARTIELLEMENT_PAYE s'il reste des versements.
+     *
+     * <p>Un statut acquis hors du cycle d'encaissement n'est pas recalculé :
+     * reversée, l'argent est parti à l'État ; annulée, la créance n'existe
+     * plus. Seul le montant versé par le chauffeur redescend.
      */
     public void annulerPaiement(BigDecimal montantVerse) {
         if (montantVerse == null) return;
         BigDecimal courant = this.montantPaye == null ? BigDecimal.ZERO : this.montantPaye;
         this.montantPaye = courant.subtract(montantVerse).max(BigDecimal.ZERO);
+
+        if (this.statut != ContraventionStatus.EN_ATTENTE
+                && this.statut != ContraventionStatus.PARTIELLEMENT_PAYE
+                && this.statut != ContraventionStatus.PAYE) {
+            return;
+        }
 
         if (this.montantPaye.signum() == 0) {
             this.statut = ContraventionStatus.EN_ATTENTE;

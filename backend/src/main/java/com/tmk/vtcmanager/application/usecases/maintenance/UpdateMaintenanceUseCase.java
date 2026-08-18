@@ -8,7 +8,6 @@ import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
-import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +20,6 @@ public class UpdateMaintenanceUseCase {
     private final MaintenanceRepository maintenanceRepository;
     private final CategorieOperationRepository categorieOperationRepository;
     private final VehiculeStatutEventPublisher statutEventPublisher;
-    private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SynchronisationDetteMaintenanceService synchronisationDetteService;
 
     @Transactional
@@ -31,12 +29,16 @@ public class UpdateMaintenanceUseCase {
         Maintenance existing = maintenanceRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Maintenance", id));
 
-        // Une intervention terminée a produit une dépense datée de son jour
-        // d'exécution : si cette période est close, ni le coût ni la date ne
-        // peuvent plus bouger sans faire mentir les états publiés.
+        // Une intervention terminée ne se retouche plus : sa complétion a
+        // produit une dépense — ou une dette envers le prestataire — dont le
+        // montant et la date font foi. Les corriger ici les désaccorderait de
+        // l'écriture qui, elle, est déjà au journal. Pour reprendre une
+        // intervention, on annule la dépense : la maintenance repasse en
+        // planifiée et peut être terminée de nouveau avec les bonnes valeurs.
         if (existing.getStatut() == MaintenanceStatus.TERMINEE) {
-            periodeClotureeGuard.verifier(existing.getDateEffectuee());
-            periodeClotureeGuard.verifier(data.getDateEffectuee());
+            throw new IllegalStateException("Cette maintenance est terminée : elle ne se modifie"
+                    + " plus. Annulez la dépense qu'elle a générée — la maintenance repasse en"
+                    + " planifiée — puis terminez-la de nouveau.");
         }
 
         existing.setType(data.getType());

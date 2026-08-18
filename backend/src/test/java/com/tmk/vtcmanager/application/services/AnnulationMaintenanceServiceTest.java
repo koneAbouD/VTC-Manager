@@ -27,9 +27,9 @@ import static org.mockito.Mockito.when;
 
 /**
  * Annuler la dépense issue d'une complétion de maintenance doit défaire la
- * complétion elle-même : la maintenance se rouvre et le véhicule redevient
- * indisponible. Sans cela, l'atelier disparaîtrait des écrans alors que la
- * voiture y est toujours.
+ * complétion elle-même : la maintenance repasse en PLANIFIEE — l'intervention
+ * est à refaire en entier — et le véhicule redevient indisponible. Sans cela,
+ * l'atelier disparaîtrait des écrans alors que la voiture y est toujours.
  */
 class AnnulationMaintenanceServiceTest {
 
@@ -55,7 +55,6 @@ class AnnulationMaintenanceServiceTest {
         return Maintenance.builder()
                 .id(MAINTENANCE_ID)
                 .statut(MaintenanceStatus.TERMINEE)
-                .statutAvantCompletion(MaintenanceStatus.EN_COURS)
                 .dateEffectuee(LocalDate.of(2026, 4, 10))
                 .cout(BigDecimal.valueOf(85_000))
                 .vehicule(Vehicule.builder().id(7L).build())
@@ -63,7 +62,7 @@ class AnnulationMaintenanceServiceTest {
     }
 
     @Test
-    @DisplayName("La maintenance revient à son statut antérieur, sans date ni coût")
+    @DisplayName("La maintenance repart PLANIFIEE, sans date ni coût")
     void maintenance_rouverte() {
         when(maintenanceRepository.findById(MAINTENANCE_ID)).thenReturn(Optional.of(maintenanceTerminee()));
 
@@ -73,34 +72,9 @@ class AnnulationMaintenanceServiceTest {
         verify(maintenanceRepository).save(capture.capture());
         Maintenance rouverte = capture.getValue();
 
-        assertThat(rouverte.getStatut()).isEqualTo(MaintenanceStatus.EN_COURS);
+        assertThat(rouverte.getStatut()).isEqualTo(MaintenanceStatus.PLANIFIEE);
         assertThat(rouverte.getDateEffectuee()).isNull();
         assertThat(rouverte.getCout()).isNull();
-        assertThat(rouverte.getStatutAvantCompletion()).isNull();
-    }
-
-    @Test
-    @DisplayName("Une maintenance complétée depuis l'état PLANIFIEE y retourne")
-    void retour_au_statut_planifiee() {
-        Maintenance maintenance = maintenanceTerminee();
-        maintenance.setStatutAvantCompletion(MaintenanceStatus.PLANIFIEE);
-        when(maintenanceRepository.findById(MAINTENANCE_ID)).thenReturn(Optional.of(maintenance));
-
-        service.reouvrirMaintenanceLiee(operationLiee());
-
-        assertThat(maintenance.getStatut()).isEqualTo(MaintenanceStatus.PLANIFIEE);
-    }
-
-    @Test
-    @DisplayName("Sans statut antérieur mémorisé, la maintenance repart EN_COURS")
-    void repli_en_cours() {
-        Maintenance maintenance = maintenanceTerminee();
-        maintenance.setStatutAvantCompletion(null);
-        when(maintenanceRepository.findById(MAINTENANCE_ID)).thenReturn(Optional.of(maintenance));
-
-        service.reouvrirMaintenanceLiee(operationLiee());
-
-        assertThat(maintenance.getStatut()).isEqualTo(MaintenanceStatus.EN_COURS);
     }
 
     @Test

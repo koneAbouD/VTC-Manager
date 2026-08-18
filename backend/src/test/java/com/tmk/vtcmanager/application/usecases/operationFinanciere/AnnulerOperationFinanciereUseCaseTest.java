@@ -1,10 +1,12 @@
 package com.tmk.vtcmanager.application.usecases.operationFinanciere;
 
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
+import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.application.exception.PeriodeClotureeException;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
+import com.tmk.vtcmanager.application.services.AnnulationContraventionService;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
@@ -51,6 +53,8 @@ class AnnulerOperationFinanciereUseCaseTest {
         periodeClotureeGuard = mock(PeriodeClotureeGuard.class);
         AnnulationEncaissementService annulationEncaissement =
                 mock(AnnulationEncaissementService.class);
+        AnnulationContraventionService annulationContravention =
+                mock(AnnulationContraventionService.class);
         AnnulationMaintenanceService annulationMaintenance =
                 mock(AnnulationMaintenanceService.class);
         SequenceReferenceService sequences = mock(SequenceReferenceService.class);
@@ -62,8 +66,8 @@ class AnnulerOperationFinanciereUseCaseTest {
         when(operationRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         useCase = new AnnulerOperationFinanciereUseCase(operationRepository,
-                annulationEncaissement, annulationMaintenance, periodeClotureeGuard,
-                sequences, auteurCourant, caisseClotureeGuard);
+                annulationEncaissement, annulationContravention, annulationMaintenance,
+                periodeClotureeGuard, sequences, auteurCourant, caisseClotureeGuard);
     }
 
     private void ecritureExistante(LocalDate date) {
@@ -116,5 +120,21 @@ class AnnulerOperationFinanciereUseCaseTest {
     void motif_obligatoire() {
         assertThatThrownBy(() -> useCase.execute(1L, "  "))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Une écriture déjà annulée ne se contre-passe pas une seconde fois")
+    void ecriture_deja_annulee() {
+        when(operationRepository.findById(1L)).thenReturn(Optional.of(OperationFinanciere.builder()
+                .id(1L)
+                .reference("CMP-2026-000007")
+                .typeOperation(TypeOperation.REVENU)
+                .montant(BigDecimal.valueOf(30_000))
+                .dateOperation(MOIS_CLOS)
+                .statut(StatutOperation.ANNULEE)
+                .build()));
+
+        assertThatThrownBy(() -> useCase.execute(1L, "erreur de saisie"))
+                .isInstanceOf(IllegalStateException.class);
     }
 }

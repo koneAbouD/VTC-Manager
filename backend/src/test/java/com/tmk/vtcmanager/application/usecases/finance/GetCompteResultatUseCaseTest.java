@@ -101,6 +101,49 @@ class GetCompteResultatUseCaseTest {
     }
 
     @Test
+    @DisplayName("Recette au réel encaissée dans le mois : les deux bases coïncident")
+    void recette_au_reel_ne_creuse_pas_le_pont() {
+        // Une flotte entièrement au réel : le chauffeur reverse ce qu'il a fait,
+        // il n'y a pas de montant contractuel. Tout ce qui est versé dans le mois
+        // est donc à la fois encaissé et dû au titre du mois — aucune créance ne
+        // se forme, le pont doit rester nul et les deux bases donner le même
+        // résultat. Tant que le produit engagement ignorait ces lignes faute de
+        // montant attendu, il valait 0 et le pont −600 000.
+        when(reportingRepository.totauxCaisseParNature(any(), any())).thenReturn(Map.of(
+                "PRODUIT_EXPLOITATION", BigDecimal.valueOf(600_000),
+                "CHARGE_VARIABLE", BigDecimal.valueOf(100_000),
+                "CHARGE_FIXE", BigDecimal.valueOf(200_000)));
+        when(reportingRepository.produitsEngagement(any(), any()))
+                .thenReturn(BigDecimal.valueOf(600_000));
+
+        CompteResultat engagement = useCase.executer(2026, 4, BaseComptable.ENGAGEMENT);
+        CompteResultat caisse = useCase.executer(2026, 4, BaseComptable.CAISSE);
+
+        assertThat(engagement.getProduitsExploitation()).isEqualByComparingTo("600000");
+        assertThat(engagement.getPontCreances()).isEqualByComparingTo("0");
+        assertThat(engagement.getResultatGestion())
+                .isEqualByComparingTo(caisse.getResultatGestion());
+    }
+
+    @Test
+    @DisplayName("Le pont ne retient que l'impayé du forfait, pas les versements au réel")
+    void pont_isole_l_impaye_du_forfait() {
+        // Deux régimes dans la même flotte : un forfait de 500 000 dû dont 470 000
+        // rentrés, et 330 000 versés au réel. Seul le forfait laisse une créance.
+        when(reportingRepository.totauxCaisseParNature(any(), any())).thenReturn(Map.of(
+                "PRODUIT_EXPLOITATION", BigDecimal.valueOf(800_000), // 470 000 + 330 000
+                "CHARGE_VARIABLE", BigDecimal.valueOf(100_000),
+                "CHARGE_FIXE", BigDecimal.valueOf(200_000)));
+        when(reportingRepository.produitsEngagement(any(), any()))
+                .thenReturn(BigDecimal.valueOf(830_000)); // 500 000 + 330 000
+
+        CompteResultat r = useCase.executer(2026, 4, BaseComptable.ENGAGEMENT);
+
+        assertThat(r.getProduitsExploitation()).isEqualByComparingTo("830000");
+        assertThat(r.getPontCreances()).isEqualByComparingTo("30000");
+    }
+
+    @Test
     @DisplayName("Mois clos : la photo est servie, sans toucher aux agrégats")
     void mois_clos_sert_l_archive() {
         when(etatsClotureRepository.findByPeriode(2026, 3)).thenReturn(Optional.of(archive()));

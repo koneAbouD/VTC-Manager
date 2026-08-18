@@ -29,6 +29,13 @@ class Encaissement {
   final String? reference;
   final String? commentaire;
 
+  /// Renseignés si le versement a été extourné : il reste dans la liste — il a
+  /// eu lieu — mais ne compte plus dans ce que la ligne a encaissé.
+  final DateTime? annuleLe;
+  final String? motifAnnulation;
+
+  bool get estAnnule => annuleLe != null;
+
   const Encaissement({
     this.id,
     required this.ligneRecetteId,
@@ -38,5 +45,7 @@ class Encaissement {
     required this.dateEncaissement,
     this.reference,
     this.commentaire,
+    this.annuleLe,
+    this.motifAnnulation,
   });
 }

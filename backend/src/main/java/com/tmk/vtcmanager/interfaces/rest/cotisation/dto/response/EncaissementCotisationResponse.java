@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.operation.ModePaiement;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record EncaissementCotisationResponse(
         Long id,
@@ -13,5 +14,9 @@ public record EncaissementCotisationResponse(
         ModePaiement modeEncaissement,
         LocalDate dateEncaissement,
         String reference,
-        String commentaire
+        String commentaire,
+        /** Renseignés si le versement a été extourné : il ne compte plus. */
+        LocalDateTime annuleLe,
+        String annulePar,
+        String motifAnnulation
 ) {}

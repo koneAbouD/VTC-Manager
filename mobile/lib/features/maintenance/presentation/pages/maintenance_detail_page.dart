@@ -205,7 +205,12 @@ class _MaintenanceDetailPageState
       backgroundColor: _kBg,
       appBar: AppHeader(
         title: 'Détail maintenance',
-        action: AppHeaderAction(onTap: _edit, icon: Icons.edit_rounded),
+        // Une intervention terminée ne se retouche plus : son coût et sa date
+        // sont ceux de la dépense déjà passée au journal. Pour la reprendre, on
+        // annule cette dépense — la maintenance repasse en planifiée.
+        action: _m.statut == 'TERMINEE'
+            ? null
+            : AppHeaderAction(onTap: _edit, icon: Icons.edit_rounded),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),

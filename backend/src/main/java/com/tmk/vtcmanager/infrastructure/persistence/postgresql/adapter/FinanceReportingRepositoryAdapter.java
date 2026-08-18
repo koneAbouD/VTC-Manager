@@ -115,9 +115,17 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
     public BigDecimal produitsEngagement(LocalDate debut, LocalDate fin) {
         // Les cotisations ne sont PAS un produit (dépôt HORS_RESULTAT, restitué en
         // fin de période) : elles sont exclues du produit d'exploitation engagement.
+        //
+        // Au forfait, le produit est le montant dû, que la ligne soit encaissée,
+        // partielle ou en attente — c'est le pont qui porte l'écart. Au réel
+        // (montant_attendu NULL), aucune créance n'est certaine d'avance : le
+        // produit est ce qui a été versé, rattaché à la date de recette. Sans ce
+        // repli, le versement pèserait en caisse sans contrepartie en engagement
+        // et creuserait un pont négatif qu'aucune créance ne justifie.
         BigDecimal total = jdbcTemplate.queryForObject("""
-                SELECT COALESCE((SELECT SUM(lr.montant_attendu) FROM lignes_recette lr
-                                 WHERE lr.statut <> 'ANNULEE' AND lr.montant_attendu IS NOT NULL
+                SELECT COALESCE((SELECT SUM(COALESCE(lr.montant_attendu, lr.montant_encaisse))
+                                 FROM lignes_recette lr
+                                 WHERE lr.statut <> 'ANNULEE'
                                    AND lr.date_recette BETWEEN ? AND ?), 0)
                      + COALESCE((SELECT SUM(lp.montant) FROM lignes_penalite lp
                                  WHERE lp.statut <> 'ANNULEE' AND lp.type_sanction = 'AMENDE'
@@ -223,20 +231,23 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
 
     /**
      * Même agrégat en base ENGAGEMENT, aux mêmes sources que la cascade : produits
-     * dus (recettes attendues + amendes, cotisations exclues car hors résultat) et
-     * charges engagées (factures partenaires reçues + dépenses réglées sans
-     * facture, pour ne pas compter deux fois une charge déjà facturée). Huit
-     * paramètres, quatre couples <b>début, fin</b> dans l'ordre des blocs.
+     * dus (recettes attendues — ou versées pour les recettes au réel — plus les
+     * amendes, cotisations exclues car hors résultat) et charges engagées
+     * (factures partenaires reçues + dépenses réglées sans facture, pour ne pas
+     * compter deux fois une charge déjà facturée). Le traitement du réel suit
+     * celui de {@code produitsEngagement} : la somme des marges par véhicule doit
+     * rester celle de la cascade. Huit paramètres, quatre couples
+     * <b>début, fin</b> dans l'ordre des blocs.
      */
     private static final String AGREGAT_VEHICULE_ENGAGEMENT = """
             SELECT rec.montant + amende.montant AS produits,
                    fact.montant + hors.montant  AS charges,
                    rec.nb + amende.nb + fact.nb + hors.nb AS nb_ops
-            FROM (SELECT COALESCE(SUM(lr.montant_attendu), 0) AS montant, COUNT(*) AS nb
+            FROM (SELECT COALESCE(SUM(COALESCE(lr.montant_attendu, lr.montant_encaisse)), 0) AS montant,
+                         COUNT(*) AS nb
                   FROM lignes_recette lr
                   WHERE lr.vehicule_id = v.id
                     AND lr.statut <> 'ANNULEE'
-                    AND lr.montant_attendu IS NOT NULL
                     AND lr.date_recette BETWEEN ? AND ?) rec,
                  (SELECT COALESCE(SUM(lp.montant), 0) AS montant, COUNT(*) AS nb
                   FROM lignes_penalite lp

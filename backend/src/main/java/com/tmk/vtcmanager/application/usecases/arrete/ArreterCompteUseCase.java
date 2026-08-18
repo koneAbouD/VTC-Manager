@@ -184,7 +184,7 @@ public class ArreterCompteUseCase {
         switch (creance.getDocument()) {
             case RECETTE -> {
                 OperationFinanciere op = creerOperationCompensation(
-                        CAT_RECETTE, creance, montant, date, refArrete);
+                        CAT_RECETTE, creance, montant, date, refArrete, null);
                 encaissementRepository.save(Encaissement.builder()
                         .ligneRecetteId(creance.getDocumentId())
                         .operationFinanciereId(op.getId())
@@ -199,7 +199,7 @@ public class ArreterCompteUseCase {
             }
             case PENALITE -> {
                 OperationFinanciere op = creerOperationCompensation(
-                        CAT_PENALITE, creance, montant, date, refArrete);
+                        CAT_PENALITE, creance, montant, date, refArrete, null);
                 encaissementPenaliteRepository.save(EncaissementPenalite.builder()
                         .lignePenaliteId(creance.getDocumentId())
                         .operationFinanciereId(op.getId())
@@ -218,17 +218,26 @@ public class ArreterCompteUseCase {
                                 "Contravention introuvable : " + creance.getDocumentId()));
                 contravention.enregistrerPaiement(montant);
                 contraventionRepository.save(contravention);
-                return creerOperationCompensation(CAT_CONTRAVENTION, creance, montant, date, refArrete).getId();
+                return creerOperationCompensation(CAT_CONTRAVENTION, creance, montant, date, refArrete,
+                        contravention.getId()).getId();
             }
             case COTISATION -> { /* jamais compensée : le fonds ne se compense pas lui-même */ }
         }
         return null;
     }
 
+    /**
+     * @param contraventionId contravention éteinte par cette compensation, ou
+     *                        null pour les autres créances : c'est ce lien qui
+     *                        permet de la rendre à son état antérieur si
+     *                        l'écriture est un jour extournée.
+     */
     private OperationFinanciere creerOperationCompensation(String codeCategorie, LigneCreance creance,
-                                                          BigDecimal montant, LocalDate date, String refArrete) {
+                                                          BigDecimal montant, LocalDate date, String refArrete,
+                                                          Long contraventionId) {
         CategorieOperation categorie = categorieOperationRepository.findByCode(codeCategorie).orElse(null);
         OperationFinanciere op = OperationFinanciere.builder()
+                .contraventionId(contraventionId)
                 .typeOperation(TypeOperation.REVENU)
                 .categorie(categorie)
                 .chauffeur(chauffeurRef(creance.getChauffeurId()))

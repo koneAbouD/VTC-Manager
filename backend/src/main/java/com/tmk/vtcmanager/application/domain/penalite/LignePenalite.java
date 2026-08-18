@@ -102,10 +102,15 @@ public class LignePenalite {
         return base.subtract(encaisse).max(BigDecimal.ZERO);
     }
 
-    /** Vrai si un versement a déjà été enregistré sur la ligne. */
+    /**
+     * Vrai si un versement <em>qui tient encore</em> a été enregistré sur la
+     * ligne. Un encaissement extourné ne compte pas : il reste au journal, mais
+     * l'argent a été rendu — la ligne est de nouveau annulable.
+     */
     public boolean aDesVersements() {
         return (montantEncaisse != null && montantEncaisse.compareTo(BigDecimal.ZERO) > 0)
-                || (encaissements != null && !encaissements.isEmpty());
+                || (encaissements != null
+                        && encaissements.stream().anyMatch(e -> e.getAnnuleLe() == null));
     }
 
     /** Passe la ligne en ANNULEE avec son motif (validation dans le use case). */

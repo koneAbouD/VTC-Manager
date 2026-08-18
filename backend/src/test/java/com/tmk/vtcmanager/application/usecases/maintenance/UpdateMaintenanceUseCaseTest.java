@@ -7,7 +7,6 @@ import com.tmk.vtcmanager.application.domain.operation.ElementMaintenance;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
-import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SynchronisationDetteMaintenanceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,14 +19,20 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
  * Le formulaire de maintenance ne saisit pas le coût — il est fixé à la
- * clôture. Une requête qui n'en parle pas ne doit donc rien effacer.
+ * clôture. Une requête qui n'en parle pas ne doit donc rien effacer. Et une
+ * fois l'intervention terminée, le formulaire lui-même est fermé : la reprise
+ * passe par l'annulation de la dépense, qui rend la maintenance à l'état
+ * planifié.
  */
 class UpdateMaintenanceUseCaseTest {
 
@@ -46,7 +51,6 @@ class UpdateMaintenanceUseCaseTest {
         useCase = new UpdateMaintenanceUseCase(maintenanceRepository,
                 mock(CategorieOperationRepository.class),
                 mock(VehiculeStatutEventPublisher.class),
-                mock(PeriodeClotureeGuard.class),
                 synchronisation);
     }
 
@@ -94,13 +98,36 @@ class UpdateMaintenanceUseCaseTest {
         verify(synchronisation).synchroniser(any());
     }
 
+    @Test
+    @DisplayName("Une maintenance terminée ne se modifie plus")
+    void maintenance_terminee_figee() {
+        // Sa complétion a produit une dépense — ou une dette — dont le montant
+        // et la date font foi ; les corriger ici les désaccorderait de
+        // l'écriture déjà au journal.
+        existante(new BigDecimal("55000"), MaintenanceStatus.TERMINEE);
+
+        assertThatThrownBy(() -> useCase.execute(1L, Maintenance.builder()
+                .datePrevue(LE_10_MARS)
+                .cout(new BigDecimal("30000"))
+                .build()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("terminée");
+
+        verify(maintenanceRepository, never()).save(any());
+        verifyNoInteractions(synchronisation);
+    }
+
     // ── Fixtures ─────────────────────────────────────────────────────────
 
     private void existante(BigDecimal cout) {
+        existante(cout, MaintenanceStatus.EN_COURS);
+    }
+
+    private void existante(BigDecimal cout, MaintenanceStatus statut) {
         when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(Maintenance.builder()
                 .id(1L)
                 .type("VIDANGE")
-                .statut(MaintenanceStatus.TERMINEE)
+                .statut(statut)
                 .dateEffectuee(LE_10_MARS)
                 .cout(cout)
                 .detailMaintenance(DetailMaintenance.builder()

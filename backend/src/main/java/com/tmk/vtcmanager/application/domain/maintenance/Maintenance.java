@@ -34,8 +34,6 @@ public class Maintenance {
      */
     private Partenaire partenaire;
     private MaintenanceStatus statut;
-    /** Statut mémorisé juste avant la complétion, pour une réouverture fidèle. */
-    private MaintenanceStatus statutAvantCompletion;
     private Vehicule vehicule;
     private CategorieOperation categorieType;
     private DetailMaintenance detailMaintenance;
@@ -45,9 +43,6 @@ public class Maintenance {
     }
 
     public void terminer(BigDecimal coutEffectif, LocalDate dateEffectuee) {
-        // Mémorise le statut d'origine (PLANIFIEE / EN_COURS) pour pouvoir le
-        // restaurer si l'opération de dépense générée est annulée.
-        this.statutAvantCompletion = this.statut;
         this.statut = MaintenanceStatus.TERMINEE;
         this.dateEffectuee = dateEffectuee != null ? dateEffectuee : LocalDate.now();
         if (coutEffectif != null) {
@@ -60,16 +55,15 @@ public class Maintenance {
     }
 
     /**
-     * Rouvre une maintenance terminée (retour à l'état antérieur à la
-     * complétion) : restaure le statut d'origine mémorisé (PLANIFIEE / EN_COURS,
-     * défaut EN_COURS) et efface la date d'exécution et le coût enregistrés lors
-     * de la complétion.
+     * Rouvre une maintenance terminée : elle repart PLANIFIEE, sans date
+     * d'exécution ni coût.
+     *
+     * <p>La complétion annulée n'a pas eu lieu — l'intervention est à refaire
+     * en entier, elle doit donc réapparaître parmi les maintenances à planifier
+     * et non parmi celles qu'on croirait en cours au garage.
      */
     public void reouvrir() {
-        this.statut = this.statutAvantCompletion != null
-                ? this.statutAvantCompletion
-                : MaintenanceStatus.EN_COURS;
-        this.statutAvantCompletion = null;
+        this.statut = MaintenanceStatus.PLANIFIEE;
         this.dateEffectuee = null;
         this.cout = null;
     }

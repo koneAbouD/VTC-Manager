@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -132,6 +133,26 @@ class LigneRecetteCycleDeVieTest {
 
             assertThatThrownBy(() -> annulerUseCase.executer(LIGNE_ID, "erreur"))
                     .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        @DisplayName("Un encaissement extourné ne retient plus l'annulation de la ligne")
+        void ligne_avec_encaissement_extourne() {
+            // Le versement a été contre-passé : l'argent a été rendu, la ligne
+            // n'a plus rien encaissé et redevient annulable. Compter l'écriture
+            // restée au journal la bloquerait à perpétuité.
+            LigneRecette avecExtourne = ligne(StatutLigneRecette.EN_ATTENTE, 0);
+            avecExtourne.setEncaissements(new ArrayList<>(List.of(
+                    Encaissement.builder()
+                            .id(1L)
+                            .montant(BigDecimal.valueOf(5_000))
+                            .annuleLe(LocalDateTime.of(2026, 8, 18, 9, 0))
+                            .build())));
+            enBase(avecExtourne);
+
+            LigneRecette annulee = annulerUseCase.executer(LIGNE_ID, "erreur de génération");
+
+            assertThat(annulee.getStatut()).isEqualTo(StatutLigneRecette.ANNULEE);
         }
 
         @Test

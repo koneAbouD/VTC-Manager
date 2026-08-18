@@ -44,6 +44,11 @@ final soldeHorsEcranProvider = StateProvider<bool>((ref) => false);
 /// calcul de période ni le formatage.
 final soldeAccueilTexteProvider = StateProvider<String>((ref) => '');
 
+/// Œil de la carte solde : montants en clair ou masqués. Hissé hors du widget
+/// pour que l'œil repris dans l'en-tête pilote le même état — un solde démasqué
+/// d'un côté et caché de l'autre n'aurait aucun sens.
+final soldeVisibleProvider = StateProvider<bool>((ref) => false);
+
 /// Filtre par type appliqué à l'onglet Opérations ('REVENU' / 'DEPENSE'),
 /// null = tous. Permet à un autre écran (ex. « Tout afficher » du Rapport
 /// financier) d'ouvrir l'onglet Opérations déjà filtré.

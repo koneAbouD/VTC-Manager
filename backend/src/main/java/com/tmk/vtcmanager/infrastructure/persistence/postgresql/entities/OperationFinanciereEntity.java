@@ -84,6 +84,10 @@ public class OperationFinanciereEntity extends AbstractEcritureAuditEntity {
     @Column(name = "maintenance_id")
     private Long maintenanceId;
 
+    /** Contravention réglée par cette écriture (remboursement ou compensation). */
+    @Column(name = "contravention_id")
+    private Long contraventionId;
+
     /**
      * Écriture contre-passée par celle-ci. Renseigné uniquement sur une
      * extourne, dont le montant est négatif : le couple origine + extourne

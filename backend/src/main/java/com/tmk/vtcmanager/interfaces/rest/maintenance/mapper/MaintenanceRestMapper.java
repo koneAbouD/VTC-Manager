@@ -25,7 +25,6 @@ public interface MaintenanceRestMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "vehicule", ignore = true)
-    @Mapping(target = "statutAvantCompletion", ignore = true)
     @Mapping(target = "categorieType", source = "categorieTypeId", qualifiedByName = "categorieTypeRef")
     @Mapping(target = "partenaire", source = "partenaireId", qualifiedByName = "partenaireRef")
     @Mapping(target = "detailMaintenance", source = "detailMaintenance", qualifiedByName = "detailMaintenanceToDomain")

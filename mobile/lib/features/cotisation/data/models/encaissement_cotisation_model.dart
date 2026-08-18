@@ -10,6 +10,8 @@ class EncaissementCotisationModel extends EncaissementCotisation {
     required super.dateEncaissement,
     super.reference,
     super.commentaire,
+    super.annuleLe,
+    super.motifAnnulation,
   });
 
   factory EncaissementCotisationModel.fromJson(Map<String, dynamic> json) =>
@@ -22,6 +24,10 @@ class EncaissementCotisationModel extends EncaissementCotisation {
         dateEncaissement: DateTime.parse(json['dateEncaissement'] as String),
         reference: json['reference'] as String?,
         commentaire: json['commentaire'] as String?,
+        annuleLe: json['annuleLe'] != null
+            ? DateTime.tryParse(json['annuleLe'] as String)
+            : null,
+        motifAnnulation: json['motifAnnulation'] as String?,
       );
 
   Map<String, dynamic> toJson() => {

@@ -17,6 +17,9 @@ public interface RecetteRestMapper {
     @Mapping(target = "id",                  ignore = true)
     @Mapping(target = "ligneRecetteId",      ignore = true)
     @Mapping(target = "operationFinanciereId", ignore = true)
+    @Mapping(target = "motifAnnulation",     ignore = true)
+    @Mapping(target = "annulePar",           ignore = true)
+    @Mapping(target = "annuleLe",            ignore = true)
     Encaissement toDomain(EncaissementRequest request);
 
     EncaissementResponse toResponse(Encaissement encaissement);
