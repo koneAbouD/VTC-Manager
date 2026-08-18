@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.application.usecases.admin.GetUsersByRoleUseCase;
 import com.tmk.vtcmanager.application.usecases.admin.UpdateUserUseCase;
 import com.tmk.vtcmanager.interfaces.rest.admin.mapper.AdminRestMapper;
 import com.tmk.vtcmanager.interfaces.rest.auth.dto.UserInfoDto;
+import com.tmk.vtcmanager.interfaces.rest.common.CurrentUserResolver;
 import com.tmk.vtcmanager.interfaces.rest.utilisateur.dto.CreateGestionnaireRequest;
 import com.tmk.vtcmanager.interfaces.rest.utilisateur.dto.UpdateMonProfilRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,7 +44,7 @@ public class UtilisateurController {
             description = "Fiche Keycloak du compte connecté, résolue depuis le jeton")
     public ResponseEntity<UserInfoDto> monProfil() {
         return ResponseEntity.ok(
-                mapper.toUserInfoDto(getUserByIdUseCase.execute(currentUser.idOrThrow())));
+                mapper.toUserInfoDto(getUserByIdUseCase.execute(currentUser.keycloakUserIdOrThrow())));
     }
 
     @PutMapping("/moi")
@@ -59,7 +60,7 @@ public class UtilisateurController {
                 .phone(request.phone() == null ? null : request.phone().trim())
                 .build();
         return ResponseEntity.ok(mapper.toUserInfoDto(
-                updateUserUseCase.execute(currentUser.idOrThrow(), modifications)));
+                updateUserUseCase.execute(currentUser.keycloakUserIdOrThrow(), modifications)));
     }
 
     @GetMapping("/gestionnaires")

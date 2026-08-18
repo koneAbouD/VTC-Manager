@@ -1,4 +1,4 @@
-package com.tmk.vtcmanager.interfaces.rest.utilisateur;
+package com.tmk.vtcmanager.interfaces.rest.common;
 
 import com.tmk.vtcmanager.application.exception.RoleInsufficientException;
 import org.junit.jupiter.api.AfterEach;
@@ -14,8 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Le compte servi par les routes « /moi » vient du jeton, jamais du client :
- * ces cas verrouillent cette garantie.
+ * Le compte appelant vient du jeton, jamais du client — c'est ce qui cadre les
+ * routes « /moi » et l'adressage des notifications : ces cas le verrouillent.
  */
 class CurrentUserResolverTest {
 
@@ -30,7 +30,7 @@ class CurrentUserResolverTest {
     void rend_le_sub_du_jeton() {
         poserJeton("6f0d-abcd");
 
-        assertThat(resolver.idOrThrow()).isEqualTo("6f0d-abcd");
+        assertThat(resolver.keycloakUserIdOrThrow()).isEqualTo("6f0d-abcd");
     }
 
     @Test
@@ -38,13 +38,13 @@ class CurrentUserResolverTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("alice", "secret", List.of()));
 
-        assertThatThrownBy(resolver::idOrThrow)
+        assertThatThrownBy(resolver::keycloakUserIdOrThrow)
                 .isInstanceOf(RoleInsufficientException.class);
     }
 
     @Test
     void refuse_un_contexte_vide() {
-        assertThatThrownBy(resolver::idOrThrow)
+        assertThatThrownBy(resolver::keycloakUserIdOrThrow)
                 .isInstanceOf(RoleInsufficientException.class);
     }
 
@@ -52,7 +52,7 @@ class CurrentUserResolverTest {
     void refuse_un_jeton_sans_sujet() {
         poserJeton(null);
 
-        assertThatThrownBy(resolver::idOrThrow)
+        assertThatThrownBy(resolver::keycloakUserIdOrThrow)
                 .isInstanceOf(RoleInsufficientException.class);
     }
 
