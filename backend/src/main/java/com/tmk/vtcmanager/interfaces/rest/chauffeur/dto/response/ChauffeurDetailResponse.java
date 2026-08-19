@@ -27,7 +27,13 @@ public record ChauffeurDetailResponse(
         LocalDate dateEmbauche,
         GeolocalisationResponse geolocalisation,
         VehiculeResponse vehicule,
-        ProgrammeTravailResponse programmeTravail) {
+        ProgrammeTravailResponse programmeTravail,
+        /**
+         * Le chauffeur est-il attendu au volant aujourd'hui ? Même drapeau que
+         * sur {@link ChauffeurResponse} : le statut dit qu'il est en poste,
+         * ceci dit si c'est son tour.
+         */
+        Boolean auProgrammeAujourdhui) {
 
     public static ChauffeurDetailResponse from(
             ChauffeurResponse c,
@@ -38,6 +44,6 @@ public record ChauffeurDetailResponse(
                 c.dateNaissance(), c.age(), c.photoUrl(),
                 documents,
                 c.telephone(), c.email(), c.adresse(), c.statut(), c.dateEmbauche(),
-                c.geolocalisation(), c.vehicule(), p);
+                c.geolocalisation(), c.vehicule(), p, c.auProgrammeAujourdhui());
     }
 }

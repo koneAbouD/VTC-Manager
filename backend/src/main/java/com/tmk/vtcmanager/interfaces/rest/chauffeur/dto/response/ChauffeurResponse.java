@@ -26,5 +26,12 @@ public record ChauffeurResponse(
         LocalDate dateSuspension,
         LocalDate dateEmbauche,
         GeolocalisationResponse geolocalisation,
-        VehiculeResponse vehicule
+        VehiculeResponse vehicule,
+        /**
+         * Le chauffeur est-il attendu au volant aujourd'hui — jours de travail
+         * du véhicule, tour d'alternance, remplacement d'un titulaire
+         * indisponible ? Renseigné par les listes ; nul ailleurs, l'appelant
+         * n'ayant alors rien à en déduire.
+         */
+        Boolean auProgrammeAujourdhui
 ) {}

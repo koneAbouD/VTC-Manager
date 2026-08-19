@@ -27,6 +27,7 @@ import com.tmk.vtcmanager.application.ports.persistence.JourFerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.services.AnnulationContraventionService;
+import com.tmk.vtcmanager.application.services.ChauffeursAuProgrammeService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
@@ -1239,6 +1240,15 @@ public class UseCaseBeanConfiguration {
     public IndisponibiliteSubstitutionService indisponibiliteSubstitutionService(
             IndisponibiliteRepository repo) {
         return new IndisponibiliteSubstitutionService(repo);
+    }
+
+    /** Qui est attendu au volant à une date donnée (planning + remplacements). */
+    @Bean
+    public ChauffeursAuProgrammeService chauffeursAuProgrammeService(
+            ProgrammeTravailRepository programmeTravailRepository,
+            IndisponibiliteSubstitutionService indisponibiliteSubstitutionService) {
+        return new ChauffeursAuProgrammeService(
+                programmeTravailRepository, indisponibiliteSubstitutionService);
     }
 
     @Bean

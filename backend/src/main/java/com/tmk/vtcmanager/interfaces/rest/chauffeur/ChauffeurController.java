@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.interfaces.rest.chauffeur;
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
+import com.tmk.vtcmanager.application.services.ChauffeursAuProgrammeService;
 import com.tmk.vtcmanager.application.usecases.chauffeur.AssignVehiculeToChauffeurUseCase;
 import com.tmk.vtcmanager.application.usecases.chauffeur.CreateChauffeurUseCase;
 import com.tmk.vtcmanager.application.usecases.chauffeur.DeleteChauffeurUseCase;
@@ -29,7 +30,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/chauffeurs")
@@ -45,6 +48,7 @@ public class ChauffeurController {
     private final UnassignVehiculeFromChauffeurUseCase unassignVehiculeFromChauffeurUseCase;
     private final GetDocumentsByChauffeurUseCase getDocumentsByChauffeurUseCase;
     private final com.tmk.vtcmanager.application.usecases.auth.ProvisionChauffeurAccountUseCase provisionChauffeurAccountUseCase;
+    private final ChauffeursAuProgrammeService chauffeursAuProgrammeService;
     private final ChauffeurRestMapper mapper;
     private final DocumentRestMapper documentMapper;
     private final ProgrammeTravailRestMapper programmeMapper;
@@ -71,7 +75,16 @@ public class ChauffeurController {
 
     @GetMapping
     public List<ChauffeurResponse> findAll() {
-        return mapper.toResponseList(getAllChauffeursUseCase.execute());
+        // Le planning du jour est résolu une fois pour toute la liste : la
+        // pastille de statut dit ensuite, chauffeur par chauffeur, s'il est de
+        // service aujourd'hui ou au repos.
+        Set<Long> auVolant = chauffeursAuProgrammeService.chauffeurIds(LocalDate.now());
+        return getAllChauffeursUseCase.execute().stream()
+                .map(c -> {
+                    c.setAuProgrammeAujourdhui(auVolant.contains(c.getId()));
+                    return mapper.toResponse(c);
+                })
+                .toList();
     }
 
     @GetMapping("/page")
@@ -79,14 +92,23 @@ public class ChauffeurController {
             @RequestParam(required = false) ChauffeurStatus statut,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        Set<Long> auVolant = chauffeursAuProgrammeService.chauffeurIds(LocalDate.now());
         var result = getAllChauffeursUseCase.executePage(statut, page, size)
-                .map(mapper::toResponse);
+                .map(c -> {
+                    c.setAuProgrammeAujourdhui(auVolant.contains(c.getId()));
+                    return mapper.toResponse(c);
+                });
         return PageResponse.from(result);
     }
 
     @GetMapping("/{id:\\d+}")
     public ChauffeurDetailResponse findById(@PathVariable Long id) {
         var result = getChauffeurByIdUseCase.execute(id);
+        // Même marquage que la liste : la fiche montre la même pastille, et
+        // l'écran de détail n'a pas à redéduire le planning du programme
+        // embarqué — un remplaçant n'y figure même pas.
+        result.chauffeur().setAuProgrammeAujourdhui(
+                chauffeursAuProgrammeService.estAuProgramme(id, LocalDate.now()));
         var chauffeur = mapper.toResponse(result.chauffeur());
         var programme = result.programmeTravail() != null
                 ? programmeMapper.toResponse(result.programmeTravail())

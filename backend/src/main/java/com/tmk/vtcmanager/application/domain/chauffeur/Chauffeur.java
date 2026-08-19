@@ -37,6 +37,15 @@ public class Chauffeur {
     private Geolocalisation geolocalisation;
     private Vehicule vehicule;
 
+    /**
+     * Renseigné à la lecture seulement : le chauffeur est-il attendu au volant
+     * aujourd'hui ? Le statut dit qu'il est en poste, ceci dit si c'est son
+     * tour — un binôme en alternance a deux chauffeurs en service dont un seul
+     * roule. Calculé par {@code ChauffeursAuProgrammeService}, nul quand la
+     * lecture ne s'en soucie pas.
+     */
+    private Boolean auProgrammeAujourdhui;
+
     public Integer getAge() {
         if (dateNaissance == null) return null;
         return Period.between(dateNaissance, LocalDate.now()).getYears();

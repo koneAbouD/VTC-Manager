@@ -39,6 +39,14 @@ class Chauffeur {
   /// Programme de travail embarqué — présent uniquement dans `GET /chauffeurs/{id}`.
   final ProgrammeTravail? programmeTravail;
 
+  /// Le chauffeur est-il attendu au volant aujourd'hui ? Le statut dit qu'il
+  /// est en poste, ceci dit si c'est son tour : d'un binôme en alternance, les
+  /// deux sont en service et un seul roule. Calculé par le serveur (jours de
+  /// travail du véhicule, alternance, remplacement d'un titulaire
+  /// indisponible) et renseigné par les listes seulement — nul ailleurs, et
+  /// l'affichage n'a alors rien à en déduire.
+  final bool? auProgrammeAujourdhui;
+
   const Chauffeur({
     this.id,
     required this.nom,
@@ -61,6 +69,7 @@ class Chauffeur {
     this.vehiculeModele,
     this.vehiculeMatricule,
     this.programmeTravail,
+    this.auProgrammeAujourdhui,
   });
 
   // ── Calculs dérivés (miroir des helpers Java) ──────────────────────────
@@ -111,6 +120,7 @@ class Chauffeur {
     String? vehiculeModele,
     String? vehiculeMatricule,
     ProgrammeTravail? programmeTravail,
+    bool? auProgrammeAujourdhui,
   }) {
     return Chauffeur(
       id: id ?? this.id,
@@ -134,6 +144,8 @@ class Chauffeur {
       vehiculeModele: vehiculeModele ?? this.vehiculeModele,
       vehiculeMatricule: vehiculeMatricule ?? this.vehiculeMatricule,
       programmeTravail: programmeTravail ?? this.programmeTravail,
+      auProgrammeAujourdhui:
+          auProgrammeAujourdhui ?? this.auProgrammeAujourdhui,
     );
   }
 }

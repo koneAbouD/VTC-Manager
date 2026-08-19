@@ -29,6 +29,7 @@ class ChauffeurModel extends Chauffeur {
     super.vehiculeModele,
     super.vehiculeMatricule,
     super.programmeTravail,
+    super.auProgrammeAujourdhui,
   });
 
   factory ChauffeurModel.fromJson(Map<String, dynamic> json) {
@@ -83,6 +84,7 @@ class ChauffeurModel extends Chauffeur {
       vehiculeModele: modele.isEmpty ? null : modele,
       vehiculeMatricule: vehiculeMatricule,
       programmeTravail: programme,
+      auProgrammeAujourdhui: json['auProgrammeAujourdhui'] as bool?,
     );
   }
 
@@ -108,5 +110,6 @@ class ChauffeurModel extends Chauffeur {
         vehiculeModele: c.vehiculeModele,
         vehiculeMatricule: c.vehiculeMatricule,
         programmeTravail: c.programmeTravail,
+        auProgrammeAujourdhui: c.auProgrammeAujourdhui,
       );
 }

@@ -57,12 +57,21 @@ class _AddButton extends StatelessWidget {
 
 Color _cStatutColor(ChauffeurStatus? s) => switch (s) {
       ChauffeurStatus.actif => const Color(0xFF2E7D32),
-      ChauffeurStatus.enService => const Color(0xFF1565C0),
+      // « En service » reste gris : ce statut dit seulement que le chauffeur
+      // est en poste et affecté. Ce qui compte à l'œil — roule-t-il
+      // aujourd'hui ? — est porté par le point coloré de la pastille.
+      ChauffeurStatus.enService => Colors.grey,
       ChauffeurStatus.inactif => Colors.grey,
       ChauffeurStatus.enConge => const Color(0xFFE65100),
       ChauffeurStatus.suspendu => const Color(0xFFC62828),
       null => Colors.grey,
     };
+
+/// Vert quand le chauffeur est attendu au volant aujourd'hui.
+const _cAuVolant = Color(0xFF2E7D32);
+
+/// Rouge quand il est en service mais que le planning ne l'appelle pas.
+const _cAuRepos = Color(0xFFC62828);
 
 // ── Écran principal ──────────────────────────────────────────────────────────
 
@@ -806,6 +815,21 @@ class _ChauffeurCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sc = _cStatutColor(chauffeur.statut);
+
+    // Être en service et rouler aujourd'hui sont deux choses : d'un binôme en
+    // alternance, les deux sont en service et un seul prend le volant. Le
+    // serveur tranche par le planning du jour — vert, il roule ; rouge, il est
+    // au repos et le libellé le dit. Drapeau absent (liste d'une version
+    // antérieure du serveur), on s'en tient au statut, sans point.
+    final enService = chauffeur.statut == ChauffeurStatus.enService;
+    final auVolant = enService ? chauffeur.auProgrammeAujourdhui : null;
+    final statutLabel = auVolant == false
+        ? 'Au repos'
+        : (chauffeur.statut?.label ?? 'Inconnu');
+    final statutDot = auVolant == null
+        ? null
+        : (auVolant ? _cAuVolant : _cAuRepos);
+
     final initials =
         '${chauffeur.prenom.isNotEmpty ? chauffeur.prenom[0] : ''}'
                 '${chauffeur.nom.isNotEmpty ? chauffeur.nom[0] : ''}'
@@ -898,9 +922,9 @@ class _ChauffeurCard extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       _StatusChip(
-                                        label: chauffeur.statut?.label ??
-                                            'Inconnu',
+                                        label: statutLabel,
                                         color: sc,
+                                        dotColor: statutDot,
                                       ),
                                       if (vehiculeLabel != null) ...[
                                         const SizedBox(height: 6),
@@ -1024,7 +1048,12 @@ class _ChauffeurThumbnailState extends State<_ChauffeurThumbnail> {
 class _StatusChip extends StatelessWidget {
   final String label;
   final Color color;
-  const _StatusChip({required this.label, required this.color});
+
+  /// Point posé avant le libellé. Nul, la pastille n'en porte pas — un statut
+  /// qui ne dépend pas du planning du jour n'a rien à signaler là.
+  final Color? dotColor;
+
+  const _StatusChip({required this.label, required this.color, this.dotColor});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1035,12 +1064,33 @@ class _StatusChip extends StatelessWidget {
           border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         // Libellé en noir : la couleur du statut reste portée par le fond et
-        // la bordure de la pastille.
-        child: Text(label,
-            style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A2E))),
+        // la bordure de la pastille. Le point, lui, garde sa teinte pleine —
+        // c'est le seul signal du planning du jour.
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (dotColor != null) ...[
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: dotColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 5),
+            ],
+            Flexible(
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E))),
+            ),
+          ],
+        ),
       );
 }
 

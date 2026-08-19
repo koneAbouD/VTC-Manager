@@ -22,6 +22,9 @@ public interface ChauffeurRestMapper {
     @Mapping(target = "statutManuel", ignore = true)
     @Mapping(target = "keycloakUserId", ignore = true)
     @Mapping(target = "dateSuspension", ignore = true)
+    // Drapeau de lecture posé par le contrôleur (planning du jour) : aucune
+    // source ici.
+    @Mapping(target = "auProgrammeAujourdhui", ignore = true)
     Chauffeur toDomain(ChauffeurRequest request);
 
     @Mapping(target = "documents", expression = "java(java.util.List.of())")

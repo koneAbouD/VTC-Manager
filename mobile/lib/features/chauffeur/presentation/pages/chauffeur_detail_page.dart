@@ -242,7 +242,10 @@ class _HeaderCard extends StatelessWidget {
                   ],
                 ),
               ),
-              _StatusPill(status: chauffeur.statut),
+              _StatusPill(
+                status: chauffeur.statut,
+                auProgrammeAujourdhui: chauffeur.auProgrammeAujourdhui,
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -271,7 +274,13 @@ class _HeaderCard extends StatelessWidget {
 
 class _StatusPill extends StatelessWidget {
   final ChauffeurStatus? status;
-  const _StatusPill({required this.status});
+
+  /// Le chauffeur est-il attendu au volant aujourd'hui ? Renseigné par le
+  /// serveur pour un chauffeur en service ; nul, la pilule s'en tient au
+  /// statut et garde son icône.
+  final bool? auProgrammeAujourdhui;
+
+  const _StatusPill({required this.status, this.auProgrammeAujourdhui});
 
   @override
   Widget build(BuildContext context) {
@@ -283,8 +292,8 @@ class _StatusPill extends StatelessWidget {
           Icons.check_circle,
         ),
       ChauffeurStatus.enService => (
-          const Color(0xFFE3F2FD),
-          const Color(0xFF1565C0),
+          const Color(0xFFEFEFEF),
+          const Color(0xFF616161),
           'En service',
           Icons.directions_car,
         ),
@@ -314,6 +323,18 @@ class _StatusPill extends StatelessWidget {
         ),
     };
 
+    // Être en service ne dit pas qu'on roule aujourd'hui : d'un binôme en
+    // alternance, les deux sont en service et un seul prend le volant. La
+    // pilule reste grise et laisse le point porter le signal — vert au volant,
+    // rouge au repos. Il remplace l'icône plutôt que de s'y ajouter : à cette
+    // taille, deux symboles côte à côte se gênent.
+    final auVolant =
+        status == ChauffeurStatus.enService ? auProgrammeAujourdhui : null;
+    final libelle = auVolant == false ? 'Au repos' : label;
+    final dot = auVolant == null
+        ? null
+        : (auVolant ? const Color(0xFF2E7D32) : const Color(0xFFC62828));
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -323,10 +344,17 @@ class _StatusPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: fg),
+          if (dot != null)
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+            )
+          else
+            Icon(icon, size: 13, color: fg),
           const SizedBox(width: 5),
           Text(
-            label,
+            libelle,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
