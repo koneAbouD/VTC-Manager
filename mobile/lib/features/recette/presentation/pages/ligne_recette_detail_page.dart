@@ -26,8 +26,8 @@ class LigneRecetteDetailPage extends ConsumerWidget {
     // Une seule icône dans l'en-tête, selon ce que la fiche permet :
     //   • annulée à tort et les livres encore ouverts → « Restaurer », la
     //     remet en circulation avec le statut que dictent ses versements ;
-    //   • fiche illisible (chargement, erreur) → rechargement, seul recours
-    //     de cet écran ;
+    //   • fiche illisible parce que la lecture a échoué → rechargement, seul
+    //     recours de cet écran ;
     //   • sinon rien : une ligne vivante est rafraîchie par ses propres
     //     actions, et une annulation figée par un arrêté n'offre plus rien.
     final ligne = asyncLigne.valueOrNull;
@@ -37,7 +37,12 @@ class LigneRecetteDetailPage extends ConsumerWidget {
           icon: Icons.restore_rounded,
           onTap: () => _restaurer(context, ref, ligneId),
         ),
-      null => AppHeaderAction(
+      // Le rechargement ne s'offre qu'en cas d'échec. Pendant le premier
+      // chargement, l'en-tête reste nu : une icône posée là le temps de la
+      // requête, puis retirée dès la fiche arrivée, se lit comme un bouton qui
+      // s'évapore — et sa flèche circulaire ressemble à s'y méprendre à celle
+      // de la restauration.
+      null when asyncLigne.hasError => AppHeaderAction(
           icon: Icons.refresh,
           onTap: () => ref.invalidate(ligneRecetteDetailProvider(ligneId)),
         ),
