@@ -12,6 +12,7 @@ import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_config.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/utils/image_source_bottom_sheet.dart';
+import '../../../../core/utils/phone_formatter.dart';
 import '../../domain/entities/chauffeur.dart';
 import '../../domain/enums/chauffeur_status.dart';
 import '../../domain/enums/genre.dart';
@@ -241,7 +242,12 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
 
   void _onChanged() => setState(() {});
 
-  String _stripIndicatif(String? phone) {
+  /// Le numéro d'abonné seul, regroupé par paires pour la saisie — l'indicatif
+  /// est porté par le sélecteur de pays.
+  String _stripIndicatif(String? phone) =>
+      PhoneFormatter.paires(_numeroLocal(phone));
+
+  String _numeroLocal(String? phone) {
     if (phone == null) return '';
     final normalized = phone.trim();
     if (normalized.isEmpty) return '';
@@ -321,9 +327,11 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
       _submitError = null;
     });
 
-    final fullPhone = _telephone.text.trim().isEmpty
-        ? null
-        : '${_indicatif.dial} ${_telephone.text.trim()}';
+    // Les espaces de saisie ne partent pas au serveur : le numéro y est stocké
+    // d'un bloc, sans quoi le même abonné s'écrirait de deux façons selon la
+    // date de sa fiche — et la recherche par téléphone en pâtirait.
+    final numero = PhoneFormatter.chiffres(_telephone.text);
+    final fullPhone = numero.isEmpty ? null : '${_indicatif.dial} $numero';
 
     final chauffeur = Chauffeur(
       id: widget.initial?.id,
@@ -1373,6 +1381,7 @@ class _PhonePill extends StatelessWidget {
               keyboardType: TextInputType.phone,
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
+                const PhoneInputFormatter(),
               ],
               style: const TextStyle(fontSize: 15, color: Colors.black87),
               decoration: const InputDecoration(

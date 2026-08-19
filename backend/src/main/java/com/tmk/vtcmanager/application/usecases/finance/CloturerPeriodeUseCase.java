@@ -9,6 +9,7 @@ import com.tmk.vtcmanager.application.domain.tresorerie.CompteAvecSolde;
 import com.tmk.vtcmanager.application.domain.tresorerie.CompteTresorerie;
 import com.tmk.vtcmanager.application.domain.tresorerie.TypeCompteTresorerie;
 import com.tmk.vtcmanager.application.exception.PeriodeNonCloturableException;
+import com.tmk.vtcmanager.application.exception.PeriodeNonCloturableException.Motif;
 import com.tmk.vtcmanager.application.ports.persistence.CloturePeriodeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CompteCourantRepository;
@@ -25,11 +26,15 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 @RequiredArgsConstructor
 public class CloturerPeriodeUseCase {
+
+    /** Les dates lues par l'utilisateur s'écrivent comme il les écrit. */
+    private static final DateTimeFormatter JOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final CloturePeriodeRepository cloturePeriodeRepository;
     private final ClotureCaisseRepository clotureCaisseRepository;
@@ -61,17 +66,17 @@ public class CloturerPeriodeUseCase {
     public CloturePeriode executer(int annee, int mois) {
         YearMonth periode = YearMonth.of(annee, mois);
         if (!periode.isBefore(YearMonth.now())) {
-            throw new PeriodeNonCloturableException(
+            throw new PeriodeNonCloturableException(Motif.MOIS_NON_ECHU,
                     "Seul un mois strictement passé peut être clôturé");
         }
         if (cloturePeriodeRepository.existsByAnneeAndMois(annee, mois)) {
-            throw new PeriodeNonCloturableException(
+            throw new PeriodeNonCloturableException(Motif.PERIODE_DEJA_CLOTUREE,
                     "La période " + mois + "/" + annee + " est déjà clôturée");
         }
         cloturePeriodeRepository.findDerniere().ifPresent(derniere -> {
             YearMonth attendue = YearMonth.of(derniere.getAnnee(), derniere.getMois()).plusMonths(1);
             if (!periode.equals(attendue)) {
-                throw new PeriodeNonCloturableException(
+                throw new PeriodeNonCloturableException(Motif.PERIODE_NON_CONTIGUE,
                         "La prochaine période à clôturer est " + attendue.getMonthValue()
                                 + "/" + attendue.getYear());
             }
@@ -96,34 +101,58 @@ public class CloturerPeriodeUseCase {
      * décision. Le contrôle attendu dépend du support — comptage d'espèces,
      * relevé de l'opérateur mobile, rapprochement bancaire — et le message le
      * nomme pour ce qu'il est ({@link TypeCompteTresorerie#libelleControle()}).
+     *
+     * <p>Tous les manques sont relevés avant de refuser, pas seulement le
+     * premier : s'arrêter au plus proche obligeait à relancer la clôture autant
+     * de fois qu'il restait de comptages à faire, chaque essai n'en révélant
+     * qu'un. L'utilisateur voit maintenant sa liste entière, la traite d'un
+     * trait, et ne revient qu'une fois.
      */
     private void verifierCaisses(LocalDate debut, LocalDate fin) {
+        List<String> obstacles = new ArrayList<>();
+        boolean comptageManquant = false;
+
         for (CompteTresorerie compte : compteTresorerieRepository.findByActifTrue()) {
             List<ClotureCaisse> clotures =
                     clotureCaisseRepository.findByCompteIdOrderByDateDesc(compte.getId());
             String controle = compte.getType() != null
                     ? compte.getType().libelleControle() : "comptage";
 
-            boolean compteeDansLaPeriode = clotures.stream().anyMatch(c ->
-                    !c.getDateCloture().isBefore(debut) && !c.getDateCloture().isAfter(fin));
-            if (!compteeDansLaPeriode) {
+            List<ClotureCaisse> duMois = clotures.stream()
+                    .filter(c -> !c.getDateCloture().isBefore(debut)
+                            && !c.getDateCloture().isAfter(fin))
+                    .toList();
+
+            if (duMois.isEmpty()) {
                 String verbe = compte.getType() != null
                         ? compte.getType().verbeControle() : "comptez-le";
-                throw new PeriodeNonCloturableException("Le compte « " + compte.getLibelle()
+                comptageManquant = true;
+                obstacles.add("Le compte « " + compte.getLibelle()
                         + " » n'a fait l'objet d'aucun " + controle + " sur la période : "
                         + verbe + " avant de clôturer le mois.");
+                // Sans comptage dans le mois, il ne peut y avoir d'écart du mois
+                // à trancher : rien de plus à relever sur ce compte.
+                continue;
             }
 
-            clotures.stream()
-                    .filter(c -> !c.getDateCloture().isBefore(debut) && !c.getDateCloture().isAfter(fin))
+            duMois.stream()
                     .filter(ClotureCaisse::attendImputation)
-                    .findFirst()
-                    .ifPresent(c -> {
-                        throw new PeriodeNonCloturableException("L'écart constaté au " + controle
-                                + " du " + c.getDateCloture() + " sur « " + compte.getLibelle()
-                                + " » attend encore son imputation.");
-                    });
+                    .forEach(c -> obstacles.add("L'écart constaté au " + controle
+                            + " du " + JOUR.format(c.getDateCloture()) + " sur « "
+                            + compte.getLibelle() + " » attend encore son imputation."));
         }
+
+        if (obstacles.isEmpty()) return;
+
+        // Le motif oriente l'écran vers l'action à proposer. Un comptage
+        // manquant l'emporte : il se règle dans la trésorerie, d'où les écarts
+        // se tranchent aussi.
+        Motif motif = comptageManquant ? Motif.CAISSE_NON_COMPTEE : Motif.ECART_NON_IMPUTE;
+        // Un seul obstacle parle mieux de lui-même que compté ; à plusieurs,
+        // c'est le nombre qui renseigne, le détail suit dans la liste.
+        String message = obstacles.size() == 1 ? obstacles.get(0)
+                : obstacles.size() + " points restent à régler avant de figer le mois.";
+        throw new PeriodeNonCloturableException(motif, message, obstacles);
     }
 
     private EtatsCloture construireEtats(CloturePeriode cloture, int annee, int mois, LocalDate fin) {
@@ -144,6 +173,14 @@ public class CloturerPeriodeUseCase {
                     .compteId(compte.getId())
                     .libelleCompte(compte.getLibelle())
                     .solde(solde)
+                    // Jusqu'où ce solde est attesté. Le contrôle n'exige qu'un
+                    // comptage quelque part dans le mois, alors que le solde est
+                    // arrêté au dernier jour : entre les deux, personne n'a rien
+                    // vérifié. La photo porte donc la date, et le lecteur juge
+                    // de l'écart plutôt que de croire le 31 attesté le 31.
+                    .dateDernierComptage(clotureCaisseRepository
+                            .findDerniereDateClotureALaDate(compte.getId(), fin)
+                            .orElse(null))
                     .build());
             tresorerie = tresorerie.add(solde);
         }

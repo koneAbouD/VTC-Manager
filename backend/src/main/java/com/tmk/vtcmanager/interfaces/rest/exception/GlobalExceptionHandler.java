@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.exception.AucunePenaliteAmendePendingExcep
 import com.tmk.vtcmanager.application.exception.CaisseClotureeException;
 import com.tmk.vtcmanager.application.exception.CaisseCreditriceException;
 import com.tmk.vtcmanager.application.exception.EcritureFigeeException;
+import com.tmk.vtcmanager.application.exception.EncaissementFuturException;
 import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedException;
 import com.tmk.vtcmanager.application.exception.ClotureCaisseDejaEffectueeException;
 import com.tmk.vtcmanager.application.exception.MotifEcartObligatoireException;
@@ -261,9 +262,21 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.CONFLICT, "PERIODE_CLOTUREE", ex.getMessage(), request, ex);
     }
 
+    @ExceptionHandler(EncaissementFuturException.class)
+    public ResponseEntity<ApiError> handleEncaissementFutur(EncaissementFuturException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "ENCAISSEMENT_FUTUR", ex.getMessage(), request, ex);
+    }
+
+    /**
+     * Le motif tient lieu de code : l'écran de clôture y lit ce qui bloque et
+     * propose l'action correspondante, plutôt que de deviner dans le texte. Les
+     * obstacles partent en {@code details} — tout ce qui reste à faire, d'un
+     * seul tenant.
+     */
     @ExceptionHandler(PeriodeNonCloturableException.class)
     public ResponseEntity<ApiError> handlePeriodeNonCloturable(PeriodeNonCloturableException ex, HttpServletRequest request) {
-        return respond(HttpStatus.CONFLICT, "PERIODE_NON_CLOTURABLE", ex.getMessage(), request, ex);
+        return respond(HttpStatus.CONFLICT, ex.getMotif().name(), ex.getMessage(), request,
+                ex.getObstacles().isEmpty() ? null : ex.getObstacles(), ex);
     }
 
     @ExceptionHandler(EcritureFigeeException.class)
@@ -286,9 +299,20 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.CONFLICT, "CLOTURE_CAISSE_DEJA_EFFECTUEE", ex.getMessage(), request, ex);
     }
 
+    /**
+     * Les trois nombres partent en détails : l'écran de comptage s'en sert pour
+     * réaligner le solde théorique qu'il affichait et rouvrir le champ motif,
+     * plutôt que de laisser l'utilisateur devant une exigence qu'il ne peut pas
+     * satisfaire.
+     */
     @ExceptionHandler(MotifEcartObligatoireException.class)
     public ResponseEntity<ApiError> handleMotifEcartObligatoire(MotifEcartObligatoireException ex, HttpServletRequest request) {
-        return respond(HttpStatus.BAD_REQUEST, "MOTIF_ECART_OBLIGATOIRE", ex.getMessage(), request, ex);
+        return respond(HttpStatus.BAD_REQUEST, "MOTIF_ECART_OBLIGATOIRE", ex.getMessage(), request,
+                List.of(
+                        "soldeTheorique:" + ex.getSoldeTheorique(),
+                        "soldeCompte:" + ex.getSoldeCompte(),
+                        "ecart:" + ex.getEcart()
+                ), ex);
     }
 
     @ExceptionHandler(ResourceAlreadyExistsException.class)

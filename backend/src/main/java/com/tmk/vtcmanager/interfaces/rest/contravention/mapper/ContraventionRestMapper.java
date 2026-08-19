@@ -39,6 +39,8 @@ public interface ContraventionRestMapper {
     @Mapping(target = "annuleLe", ignore = true)
     @Mapping(target = "motifAnnulation", ignore = true)
     @Mapping(target = "annulePar", ignore = true)
+    // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
+    @Mapping(target = "restaurable", ignore = true)
     @Mapping(target = "chauffeur", source = "chauffeurId", qualifiedByName = "contraventionChauffeurFromId")
     @Mapping(target = "vehicule", source = "vehiculeId", qualifiedByName = "contraventionVehiculeFromId")
     Contravention toDomain(ContraventionRequest request);
@@ -73,6 +75,8 @@ public interface ContraventionRestMapper {
     @Mapping(target = "annuleLe", ignore = true)
     @Mapping(target = "motifAnnulation", ignore = true)
     @Mapping(target = "annulePar", ignore = true)
+    // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
+    @Mapping(target = "restaurable", ignore = true)
     @Mapping(target = "description", source = "typeInfraction")
     @Mapping(target = "chauffeur", source = "chauffeurId", qualifiedByName = "contraventionChauffeurFromId")
     @Mapping(target = "vehicule", source = "vehiculeId", qualifiedByName = "contraventionVehiculeFromId")

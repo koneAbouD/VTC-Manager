@@ -20,6 +20,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.EncaissementFuturGuard;
 import com.tmk.vtcmanager.application.services.NotificationEncaissementService;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
@@ -44,6 +45,7 @@ public class CreateEncaissementUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final EncaissementFuturGuard encaissementFuturGuard;
     private final NotificationEncaissementService notificationEncaissementService;
 
     @Transactional
@@ -55,6 +57,9 @@ public class CreateEncaissementUseCase {
             throw new LigneRecetteDejaSoldeeException(ligneRecetteId);
         }
 
+        // L'avenir d'abord : postdater était le contournement habituel des deux
+        // verrous suivants, et il fausse les soldes à date.
+        encaissementFuturGuard.verifier(encaissement.getDateEncaissement());
         periodeClotureeGuard.verifier(encaissement.getDateEncaissement());
 
         // La caisse visée ne doit pas avoir déjà été comptée pour ce jour :

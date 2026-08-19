@@ -36,8 +36,22 @@ public class ClotureCaisseRepositoryAdapter implements ClotureCaisseRepository {
     }
 
     @Override
+    public List<ClotureCaisse> findHistoriqueByCompteId(Long compteId) {
+        return mapper.toClotureCaisseDomainList(
+                jpaRepository.findByCompteIdOrderByDateClotureDescIdDesc(compteId));
+    }
+
+    @Override
     public Optional<LocalDate> findDerniereDateCloture(Long compteId) {
         return jpaRepository.findFirstByCompteIdAndAnnuleLeIsNullOrderByDateClotureDesc(compteId)
+                .map(ClotureCaisseEntity::getDateCloture);
+    }
+
+    @Override
+    public Optional<LocalDate> findDerniereDateClotureALaDate(Long compteId, LocalDate date) {
+        return jpaRepository
+                .findFirstByCompteIdAndAnnuleLeIsNullAndDateClotureLessThanEqualOrderByDateClotureDesc(
+                        compteId, date)
                 .map(ClotureCaisseEntity::getDateCloture);
     }
 
@@ -45,6 +59,21 @@ public class ClotureCaisseRepositoryAdapter implements ClotureCaisseRepository {
     public Optional<LocalDate> findDerniereDateClotureToutesCaisses() {
         return jpaRepository.findFirstByAnnuleLeIsNullOrderByDateClotureDesc()
                 .map(ClotureCaisseEntity::getDateCloture);
+    }
+
+    @Override
+    public java.util.Map<Long, LocalDate> findDernieresClotureParCompte() {
+        return jpaRepository.dernieresClotureParCompte().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ligne -> (Long) ligne[0], ligne -> (LocalDate) ligne[1]));
+    }
+
+    @Override
+    public List<ClotureCaisse> findEcartsEnAttente() {
+        return mapper.toClotureCaisseDomainList(
+                jpaRepository.findByImputationStatutAndAnnuleLeIsNullOrderByDateClotureAsc(
+                        com.tmk.vtcmanager.application.domain.tresorerie
+                                .StatutImputationEcart.EN_ATTENTE));
     }
 
     @Override

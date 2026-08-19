@@ -28,6 +28,13 @@ public interface CompteTresorerieJpaRepository extends JpaRepository<CompteTreso
      * (REVENU en +, DEPENSE en −) + transferts entrants − transferts
      * sortants. ANNULEE exclu — une annulation est donc neutre sur le solde
      * sans écriture inverse.
+     *
+     * <p>Bornée à {@code date} — le jour même en pratique : un solde de
+     * trésorerie dit ce que le compte détient <em>maintenant</em>. Y compter
+     * une écriture postdatée ferait entrer un argent que personne n'a encore
+     * reçu, et surtout ferait diverger ce solde de celui que
+     * {@link #calculerSoldeALaDate(Long, java.time.LocalDate)} oppose au
+     * comptage : l'écran annoncerait un écart nul là où la clôture en voit un.
      */
     @Query(value = """
             SELECT c.id AS compteId,
@@ -36,19 +43,24 @@ public interface CompteTresorerieJpaRepository extends JpaRepository<CompteTreso
                                                ELSE -o.montant END)
                                FROM operations_financieres o
                                WHERE o.compte_tresorerie_id = c.id
-                                 AND o.statut IN ('ENCAISSE', 'PAYE')), 0)
+                                 AND o.statut IN ('ENCAISSE', 'PAYE')
+                                 AND o.date_operation <= :date), 0)
                    + COALESCE((SELECT SUM(t.montant) FROM transferts_tresorerie t
-                               WHERE t.compte_destination_id = c.id), 0)
+                               WHERE t.compte_destination_id = c.id
+                                 AND t.date_transfert <= :date), 0)
                    - COALESCE((SELECT SUM(t.montant) FROM transferts_tresorerie t
-                               WHERE t.compte_source_id = c.id), 0) AS solde
+                               WHERE t.compte_source_id = c.id
+                                 AND t.date_transfert <= :date), 0) AS solde
             FROM comptes_tresorerie c
             WHERE (:actifsSeulement = FALSE OR c.actif)
             """, nativeQuery = true)
-    List<SoldeCompteProjection> calculerSoldes(@Param("actifsSeulement") boolean actifsSeulement);
+    List<SoldeCompteProjection> calculerSoldes(@Param("actifsSeulement") boolean actifsSeulement,
+                                               @Param("date") java.time.LocalDate date);
 
     /**
      * Solde d'un compte arrêté à une date : même formule que
-     * {@link #calculerSoldes(boolean)}, bornée à {@code date} incluse.
+     * {@link #calculerSoldes(boolean, java.time.LocalDate)}, pour une date
+     * quelconque plutôt que pour le jour même.
      */
     @Query(value = """
             SELECT c.solde_initial

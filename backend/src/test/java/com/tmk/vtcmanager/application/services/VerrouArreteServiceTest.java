@@ -40,6 +40,8 @@ class VerrouArreteServiceTest {
         when(cloturePeriodeRepository.findDerniere()).thenReturn(Optional.empty());
         when(clotureCaisseRepository.findDerniereDateClotureToutesCaisses())
                 .thenReturn(Optional.empty());
+        when(clotureCaisseRepository.findDernieresClotureParCompte())
+                .thenReturn(java.util.Map.of());
         service = new VerrouArreteService(cloturePeriodeRepository, clotureCaisseRepository);
     }
 
@@ -104,6 +106,32 @@ class VerrouArreteServiceTest {
         caisseCompteeLe(LocalDate.of(2026, 8, 9));
 
         assertThat(service.estRestaurable(LE_10_AOUT)).isTrue();
+    }
+
+    @Test
+    @DisplayName("Une écriture ne se juge que sur la caisse qu'elle mouvemente")
+    void ecriture_jugee_sur_sa_caisse() {
+        // La caisse 2 a été comptée ; la caisse 1 ne l'a jamais été. Une
+        // écriture passée par la caisse 1 reste contre-passable, même datée du
+        // jour du comptage de l'autre — ce procès-verbal ne l'engage pas.
+        when(clotureCaisseRepository.findDernieresClotureParCompte())
+                .thenReturn(java.util.Map.of(2L, LE_10_AOUT));
+
+        assertThat(service.estAnnulable(LE_10_AOUT, 1L)).isTrue();
+        assertThat(service.estAnnulable(LE_10_AOUT, 2L)).isFalse();
+        assertThat(service.estAnnulable(LE_10_AOUT.plusDays(1), 2L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("Une écriture sans compte n'est retenue que par la période")
+    void ecriture_sans_compte() {
+        when(clotureCaisseRepository.findDernieresClotureParCompte())
+                .thenReturn(java.util.Map.of(2L, LE_10_AOUT));
+
+        assertThat(service.estAnnulable(LE_10_AOUT, null)).isTrue();
+
+        moisCloture(2026, 8);
+        assertThat(service.estAnnulable(LE_10_AOUT, null)).isFalse();
     }
 
     @Test

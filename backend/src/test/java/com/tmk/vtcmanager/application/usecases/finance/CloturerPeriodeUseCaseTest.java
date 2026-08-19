@@ -37,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -185,6 +186,72 @@ class CloturerPeriodeUseCaseTest {
     }
 
     @Test
+    @DisplayName("Tous les obstacles sont relevés d'un coup, pas seulement le premier")
+    void obstacles_releves_ensemble() {
+        CompteTresorerie mobileMoney = CompteTresorerie.builder()
+                .id(2L).libelle("Orange Money").actif(true).build();
+        when(compteTresorerieRepository.findByActifTrue())
+                .thenReturn(List.of(caisse, mobileMoney));
+        // La caisse a deux écarts pendants, le second compte n'a jamais été relevé.
+        when(clotureCaisseRepository.findByCompteIdOrderByDateDesc(1L)).thenReturn(List.of(
+                ClotureCaisse.builder().compteId(1L).dateCloture(PERIODE.atDay(12))
+                        .ecart(BigDecimal.valueOf(-4000))
+                        .imputationStatut(StatutImputationEcart.EN_ATTENTE).build(),
+                ClotureCaisse.builder().compteId(1L).dateCloture(PERIODE.atDay(21))
+                        .ecart(BigDecimal.valueOf(1500))
+                        .imputationStatut(StatutImputationEcart.EN_ATTENTE).build()));
+        when(clotureCaisseRepository.findByCompteIdOrderByDateDesc(2L)).thenReturn(List.of());
+
+        // Les révéler un par un obligeait à relancer la clôture trois fois,
+        // chaque essai n'en montrant qu'un.
+        assertThatThrownBy(() -> useCase.executer(ANNEE, MOIS))
+                .isInstanceOf(PeriodeNonCloturableException.class)
+                .asInstanceOf(throwable(PeriodeNonCloturableException.class))
+                .satisfies(ex -> {
+                    assertThat(ex.getObstacles()).hasSize(3);
+                    assertThat(ex.getObstacles().get(0)).contains("Caisse espèces");
+                    assertThat(ex.getObstacles().get(2)).contains("Orange Money");
+                    // Un comptage manquant l'emporte : il se règle dans la
+                    // trésorerie, d'où les écarts se tranchent aussi.
+                    assertThat(ex.getMotif())
+                            .isEqualTo(PeriodeNonCloturableException.Motif.CAISSE_NON_COMPTEE);
+                    assertThat(ex.getMessage()).contains("3 points");
+                });
+    }
+
+    @Test
+    @DisplayName("Le refus dit ce qui bloque : l'écran en tire l'action à proposer")
+    void motif_porte_par_le_refus() {
+        caisseComptee(PERIODE.atDay(15), StatutImputationEcart.EN_ATTENTE);
+
+        assertThatThrownBy(() -> useCase.executer(ANNEE, MOIS))
+                .asInstanceOf(throwable(PeriodeNonCloturableException.class))
+                .satisfies(ex -> {
+                    assertThat(ex.getMotif())
+                            .isEqualTo(PeriodeNonCloturableException.Motif.ECART_NON_IMPUTE);
+                    // Un seul obstacle : le message le reprend mot pour mot.
+                    assertThat(ex.getObstacles()).hasSize(1);
+                    assertThat(ex.getMessage()).isEqualTo(ex.getObstacles().get(0));
+                });
+    }
+
+    @Test
+    @DisplayName("Un mois déjà clôturé se distingue d'un mois non échu")
+    void motifs_de_periode_distincts() {
+        when(cloturePeriodeRepository.existsByAnneeAndMois(ANNEE, MOIS)).thenReturn(true);
+        assertThatThrownBy(() -> useCase.executer(ANNEE, MOIS))
+                .asInstanceOf(throwable(PeriodeNonCloturableException.class))
+                .satisfies(ex -> assertThat(ex.getMotif())
+                        .isEqualTo(PeriodeNonCloturableException.Motif.PERIODE_DEJA_CLOTUREE));
+
+        YearMonth courant = YearMonth.now();
+        assertThatThrownBy(() -> useCase.executer(courant.getYear(), courant.getMonthValue()))
+                .asInstanceOf(throwable(PeriodeNonCloturableException.class))
+                .satisfies(ex -> assertThat(ex.getMotif())
+                        .isEqualTo(PeriodeNonCloturableException.Motif.MOIS_NON_ECHU));
+    }
+
+    @Test
     @DisplayName("Un comptage hors période ne compte pas comme un comptage du mois")
     void comptage_hors_periode_ne_compte_pas() {
         caisseComptee(PERIODE.plusMonths(1).atDay(3), null);
@@ -218,6 +285,39 @@ class CloturerPeriodeUseCaseTest {
         assertThat(e.getDotationProvisions()).isEqualByComparingTo("27750");
         assertThat(e.getSoldes()).hasSize(1);
         assertThat(e.getSoldes().get(0).getLibelleCompte()).isEqualTo("Caisse espèces");
+    }
+
+    @Test
+    @DisplayName("Chaque solde archivé porte la date du comptage qui l'atteste")
+    void archive_la_date_du_dernier_comptage() {
+        LocalDate fin = YearMonth.of(ANNEE, MOIS).atEndOfMonth();
+        LocalDate comptage = fin.minusDays(28);
+        when(clotureCaisseRepository.findDerniereDateClotureALaDate(1L, fin))
+                .thenReturn(Optional.of(comptage));
+
+        useCase.executer(ANNEE, MOIS);
+
+        ArgumentCaptor<EtatsCloture> capture = ArgumentCaptor.forClass(EtatsCloture.class);
+        verify(etatsClotureRepository).save(capture.capture());
+
+        // Le solde est arrêté au dernier jour du mois, mais la clôture n'exige
+        // qu'un comptage tombant quelque part dans le mois : entre les deux
+        // dates, personne n'a rien vérifié. La photo porte donc la date, et le
+        // lecteur juge de l'écart plutôt que de croire le 31 attesté le 31.
+        assertThat(capture.getValue().getSoldes().get(0).getDateDernierComptage())
+                .isEqualTo(comptage);
+    }
+
+    @Test
+    @DisplayName("Un compte jamais compté est archivé sans date d'attestation")
+    void archive_sans_comptage() {
+        useCase.executer(ANNEE, MOIS);
+
+        ArgumentCaptor<EtatsCloture> capture = ArgumentCaptor.forClass(EtatsCloture.class);
+        verify(etatsClotureRepository).save(capture.capture());
+
+        // Nulle plutôt qu'inventée : la lecture affiche « aucun comptage ».
+        assertThat(capture.getValue().getSoldes().get(0).getDateDernierComptage()).isNull();
     }
 
     @Test

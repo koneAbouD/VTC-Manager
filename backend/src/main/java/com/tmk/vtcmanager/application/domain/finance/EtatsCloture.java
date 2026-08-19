@@ -81,5 +81,18 @@ public class EtatsCloture {
         private Long compteId;
         private String libelleCompte;
         private BigDecimal solde;
+        /**
+         * Jusqu'où ce solde est attesté par un comptage réel.
+         *
+         * <p>La clôture n'exige qu'un comptage tombant quelque part dans le
+         * mois, alors que le solde archivé est arrêté au dernier jour : entre
+         * les deux dates, la trésorerie n'a été vérifiée par personne. Plutôt
+         * que de faire passer pour attesté ce qui ne l'est pas, la photo porte
+         * la date et laisse le lecteur juger de l'écart.
+         *
+         * <p>{@code null} sur les photos antérieures à cet archivage, et sur un
+         * compte jamais compté.
+         */
+        private java.time.LocalDate dateDernierComptage;
     }
 }

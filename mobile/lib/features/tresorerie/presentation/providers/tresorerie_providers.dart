@@ -17,6 +17,22 @@ final tresorerieSummaryProvider = FutureProvider<TresorerieSummary>(
   (ref) => ref.watch(_tresorerieDatasourceProvider).getSummary(),
 );
 
+/// Trésorerie archivée d'un mois clos, compte par compte.
+final soldesClotureProvider =
+    FutureProvider.family<List<SoldeClotureData>, ({int annee, int mois})>(
+  (ref, p) => ref
+      .watch(_tresorerieDatasourceProvider)
+      .getSoldesCloture(annee: p.annee, mois: p.mois),
+);
+
+/// Écarts de caisse restés sans décision, du plus ancien au plus récent.
+///
+/// Tant qu'il en reste un, le mois où il tombe refuse d'être clôturé : cette
+/// liste est ce qui rend le blocage visible, et traitable.
+final ecartsEnAttenteProvider = FutureProvider<List<ClotureCaisseData>>(
+  (ref) => ref.watch(_tresorerieDatasourceProvider).getEcartsEnAttente(),
+);
+
 /// Balance âgée par chauffeur, triée par total décroissant (côté backend).
 final balanceAgeeProvider = FutureProvider<List<CreanceChauffeur>>(
   (ref) => ref.watch(_tresorerieDatasourceProvider).getBalanceAgee(),

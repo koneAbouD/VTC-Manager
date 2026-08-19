@@ -5,9 +5,9 @@ import 'package:intl/intl.dart';
 import '../../domain/entities/encaissement_cotisation.dart';
 import '../../domain/entities/ligne_cotisation.dart';
 import '../providers/ligne_cotisation_provider.dart';
-import 'encaissement_cotisation_form_page.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/confirmation_restauration_dialog.dart';
@@ -22,23 +22,32 @@ class LigneCotisationDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncLigne = ref.watch(ligneCotisationDetailProvider(ligneId));
 
-    // Le rechargement ne s'affiche plus sur une ligne vivante — en attente,
-    // partiellement encaissée ou soldée : ses actions la rafraîchissent déjà.
-    // Il reste là où il sert encore : le temps du chargement, en cas d'erreur
-    // (c'est le seul recours de cet écran) et sur une ligne annulée.
+    // Une seule icône dans l'en-tête, selon ce que la fiche permet :
+    //   • annulée à tort et les livres encore ouverts → « Restaurer », la
+    //     remet en circulation avec le statut que dictent ses versements ;
+    //   • fiche illisible (chargement, erreur) → rechargement, seul recours
+    //     de cet écran ;
+    //   • sinon rien : une ligne vivante est rafraîchie par ses propres
+    //     actions, et une annulation figée par un arrêté n'offre plus rien.
     final ligne = asyncLigne.valueOrNull;
-    final actionRafraichir = ligne != null && ligne.statut != StatutLigneCotisation.annulee
-        ? null
-        : AppHeaderAction(
-            icon: Icons.refresh,
-            onTap: () => ref.invalidate(ligneCotisationDetailProvider(ligneId)),
-          );
+    final action = switch (ligne) {
+      final l? when l.statut == StatutLigneCotisation.annulee && l.restaurable =>
+        AppHeaderAction(
+          icon: Icons.restore_rounded,
+          onTap: () => _restaurer(context, ref, ligneId),
+        ),
+      null => AppHeaderAction(
+          icon: Icons.refresh,
+          onTap: () => ref.invalidate(ligneCotisationDetailProvider(ligneId)),
+        ),
+      _ => null,
+    };
 
     return Scaffold(
       backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: 'Détail cotisation',
-        action: actionRafraichir,
+        action: action,
       ),
       body: asyncLigne.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -101,15 +110,6 @@ class _Body extends ConsumerWidget {
         DetailInfoRow(Icons.info_outline_rounded, 'Motif annulation',
             ligne.motifAnnulation),
       ]),
-      // Une ligne annulée à tort se remet en circulation tant que les livres du
-      // mois sont ouverts : elle retrouve le statut que dictent ses versements.
-      // Passé la clôture, le serveur refuse.
-      if (ligne.statut == StatutLigneCotisation.annulee && ligne.restaurable)
-        PremiumButton(
-          label: 'Restaurer',
-          icon: Icons.restore_rounded,
-          onPressed: () => _restaurer(context, ref),
-        ),
       if (ligne.estActive)
         PremiumButtonRow(buttons: [
           PremiumButton(
@@ -149,10 +149,33 @@ class _Body extends ConsumerWidget {
   }
 
   Future<void> _encaisser(BuildContext context, WidgetRef ref) async {
-    final ok = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-            builder: (_) => EncaissementCotisationFormPage(ligne: ligne)));
+    final repo = ref.read(ligneCotisationRepositoryProvider);
+    final immat = ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}';
+    final nom = ligne.chauffeurNom;
+
+    final ok = await showEncaissementLigneDialog(
+      context,
+      titre:     ligne.nomCotisation,
+      sousTitre: (nom != null && nom.isNotEmpty) ? '$immat - $nom' : immat,
+      montantRestant: ligne.montantRestant ??
+          (ligne.montantDu - ligne.montantEncaisse),
+      couleur: const Color(0xFFE65100),
+      icone:   Icons.analytics_outlined,
+      onEncaisser: (saisie) async {
+        final enc = EncaissementCotisation(
+          ligneCotisationId: ligne.id!,
+          montant:           saisie.montant,
+          modeEncaissement:  saisie.mode == ModeEncaissementSaisie.mobileMoney
+              ? ModePaiementCotisation.mobileMoney
+              : ModePaiementCotisation.especes,
+          dateEncaissement:  saisie.date,
+          reference:         saisie.reference,
+          commentaire:       saisie.commentaire,
+        );
+        final r = await repo.createEncaissement(ligne.id!, enc);
+        return r.fold((f) => f.message, (_) => null);
+      },
+    );
     if (ok == true) {
       ref.invalidate(ligneCotisationDetailProvider(ligneId));
       refreshFinances(ref);
@@ -177,26 +200,30 @@ class _Body extends ConsumerWidget {
     }
   }
 
-  Future<void> _restaurer(BuildContext context, WidgetRef ref) async {
-    final confirme = await showConfirmationRestaurationDialog(
-      context,
-      message: 'La cotisation redeviendra due par le chauffeur, avec le statut '
-          'que dictent ses versements.',
-    );
-    if (confirme != true || !context.mounted) return;
+}
 
-    final error = await ref
-        .read(ligneCotisationNotifierProvider.notifier)
-        .restaurer(ligneId);
-    if (!context.mounted) return;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error), backgroundColor: AppColors.error));
-    } else {
-      ref.invalidate(ligneCotisationDetailProvider(ligneId));
-      refreshFinances(ref);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Ligne restaurée')));
-    }
+/// Remet une cotisation annulée en circulation. Portée par l'icône de
+/// l'en-tête, et non plus par un bouton du corps : la confirmation reste le
+/// garde-fou.
+Future<void> _restaurer(BuildContext context, WidgetRef ref, int ligneId) async {
+  final confirme = await showConfirmationRestaurationDialog(
+    context,
+    message: 'La cotisation redeviendra due par le chauffeur, avec le statut '
+        'que dictent ses versements.',
+  );
+  if (confirme != true || !context.mounted) return;
+
+  final error = await ref
+      .read(ligneCotisationNotifierProvider.notifier)
+      .restaurer(ligneId);
+  if (!context.mounted) return;
+  if (error != null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: AppColors.error));
+  } else {
+    ref.invalidate(ligneCotisationDetailProvider(ligneId));
+    refreshFinances(ref);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Ligne restaurée')));
   }
 }

@@ -186,9 +186,14 @@ class TresorerieRemoteDatasource {
     return ClotureCaisseData.fromJson(data as Map<String, dynamic>);
   }
 
-  /// Relevés en vigueur d'un compte, du plus récent au plus ancien.
-  Future<List<ClotureCaisseData>> getCloturesCaisse(int compteId) async {
-    final data = await _client.get('/comptes-tresorerie/$compteId/clotures');
+  /// Relevés d'un compte, du plus récent au plus ancien.
+  ///
+  /// [inclureAnnules] ramène l'historique complet, relevés retirés compris —
+  /// eux seuls expliquent la succession des comptages d'une même journée.
+  Future<List<ClotureCaisseData>> getCloturesCaisse(int compteId,
+      {bool inclureAnnules = false}) async {
+    final data = await _client.get('/comptes-tresorerie/$compteId/clotures',
+        query: inclureAnnules ? {'inclureAnnules': 'true'} : null);
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => ClotureCaisseData.fromJson(e as Map<String, dynamic>))
@@ -199,6 +204,38 @@ class TresorerieRemoteDatasource {
   Future<ClotureCaisseData> annulerClotureCaisse(int clotureId, String motif) async {
     final data = await _client.patch(
         '/comptes-tresorerie/clotures/$clotureId/annuler', {'motif': motif});
+    return ClotureCaisseData.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Écarts de caisse qui attendent encore une décision, toutes caisses
+  /// confondues, du plus ancien au plus récent. Chacun bloque la clôture du
+  /// mois où il tombe.
+  Future<List<ClotureCaisseData>> getEcartsEnAttente() async {
+    final data = await _client.get('/comptes-tresorerie/clotures/ecarts-en-attente');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => ClotureCaisseData.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Tranche un écart : `PERTE` (l'entreprise le supporte) ou `RECOUVREE`
+  /// (le responsable rembourse).
+  Future<ClotureCaisseData> imputerEcartCaisse(
+      int clotureId, String decision, String motif) async {
+    final data = await _client.patch(
+        '/comptes-tresorerie/clotures/$clotureId/imputer',
+        {'decision': decision, 'motif': motif});
+    return ClotureCaisseData.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Revient sur une imputation : ses écritures sont contre-passées et l'écart
+  /// redevient à trancher. Pour la décision prise trop vite — le manquant du
+  /// mardi qui s'explique le jeudi.
+  Future<ClotureCaisseData> annulerImputationEcart(
+      int clotureId, String motif) async {
+    final data = await _client.patch(
+        '/comptes-tresorerie/clotures/$clotureId/annuler-imputation',
+        {'motif': motif});
     return ClotureCaisseData.fromJson(data as Map<String, dynamic>);
   }
 
@@ -243,6 +280,18 @@ class TresorerieRemoteDatasource {
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => CloturePeriodeData.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Trésorerie archivée d'un mois clos, compte par compte, avec la date du
+  /// comptage qui atteste chaque solde. Vide si le mois n'est pas clos.
+  Future<List<SoldeClotureData>> getSoldesCloture(
+      {required int annee, required int mois}) async {
+    final data =
+        await _client.get('/finances/clotures-periode/$annee/$mois/soldes');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => SoldeClotureData.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 

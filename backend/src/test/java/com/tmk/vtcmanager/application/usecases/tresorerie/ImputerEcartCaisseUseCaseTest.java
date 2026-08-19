@@ -40,6 +40,7 @@ class ImputerEcartCaisseUseCaseTest {
     private ClotureCaisseRepository clotureCaisseRepository;
     private OperationFinanciereRepository operationRepository;
     private ImputerEcartCaisseUseCase useCase;
+    private long prochainId = 100L;
 
     @BeforeEach
     void setUp() {
@@ -53,7 +54,14 @@ class ImputerEcartCaisseUseCaseTest {
         when(categorieRepository.findByCode(anyString())).thenReturn(Optional.empty());
         when(sequenceReferenceService.suivante(any(), any())).thenReturn("CLO-2026-000001");
         when(auteurCourant.nom()).thenReturn("gerant");
-        when(operationRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        // Chaque écriture ressort de la base avec un identifiant : c'est lui que
+        // le relevé retient, faute de quoi l'imputation ne pourrait plus être
+        // défaite.
+        when(operationRepository.save(any())).thenAnswer(i -> {
+            OperationFinanciere ecriture = i.getArgument(0);
+            ecriture.setId(prochainId++);
+            return ecriture;
+        });
         when(clotureCaisseRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         useCase = new ImputerEcartCaisseUseCase(clotureCaisseRepository, operationRepository,
@@ -130,6 +138,33 @@ class ImputerEcartCaisseUseCaseTest {
         // comptage qui doit supporter l'écart, même si la décision tombe après.
         assertThat(ecrituresGenerees(2)).allSatisfy(o ->
                 assertThat(o.getDateOperation()).isEqualTo(JOUR_DU_COMPTAGE));
+    }
+
+    @Test
+    @DisplayName("Les deux écritures produites restent rattachées au relevé")
+    void ecritures_rattachees_au_releve() {
+        ecartEnAttente(-50_000);
+
+        ClotureCaisse resultat = useCase.executer(1L, StatutImputationEcart.PERTE, "manquant");
+
+        // Sans ce rattachement, revenir sur l'imputation serait impossible :
+        // l'écriture qui solde le compte d'attente n'était retrouvable nulle
+        // part, et le retrait du relevé restait bloqué pour toujours.
+        assertThat(resultat.getOperationSoldeAttenteId()).isEqualTo(100L);
+        assertThat(resultat.getOperationImputationId()).isEqualTo(101L);
+    }
+
+    @Test
+    @DisplayName("Recouvrement : seule l'écriture de solde d'attente est rattachée")
+    void recouvree_sans_ecriture_de_resultat() {
+        ecartEnAttente(-50_000);
+
+        ClotureCaisse resultat = useCase.executer(1L, StatutImputationEcart.RECOUVREE, "avance");
+
+        // Le remboursement ne passe pas par le résultat : il n'y a qu'une
+        // écriture, et rien à rattacher du côté de la charge.
+        assertThat(resultat.getOperationSoldeAttenteId()).isEqualTo(100L);
+        assertThat(resultat.getOperationImputationId()).isNull();
     }
 
     @Test

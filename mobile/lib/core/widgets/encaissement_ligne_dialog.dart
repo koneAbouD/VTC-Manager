@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'app_error_banner.dart';
+import 'date_filter_dialogs.dart';
+import 'premium_select_field.dart';
 
 // ── Palette (cohérente avec MaintenanceFormPage) ──────────────────────────────
 
@@ -54,12 +56,50 @@ class EncaisserChip extends StatelessWidget {
   }
 }
 
+// ── Saisie ────────────────────────────────────────────────────────────────────
+
+/// Mode de règlement proposé par le popup.
+///
+/// Volontairement réduit aux deux modes qu'on encaisse réellement : chaque
+/// feature le traduit vers son propre enum. Côté recette, l'enum métier porte
+/// aussi `LES_DEUX`, qui décrit ce qu'une condition de travail *autorise* et
+/// n'est pas un mode de paiement — le proposer ici n'aurait aucun sens.
+enum ModeEncaissementSaisie {
+  especes('En espèces'),
+  mobileMoney('Mobile Money');
+
+  final String label;
+
+  const ModeEncaissementSaisie(this.label);
+}
+
+/// Ce que l'utilisateur a saisi dans le popup.
+class SaisieEncaissement {
+  final double montant;
+  final String? commentaire;
+  final ModeEncaissementSaisie mode;
+
+  /// N° de transaction Mobile Money — `null` hors de ce mode.
+  final String? reference;
+
+  /// Jour où l'argent a été reçu. Jamais dans le futur (voir le sélecteur).
+  final DateTime date;
+
+  const SaisieEncaissement({
+    required this.montant,
+    required this.commentaire,
+    required this.mode,
+    required this.reference,
+    required this.date,
+  });
+}
+
 // ── Entrée ────────────────────────────────────────────────────────────────────
 
 /// Ouvre un popup d'encaissement pour une ligne (recette, cotisation, pénalité).
 ///
-/// [onEncaisser] reçoit le montant et le commentaire saisi, retourne null si OK
-/// ou un message d'erreur.
+/// [onEncaisser] reçoit la saisie complète et retourne `null` si l'appel a
+/// réussi, ou le message d'erreur à afficher dans la feuille.
 ///
 /// Retourne `true` si l'encaissement a réussi (pour déclencher un reload).
 Future<bool?> showEncaissementLigneDialog(
@@ -69,8 +109,7 @@ Future<bool?> showEncaissementLigneDialog(
   double? montantRestant,
   Color couleur = _kGreen,
   IconData icone = Icons.payments_outlined,
-  required Future<String?> Function(double montant, String? commentaire)
-      onEncaisser,
+  required Future<String?> Function(SaisieEncaissement saisie) onEncaisser,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -99,7 +138,7 @@ class _EncaissementLigneSheet extends StatefulWidget {
   final double?  montantRestant;
   final Color    couleur;
   final IconData icone;
-  final Future<String?> Function(double, String?) onEncaisser;
+  final Future<String?> Function(SaisieEncaissement) onEncaisser;
 
   const _EncaissementLigneSheet({
     required this.titre,
@@ -118,7 +157,15 @@ class _EncaissementLigneSheet extends StatefulWidget {
 class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
   final _montantCtrl = TextEditingController();
   final _commentCtrl = TextEditingController();
+  final _refCtrl     = TextEditingController();
   final _formKey     = GlobalKey<FormState>();
+
+  ModeEncaissementSaisie _mode = ModeEncaissementSaisie.especes;
+
+  /// Aujourd'hui par défaut, et jamais au-delà : un encaissement constate de
+  /// l'argent déjà reçu. Le backend refuse toute date future de son côté.
+  DateTime _date = DateTime.now();
+
   bool  _submitting  = false;
   String? _submitError;
 
@@ -139,7 +186,28 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
   void dispose() {
     _montantCtrl.dispose();
     _commentCtrl.dispose();
+    _refCtrl.dispose();
     super.dispose();
+  }
+
+  /// Sélecteur borné à aujourd'hui : régulariser la veille reste possible,
+  /// postdater ne l'est plus. C'est le postdatage qui servait à contourner le
+  /// verrou d'une caisse déjà comptée, au prix d'écritures incohérentes.
+  Future<void> _choisirDate() async {
+    final picked = await showDialog<DateTime>(
+      context: context,
+      builder: (_) => SingleDatePickerDialog(
+        initialDate: _date,
+        firstDate:   DateTime(2020),
+        lastDate:    DateTime.now(),
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _date = picked;
+        _submitError = null;
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -154,8 +222,20 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
     final commentaire = _commentCtrl.text.trim().isEmpty
         ? null
         : _commentCtrl.text.trim();
+    // La référence n'a de sens qu'en Mobile Money : en espèces, le champ est
+    // masqué et ce qui aurait pu y être tapé avant de changer de mode est ignoré.
+    final reference = _mode == ModeEncaissementSaisie.mobileMoney &&
+            _refCtrl.text.trim().isNotEmpty
+        ? _refCtrl.text.trim()
+        : null;
 
-    final error = await widget.onEncaisser(montant, commentaire);
+    final error = await widget.onEncaisser(SaisieEncaissement(
+      montant:     montant,
+      commentaire: commentaire,
+      mode:        _mode,
+      reference:   reference,
+      date:        _date,
+    ));
 
     if (!mounted) return;
     setState(() {
@@ -270,6 +350,50 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                   ),
                   const SizedBox(height: 12),
 
+                  // Mode de règlement — décide de la caisse créditée.
+                  _LabeledField(
+                    label:      'Mode d\'encaissement',
+                    isRequired: true,
+                    child: PremiumSelectField<ModeEncaissementSaisie>(
+                      value:      _mode,
+                      isRequired: true,
+                      searchable: false,
+                      sheetTitle: 'Mode d\'encaissement',
+                      options: ModeEncaissementSaisie.values
+                          .map((m) => SelectOption<ModeEncaissementSaisie>(
+                              value: m, label: m.label))
+                          .toList(),
+                      onChanged: (v) => setState(() {
+                        _mode = v ?? _mode;
+                        _submitError = null;
+                      }),
+                    ),
+                  ),
+
+                  // Référence : seulement en Mobile Money.
+                  if (_mode == ModeEncaissementSaisie.mobileMoney) ...[
+                    const SizedBox(height: 12),
+                    _LabeledField(
+                      label: 'Référence Mobile Money',
+                      child: TextFormField(
+                        controller: _refCtrl,
+                        style: const TextStyle(fontSize: 15, color: _kDark),
+                        decoration: _fieldDeco('N° de transaction'),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+
+                  // Date de réception de l'argent, plafonnée à aujourd'hui.
+                  _LabeledField(
+                    label: 'Date d\'encaissement',
+                    child: _DateField(
+                      date: _date,
+                      onPick: _choisirDate,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   // Commentaire
                   _LabeledField(
                     label: 'Commentaire',
@@ -325,6 +449,52 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
             const SizedBox(height: 4),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Champ date ────────────────────────────────────────────────────────────────
+
+/// Champ date en lecture seule, à l'aspect des autres champs de la feuille :
+/// un `ListTile` Material jurerait au milieu des champs remplis.
+class _DateField extends StatelessWidget {
+  final DateTime date;
+  final VoidCallback onPick;
+
+  const _DateField({required this.date, required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    final aujourdHui = DateTime.now();
+    final estAujourdHui = date.year == aujourdHui.year &&
+        date.month == aujourdHui.month &&
+        date.day == aujourdHui.day;
+
+    return InkWell(
+      onTap: onPick,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: _kFieldFill,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(children: [
+          Expanded(
+            child: Text(
+              DateFormat('dd/MM/yyyy').format(date),
+              style: const TextStyle(fontSize: 15, color: _kDark),
+            ),
+          ),
+          if (estAujourdHui)
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Text("Aujourd'hui",
+                  style: TextStyle(fontSize: 12, color: _kHint)),
+            ),
+          const Icon(Icons.calendar_today_rounded, size: 16, color: _kLabel),
+        ]),
       ),
     );
   }

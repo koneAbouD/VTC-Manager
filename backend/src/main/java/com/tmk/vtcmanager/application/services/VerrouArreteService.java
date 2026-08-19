@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.ports.persistence.CloturePeriodeRepository
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 /**
  * Jusqu'où l'on peut revenir sur une annulation.
@@ -37,13 +38,42 @@ public class VerrouArreteService {
      * <p>Marquer toute une liste ne doit pas coûter deux requêtes par ligne :
      * on lit les bornes une fois, puis chaque date se juge en mémoire.
      */
-    public record Verrous(LocalDate finDernierePeriode, LocalDate derniereClotureCaisse) {
+    public record Verrous(LocalDate finDernierePeriode,
+                          LocalDate derniereClotureCaisse,
+                          Map<Long, LocalDate> derniereClotureParCompte) {
 
-        /** Vrai si un élément daté de ce jour peut encore être restauré. */
+        /**
+         * Vrai si un élément daté de ce jour peut encore être restauré.
+         *
+         * <p>Pour une créance ou une intervention, qui ne mouvemente aucune
+         * caisse en propre, c'est le dernier comptage toutes caisses confondues
+         * qui fait foi.
+         */
         public boolean autorise(LocalDate date) {
             if (date == null) return true;
-            if (finDernierePeriode != null && !date.isAfter(finDernierePeriode)) return false;
+            if (periodeClose(date)) return false;
             return derniereClotureCaisse == null || derniereClotureCaisse.isBefore(date);
+        }
+
+        /**
+         * Vrai si une écriture datée de ce jour, passée par ce compte, peut
+         * encore être contre-passée.
+         *
+         * <p>Ici la caisse est connue : seul son propre comptage la fige. Un
+         * comptage de la caisse secondaire ne doit pas geler ce qui est passé
+         * par la principale — c'est la caisse mouvementée qu'un procès-verbal
+         * engage, pas les autres.
+         */
+        public boolean autoriseEcriture(LocalDate date, Long compteId) {
+            if (date == null) return true;
+            if (periodeClose(date)) return false;
+            if (compteId == null) return true;
+            LocalDate dernierComptage = derniereClotureParCompte.get(compteId);
+            return dernierComptage == null || dernierComptage.isBefore(date);
+        }
+
+        private boolean periodeClose(LocalDate date) {
+            return finDernierePeriode != null && !date.isAfter(finDernierePeriode);
         }
     }
 
@@ -51,7 +81,13 @@ public class VerrouArreteService {
         return new Verrous(
                 cloturePeriodeRepository.findDerniere()
                         .map(derniere -> derniere.finPeriode()).orElse(null),
-                clotureCaisseRepository.findDerniereDateClotureToutesCaisses().orElse(null));
+                clotureCaisseRepository.findDerniereDateClotureToutesCaisses().orElse(null),
+                clotureCaisseRepository.findDernieresClotureParCompte());
+    }
+
+    /** Vrai si l'écriture de ce compte, datée de ce jour, reste contre-passable. */
+    public boolean estAnnulable(LocalDate date, Long compteId) {
+        return verrous().autoriseEcriture(date, compteId);
     }
 
     /** Vrai si un élément daté de ce jour peut encore être restauré. */

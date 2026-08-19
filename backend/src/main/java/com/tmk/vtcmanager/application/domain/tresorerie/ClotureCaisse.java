@@ -43,8 +43,10 @@ public class ClotureCaisse {
     private String imputationMotif;
     private LocalDateTime imputeeLe;
     private String imputeePar;
-    /** Écriture qui a soldé le compte d'attente. */
+    /** Écriture qui a porté l'écart au résultat ; null si le responsable rembourse. */
     private Long operationImputationId;
+    /** Écriture qui a soldé le compte d'attente lors de l'imputation. */
+    private Long operationSoldeAttenteId;
 
     /**
      * Annulation du relevé — saisi à la mauvaise date, sur le mauvais compte,
@@ -65,16 +67,43 @@ public class ClotureCaisse {
         return annuleLe != null;
     }
 
-    /** Vrai si l'écart a déjà été tranché : son annulation demanderait plus. */
+    /** Vrai si l'écart a déjà été tranché : le défaire demande de contre-passer. */
     public boolean ecartImpute() {
         return imputationStatut == StatutImputationEcart.PERTE
                 || imputationStatut == StatutImputationEcart.RECOUVREE;
     }
 
-    /** Marque le relevé annulé (validation dans le use case). */
+    /**
+     * Revient sur la décision : l'écart redevient à trancher.
+     *
+     * <p>Le relevé oublie l'arbitrage, son motif, son auteur et les écritures
+     * qu'il avait produites — les garder laisserait croire à une décision
+     * encore en vigueur. Rien ne se perd pour autant : ce qui a été décidé puis
+     * défait reste lisible au journal, dans le couple écriture / extourne.
+     */
+    public void retirerImputation() {
+        this.imputationStatut = StatutImputationEcart.EN_ATTENTE;
+        this.imputationMotif = null;
+        this.imputeeLe = null;
+        this.imputeePar = null;
+        this.operationImputationId = null;
+        this.operationSoldeAttenteId = null;
+    }
+
+    /**
+     * Marque le relevé annulé (validation dans le use case).
+     *
+     * <p>L'écart cesse du même coup d'attendre une décision : il n'a plus
+     * d'existence, son ajustement est contre-passé, et personne n'a plus à
+     * trancher entre perte et recouvrement. Le laisser {@code EN_ATTENTE}
+     * ferait figurer un arbitrage fantôme dans tout état des écarts à imputer.
+     * L'annulation d'un écart déjà tranché, elle, reste interdite — le use case
+     * la refuse avant d'arriver ici.
+     */
     public void annuler(String motif, String auteur) {
         this.annuleLe = LocalDateTime.now();
         this.annulePar = auteur;
         this.motifAnnulation = motif;
+        this.imputationStatut = null;
     }
 }

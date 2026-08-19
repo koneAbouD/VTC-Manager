@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.interfaces.rest.finance;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
 import com.tmk.vtcmanager.application.usecases.finance.CloturerPeriodeUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetSoldesClotureUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.ExportComptableUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetBalanceAgeeParVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetBalanceAgeeUseCase;
@@ -16,6 +17,7 @@ import com.tmk.vtcmanager.application.usecases.finance.GetProvisionCreancesUseCa
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.BilanResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.ProvisionCreancesResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CloturePeriodeResponse;
+import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.SoldeClotureResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CompteResultatResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CreanceChauffeurResponse;
 import com.tmk.vtcmanager.interfaces.rest.finance.dto.response.CreanceVehiculeResponse;
@@ -48,6 +50,7 @@ public class FinanceController {
     private final GetProvisionCreancesUseCase getProvisionCreancesUseCase;
     private final ExportComptableUseCase exportComptableUseCase;
     private final CloturerPeriodeUseCase cloturerPeriodeUseCase;
+    private final GetSoldesClotureUseCase getSoldesClotureUseCase;
     private final GetCloturesPeriodeUseCase getCloturesPeriodeUseCase;
 
     @GetMapping("/balance-agee")
@@ -178,6 +181,20 @@ public class FinanceController {
         return getCloturesPeriodeUseCase.executer().stream()
                 .map(c -> new CloturePeriodeResponse(c.getId(), c.getAnnee(), c.getMois(),
                         c.getDateCloture()))
+                .toList();
+    }
+
+    /**
+     * Justification de la trésorerie archivée d'un mois clos : chaque compte,
+     * son solde au dernier jour du mois, et la date du comptage qui l'atteste.
+     * Vide si le mois n'est pas clos.
+     */
+    @GetMapping("/clotures-periode/{annee}/{mois}/soldes")
+    public List<SoldeClotureResponse> getSoldesCloture(@PathVariable int annee,
+                                                       @PathVariable int mois) {
+        return getSoldesClotureUseCase.executer(annee, mois).stream()
+                .map(s -> new SoldeClotureResponse(s.getCompteId(), s.getLibelleCompte(),
+                        s.getSolde(), s.getDateDernierComptage()))
                 .toList();
     }
 }

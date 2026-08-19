@@ -80,7 +80,12 @@ public class CompteTresorerieRepositoryAdapter implements CompteTresorerieReposi
 
     @Override
     public List<CompteAvecSolde> findAllAvecSoldes(boolean actifsSeulement) {
-        Map<Long, BigDecimal> soldes = jpaRepository.calculerSoldes(actifsSeulement).stream()
+        // Arrêtés au jour même, jamais au-delà : la date vient de la JVM, comme
+        // celle des verrous, plutôt que du CURRENT_DATE de la base — deux
+        // fuseaux différents feraient diverger le solde affiché du solde
+        // auquel la clôture compare le comptage.
+        Map<Long, BigDecimal> soldes = jpaRepository
+                .calculerSoldes(actifsSeulement, LocalDate.now()).stream()
                 .collect(Collectors.toMap(
                         CompteTresorerieJpaRepository.SoldeCompteProjection::getCompteId,
                         CompteTresorerieJpaRepository.SoldeCompteProjection::getSolde));

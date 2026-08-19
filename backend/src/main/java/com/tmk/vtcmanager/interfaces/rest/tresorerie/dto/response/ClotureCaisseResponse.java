@@ -21,7 +21,10 @@ public record ClotureCaisseResponse(
         String imputationMotif,
         LocalDateTime imputeeLe,
         String imputeePar,
+        /** Écriture qui a porté l'écart au résultat ; null si le responsable rembourse. */
         Long operationImputationId,
+        /** Écriture qui a soldé le compte d'attente lors de l'imputation. */
+        Long operationSoldeAttenteId,
         /** Renseignés quand le relevé a été annulé : il ne fait plus foi. */
         LocalDateTime annuleLe,
         String annulePar,

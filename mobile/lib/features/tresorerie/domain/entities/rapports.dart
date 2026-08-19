@@ -181,35 +181,98 @@ class CloturePeriodeData {
       );
 }
 
+/// Solde d'un compte tel qu'archivé à la clôture d'un mois.
+///
+/// [dateDernierComptage] dit jusqu'où ce solde est attesté par un comptage
+/// réel. La clôture n'exige qu'un comptage tombant quelque part dans le mois,
+/// alors que le solde est arrêté au dernier jour : l'écart entre les deux dates
+/// est ce qu'il faut montrer, plutôt que de laisser croire le 31 vérifié le 31.
+/// `null` quand le compte n'a jamais été compté, ou sur une photo antérieure à
+/// cet archivage.
+class SoldeClotureData {
+  final int compteId;
+  final String libelleCompte;
+  final double solde;
+  final DateTime? dateDernierComptage;
+
+  const SoldeClotureData({
+    required this.compteId,
+    required this.libelleCompte,
+    required this.solde,
+    this.dateDernierComptage,
+  });
+
+  factory SoldeClotureData.fromJson(Map<String, dynamic> j) => SoldeClotureData(
+        compteId: (j['compteId'] as num).toInt(),
+        libelleCompte: j['libelleCompte'] as String? ?? 'Compte',
+        solde: (j['solde'] as num?)?.toDouble() ?? 0,
+        dateDernierComptage:
+            DateTime.tryParse(j['dateDernierComptage']?.toString() ?? ''),
+      );
+}
+
 /// Résultat d'une clôture de caisse.
 class ClotureCaisseData {
   final int id;
+  final int? compteId;
   final DateTime? dateCloture;
   final double soldeTheorique;
   final double soldeCompte;
   final double ecart;
 
-  /// Renseigné quand le relevé a été annulé : il ne fait plus foi.
+  /// Ce que le comptage a invoqué pour expliquer la différence.
+  final String? motifEcart;
+
+  /// Qui répondait du fonds compté ce jour-là. C'est lui qui rembourserait si
+  /// l'écart était imputé en recouvrement.
+  final String? imputationResponsable;
+
+  /// `EN_ATTENTE`, `PERTE`, `RECOUVREE` — ou null quand il n'y a pas d'écart,
+  /// puisqu'il n'y a alors rien à trancher.
+  final String? imputationStatut;
+
+  /// Renseignés quand le relevé a été annulé : il ne fait plus foi.
   final DateTime? annuleLe;
+  final String? annulePar;
+  final String? motifAnnulation;
 
   const ClotureCaisseData({
     required this.id,
     required this.soldeTheorique,
     required this.soldeCompte,
     required this.ecart,
+    this.compteId,
     this.dateCloture,
+    this.motifEcart,
+    this.imputationResponsable,
+    this.imputationStatut,
     this.annuleLe,
+    this.annulePar,
+    this.motifAnnulation,
   });
 
   bool get estAnnule => annuleLe != null;
 
+  /// Vrai tant que personne n'a dit d'où vient la différence. Un tel écart
+  /// interdit la clôture du mois où il tombe.
+  bool get attendImputation => imputationStatut == 'EN_ATTENTE';
+
+  /// Négatif : il manque de l'argent dans la caisse par rapport aux écritures.
+  bool get estManquant => ecart < 0;
+
   factory ClotureCaisseData.fromJson(Map<String, dynamic> j) =>
       ClotureCaisseData(
         id: (j['id'] as num).toInt(),
+        compteId: (j['compteId'] as num?)?.toInt(),
         dateCloture: DateTime.tryParse(j['dateCloture']?.toString() ?? ''),
         soldeTheorique: (j['soldeTheorique'] as num?)?.toDouble() ?? 0,
         soldeCompte: (j['soldeCompte'] as num?)?.toDouble() ?? 0,
         ecart: (j['ecart'] as num?)?.toDouble() ?? 0,
+        motifEcart: j['motifEcart'] as String?,
+        imputationResponsable: j['responsable'] as String?,
+        imputationStatut: j['imputationStatut'] as String?,
         annuleLe: DateTime.tryParse(j['annuleLe']?.toString() ?? ''),
+        annulePar: j['annulePar'] as String?,
+        motifAnnulation: j['motifAnnulation'] as String?,
       );
 }

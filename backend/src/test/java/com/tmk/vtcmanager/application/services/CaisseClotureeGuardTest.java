@@ -52,6 +52,27 @@ class CaisseClotureeGuardTest {
     }
 
     @Test
+    @DisplayName("Comptée le jour même, le refus oriente vers le retrait du relevé")
+    void message_du_jour_meme_oriente_vers_le_retrait() {
+        // Postdater une recette encaissée aujourd'hui contournerait le verrou :
+        // le message ne doit pas y inviter.
+        assertThatThrownBy(() -> guard.verifier(CAISSE, COMPTAGE))
+                .isInstanceOf(CaisseClotureeException.class)
+                .hasMessageContaining("retirez le relevé du 2026-04-10")
+                .hasMessageContaining("recomptez la caisse")
+                .hasMessageNotContaining("date postérieure");
+    }
+
+    @Test
+    @DisplayName("Comptage postérieur : le refus donne la première date écrivable")
+    void message_anterieur_donne_la_premiere_date_ecrivable() {
+        assertThatThrownBy(() -> guard.verifier(CAISSE, COMPTAGE.minusDays(3)))
+                .isInstanceOf(CaisseClotureeException.class)
+                // Le lendemain du comptage, pas celui de l'écriture refusée.
+                .hasMessageContaining("Datez l'écriture du 2026-04-11 ou après");
+    }
+
+    @Test
     @DisplayName("Le lendemain du comptage, la saisie reprend")
     void lendemain_accepte() {
         assertThatCode(() -> guard.verifier(CAISSE, COMPTAGE.plusDays(1))).doesNotThrowAnyException();

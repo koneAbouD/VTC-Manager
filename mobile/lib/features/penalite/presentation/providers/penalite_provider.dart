@@ -21,8 +21,12 @@ final penaliteRepositoryProvider = Provider<PenaliteRepository>(
 
 // ── Détail par ID (FutureProvider.family) ────────────────────────────────────
 
+/// `autoDispose` : la fiche porte le drapeau `restaurable`, instantané des
+/// arrêtés comptables pris au chargement. Conservée pour la vie de l'app,
+/// elle proposerait encore « Restaurer » après une clôture de caisse — un
+/// bouton que le serveur refuserait. On la relit donc à chaque ouverture.
 final lignePenaliteDetailProvider =
-    FutureProvider.family<LignePenalite, int>((ref, id) async {
+    FutureProvider.autoDispose.family<LignePenalite, int>((ref, id) async {
   final result = await ref.watch(penaliteRepositoryProvider).getLigneById(id);
   return result.fold((f) => throw Exception(f.message), (l) => l);
 });

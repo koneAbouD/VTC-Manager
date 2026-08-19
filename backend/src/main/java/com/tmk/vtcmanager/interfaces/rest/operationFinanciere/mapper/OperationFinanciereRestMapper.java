@@ -47,6 +47,8 @@ public interface OperationFinanciereRestMapper {
     @Mapping(target = "motifAnnulation", ignore = true)
     @Mapping(target = "annulePar", ignore = true)
     @Mapping(target = "annuleLe", ignore = true)
+    // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
+    @Mapping(target = "annulable", ignore = true)
     @Mapping(target = "categorie", source = "categorieId", qualifiedByName = "categorieRefFromId")
     @Mapping(target = "sousCategorie", source = "sousCategorieId", qualifiedByName = "sousCategorieRefFromId")
     @Mapping(target = "chauffeur", source = "chauffeurId", qualifiedByName = "chauffeurRefFromId")

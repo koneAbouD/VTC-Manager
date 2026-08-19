@@ -12,6 +12,7 @@ import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.exception.CaisseClotureeException;
 import com.tmk.vtcmanager.application.exception.EncaissementDepasseMontantAttenduException;
+import com.tmk.vtcmanager.application.exception.EncaissementFuturException;
 import com.tmk.vtcmanager.application.exception.LigneRecetteDejaSoldeeException;
 import com.tmk.vtcmanager.application.exception.LigneRecetteNotFoundException;
 import com.tmk.vtcmanager.application.exception.ModePaiementNonAutoriseException;
@@ -22,6 +23,7 @@ import com.tmk.vtcmanager.application.ports.persistence.EncaissementRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.EncaissementFuturGuard;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.NotificationEncaissementService;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
@@ -107,7 +109,9 @@ class CreateEncaissementUseCaseTest {
         useCase = new CreateEncaissementUseCase(ligneRecetteRepository, encaissementRepository,
                 configurationRecetteRepository, operationFinanciereRepository,
                 categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard,
-                sequenceReferenceService, caisseClotureeGuard, notificationEncaissementService);
+                sequenceReferenceService, caisseClotureeGuard,
+                // Règle pure sans I/O : la vraie instance vaut mieux qu'un mock.
+                new EncaissementFuturGuard(), notificationEncaissementService);
     }
 
     private LigneRecette ligne(int dejaEncaisse) {
@@ -235,6 +239,21 @@ class CreateEncaissementUseCaseTest {
         assertThatThrownBy(() -> useCase.executer(LIGNE_ID, encaissement(15_000, ModePaiement.ESPECES)))
                 .isInstanceOf(CaisseClotureeException.class);
         verify(encaissementRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Un versement postdaté est refusé, et rien n'est écrit")
+    void encaissement_postdate_refuse() {
+        // Postdater servait à contourner le verrou de caisse ; la porte est fermée.
+        Encaissement demain = Encaissement.builder()
+                .montant(BigDecimal.valueOf(15_000)).modeEncaissement(ModePaiement.ESPECES)
+                .dateEncaissement(LocalDate.now().plusDays(1))
+                .build();
+
+        assertThatThrownBy(() -> useCase.executer(LIGNE_ID, demain))
+                .isInstanceOf(EncaissementFuturException.class);
+        verify(encaissementRepository, never()).save(any());
+        verify(operationFinanciereRepository, never()).save(any());
     }
 
     @Test

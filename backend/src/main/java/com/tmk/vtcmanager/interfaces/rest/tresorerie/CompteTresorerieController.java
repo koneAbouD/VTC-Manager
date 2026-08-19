@@ -6,10 +6,12 @@ import com.tmk.vtcmanager.application.domain.tresorerie.CompteTresorerie;
 import com.tmk.vtcmanager.application.domain.tresorerie.TransfertTresorerie;
 import com.tmk.vtcmanager.application.usecases.finance.GetMontantAReverserEtatUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.AnnulerClotureCaisseUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.AnnulerImputationEcartUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CloturerCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CreateCompteTresorerieUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.CreateTransfertUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetCloturesCaisseUseCase;
+import com.tmk.vtcmanager.application.usecases.tresorerie.GetEcartsEnAttenteUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.ImputerEcartCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetComptesTresorerieUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.GetSoldeCompteALaDateUseCase;
@@ -48,9 +50,11 @@ public class CompteTresorerieController {
     private final GetTransfertsUseCase getTransfertsUseCase;
     private final CloturerCaisseUseCase cloturerCaisseUseCase;
     private final GetCloturesCaisseUseCase getCloturesCaisseUseCase;
+    private final GetEcartsEnAttenteUseCase getEcartsEnAttenteUseCase;
     private final ImputerEcartCaisseUseCase imputerEcartCaisseUseCase;
     private final GetSoldeCompteALaDateUseCase getSoldeCompteALaDateUseCase;
     private final AnnulerClotureCaisseUseCase annulerClotureCaisseUseCase;
+    private final AnnulerImputationEcartUseCase annulerImputationEcartUseCase;
 
     @GetMapping
     public TresorerieSummaryResponse findAll(
@@ -151,6 +155,17 @@ public class CompteTresorerieController {
     }
 
     /**
+     * Revient sur l'imputation d'un écart : ses écritures sont contre-passées et
+     * l'écart redevient à trancher. Pour la décision prise trop vite — le
+     * manquant du mardi qui s'explique le jeudi.
+     */
+    @PatchMapping("/clotures/{clotureId}/annuler-imputation")
+    public ClotureCaisseResponse annulerImputation(@PathVariable Long clotureId,
+                                                   @Valid @RequestBody AnnulationClotureRequest request) {
+        return toResponse(annulerImputationEcartUseCase.executer(clotureId, request.motif()));
+    }
+
+    /**
      * Annule un relevé erroné — mauvaise date, mauvais compte, montant faux. Le
      * procès-verbal reste au dossier ; il cesse simplement de faire foi, ce qui
      * rouvre la journée au recomptage.
@@ -161,9 +176,30 @@ public class CompteTresorerieController {
         return toResponse(annulerClotureCaisseUseCase.executer(clotureId, request.motif()));
     }
 
+    /**
+     * Relevés du compte, du plus récent au plus ancien.
+     *
+     * @param inclureAnnules vrai pour l'historique complet, relevés retirés
+     *                       compris — ils y sont marqués de leur motif. Par
+     *                       défaut, seuls les relevés en vigueur sont servis :
+     *                       ce sont eux qui font foi.
+     */
     @GetMapping("/{id}/clotures")
-    public List<ClotureCaisseResponse> getClotures(@PathVariable Long id) {
-        return getCloturesCaisseUseCase.executer(id).stream().map(this::toResponse).toList();
+    public List<ClotureCaisseResponse> getClotures(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean inclureAnnules) {
+        return getCloturesCaisseUseCase.executer(id, inclureAnnules).stream()
+                .map(this::toResponse).toList();
+    }
+
+    /**
+     * Écarts encore en attente d'imputation, toutes caisses confondues, du plus
+     * ancien au plus récent. Chacun bloque la clôture du mois où il tombe : les
+     * lister est le seul moyen praticable de les traiter.
+     */
+    @GetMapping("/clotures/ecarts-en-attente")
+    public List<ClotureCaisseResponse> getEcartsEnAttente() {
+        return getEcartsEnAttenteUseCase.executer().stream().map(this::toResponse).toList();
     }
 
     private TransfertResponse toResponse(TransfertTresorerie t) {
@@ -176,8 +212,8 @@ public class CompteTresorerieController {
                 c.getSoldeTheorique(), c.getSoldeCompte(), c.getEcart(), c.getMotifEcart(),
                 c.getOperationId(), c.getResponsable(), c.getImputationStatut(),
                 c.getImputationMotif(), c.getImputeeLe(), c.getImputeePar(),
-                c.getOperationImputationId(), c.getAnnuleLe(), c.getAnnulePar(),
-                c.getMotifAnnulation());
+                c.getOperationImputationId(), c.getOperationSoldeAttenteId(),
+                c.getAnnuleLe(), c.getAnnulePar(), c.getMotifAnnulation());
     }
 
     private CompteTresorerieResponse toResponse(CompteAvecSolde avecSolde) {

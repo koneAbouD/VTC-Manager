@@ -285,13 +285,16 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
       montantRestant: ligne.montantRestant,
       couleur:        const Color(0xFF2E7D32),
       icone:          Icons.account_balance_wallet_outlined,
-      onEncaisser: (montant, commentaire) async {
+      onEncaisser: (saisie) async {
         final enc = Encaissement(
           ligneRecetteId:   ligne.id!,
-          montant:          montant,
-          modeEncaissement: ModeEncaissement.especes,
-          dateEncaissement: DateTime.now(),
-          commentaire:      commentaire,
+          montant:          saisie.montant,
+          modeEncaissement: saisie.mode == ModeEncaissementSaisie.mobileMoney
+              ? ModeEncaissement.mobileMoney
+              : ModeEncaissement.especes,
+          dateEncaissement: saisie.date,
+          reference:        saisie.reference,
+          commentaire:      saisie.commentaire,
         );
         final r = await repo.createEncaissement(ligne.id!, enc);
         return r.fold((f) => f.message, (_) => null);

@@ -277,13 +277,16 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
           (ligne.montantDu - ligne.montantEncaisse),
       couleur: const Color(0xFFE65100),
       icone:   Icons.analytics_outlined,
-      onEncaisser: (montant, commentaire) async {
+      onEncaisser: (saisie) async {
         final enc = EncaissementCotisation(
           ligneCotisationId: ligne.id!,
-          montant:           montant,
-          modeEncaissement:  ModePaiementCotisation.especes,
-          dateEncaissement:  DateTime.now(),
-          commentaire:       commentaire,
+          montant:           saisie.montant,
+          modeEncaissement:  saisie.mode == ModeEncaissementSaisie.mobileMoney
+              ? ModePaiementCotisation.mobileMoney
+              : ModePaiementCotisation.especes,
+          dateEncaissement:  saisie.date,
+          reference:         saisie.reference,
+          commentaire:       saisie.commentaire,
         );
         final r = await repo.createEncaissement(ligne.id!, enc);
         return r.fold((f) => f.message, (_) => null);

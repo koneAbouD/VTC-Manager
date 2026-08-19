@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
+import '../../../../core/error/exception.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/csv_downloader.dart';
 import '../../../../core/widgets/month_filter_pill.dart';
 import '../../../../screens/finance/rapport_financier_page.dart';
+import '../../../../screens/home_nav_provider.dart';
 import '../providers/tresorerie_providers.dart';
+import '../widgets/cloture_refusee_dialog.dart';
+import '../widgets/tresorerie_dialogs.dart';
 import 'bilan_page.dart';
 import 'compte_resultat_page.dart';
 import 'comptes_courants_page.dart';
+import 'periodes_cloturees_page.dart';
 
 /// Onglet Rapports : point d'entrée vers les états financiers.
 class RapportsTab extends ConsumerWidget {
@@ -63,6 +69,14 @@ class RapportsTab extends ConsumerWidget {
           description:
               'Fige une période : plus aucune écriture ni annulation possible',
           onTap: () => _ouvrirClotures(context, ref),
+        ),
+        _RapportCard(
+          icone: Icons.history_edu_rounded,
+          titre: 'Périodes clôturées',
+          description:
+              'Mois publiés, et jusqu\'où leur trésorerie est attestée par un comptage',
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const PeriodesClotureesPage())),
         ),
       ],
     );
@@ -119,12 +133,94 @@ class RapportsTab extends ConsumerWidget {
                 Text('Période ${periode.$2}/${periode.$1} clôturée')));
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Clôture refusée : $e')));
-      }
+      // Un refus de clôture n'est pas une fin : c'est une liste de choses à
+      // faire, souvent longue et nommant des comptes. Un SnackBar la tronquait
+      // et l'emportait en quatre secondes — et il affichait le `toString()` de
+      // l'exception, code HTTP compris.
+      if (context.mounted) await _alerterClotureRefusee(context, ref, periode, e);
     }
   }
+
+  /// Dit pourquoi le mois n'a pas été figé, et mène à l'écran qui le débloque.
+  Future<void> _alerterClotureRefusee(BuildContext context, WidgetRef ref,
+      (int, int) periode, Object erreur) async {
+    final code =
+        erreur is ApiException ? (erreur.body?['error'] as String?) : null;
+    // Le serveur relève tous les obstacles d'un coup : les afficher tous évite
+    // de relancer la clôture une fois par comptage manquant.
+    final obstacles = erreur is ApiException
+        ? (erreur.body?['details'] as List?)?.whereType<String>().toList() ??
+            const <String>[]
+        : const <String>[];
+
+    final (consigne, actionLabel) = switch (code) {
+      'CAISSE_NON_COMPTEE' => (
+          'Comptez les comptes listés, puis relancez la clôture.',
+          'Ouvrir la trésorerie'
+        ),
+      'ECART_NON_IMPUTE' => (
+          'Tranchez chaque écart — supporté par l\'entreprise, ou remboursé par '
+              'le responsable — puis relancez la clôture.',
+          'Trancher les écarts'
+        ),
+      'PERIODE_DEJA_CLOTUREE' => (
+          'Ce mois est déjà figé : il n\'y a rien à refaire.',
+          'Voir les périodes clôturées'
+        ),
+      'PERIODE_NON_CONTIGUE' => (
+          'Les mois se ferment dans l\'ordre, sans trou : clôturez d\'abord '
+              'celui que le message indique.',
+          'Voir les périodes clôturées'
+        ),
+      'MOIS_NON_ECHU' => (
+          'Attendez la fin du mois : jusque-là, les écritures du jour doivent '
+              'rester possibles.',
+          null
+        ),
+      _ => (null, null),
+    };
+
+    final agir = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) => ClotureRefuseeDialog(
+        // « juillet 2026 » ouvre une phrase : la capitale lui revient.
+        mois: _capitalise(DateFormat('MMMM yyyy', 'fr_FR')
+            .format(DateTime(periode.$1, periode.$2))),
+        message: messageFromError(erreur,
+            fallback: 'La clôture a été refusée.'),
+        obstacles: obstacles,
+        consigne: consigne,
+        actionLabel: actionLabel,
+      ),
+    );
+    if (agir != true || !context.mounted) return;
+
+    switch (code) {
+      case 'ECART_NON_IMPUTE':
+        // Les écarts se tranchent depuis leur propre feuille, sans quitter les
+        // rapports — encore faut-il connaître les comptes qu'elle affiche.
+        final comptes = ref.read(tresorerieSummaryProvider).value?.comptes;
+        if (comptes != null) {
+          await showEcartsCaisseDialog(context, ref, [
+            for (final c in comptes)
+              CompteAvecSoldeVue(id: c.id, libelle: c.libelle, solde: c.solde),
+          ]);
+        } else {
+          ref.read(financeTabIndexProvider.notifier).state =
+              FinanceTab.tresorerie;
+        }
+      case 'CAISSE_NON_COMPTEE':
+        // Comptages et écarts se traitent au même endroit.
+        ref.read(financeTabIndexProvider.notifier).state = FinanceTab.tresorerie;
+      case 'PERIODE_DEJA_CLOTUREE' || 'PERIODE_NON_CONTIGUE':
+        await Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const PeriodesClotureesPage()));
+    }
+  }
+
+  String _capitalise(String texte) =>
+      texte.isEmpty ? texte : texte[0].toUpperCase() + texte.substring(1);
 
   /// Sélecteur (année, mois) premium — le mois précédent par défaut. L'accent
   /// (icône + bouton + bandeau) est paramétrable : primaire pour l'export,

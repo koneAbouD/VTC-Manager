@@ -43,6 +43,26 @@ class _MaintenanceDetailPageState
   void initState() {
     super.initState();
     _m = widget.maintenance;
+    _relire();
+  }
+
+  /// L'intervention arrive de la liste, où son drapeau « restaurable » a été
+  /// posé selon les arrêtés du moment. Une clôture de caisse prise depuis a pu
+  /// fermer la restauration : on relit la fiche au serveur à l'ouverture pour
+  /// ne proposer que les actions qu'il accepte encore. Échec silencieux — la
+  /// fiche de la liste reste affichée, le serveur tranchera de toute façon.
+  Future<void> _relire() async {
+    final id = widget.maintenance.id;
+    if (id == null) return;
+    final result =
+        await ref.read(maintenanceRepositoryProvider).getMaintenanceById(id);
+    if (!mounted) return;
+    result.fold(
+      (_) {},
+      (fraiche) {
+        setState(() => _m = fraiche);
+      },
+    );
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -231,10 +251,16 @@ class _MaintenanceDetailPageState
         title: 'Détail maintenance',
         // Une intervention close ne se retouche plus (voir `estModifiable`) :
         // pour reprendre une intervention terminée, on annule la dépense
-        // qu'elle a générée — la maintenance repasse en planifiée.
-        action: _m.estModifiable
-            ? AppHeaderAction(onTap: _edit, icon: Icons.edit_rounded)
-            : null,
+        // qu'elle a générée — la maintenance repasse en planifiée. Annulée,
+        // sa seule issue est de revenir en circulation, et seulement tant
+        // qu'aucun arrêté ne couvre sa date.
+        action: switch (_m) {
+          final m when m.statut == 'ANNULEE' && m.restaurable =>
+            AppHeaderAction(onTap: _restaurer, icon: Icons.restore_rounded),
+          final m when m.estModifiable =>
+            AppHeaderAction(onTap: _edit, icon: Icons.edit_rounded),
+          _ => null,
+        },
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -368,25 +394,12 @@ class _MaintenanceDetailPageState
                         ),
                       ],
                     )
-                  // Annulée à tort : elle se remet en circulation tant que les
-                  // livres du mois sont ouverts. Passé la clôture, le serveur
-                  // refuse.
-                  else if (_m.statut == 'ANNULEE' && _m.restaurable)
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: FilledButton.icon(
-                        onPressed: _restaurer,
-                        icon: const Icon(Icons.restore_rounded),
-                        label: const Text('Restaurer',
-                            style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w600)),
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                        ),
-                      ),
-                    )
+                  // Annulée : rien dans le corps. La remise en circulation,
+                  // tant que les livres du mois restent ouverts, est portée
+                  // par l'icône de l'en-tête. Branche muette indispensable :
+                  // sans elle, une annulée retomberait sur « Annuler ».
+                  else if (_m.statut == 'ANNULEE')
+                    const SizedBox.shrink()
                   else if (_m.statut != 'TERMINEE')
                     SizedBox(
                       width: double.infinity,

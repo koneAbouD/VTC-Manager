@@ -25,6 +25,12 @@ public interface MaintenanceRestMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "vehicule", ignore = true)
+    // Annulation : posée par le use case, jamais par une saisie.
+    @Mapping(target = "motifAnnulation", ignore = true)
+    @Mapping(target = "annulePar", ignore = true)
+    @Mapping(target = "annuleLe", ignore = true)
+    // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
+    @Mapping(target = "restaurable", ignore = true)
     @Mapping(target = "categorieType", source = "categorieTypeId", qualifiedByName = "categorieTypeRef")
     @Mapping(target = "partenaire", source = "partenaireId", qualifiedByName = "partenaireRef")
     @Mapping(target = "detailMaintenance", source = "detailMaintenance", qualifiedByName = "detailMaintenanceToDomain")

@@ -90,7 +90,10 @@ public class ImputerEcartCaisseUseCase {
         BigDecimal montant = cloture.getEcart().abs();
 
         // Solde du compte d'attente : écriture de sens inverse à l'ajustement.
-        operationFinanciereRepository.save(ecritureSoldeAttente(cloture, excedent, montant, date, motif));
+        // Son identifiant est retenu — sans lui, revenir sur l'imputation
+        // laisserait le compte d'attente soldé pour un écart qui n'existe plus.
+        Long operationSoldeAttenteId = operationFinanciereRepository
+                .save(ecritureSoldeAttente(cloture, excedent, montant, date, motif)).getId();
 
         Long operationImputationId = null;
         if (decision == StatutImputationEcart.PERTE) {
@@ -104,6 +107,7 @@ public class ImputerEcartCaisseUseCase {
         cloture.setImputeeLe(LocalDateTime.now());
         cloture.setImputeePar(auteurCourant.nom());
         cloture.setOperationImputationId(operationImputationId);
+        cloture.setOperationSoldeAttenteId(operationSoldeAttenteId);
         return clotureCaisseRepository.save(cloture);
     }
 

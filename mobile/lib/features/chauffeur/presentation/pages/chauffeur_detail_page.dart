@@ -9,6 +9,7 @@ import 'package:pdfx/pdfx.dart';
 
 import '../../../../core/network/api_config.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/utils/phone_formatter.dart';
 import '../../../condition_travail/domain/entities/programme_chauffeur.dart';
 import '../../../condition_travail/domain/entities/programme_travail.dart';
 import '../../../condition_travail/domain/enums/mode_alternance.dart';
@@ -263,12 +264,8 @@ class _HeaderCard extends StatelessWidget {
   }
 
   static String _formatPhone(String? raw) {
-    if (raw == null || raw.isEmpty) return 'Téléphone non renseigné';
-    if (raw.startsWith('+')) {
-      final match = RegExp(r'^(\+\d{1,4})(\d+)$').firstMatch(raw);
-      if (match != null) return '${match.group(1)} ${match.group(2)}';
-    }
-    return raw;
+    final formate = PhoneFormatter.format(raw);
+    return formate.isEmpty ? 'Téléphone non renseigné' : formate;
   }
 }
 

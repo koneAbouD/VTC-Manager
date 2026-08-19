@@ -23,9 +23,9 @@ import java.time.LocalDateTime;
  * <p>L'écriture d'origine n'est ni supprimée ni neutralisée : elle a existé,
  * elle reste au journal avec son montant et sa date. On lui oppose une
  * <em>extourne</em> — même type, même catégorie, même compte, montant opposé —
- * datée du jour de l'annulation. Le couple s'annule dans les soldes comme dans
- * la cascade du compte de résultat, sans qu'aucune requête d'agrégat n'ait à
- * connaître la notion d'extourne.
+ * datée du jour de l'annulation, ou du jour que l'appelant impose. Le couple
+ * s'annule dans les soldes comme dans la cascade du compte de résultat, sans
+ * qu'aucune requête d'agrégat n'ait à connaître la notion d'extourne.
  */
 @RequiredArgsConstructor
 public class AnnulerOperationFinanciereUseCase {
@@ -39,8 +39,29 @@ public class AnnulerOperationFinanciereUseCase {
     private final AuteurCourant auteurCourant;
     private final CaisseClotureeGuard caisseClotureeGuard;
 
+    /**
+     * Contre-passation datée du jour : le cas ordinaire d'une erreur découverte
+     * après coup, dont la correction pèse sur le mois où elle est décidée.
+     */
     @Transactional
     public OperationFinanciere execute(Long id, String motif) {
+        return execute(id, motif, null);
+    }
+
+    /**
+     * Contre-passation datée d'un jour choisi.
+     *
+     * <p>Réservée aux écritures dont la date <em>est</em> la raison d'être :
+     * l'ajustement d'une clôture de caisse n'existe que pour faire coller le
+     * solde à une journée précise. L'extourner au jour de l'annulation laisserait
+     * le solde théorique de cette journée-là faussé du montant de l'écart, alors
+     * même que le relevé qui le justifiait a été retiré — et le recomptage de
+     * cette journée buterait sur un écart fantôme.
+     *
+     * <p>{@code dateExtourne} nulle vaut « aujourd'hui ».
+     */
+    @Transactional
+    public OperationFinanciere execute(Long id, String motif, LocalDate dateExtourne) {
         if (motif == null || motif.isBlank()) {
             throw new IllegalArgumentException(
                     "Le motif d'annulation est obligatoire : il justifie la contre-passation.");
@@ -63,18 +84,18 @@ public class AnnulerOperationFinanciereUseCase {
             throw new IllegalStateException("L'opération est déjà annulée.");
         }
 
-        // Seule la contre-passation est soumise au verrou de période : datée du
-        // jour, elle doit tomber dans une période ouverte, sinon la correction
-        // n'apparaîtrait dans aucun état. L'écriture d'origine, elle, peut
-        // appartenir à un mois déjà clos — c'est même le cas normal d'une erreur
-        // découverte après coup. Elle n'est pas retouchée : elle reste au journal
-        // avec sa date et son montant, les états publiés du mois clos ne bougent
-        // pas, et la correction pèse sur le mois où elle est décidée.
-        LocalDate dateExtourne = LocalDate.now();
-        periodeClotureeGuard.verifier(dateExtourne);
+        // Seule la contre-passation est soumise au verrou de période : elle doit
+        // tomber dans une période ouverte, sinon la correction n'apparaîtrait
+        // dans aucun état. L'écriture d'origine, elle, peut appartenir à un mois
+        // déjà clos — c'est même le cas normal d'une erreur découverte après
+        // coup. Elle n'est pas retouchée : elle reste au journal avec sa date et
+        // son montant, les états publiés du mois clos ne bougent pas, et la
+        // correction pèse sur le mois où elle est décidée.
+        LocalDate date = dateExtourne != null ? dateExtourne : LocalDate.now();
+        periodeClotureeGuard.verifier(date);
         // …et la caisse qu'elle mouvemente ne doit pas avoir déjà été comptée
         // ce jour-là : sinon le procès-verbal de comptage deviendrait faux.
-        caisseClotureeGuard.verifier(origine.getCompteTresorerieId(), dateExtourne);
+        caisseClotureeGuard.verifier(origine.getCompteTresorerieId(), date);
 
         String auteur = auteurCourant.nom();
         origine.setMotifAnnulation(motif);
@@ -82,7 +103,7 @@ public class AnnulerOperationFinanciereUseCase {
         origine.setAnnuleLe(LocalDateTime.now());
         OperationFinanciere origineSauvee = operationRepository.save(origine);
 
-        operationRepository.save(construireExtourne(origineSauvee, dateExtourne, motif));
+        operationRepository.save(construireExtourne(origineSauvee, date, motif));
 
         // L'encaissement sous-jacent (recette / cotisation / pénalité) est marqué
         // annulé — jamais supprimé — et la ligne recalculée sans lui : elle

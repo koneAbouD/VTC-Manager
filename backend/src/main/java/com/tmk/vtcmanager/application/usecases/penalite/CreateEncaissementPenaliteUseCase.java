@@ -15,6 +15,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.EncaissementFuturGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class CreateEncaissementPenaliteUseCase {
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final SequenceReferenceService sequenceReferenceService;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final EncaissementFuturGuard encaissementFuturGuard;
 
     @Transactional
     public EncaissementPenalite executer(Long lignePenaliteId, EncaissementPenalite encaissement) {
@@ -47,6 +49,9 @@ public class CreateEncaissementPenaliteUseCase {
             throw new LignePenaliteNonEncaissableException(lignePenaliteId);
         }
 
+        // L'avenir d'abord : postdater était le contournement habituel des deux
+        // verrous suivants, et il fausse les soldes à date.
+        encaissementFuturGuard.verifier(encaissement.getDateEncaissement());
         periodeClotureeGuard.verifier(encaissement.getDateEncaissement());
 
         // La caisse visée ne doit pas avoir déjà été comptée pour ce jour :

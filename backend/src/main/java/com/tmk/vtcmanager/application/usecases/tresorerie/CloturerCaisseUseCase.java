@@ -80,7 +80,7 @@ public class CloturerCaisseUseCase {
         Long operationId = null;
         if (avecEcart) {
             if (motifEcart == null || motifEcart.isBlank()) {
-                throw new MotifEcartObligatoireException();
+                throw new MotifEcartObligatoireException(theorique, soldeCompte, ecart);
             }
             operationId = creerOperationAjustement(compte, ecart, motifEcart, date).getId();
         }

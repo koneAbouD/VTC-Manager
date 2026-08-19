@@ -17,6 +17,7 @@ import com.tmk.vtcmanager.application.ports.persistence.EncaissementCotisationRe
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.EncaissementFuturGuard;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.NotificationEncaissementService;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
@@ -98,7 +99,9 @@ class EncaissementCotisationUseCasesTest {
         encaisserUseCase = new CreateEncaissementCotisationUseCase(ligneCotisationRepository,
                 encaissementCotisationRepository, operationFinanciereRepository,
                 categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard,
-                sequenceReferenceService, caisseClotureeGuard, notificationEncaissementService);
+                sequenceReferenceService, caisseClotureeGuard,
+                // Règle pure sans I/O : la vraie instance vaut mieux qu'un mock.
+                new EncaissementFuturGuard(), notificationEncaissementService);
         annulerUseCase = new AnnulerLigneCotisationUseCase(ligneCotisationRepository);
     }
 

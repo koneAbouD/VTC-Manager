@@ -81,7 +81,16 @@ public class ContraventionController {
     public List<ContraventionResponse> findAll(
             @RequestParam(required = false) Long chauffeurId,
             @RequestParam(required = false) Long vehiculeId) {
-        return mapper.toResponseList(getAllContraventionsUseCase.execute(chauffeurId, vehiculeId));
+        // Cette liste alimente le détail côté mobile : sans le marquage, la
+        // contravention y arriverait sans son verrou et le bouton
+        // « Restaurer » disparaîtrait à tort.
+        var verrous = verrouArreteService.verrous();
+        return getAllContraventionsUseCase.execute(chauffeurId, vehiculeId).stream()
+                .map(c -> {
+                    c.setRestaurable(verrous.autorise(c.getDateInfraction()));
+                    return mapper.toResponse(c);
+                })
+                .toList();
     }
 
     @GetMapping("/page")

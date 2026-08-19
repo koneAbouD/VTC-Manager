@@ -293,12 +293,15 @@ class _LignesPenaliteListPageState
       montantRestant: ligne.montantRestant,
       couleur:        const Color(0xFFB71C1C),
       icone:          Icons.gavel_outlined,
-      onEncaisser: (montant, commentaire) async {
+      onEncaisser: (saisie) async {
         return notifier.createEncaissementDetail(ligne.id!, {
-          'montant':           montant,
-          'modeEncaissement':  'ESPECES',
-          'dateEncaissement':  DateTime.now(),
-          if (commentaire != null) 'commentaire': commentaire,
+          'montant':           saisie.montant,
+          'modeEncaissement':  saisie.mode == ModeEncaissementSaisie.mobileMoney
+              ? 'MOBILE_MONEY'
+              : 'ESPECES',
+          'dateEncaissement':  saisie.date,
+          if (saisie.reference != null) 'reference': saisie.reference,
+          if (saisie.commentaire != null) 'commentaire': saisie.commentaire,
         });
       },
     );

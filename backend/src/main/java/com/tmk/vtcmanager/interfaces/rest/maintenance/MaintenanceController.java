@@ -61,7 +61,16 @@ public class MaintenanceController {
             @RequestParam(required = false) LocalDate dateDebut,
             @RequestParam(required = false) LocalDate dateFin,
             @RequestParam(required = false) MaintenanceStatus statut) {
-        return mapper.toResponseList(getAllMaintenancesUseCase.execute(vehiculeId, dateDebut, dateFin, statut));
+        // Cette liste alimente le détail côté mobile : sans le marquage, la
+        // maintenance y arriverait sans son verrou et le bouton « Restaurer »
+        // disparaîtrait à tort.
+        var verrous = verrouArreteService.verrous();
+        return getAllMaintenancesUseCase.execute(vehiculeId, dateDebut, dateFin, statut).stream()
+                .map(m -> {
+                    m.setRestaurable(verrous.autorise(m.getDatePrevue()));
+                    return mapper.toResponse(m);
+                })
+                .toList();
     }
 
     @GetMapping("/page")

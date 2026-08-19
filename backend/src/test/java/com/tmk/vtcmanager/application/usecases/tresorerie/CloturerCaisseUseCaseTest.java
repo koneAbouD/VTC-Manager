@@ -200,11 +200,21 @@ class CloturerCaisseUseCaseTest {
     }
 
     @Test
-    @DisplayName("Un écart sans motif est refusé")
+    @DisplayName("Un écart sans motif est refusé, et le refus dit sur quels nombres il porte")
     void motif_obligatoire_si_ecart() {
         assertThatThrownBy(() -> useCase.executer(
                 COMPTE, HIER, BigDecimal.valueOf(296_000), "  ", "Aya"))
-                .isInstanceOf(MotifEcartObligatoireException.class);
+                .isInstanceOf(MotifEcartObligatoireException.class)
+                // Sans ces nombres, l'écran qui affichait un autre solde
+                // théorique laisse l'utilisateur devant une exigence qu'il ne
+                // peut pas satisfaire : le champ motif ne s'ouvre que lorsque
+                // l'écran voit lui-même un écart.
+                .satisfies(e -> {
+                    MotifEcartObligatoireException ex = (MotifEcartObligatoireException) e;
+                    assertThat(ex.getSoldeTheorique()).isEqualByComparingTo("300000");
+                    assertThat(ex.getSoldeCompte()).isEqualByComparingTo("296000");
+                    assertThat(ex.getEcart()).isEqualByComparingTo("-4000");
+                });
         verify(clotureCaisseRepository, never()).save(any());
     }
 

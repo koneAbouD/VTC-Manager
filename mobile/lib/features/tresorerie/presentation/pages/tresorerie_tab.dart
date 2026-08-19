@@ -56,6 +56,13 @@ class TresorerieTab extends ConsumerWidget {
                 ),
               ],
             ),
+            _EcartsBandeau(
+              comptes: [
+                for (final c in summary.comptes)
+                  CompteAvecSoldeVue(
+                      id: c.id, libelle: c.libelle, solde: c.solde),
+              ],
+            ),
             if (summary.aReverserEtat > 0) ...[
               const SizedBox(height: 12),
               _AReverserCard(montant: summary.aReverserEtat),
@@ -116,6 +123,77 @@ class _TotalCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Écarts de caisse restés sans décision.
+///
+/// N'apparaît que s'il y en a : le reste du temps, il n'y a rien à faire et
+/// rien à montrer. Sa présence est la seule façon d'apprendre qu'un mois refuse
+/// d'être clôturé — le refus, lui, ne se lit qu'au moment où l'on essaie, dans
+/// un autre onglet.
+class _EcartsBandeau extends ConsumerWidget {
+  final List<CompteAvecSoldeVue> comptes;
+  const _EcartsBandeau({required this.comptes});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ecarts = ref.watch(ecartsEnAttenteProvider).valueOrNull ?? const [];
+    if (ecarts.isEmpty) return const SizedBox.shrink();
+
+    final pluriel = ecarts.length > 1;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: InkWell(
+        onTap: () => showEcartsCaisseDialog(context, ref, comptes),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.balance_rounded,
+                  size: 20, color: AppColors.warning),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      pluriel
+                          ? '${ecarts.length} écarts de caisse à trancher'
+                          : 'Un écart de caisse à trancher',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      pluriel
+                          ? 'Tant qu\'ils attendent, les mois où ils tombent ne '
+                              'peuvent pas être clôturés'
+                          : 'Tant qu\'il attend, le mois où il tombe ne peut pas '
+                              'être clôturé',
+                      style: const TextStyle(
+                          fontSize: 11.5, height: 1.3, color: AppColors.label),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 20, color: AppColors.hint),
+            ],
+          ),
+        ),
       ),
     );
   }

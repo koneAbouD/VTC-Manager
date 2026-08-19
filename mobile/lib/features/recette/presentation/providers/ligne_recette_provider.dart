@@ -22,8 +22,12 @@ final ligneRecetteRepositoryProvider = Provider<LigneRecetteRepository>(
 
 // ── Detail par ID (FutureProvider.family) ────────────────────────────────────
 
+/// `autoDispose` : la fiche porte le drapeau `restaurable`, instantané des
+/// arrêtés comptables pris au chargement. Conservée pour la vie de l'app,
+/// elle proposerait encore « Restaurer » après une clôture de caisse — un
+/// bouton que le serveur refuserait. On la relit donc à chaque ouverture.
 final ligneRecetteDetailProvider =
-    FutureProvider.family<LigneRecette, int>((ref, id) async {
+    FutureProvider.autoDispose.family<LigneRecette, int>((ref, id) async {
   final repo = ref.watch(ligneRecetteRepositoryProvider);
   final result = await repo.getLigneById(id);
   return result.fold(

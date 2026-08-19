@@ -9,6 +9,8 @@ import com.tmk.vtcmanager.application.usecases.operationFinanciere.AnnulerOperat
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 /**
  * Annulation d'un relevé de caisse erroné.
  *
@@ -23,9 +25,13 @@ import org.springframework.transaction.annotation.Transactional;
  * — l'ignorent désormais.
  *
  * <p>Deux situations restent fermées, parce que les défaire demanderait plus
- * qu'une marque : une période comptable déjà close, et un écart dont
- * l'imputation a déjà été tranchée. Dans ce dernier cas, il faut d'abord
- * extourner les écritures d'imputation.
+ * qu'une marque : une période comptable déjà close, et un compte recompté
+ * depuis, dont le relevé le plus récent doit être retiré en premier.
+ *
+ * <p>Un écart déjà tranché, lui, ne ferme plus la porte : le retrait défait
+ * l'imputation avant de retirer le relevé. L'exiger de l'utilisateur l'enfermait
+ * — l'action n'existait nulle part, et une extourne passée à la main n'aurait
+ * de toute façon pas remis l'écart en attente.
  */
 @RequiredArgsConstructor
 public class AnnulerClotureCaisseUseCase {
@@ -33,6 +39,7 @@ public class AnnulerClotureCaisseUseCase {
     private final ClotureCaisseRepository clotureCaisseRepository;
     private final PeriodeClotureeGuard periodeClotureeGuard;
     private final AnnulerOperationFinanciereUseCase annulerOperationUseCase;
+    private final AnnulerImputationEcartUseCase annulerImputationEcartUseCase;
     private final AuteurCourant auteurCourant;
 
     @Transactional
@@ -51,9 +58,28 @@ public class AnnulerClotureCaisseUseCase {
         // Le mois qu'il atteste est publié : le retirer changerait un état déjà
         // servi.
         periodeClotureeGuard.verifier(cloture.getDateCloture());
+        // Les relevés se défont dans l'ordre inverse où ils ont été posés. Un
+        // comptage postérieur a été fait sur un solde théorique où l'ajustement
+        // de celui-ci était déjà compris : retirer l'ancien d'abord rendrait le
+        // récent faux sans que personne ne l'ait touché.
+        LocalDate dateReleve = cloture.getDateCloture();
+        clotureCaisseRepository.findDerniereDateCloture(cloture.getCompteId())
+                .ifPresent(derniere -> {
+                    if (derniere.isAfter(dateReleve)) {
+                        throw new IllegalStateException("Ce compte a été recompté depuis, le "
+                                + derniere + " : retirez d'abord le relevé du " + derniere
+                                + ", puis celui-ci.");
+                    }
+                });
+
+        // L'arbitrage rendu sur l'écart tombe le premier : il portait sur un
+        // écart que le retrait fait disparaître. Ses deux écritures sont
+        // contre-passées à la date du relevé, et l'écart repasse en attente —
+        // état que l'annulation ci-dessous efface aussitôt, personne n'ayant
+        // plus rien à trancher.
         if (cloture.ecartImpute()) {
-            throw new IllegalStateException("L'écart de ce relevé a déjà été imputé : "
-                    + "extournez d'abord les écritures d'imputation.");
+            cloture = annulerImputationEcartUseCase.defaire(cloture,
+                    "Retrait du relevé de caisse du " + cloture.getDateCloture() + " — " + motif);
         }
 
         // Le relevé cesse de faire foi avant toute autre écriture : c'est ce qui
@@ -63,11 +89,16 @@ public class AnnulerClotureCaisseUseCase {
         ClotureCaisse annulee = clotureCaisseRepository.save(cloture);
 
         // L'ajustement qui avait réaligné le solde sur le comptage n'a plus lieu
-        // d'être : il est contre-passé, jamais effacé.
+        // d'être : il est contre-passé, jamais effacé. L'extourne porte la date
+        // du relevé, pas celle du jour : c'est la journée comptée qu'il fallait
+        // remettre dans son état d'avant. Extournée au jour de l'annulation,
+        // elle laisserait le solde théorique de cette journée-là faussé du
+        // montant de l'écart, et le recomptage buterait sur un écart fantôme.
         if (annulee.getOperationId() != null) {
             annulerOperationUseCase.execute(annulee.getOperationId(),
                     "Annulation du relevé de caisse du " + annulee.getDateCloture()
-                            + " — " + motif);
+                            + " — " + motif,
+                    annulee.getDateCloture());
         }
 
         return annulee;

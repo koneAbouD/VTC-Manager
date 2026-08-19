@@ -29,7 +29,39 @@ class _ContraventionDetailPageState
     extends ConsumerState<ContraventionDetailPage> {
   final _money = NumberFormat('#,##0', 'fr_FR');
 
-  Contravention get c => widget.contravention;
+  /// La contravention affichée. Elle arrive de la liste, mais son drapeau
+  /// « restaurable » n'est qu'un instantané des arrêtés comptables au moment
+  /// où cette liste a été chargée : une clôture de caisse prise depuis a pu
+  /// fermer la restauration. On relit donc la fiche au serveur à l'ouverture,
+  /// pour ne proposer que les actions qu'il accepte encore.
+  late Contravention _c;
+
+  Contravention get c => _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = widget.contravention;
+    _relire();
+  }
+
+  /// Relecture silencieuse : en cas d'échec (réseau), la fiche de la liste
+  /// reste affichée — c'est le serveur qui tranchera de toute façon si une
+  /// action périmée est tentée.
+  Future<void> _relire() async {
+    final id = widget.contravention.id;
+    if (id == null) return;
+    final result = await ref
+        .read(contraventionRepositoryProvider)
+        .getContraventionById(id);
+    if (!mounted) return;
+    result.fold(
+      (_) {},
+      (fraiche) {
+        setState(() => _c = fraiche);
+      },
+    );
+  }
 
   // ── Dérivés ──────────────────────────────────────────────────────────────
 
@@ -361,7 +393,14 @@ class _ContraventionDetailPageState
       backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: 'Contravention',
-        action: AppHeaderAction(icon: Icons.edit_outlined, onTap: _edit),
+        // Une annulée ne se modifie plus : sa seule issue est de revenir en
+        // circulation, et seulement tant qu'aucun arrêté ne couvre sa date.
+        action: c.isCancelled
+            ? (c.restaurable
+                ? AppHeaderAction(
+                    icon: Icons.restore_rounded, onTap: _restaurer)
+                : null)
+            : AppHeaderAction(icon: Icons.edit_outlined, onTap: _edit),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -478,30 +517,10 @@ class _ContraventionDetailPageState
     // suppression : on propose directement l'annulation.
     final aMouvemente = c.isReverse || ((c.montantPaye ?? 0) > 0);
     final retirable = !c.isCancelled;
-    // Annulée à tort, elle se remet en circulation tant que les livres du mois
-    // sont ouverts : elle retrouve le statut que dicte ce qui a été versé.
-    // Passé la clôture, le serveur refuse.
-    if (c.isCancelled) {
-      // Un arrêté peut avoir fermé la restauration depuis : plus aucune
-      // action alors, le serveur refuserait.
-      if (!c.restaurable) return const SizedBox.shrink();
-      return SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: FilledButton.icon(
-          onPressed: _restaurer,
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-          icon: const Icon(Icons.restore_rounded, size: 18),
-          label: const Text('Restaurer',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-        ),
-      );
-    }
+    // Annulée : plus aucune action dans le corps. La remise en circulation,
+    // tant que les livres du mois restent ouverts, est portée par l'icône de
+    // l'en-tête — et le serveur refuse dès qu'un arrêté couvre la date.
+    if (c.isCancelled) return const SizedBox.shrink();
     return Row(children: [
       if (reversable) ...[
         Expanded(

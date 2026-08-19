@@ -54,10 +54,12 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
             for (EtatsCloture.SoldeCompteCloture s : e.getSoldes()) {
                 jdbcTemplate.update("""
                         INSERT INTO soldes_cloture_periode
-                            (cloture_periode_id, compte_id, libelle_compte, solde)
-                        VALUES (?, ?, ?, ?)
+                            (cloture_periode_id, compte_id, libelle_compte, solde,
+                             date_dernier_comptage)
+                        VALUES (?, ?, ?, ?, ?)
                         ON CONFLICT (cloture_periode_id, compte_id) DO NOTHING
-                        """, e.getCloturePeriodeId(), s.getCompteId(), s.getLibelleCompte(), s.getSolde());
+                        """, e.getCloturePeriodeId(), s.getCompteId(), s.getLibelleCompte(),
+                        s.getSolde(), s.getDateDernierComptage());
             }
         }
         return e;
@@ -104,15 +106,22 @@ public class EtatsClotureRepositoryAdapter implements EtatsClotureRepository {
         if (resultats.isEmpty()) return Optional.empty();
         EtatsCloture etats = resultats.get(0);
         etats.setSoldes(jdbcTemplate.query("""
-                SELECT compte_id, libelle_compte, solde
+                SELECT compte_id, libelle_compte, solde, date_dernier_comptage
                 FROM soldes_cloture_periode
                 WHERE cloture_periode_id = ?
                 ORDER BY libelle_compte
-                """, (rs, i) -> EtatsCloture.SoldeCompteCloture.builder()
+                """, (rs, i) -> {
+                    java.sql.Date comptage = rs.getDate("date_dernier_comptage");
+                    return EtatsCloture.SoldeCompteCloture.builder()
                         .compteId(rs.getLong("compte_id"))
                         .libelleCompte(rs.getString("libelle_compte"))
                         .solde(rs.getBigDecimal("solde"))
-                        .build(),
+                        // NULL sur les photos antérieures à cet archivage :
+                        // la lecture affiche « aucun comptage » plutôt qu'une
+                        // date inventée.
+                        .dateDernierComptage(comptage != null ? comptage.toLocalDate() : null)
+                        .build();
+                },
                 etats.getCloturePeriodeId()));
         return Optional.of(etats);
     }

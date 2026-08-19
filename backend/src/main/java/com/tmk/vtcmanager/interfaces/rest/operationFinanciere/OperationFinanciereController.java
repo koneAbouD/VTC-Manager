@@ -53,7 +53,17 @@ public class OperationFinanciereController {
         var filtres = new OperationFinanciereFiltres(
                 typeOperation, debut, fin, statut, recherche, categorieCode, null, null, null,
                 partenaireId);
-        return mapper.toResponseList(getAllUseCase.execute(filtres));
+        // Cette liste alimente le détail côté mobile, qui relit l'opération
+        // dedans : sans le marquage, l'écriture y arriverait sans son verrou et
+        // le bouton « Annuler » disparaîtrait à tort.
+        var verrous = verrouArreteService.verrous();
+        return getAllUseCase.execute(filtres).stream()
+                .map(op -> {
+                    op.setAnnulable(verrous.autoriseEcriture(
+                            op.getDateOperation(), op.getCompteTresorerieId()));
+                    return mapper.toResponse(op);
+                })
+                .toList();
     }
 
     /**
@@ -83,7 +93,8 @@ public class OperationFinanciereController {
         var verrous = verrouArreteService.verrous();
         var result = getAllUseCase.executePage(filtres, page, size)
                 .map(op -> {
-                    op.setAnnulable(verrous.autorise(op.getDateOperation()));
+                    op.setAnnulable(verrous.autoriseEcriture(
+                            op.getDateOperation(), op.getCompteTresorerieId()));
                     return mapper.toResponse(op);
                 });
         return PageResponse.from(result);
@@ -144,7 +155,8 @@ public class OperationFinanciereController {
         var operation = getByIdUseCase.execute(id);
         // Dit au client si l'action « Annuler » a encore un sens : un arrêté
         // — période close, caisse comptée — peut couvrir la date de l'écriture.
-        operation.setAnnulable(verrouArreteService.estRestaurable(operation.getDateOperation()));
+        operation.setAnnulable(verrouArreteService.estAnnulable(
+                operation.getDateOperation(), operation.getCompteTresorerieId()));
         return mapper.toResponse(operation);
     }
 

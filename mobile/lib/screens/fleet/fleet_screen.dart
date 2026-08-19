@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_config.dart';
 import '../../core/storage/secure_storage.dart';
+import '../../core/utils/phone_formatter.dart';
 import '../../features/chauffeur/domain/entities/chauffeur.dart';
 import '../../features/chauffeur/domain/enums/chauffeur_status.dart';
 import '../../features/chauffeur/presentation/providers/chauffeur_provider.dart';
@@ -552,10 +553,15 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
 
   List<Chauffeur> _filter(List<Chauffeur> all) {
     final q = _query.toLowerCase().trim();
+    // Le numéro s'affiche désormais par paires : une recherche recopiée depuis
+    // la liste porte ses espaces. On confronte les chiffres seuls, de part et
+    // d'autre, pour que « 07 12 » trouve aussi bien que « 0712 ».
+    final qChiffres = PhoneFormatter.chiffres(q);
     return all.where((c) {
       final matchQuery = q.isEmpty ||
           c.displayName.toLowerCase().contains(q) ||
-          (c.telephone?.contains(q) ?? false) ||
+          (qChiffres.isNotEmpty &&
+              PhoneFormatter.chiffres(c.telephone).contains(qChiffres)) ||
           (c.vehiculeMatricule?.toLowerCase().contains(q) ?? false) ||
           (c.vehiculeNom?.toLowerCase().contains(q) ?? false);
       final matchStatut =
@@ -852,44 +858,61 @@ class _ChauffeurCard extends StatelessWidget {
                           const SizedBox(width: 12),
                           // Infos
                           Expanded(
-                            child: Column(
+                            // Deux colonnes : à gauche qui est le chauffeur —
+                            // son nom, son téléphone ; à droite ce qui le
+                            // qualifie sur le moment, statut puis véhicule
+                            // affecté, l'un sous l'autre.
+                            child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(children: [
-                                  Expanded(
-                                    child: Text(
-                                      chauffeur.displayName,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          color: Color(0xFF1A1A2E)),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        chauffeur.displayName,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: Color(0xFF1A1A2E)),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 7),
+                                      if (chauffeur.telephone != null)
+                                        _MetaChip(
+                                          icon: Icons.phone_outlined,
+                                          label: PhoneFormatter.format(
+                                              chauffeur.telephone),
+                                          color: Colors.grey.shade700,
+                                        ),
+                                    ],
                                   ),
-                                  // Le statut prend la place qu'occupait le
-                                  // type, en bout de ligne du nom.
-                                  const SizedBox(width: 6),
-                                  _StatusChip(
-                                    label: chauffeur.statut?.label ?? 'Inconnu',
-                                    color: sc,
+                                ),
+                                const SizedBox(width: 8),
+                                ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 130),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      _StatusChip(
+                                        label: chauffeur.statut?.label ??
+                                            'Inconnu',
+                                        color: sc,
+                                      ),
+                                      if (vehiculeLabel != null) ...[
+                                        const SizedBox(height: 6),
+                                        _MetaChip(
+                                          icon: Icons.directions_car_outlined,
+                                          label: vehiculeLabel,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ]),
-                                const SizedBox(height: 7),
-                                Wrap(spacing: 10, runSpacing: 3, children: [
-                                  if (chauffeur.telephone != null)
-                                    _MetaChip(
-                                      icon: Icons.phone_outlined,
-                                      label: chauffeur.telephone!,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  if (vehiculeLabel != null)
-                                    _MetaChip(
-                                      icon: Icons.directions_car_outlined,
-                                      label: vehiculeLabel,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                ]),
+                                ),
                               ],
                             ),
                           ),
@@ -1034,11 +1057,17 @@ class _MetaChip extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: color,
-                  fontWeight: FontWeight.w500)),
+          // Une immatriculation inhabituellement longue se tronque au lieu de
+          // déborder de la colonne qui la porte.
+          Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: color,
+                    fontWeight: FontWeight.w500)),
+          ),
         ],
       );
 }

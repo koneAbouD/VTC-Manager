@@ -4,9 +4,9 @@ import 'package:intl/intl.dart';
 
 import '../../domain/entities/ligne_penalite.dart';
 import '../providers/penalite_provider.dart';
-import 'encaissement_penalite_form_page.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/confirmation_restauration_dialog.dart';
@@ -21,14 +21,32 @@ class LignePenaliteDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncLigne = ref.watch(lignePenaliteDetailProvider(ligneId));
 
+    // Une seule icône dans l'en-tête, selon ce que la fiche permet :
+    //   • annulée à tort et les livres encore ouverts → « Restaurer », qui
+    //     rend la sanction applicable ;
+    //   • fiche illisible (chargement, erreur) → rechargement, seul recours
+    //     de cet écran ;
+    //   • sinon rien : une sanction vivante est rafraîchie par ses propres
+    //     actions, et une annulation figée par un arrêté n'offre plus rien.
+    final ligne = asyncLigne.valueOrNull;
+    final action = switch (ligne) {
+      final l? when l.statut == StatutLignePenalite.annulee && l.restaurable =>
+        AppHeaderAction(
+          icon: Icons.restore_rounded,
+          onTap: () => _restaurer(context, ref, ligneId),
+        ),
+      null => AppHeaderAction(
+          icon: Icons.refresh,
+          onTap: () => ref.invalidate(lignePenaliteDetailProvider(ligneId)),
+        ),
+      _ => null,
+    };
+
     return Scaffold(
       backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: 'Détail pénalité',
-        action: AppHeaderAction(
-          icon: Icons.refresh,
-          onTap: () => ref.invalidate(lignePenaliteDetailProvider(ligneId)),
-        ),
+        action: action,
       ),
       body: asyncLigne.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -160,17 +178,6 @@ class _DetailBody extends ConsumerWidget {
               ligne.motifAnnulation),
         ]),
 
-        // Une pénalité annulée à tort se remet en circulation tant que les
-        // livres du mois sont ouverts : une amende retrouve le statut que
-        // dictent ses versements, les autres sanctions repartent en attente
-        // d'exécution. Passé la clôture, le serveur refuse.
-        if (ligne.statut == StatutLignePenalite.annulee && ligne.restaurable)
-          PremiumButton(
-            label: 'Restaurer',
-            icon: Icons.restore_rounded,
-            onPressed: () => _restaurer(context, ref),
-          ),
-
         // ── Boutons d'action (Annuler + action principale sur une ligne) ──
         if (primaire != null && annulable)
           PremiumButtonRow(buttons: [
@@ -240,9 +247,28 @@ class _DetailBody extends ConsumerWidget {
 
   Future<void> _openEncaissement(
       BuildContext context, WidgetRef ref, LignePenalite l) async {
-    final refreshed = await Navigator.push<bool>(
+    final notifier = ref.read(lignePenaliteNotifierProvider.notifier);
+    final immat = l.vehiculeImmatriculation ?? 'Véhicule ${l.vehiculeId}';
+    final nom = l.chauffeurNomComplet;
+
+    final refreshed = await showEncaissementLigneDialog(
       context,
-      MaterialPageRoute(builder: (_) => EncaissementPenaliteFormPage(ligne: l)),
+      titre:          'Amende — ${_typePenaliteLabel(l.typePenalite)}',
+      sousTitre:      (nom != null && nom.isNotEmpty) ? '$immat - $nom' : immat,
+      montantRestant: l.montantRestant,
+      couleur:        const Color(0xFFB71C1C),
+      icone:          Icons.gavel_outlined,
+      onEncaisser: (saisie) async {
+        return notifier.createEncaissementDetail(l.id!, {
+          'montant':           saisie.montant,
+          'modeEncaissement':  saisie.mode == ModeEncaissementSaisie.mobileMoney
+              ? 'MOBILE_MONEY'
+              : 'ESPECES',
+          'dateEncaissement':  saisie.date,
+          if (saisie.reference != null) 'reference': saisie.reference,
+          if (saisie.commentaire != null) 'commentaire': saisie.commentaire,
+        });
+      },
     );
     if (refreshed == true) {
       ref.invalidate(lignePenaliteDetailProvider(ligneId));
@@ -286,29 +312,6 @@ class _DetailBody extends ConsumerWidget {
     }
   }
 
-  Future<void> _restaurer(BuildContext context, WidgetRef ref) async {
-    final confirme = await showConfirmationRestaurationDialog(
-      context,
-      titre: 'Restaurer la pénalité ?',
-      message: 'La sanction redeviendra applicable : une amende retrouve le '
-          'statut que dictent ses versements, les autres repartent en attente.',
-    );
-    if (confirme != true || !context.mounted) return;
-
-    final error = await ref
-        .read(lignePenaliteNotifierProvider.notifier)
-        .restaurerDetail(ligneId);
-    if (!context.mounted) return;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error), backgroundColor: AppColors.error));
-    } else {
-      ref.invalidate(lignePenaliteDetailProvider(ligneId));
-      refreshFinances(ref);
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pénalité restaurée')));
-    }
-  }
 
   Future<void> _executeAction(BuildContext context, WidgetRef ref,
       Future<String?> Function() action) async {
@@ -321,5 +324,31 @@ class _DetailBody extends ConsumerWidget {
     } else {
       ref.invalidate(lignePenaliteDetailProvider(ligneId));
     }
+  }
+}
+
+/// Rend applicable une sanction annulée. Portée par l'icône de l'en-tête, et
+/// non plus par un bouton du corps : la confirmation reste le garde-fou.
+Future<void> _restaurer(BuildContext context, WidgetRef ref, int ligneId) async {
+  final confirme = await showConfirmationRestaurationDialog(
+    context,
+    titre: 'Restaurer la pénalité ?',
+    message: 'La sanction redeviendra applicable : une amende retrouve le '
+        'statut que dictent ses versements, les autres repartent en attente.',
+  );
+  if (confirme != true || !context.mounted) return;
+
+  final error = await ref
+      .read(lignePenaliteNotifierProvider.notifier)
+      .restaurerDetail(ligneId);
+  if (!context.mounted) return;
+  if (error != null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: AppColors.error));
+  } else {
+    ref.invalidate(lignePenaliteDetailProvider(ligneId));
+    refreshFinances(ref);
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pénalité restaurée')));
   }
 }

@@ -64,6 +64,10 @@ public class ClotureCaisseEntity extends AbstractEcritureAuditEntity {
     @Column(name = "operation_imputation_id")
     private Long operationImputationId;
 
+    /** Écriture qui a soldé le compte d'attente ; NULL tant que l'écart n'est pas tranché. */
+    @Column(name = "operation_solde_attente_id")
+    private Long operationSoldeAttenteId;
+
     /** Annulation du relevé ; NULL tant qu'il fait foi. */
     @Column(name = "annule_le")
     private LocalDateTime annuleLe;

@@ -19,8 +19,21 @@ public interface ClotureCaisseJpaRepository extends JpaRepository<ClotureCaisseE
 
     List<ClotureCaisseEntity> findByCompteIdAndAnnuleLeIsNullOrderByDateClotureDesc(Long compteId);
 
+    /**
+     * Historique complet d'un compte, retirés compris. Le second critère de tri
+     * départage les relevés d'une même journée — une date recomptée après un
+     * retrait en porte plusieurs, et les afficher dans le désordre rendrait la
+     * succession illisible.
+     */
+    List<ClotureCaisseEntity> findByCompteIdOrderByDateClotureDescIdDesc(Long compteId);
+
     java.util.Optional<ClotureCaisseEntity>
             findFirstByCompteIdAndAnnuleLeIsNullOrderByDateClotureDesc(Long compteId);
+
+    /** Dernier comptage en vigueur du compte à une date d'arrêté donnée. */
+    java.util.Optional<ClotureCaisseEntity>
+            findFirstByCompteIdAndAnnuleLeIsNullAndDateClotureLessThanEqualOrderByDateClotureDesc(
+                    Long compteId, LocalDate date);
 
     /**
      * Dernier comptage toutes caisses confondues : jusqu'à cette date incluse,
@@ -29,4 +42,16 @@ public interface ClotureCaisseJpaRepository extends JpaRepository<ClotureCaisseE
      */
     java.util.Optional<ClotureCaisseEntity>
             findFirstByAnnuleLeIsNullOrderByDateClotureDesc();
+
+    /** Écarts encore en attente d'imputation, du plus ancien au plus récent. */
+    List<ClotureCaisseEntity>
+            findByImputationStatutAndAnnuleLeIsNullOrderByDateClotureAsc(
+                    com.tmk.vtcmanager.application.domain.tresorerie.StatutImputationEcart statut);
+
+    /** [compteId, dernière date de comptage] pour chaque caisse déjà comptée. */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT c.compteId, MAX(c.dateCloture) FROM ClotureCaisseEntity c
+             WHERE c.annuleLe IS NULL GROUP BY c.compteId
+            """)
+    java.util.List<Object[]> dernieresClotureParCompte();
 }
