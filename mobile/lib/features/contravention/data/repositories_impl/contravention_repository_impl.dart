@@ -147,6 +147,20 @@ class ContraventionRepositoryImpl implements ContraventionRepository {
   }
 
   @override
+  Future<Either<Failure, Contravention>> restaurerContravention(int id) async {
+    try {
+      final result = await _datasource.restaurer(id);
+      return Right(result);
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, Contravention>> reverserContravention(int id) async {
     try {
       final result = await _datasource.reverser(id);

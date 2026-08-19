@@ -13,5 +13,9 @@ abstract interface class LigneCotisationRepository {
   Future<Either<Failure, LigneCotisation>> getLigneById(int id);
   Future<Either<Failure, EncaissementCotisation>> createEncaissement(int ligneId, EncaissementCotisation enc);
   Future<Either<Failure, LigneCotisation>> annuler(int id, String motif);
+
+  /// Remet une ligne annulée en circulation : elle retrouve le statut que
+  /// dictent ses versements. Refusé par le serveur si la période est clôturée.
+  Future<Either<Failure, LigneCotisation>> restaurer(int id);
   Future<Either<Failure, List<LigneCotisation>>> generer({DateTime? date});
 }

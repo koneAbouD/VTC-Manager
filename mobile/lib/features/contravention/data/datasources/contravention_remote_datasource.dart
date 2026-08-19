@@ -87,6 +87,15 @@ class ContraventionRemoteDatasource {
     return ContraventionModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Remet une contravention annulée en circulation
+  /// (`PATCH /contraventions/{id}/restaurer`) : elle retrouve le statut que
+  /// dicte ce qui a été versé et redevient exigible. Refusé par le serveur si
+  /// la période est clôturée.
+  Future<ContraventionModel> restaurer(int id) async {
+    final data = await _client.patch('/contraventions/$id/restaurer');
+    return ContraventionModel.fromJson(data as Map<String, dynamic>);
+  }
+
   /// Reverse la contravention à l'État : crée l'opération financière de
   /// catégorie « Reversement contravention » (`POST /contraventions/{id}/reverse`).
   Future<ContraventionModel> reverser(int id) async {

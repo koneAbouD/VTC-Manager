@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = MaintenanceEntity.TABLE_NAME)
@@ -65,4 +66,14 @@ public class MaintenanceEntity extends AbstractAuditEntity {
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "detail_maintenance_id")
     private DetailMaintenanceEntity detailMaintenance;
+
+    /** Pourquoi l'intervention a été annulée ; obligatoire à l'annulation. */
+    @Column(name = "motif_annulation", columnDefinition = "TEXT")
+    private String motifAnnulation;
+
+    @Column(name = "annule_par")
+    private String annulePar;
+
+    @Column(name = "annule_le")
+    private LocalDateTime annuleLe;
 }

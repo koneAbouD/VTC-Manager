@@ -65,6 +65,14 @@ public class Contravention {
     private String annulePar;
 
     /**
+     * Renseigné à la lecture seulement : faux si un arrêté — période close,
+     * caisse comptée — interdit désormais de restaurer cette contravention
+     * annulée. Le client s'en sert pour ne pas proposer une action vouée au
+     * refus.
+     */
+    private Boolean restaurable;
+
+    /**
      * Enregistre un paiement (ou versement partiel) et met à jour le statut de la contravention.
      */
     public void enregistrerPaiement(BigDecimal montantVerse) {
@@ -144,6 +152,26 @@ public class Contravention {
         this.motifAnnulation = motif;
         this.annulePar = auteur;
         this.annuleLe = LocalDateTime.now();
+    }
+
+    /**
+     * Rend une contravention annulée à l'état où elle était due : le statut se
+     * déduit de ce que le chauffeur a effectivement versé — rien, elle est de
+     * nouveau en attente ; une partie, elle est partiellement payée. Le
+     * marquage d'annulation s'efface, la créance redevient exigible.
+     */
+    public void restaurer() {
+        BigDecimal paye = montantPaye != null ? montantPaye : BigDecimal.ZERO;
+        if (montant != null && paye.compareTo(montant) >= 0) {
+            this.statut = ContraventionStatus.PAYE;
+        } else if (paye.compareTo(BigDecimal.ZERO) > 0) {
+            this.statut = ContraventionStatus.PARTIELLEMENT_PAYE;
+        } else {
+            this.statut = ContraventionStatus.EN_ATTENTE;
+        }
+        this.motifAnnulation = null;
+        this.annulePar = null;
+        this.annuleLe = null;
     }
 
     public void initializeDefaults() {

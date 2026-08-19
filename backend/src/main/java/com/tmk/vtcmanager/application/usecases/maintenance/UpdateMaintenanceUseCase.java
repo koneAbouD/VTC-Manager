@@ -40,6 +40,13 @@ public class UpdateMaintenanceUseCase {
                     + " plus. Annulez la dépense qu'elle a générée — la maintenance repasse en"
                     + " planifiée — puis terminez-la de nouveau.");
         }
+        // Annulée, elle n'a plus rien à décrire : elle atteste qu'une
+        // intervention a été prévue puis abandonnée. La retoucher réécrirait
+        // cette histoire ; si le besoin subsiste, on planifie une intervention.
+        if (existing.getStatut() == MaintenanceStatus.ANNULEE) {
+            throw new IllegalStateException("Cette maintenance est annulée : elle ne se modifie"
+                    + " plus. Planifiez une nouvelle intervention.");
+        }
 
         existing.setType(data.getType());
         existing.setDatePrevue(data.getDatePrevue());

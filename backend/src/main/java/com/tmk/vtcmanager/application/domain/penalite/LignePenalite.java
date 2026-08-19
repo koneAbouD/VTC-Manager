@@ -43,6 +43,12 @@ public class LignePenalite {
 
     @Builder.Default
     private List<EncaissementPenalite> encaissements = new ArrayList<>();
+    /**
+     * Renseigné à la lecture seulement : faux si un arrêté — période close,
+     * caisse comptée — interdit désormais de restaurer cet élément annulé. Le
+     * client s'en sert pour ne pas proposer une action vouée au refus.
+     */
+    private Boolean restaurable;
 
     private String commentaire;
 
@@ -118,5 +124,27 @@ public class LignePenalite {
         this.statut = StatutLignePenalite.ANNULEE;
         this.motifAnnulation = motif;
         this.annuleLe = LocalDateTime.now();
+    }
+
+    /**
+     * Rend une ligne annulée à l'état où elle était due.
+     *
+     * <p>Une amende retrouve le statut que dictent ses versements — aucun, elle
+     * est de nouveau en attente. Les autres sanctions (buzzer, avertissement,
+     * immobilisation) repartent en attente d'exécution : la sanction annulée
+     * n'a pas été purgée, elle reste à appliquer.
+     */
+    public void restaurer() {
+        BigDecimal encaisse = montantEncaisse != null ? montantEncaisse : BigDecimal.ZERO;
+        boolean amende = TypeSanction.AMENDE.equals(typeSanction);
+        if (amende && montant != null && encaisse.compareTo(montant) >= 0) {
+            this.statut = StatutLignePenalite.ENCAISSEE;
+        } else if (amende && encaisse.compareTo(BigDecimal.ZERO) > 0) {
+            this.statut = StatutLignePenalite.PARTIELLEMENT_ENCAISSEE;
+        } else {
+            this.statut = StatutLignePenalite.EN_ATTENTE;
+        }
+        this.motifAnnulation = null;
+        this.annuleLe = null;
     }
 }

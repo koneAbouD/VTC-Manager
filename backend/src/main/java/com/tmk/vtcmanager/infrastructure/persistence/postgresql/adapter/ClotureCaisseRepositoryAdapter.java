@@ -42,6 +42,12 @@ public class ClotureCaisseRepositoryAdapter implements ClotureCaisseRepository {
     }
 
     @Override
+    public Optional<LocalDate> findDerniereDateClotureToutesCaisses() {
+        return jpaRepository.findFirstByAnnuleLeIsNullOrderByDateClotureDesc()
+                .map(ClotureCaisseEntity::getDateCloture);
+    }
+
+    @Override
     public Optional<ClotureCaisse> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
     }

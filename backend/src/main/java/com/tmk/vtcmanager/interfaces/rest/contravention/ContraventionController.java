@@ -6,6 +6,8 @@ import com.tmk.vtcmanager.application.domain.contravention.ResultatImportContrav
 import com.tmk.vtcmanager.application.domain.contravention.reversement.ApercuReversementQuittance;
 import com.tmk.vtcmanager.application.domain.contravention.reversement.ResultatReversementQuittance;
 import com.tmk.vtcmanager.application.usecases.contravention.AnnulerContraventionUseCase;
+import com.tmk.vtcmanager.application.usecases.contravention.RestaurerContraventionUseCase;
+import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.contravention.ConfirmerImportContraventionsUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.ConfirmerReversementQuittanceUseCase;
 import com.tmk.vtcmanager.application.usecases.contravention.PreviewReversementQuittanceUseCase;
@@ -55,6 +57,8 @@ public class ContraventionController {
     private final UpdateContraventionUseCase updateContraventionUseCase;
     private final DeleteContraventionUseCase deleteContraventionUseCase;
     private final AnnulerContraventionUseCase annulerContraventionUseCase;
+    private final RestaurerContraventionUseCase restaurerContraventionUseCase;
+    private final VerrouArreteService verrouArreteService;
     private final GetContraventionByIdUseCase getContraventionByIdUseCase;
     private final GetAllContraventionsUseCase getAllContraventionsUseCase;
     private final PayContraventionUseCase payContraventionUseCase;
@@ -91,15 +95,24 @@ public class ContraventionController {
             @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        // Les bornes des arrêtés sont lues une seule fois, puis appliquées en
+        // mémoire : marquer une page ne doit pas coûter deux requêtes par ligne.
+        var verrous = verrouArreteService.verrous();
         var result = getAllContraventionsUseCase
                 .executePage(chauffeurId, vehiculeId, dateDebut, dateFin, recherche, page, size)
-                .map(mapper::toResponse);
+                .map(c -> {
+                    c.setRestaurable(verrous.autorise(c.getDateInfraction()));
+                    return mapper.toResponse(c);
+                });
         return PageResponse.from(result);
     }
 
     @GetMapping("/{id:\\d+}")
     public ContraventionResponse findById(@PathVariable Long id) {
-        return mapper.toResponse(getContraventionByIdUseCase.execute(id));
+        Contravention contravention = getContraventionByIdUseCase.execute(id);
+        contravention.setRestaurable(
+                verrouArreteService.estRestaurable(contravention.getDateInfraction()));
+        return mapper.toResponse(contravention);
     }
 
     /**
@@ -146,6 +159,16 @@ public class ContraventionController {
     public ContraventionResponse annuler(@PathVariable Long id,
                                          @Valid @RequestBody AnnulationRequest request) {
         return mapper.toResponse(annulerContraventionUseCase.execute(id, request.motif()));
+    }
+
+    /**
+     * Remet une contravention annulée en circulation : elle retrouve le statut
+     * que dicte ce qui a été versé et redevient exigible. Refusé si la période
+     * est clôturée.
+     */
+    @PatchMapping("/{id}/restaurer")
+    public ContraventionResponse restaurer(@PathVariable Long id) {
+        return mapper.toResponse(restaurerContraventionUseCase.execute(id));
     }
 
     @PostMapping("/{id}/reverse")

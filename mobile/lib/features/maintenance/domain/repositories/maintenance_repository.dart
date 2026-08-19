@@ -27,7 +27,13 @@ abstract interface class MaintenanceRepository {
   Future<Either<Failure, Maintenance>> createMaintenance(Maintenance maintenance);
   Future<Either<Failure, Maintenance>> updateMaintenance(int id, Maintenance maintenance);
   Future<Either<Failure, void>> deleteMaintenance(int id);
-  Future<Either<Failure, Maintenance>> annulerMaintenance(int id);
+  /// Annule l'intervention. [motif] est obligatoire : il justifie le retrait
+  /// du programme et reste attaché à la maintenance.
+  Future<Either<Failure, Maintenance>> annulerMaintenance(int id, String motif);
+
+  /// Remet une maintenance annulée en circulation : elle repasse en planifiée.
+  /// Refusé par le serveur si la période est clôturée.
+  Future<Either<Failure, Maintenance>> restaurerMaintenance(int id);
   Future<Either<Failure, Maintenance>> completeMaintenance(
     int id,
     double cout, {

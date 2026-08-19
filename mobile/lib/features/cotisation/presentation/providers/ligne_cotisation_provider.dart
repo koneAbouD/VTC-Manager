@@ -53,6 +53,11 @@ class LigneCotisationNotifier extends StateNotifier<LigneCotisationState> {
     return result.fold((f) => f.message, (_) { load(); return null; });
   }
 
+  Future<String?> restaurer(int id) async {
+    final result = await _repository.restaurer(id);
+    return result.fold((f) => f.message, (_) { load(); return null; });
+  }
+
   Future<String?> generer({DateTime? date}) async {
     final result = await _repository.generer(date: date);
     return result.fold((f) => f.message, (_) { load(); return null; });

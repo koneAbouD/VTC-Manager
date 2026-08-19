@@ -70,6 +70,14 @@ class LigneRecetteNotifier extends StateNotifier<LigneRecetteState> {
     );
   }
 
+  Future<String?> restaurer(int id) async {
+    final result = await _repository.restaurer(id);
+    return result.fold(
+      (failure) => failure.message,
+      (_) { load(); return null; },
+    );
+  }
+
   Future<String?> confirmerVersement(int id) async {
     final result = await _repository.confirmerVersement(id);
     return result.fold(

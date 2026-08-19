@@ -23,6 +23,7 @@ import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
 import com.tmk.vtcmanager.application.ports.persistence.SousCategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
+import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
@@ -67,6 +68,7 @@ class CycleMaintenanceUseCasesTest {
     private static final Long MAINTENANCE_ID = 300L;
     private static final Long VEHICULE_ID = 5L;
     private static final LocalDate HIER = LocalDate.now().minusDays(1);
+    private static final String MOTIF = "garage indisponible";
 
     private MaintenanceRepository maintenanceRepository;
     private OperationFinanciereRepository operationRepository;
@@ -82,6 +84,7 @@ class CycleMaintenanceUseCasesTest {
     private EnregistrerFactureUseCase enregistrerFactureUseCase;
     private RepartitionDetteMaintenanceService repartitionService;
     private VehiculeRepository vehiculeRepository;
+    private AuteurCourant auteurCourant;
     private CompleteMaintenanceUseCase completeUseCase;
     private AnnulerMaintenanceUseCase annulerUseCase;
     private ScheduleMaintenanceUseCase scheduleUseCase;
@@ -125,7 +128,10 @@ class CycleMaintenanceUseCasesTest {
                 compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService,
                 caisseClotureeGuard, caisseCreditriceGuard, facturePartenaireRepository,
                 enregistrerFactureUseCase, repartitionService);
-        annulerUseCase = new AnnulerMaintenanceUseCase(maintenanceRepository, statutEventPublisher);
+        auteurCourant = mock(AuteurCourant.class);
+        when(auteurCourant.nom()).thenReturn("exploitant");
+        annulerUseCase = new AnnulerMaintenanceUseCase(maintenanceRepository, statutEventPublisher,
+                auteurCourant);
         scheduleUseCase = new ScheduleMaintenanceUseCase(maintenanceRepository, vehiculeRepository,
                 categorieRepository, statutEventPublisher, completeUseCase);
     }
@@ -333,15 +339,28 @@ class CycleMaintenanceUseCasesTest {
     class Annulation {
 
         @Test
-        @DisplayName("Une maintenance annulée libère le véhicule")
+        @DisplayName("Une maintenance annulée libère le véhicule et garde son motif signé")
         void annulation_nominale() {
             when(maintenanceRepository.findById(MAINTENANCE_ID))
                     .thenReturn(Optional.of(maintenance(MaintenanceStatus.EN_COURS)));
 
-            Maintenance annulee = annulerUseCase.execute(MAINTENANCE_ID);
+            Maintenance annulee = annulerUseCase.execute(MAINTENANCE_ID, MOTIF);
 
             assertThat(annulee.getStatut()).isEqualTo(MaintenanceStatus.ANNULEE);
+            assertThat(annulee.getMotifAnnulation()).isEqualTo(MOTIF);
+            assertThat(annulee.getAnnulePar()).isEqualTo("exploitant");
+            assertThat(annulee.getAnnuleLe()).isNotNull();
             verify(statutEventPublisher).publishStatutDirty(VEHICULE_ID);
+        }
+
+        @Test
+        @DisplayName("Sans motif, l'annulation est refusée : rien ne la justifierait")
+        void motif_obligatoire() {
+            assertThatThrownBy(() -> annulerUseCase.execute(MAINTENANCE_ID, "   "))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("motif");
+            verify(maintenanceRepository, never()).save(any());
+            verifyNoInteractions(statutEventPublisher);
         }
 
         @Test
@@ -350,9 +369,24 @@ class CycleMaintenanceUseCasesTest {
             when(maintenanceRepository.findById(MAINTENANCE_ID))
                     .thenReturn(Optional.of(maintenance(MaintenanceStatus.ANNULEE)));
 
-            assertThatThrownBy(() -> annulerUseCase.execute(MAINTENANCE_ID))
+            assertThatThrownBy(() -> annulerUseCase.execute(MAINTENANCE_ID, MOTIF))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("déjà annulée");
+            verifyNoInteractions(statutEventPublisher);
+        }
+
+        @Test
+        @DisplayName("Une maintenance terminée ne s'annule pas ici")
+        void terminee_refusee() {
+            // Sa complétion a produit une dépense — ou une dette. L'annuler ici
+            // laisserait cette charge au journal sans intervention en face.
+            when(maintenanceRepository.findById(MAINTENANCE_ID))
+                    .thenReturn(Optional.of(maintenance(MaintenanceStatus.TERMINEE)));
+
+            assertThatThrownBy(() -> annulerUseCase.execute(MAINTENANCE_ID, MOTIF))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("terminée");
+            verify(maintenanceRepository, never()).save(any());
             verifyNoInteractions(statutEventPublisher);
         }
 
@@ -361,7 +395,7 @@ class CycleMaintenanceUseCasesTest {
         void introuvable() {
             when(maintenanceRepository.findById(MAINTENANCE_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> annulerUseCase.execute(MAINTENANCE_ID))
+            assertThatThrownBy(() -> annulerUseCase.execute(MAINTENANCE_ID, MOTIF))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
     }

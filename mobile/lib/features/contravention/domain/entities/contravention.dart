@@ -25,6 +25,11 @@ class Contravention {
   /// Pourquoi la contravention a été annulée ; null tant qu'elle est due.
   final String? motifAnnulation;
 
+  /// Faux si un arrêté — période comptable close, caisse comptée — interdit
+  /// désormais la restauration. Le bouton « Restaurer » est alors masqué :
+  /// le serveur refuserait.
+  final bool restaurable;
+
   const Contravention({
     this.id,
     required this.dateInfraction,
@@ -47,6 +52,7 @@ class Contravention {
     this.documentSourcePath,
     this.statutRattachement,
     this.motifAnnulation,
+    this.restaurable = false,
   });
 
   bool get isPaid => statut == 'PAYEE' || statut == 'PAYE';

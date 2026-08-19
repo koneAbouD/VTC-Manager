@@ -19,5 +19,11 @@ public record LigneCotisationResponse(
         BigDecimal montantRestant,
         StatutLigneCotisation statut,
         String motifAnnulation,
-        List<EncaissementCotisationResponse> encaissements
+        List<EncaissementCotisationResponse> encaissements,
+        /**
+         * Faux si un arrêté — période comptable close, caisse comptée — interdit
+         * désormais de restaurer cet élément annulé. Le client masque alors
+         * l'action « Restaurer », qui n'aboutirait pas.
+         */
+        Boolean restaurable
 ) {}

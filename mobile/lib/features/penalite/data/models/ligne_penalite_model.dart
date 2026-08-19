@@ -24,6 +24,7 @@ class LignePenaliteModel extends LignePenalite {
     required super.statut,
     super.commentaire,
     super.motifAnnulation,
+    super.restaurable,
     super.encaissements,
   });
 
@@ -58,6 +59,9 @@ class LignePenaliteModel extends LignePenalite {
         statut: StatutLignePenalite.fromString(j['statut'] as String?),
         commentaire: j['commentaire'] as String?,
         motifAnnulation: j['motifAnnulation'] as String?,
+      // Absent = pas de bouton : mieux vaut une action manquante
+      // qu'une action que le serveur refusera.
+        restaurable: j['restaurable'] as bool? ?? false,
         encaissements: (j['encaissements'] as List<dynamic>?)
                 ?.map((e) => EncaissementPenaliteModel.fromJson(
                     e as Map<String, dynamic>))

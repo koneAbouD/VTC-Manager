@@ -72,6 +72,11 @@ class LigneCotisationRemoteDatasource {
     return LigneCotisationModel.fromJson(data as Map<String, dynamic>);
   }
 
+  Future<LigneCotisationModel> restaurer(int id) async {
+    final data = await _client.patch('/cotisations/lignes/$id/restaurer');
+    return LigneCotisationModel.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<List<LigneCotisationModel>> generer({String? date}) async {
     final query = date != null ? {'date': date} : null;
     final data = await _client.post('/cotisations/lignes/generer', <String, dynamic>{}, query: query);

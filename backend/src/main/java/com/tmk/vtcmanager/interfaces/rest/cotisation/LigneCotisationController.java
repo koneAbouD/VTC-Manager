@@ -1,8 +1,11 @@
 package com.tmk.vtcmanager.interfaces.rest.cotisation;
 
+import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.usecases.cotisation.AnnulerLigneCotisationUseCase;
+import com.tmk.vtcmanager.application.usecases.cotisation.RestaurerLigneCotisationUseCase;
+import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.cotisation.CreateEncaissementCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GenererLignesCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GetLignesCotisationUseCase;
@@ -37,6 +40,8 @@ public class LigneCotisationController {
     private final GetLignesCotisationUseCase getLignesCotisationUseCase;
     private final CreateEncaissementCotisationUseCase createEncaissementUseCase;
     private final AnnulerLigneCotisationUseCase annulerUseCase;
+    private final RestaurerLigneCotisationUseCase restaurerUseCase;
+    private final VerrouArreteService verrouArreteService;
     private final GenererLignesCotisationUseCase genererUseCase;
     private final CotisationRestMapper mapper;
 
@@ -76,7 +81,11 @@ public class LigneCotisationController {
 
     @GetMapping("/{id:\\d+}")
     public LigneCotisationResponse getLigneById(@PathVariable Long id) {
-        return mapper.toResponse(getLignesCotisationUseCase.findById(id));
+        LigneCotisation ligne = getLignesCotisationUseCase.findById(id);
+        // Dit au client si l'action « Restaurer » a encore un sens : un arrêté
+        // — période close, caisse comptée — peut l'avoir fermée depuis.
+        ligne.setRestaurable(verrouArreteService.estRestaurable(ligne.getDateCotisation()));
+        return mapper.toResponse(ligne);
     }
 
     @PostMapping("/{id}/encaissements")
@@ -96,6 +105,16 @@ public class LigneCotisationController {
     public LigneCotisationResponse annuler(@PathVariable Long id,
                                            @Valid @RequestBody AnnulationRequest request) {
         return mapper.toResponse(annulerUseCase.executer(id, request.motif()));
+    }
+
+    /**
+     * Remet une ligne annulée en circulation : elle retrouve le statut que
+     * dictent ses versements et redevient due. Refusé si la période est
+     * clôturée.
+     */
+    @PatchMapping("/{id}/restaurer")
+    public LigneCotisationResponse restaurer(@PathVariable Long id) {
+        return mapper.toResponse(restaurerUseCase.executer(id));
     }
 
     @PostMapping("/generer")

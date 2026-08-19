@@ -27,6 +27,7 @@ import com.tmk.vtcmanager.application.ports.persistence.JourFerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConfigurationRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.services.AnnulationContraventionService;
+import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
 import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
@@ -448,6 +449,12 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public RestaurerContraventionUseCase restaurerContraventionUseCase(
+            ContraventionRepository repo, VerrouArreteService verrouArreteService) {
+        return new RestaurerContraventionUseCase(repo, verrouArreteService);
+    }
+
+    @Bean
     public GetContraventionByIdUseCase getContraventionByIdUseCase(ContraventionRepository repo) {
         return new GetContraventionByIdUseCase(repo);
     }
@@ -539,8 +546,17 @@ public class UseCaseBeanConfiguration {
     @Bean
     public AnnulerMaintenanceUseCase annulerMaintenanceUseCase(
             MaintenanceRepository repo,
-            VehiculeStatutEventPublisher statutEventPublisher) {
-        return new AnnulerMaintenanceUseCase(repo, statutEventPublisher);
+            VehiculeStatutEventPublisher statutEventPublisher,
+            AuteurCourant auteurCourant) {
+        return new AnnulerMaintenanceUseCase(repo, statutEventPublisher, auteurCourant);
+    }
+
+    @Bean
+    public RestaurerMaintenanceUseCase restaurerMaintenanceUseCase(
+            MaintenanceRepository repo,
+            VehiculeStatutEventPublisher statutEventPublisher,
+            VerrouArreteService verrouArreteService) {
+        return new RestaurerMaintenanceUseCase(repo, statutEventPublisher, verrouArreteService);
     }
 
     @Bean
@@ -796,6 +812,13 @@ public class UseCaseBeanConfiguration {
         return new AnnulerLigneCotisationUseCase(ligneCotisationRepository);
     }
 
+    @Bean
+    public RestaurerLigneCotisationUseCase restaurerLigneCotisationUseCase(
+            LigneCotisationRepository ligneCotisationRepository,
+            VerrouArreteService verrouArreteService) {
+        return new RestaurerLigneCotisationUseCase(ligneCotisationRepository, verrouArreteService);
+    }
+
     // ----- Recette -----
     @Bean
     public GenererLignesRecetteUseCase genererLignesRecetteUseCase(
@@ -842,6 +865,13 @@ public class UseCaseBeanConfiguration {
     @Bean
     public AnnulerLigneRecetteUseCase annulerLigneRecetteUseCase(LigneRecetteRepository ligneRecetteRepository) {
         return new AnnulerLigneRecetteUseCase(ligneRecetteRepository);
+    }
+
+    @Bean
+    public RestaurerLigneRecetteUseCase restaurerLigneRecetteUseCase(
+            LigneRecetteRepository ligneRecetteRepository,
+            VerrouArreteService verrouArreteService) {
+        return new RestaurerLigneRecetteUseCase(ligneRecetteRepository, verrouArreteService);
     }
 
     // ----- OperationFinanciere -----
@@ -1009,6 +1039,13 @@ public class UseCaseBeanConfiguration {
     @Bean
     public AnnulerLignePenaliteUseCase annulerLignePenaliteUseCase(LignePenaliteRepository lignePenaliteRepository) {
         return new AnnulerLignePenaliteUseCase(lignePenaliteRepository);
+    }
+
+    @Bean
+    public RestaurerLignePenaliteUseCase restaurerLignePenaliteUseCase(
+            LignePenaliteRepository lignePenaliteRepository,
+            VerrouArreteService verrouArreteService) {
+        return new RestaurerLignePenaliteUseCase(lignePenaliteRepository, verrouArreteService);
     }
 
     // ----- Import PDF des contraventions de l'État -----
@@ -1553,6 +1590,14 @@ public class UseCaseBeanConfiguration {
     @Bean
     public PeriodeClotureeGuard periodeClotureeGuard(CloturePeriodeRepository repo) {
         return new PeriodeClotureeGuard(repo);
+    }
+
+    /** Ce que les arrêtés — période close, caisse comptée — interdisent de restaurer. */
+    @Bean
+    public VerrouArreteService verrouArreteService(
+            CloturePeriodeRepository cloturePeriodeRepository,
+            ClotureCaisseRepository clotureCaisseRepository) {
+        return new VerrouArreteService(cloturePeriodeRepository, clotureCaisseRepository);
     }
 
     @Bean

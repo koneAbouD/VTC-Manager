@@ -7,6 +7,7 @@ import 'package:pdfx/pdfx.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/confirmation_restauration_dialog.dart';
 import '../../../../core/widgets/detail_carte.dart';
 import '../../domain/entities/contravention.dart';
 import '../providers/contravention_provider.dart';
@@ -285,6 +286,27 @@ class _ContraventionDetailPageState
     }
   }
 
+  Future<void> _restaurer() async {
+    final confirme = await showConfirmationRestaurationDialog(
+      context,
+      titre: 'Restaurer la contravention ?',
+      message: 'Elle redeviendra due par le chauffeur, avec le statut que '
+          'dicte ce qui a déjà été versé.',
+    );
+    if (confirme != true || !mounted) return;
+
+    final error = await ref
+        .read(contraventionNotifierProvider.notifier)
+        .restaurerContravention(c.id!);
+    if (!mounted) return;
+    if (error != null) {
+      _toast(error, err: true);
+    } else {
+      _toast('Contravention restaurée');
+      Navigator.pop(context, true);
+    }
+  }
+
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -456,6 +478,30 @@ class _ContraventionDetailPageState
     // suppression : on propose directement l'annulation.
     final aMouvemente = c.isReverse || ((c.montantPaye ?? 0) > 0);
     final retirable = !c.isCancelled;
+    // Annulée à tort, elle se remet en circulation tant que les livres du mois
+    // sont ouverts : elle retrouve le statut que dicte ce qui a été versé.
+    // Passé la clôture, le serveur refuse.
+    if (c.isCancelled) {
+      // Un arrêté peut avoir fermé la restauration depuis : plus aucune
+      // action alors, le serveur refuserait.
+      if (!c.restaurable) return const SizedBox.shrink();
+      return SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: FilledButton.icon(
+          onPressed: _restaurer,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          icon: const Icon(Icons.restore_rounded, size: 18),
+          label: const Text('Restaurer',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        ),
+      );
+    }
     return Row(children: [
       if (reversable) ...[
         Expanded(

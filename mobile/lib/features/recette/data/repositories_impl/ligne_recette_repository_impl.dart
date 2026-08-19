@@ -122,6 +122,19 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
   }
 
   @override
+  Future<Either<Failure, LigneRecette>> restaurer(int id) async {
+    try {
+      return Right(await _datasource.restaurer(id));
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, LigneRecette>> confirmerVersement(int id) async {
     try {
       return Right(await _datasource.confirmerVersement(id));

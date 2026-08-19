@@ -30,9 +30,10 @@ import static org.mockito.Mockito.when;
 /**
  * Le formulaire de maintenance ne saisit pas le coût — il est fixé à la
  * clôture. Une requête qui n'en parle pas ne doit donc rien effacer. Et une
- * fois l'intervention terminée, le formulaire lui-même est fermé : la reprise
- * passe par l'annulation de la dépense, qui rend la maintenance à l'état
- * planifié.
+ * fois l'intervention close — terminée ou annulée — le formulaire lui-même est
+ * fermé : reprendre une intervention terminée passe par l'annulation de sa
+ * dépense, qui la rend à l'état planifié ; une intervention abandonnée, elle,
+ * se remplace par une nouvelle.
  */
 class UpdateMaintenanceUseCaseTest {
 
@@ -112,6 +113,24 @@ class UpdateMaintenanceUseCaseTest {
                 .build()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("terminée");
+
+        verify(maintenanceRepository, never()).save(any());
+        verifyNoInteractions(synchronisation);
+    }
+
+    @Test
+    @DisplayName("Une maintenance annulée ne se modifie plus")
+    void maintenance_annulee_figee() {
+        // Elle atteste qu'une intervention a été prévue puis abandonnée : la
+        // retoucher réécrirait cette histoire.
+        existante(new BigDecimal("55000"), MaintenanceStatus.ANNULEE);
+
+        assertThatThrownBy(() -> useCase.execute(1L, Maintenance.builder()
+                .datePrevue(LE_10_MARS)
+                .description("reprise")
+                .build()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("annulée");
 
         verify(maintenanceRepository, never()).save(any());
         verifyNoInteractions(synchronisation);

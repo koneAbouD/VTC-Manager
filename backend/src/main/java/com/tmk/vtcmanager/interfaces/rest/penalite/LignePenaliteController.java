@@ -1,9 +1,12 @@
 package com.tmk.vtcmanager.interfaces.rest.penalite;
 
 import com.tmk.vtcmanager.application.domain.conditionTravail.TypeSanction;
+import com.tmk.vtcmanager.application.domain.penalite.LignePenalite;
 import com.tmk.vtcmanager.application.domain.penalite.LignePenaliteFiltres;
 import com.tmk.vtcmanager.application.domain.penalite.StatutLignePenalite;
 import com.tmk.vtcmanager.application.usecases.penalite.AnnulerLignePenaliteUseCase;
+import com.tmk.vtcmanager.application.usecases.penalite.RestaurerLignePenaliteUseCase;
+import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.penalite.CreateEncaissementPenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.CreateLignePenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.DemarrerImmobilisationUseCase;
@@ -46,6 +49,8 @@ public class LignePenaliteController {
     private final CreateLignePenaliteUseCase createLigneUseCase;
     private final CreateEncaissementPenaliteUseCase createEncaissementUseCase;
     private final AnnulerLignePenaliteUseCase annulerUseCase;
+    private final RestaurerLignePenaliteUseCase restaurerUseCase;
+    private final VerrouArreteService verrouArreteService;
     private final ExecuterBuzzerUseCase executerBuzzerUseCase;
     private final NotifierAvertissementUseCase notifierUseCase;
     private final DemarrerImmobilisationUseCase demarrerUseCase;
@@ -93,7 +98,12 @@ public class LignePenaliteController {
 
     @GetMapping("/{id:\\d+}")
     public LignePenaliteResponse getLigneById(@PathVariable Long id) {
-        return mapper.toResponse(getLignesUseCase.findById(id));
+        LignePenalite ligne = getLignesUseCase.findById(id);
+        // Dit au client si l'action « Restaurer » a encore un sens : un arrêté
+        // — période close, caisse comptée — peut l'avoir fermée depuis.
+        ligne.setRestaurable(verrouArreteService.estRestaurable(
+                ligne.getDateFaute() != null ? ligne.getDateFaute() : ligne.getDateGeneration()));
+        return mapper.toResponse(ligne);
     }
 
     @PostMapping
@@ -142,6 +152,16 @@ public class LignePenaliteController {
     @PatchMapping("/{id}/lever")
     public LignePenaliteResponse lever(@PathVariable Long id) {
         return mapper.toResponse(leverUseCase.executer(id));
+    }
+
+    /**
+     * Remet une pénalité annulée en circulation : une amende retrouve le statut
+     * que dictent ses versements, les autres sanctions repartent en attente
+     * d'exécution. Refusé si la période est clôturée.
+     */
+    @PatchMapping("/{id}/restaurer")
+    public LignePenaliteResponse restaurer(@PathVariable Long id) {
+        return mapper.toResponse(restaurerUseCase.executer(id));
     }
 
     @PatchMapping("/{id}/annuler")

@@ -35,6 +35,11 @@ class LigneCotisation {
   final double? montantRestant;
   final StatutLigneCotisation statut;
   final String? motifAnnulation;
+
+  /// Faux si un arrêté — période comptable close, caisse comptée — interdit
+  /// désormais la restauration. Le bouton « Restaurer » est alors masqué :
+  /// le serveur refuserait.
+  final bool restaurable;
   final List<EncaissementCotisation> encaissements;
 
   const LigneCotisation({
@@ -50,6 +55,7 @@ class LigneCotisation {
     this.montantRestant,
     required this.statut,
     this.motifAnnulation,
+    this.restaurable = false,
     this.encaissements = const [],
   });
 

@@ -33,5 +33,11 @@ public record ContraventionResponse(
         LocalDate dateReversement,
         /** Renseignés dès lors que la contravention a été annulée. */
         LocalDateTime annuleLe,
-        String motifAnnulation
+        String motifAnnulation,
+        /**
+         * Faux si un arrêté — période comptable close, caisse comptée — interdit
+         * désormais de restaurer cet élément annulé. Le client masque alors
+         * l'action « Restaurer », qui n'aboutirait pas.
+         */
+        Boolean restaurable
 ) {}

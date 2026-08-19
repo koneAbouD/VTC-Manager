@@ -50,6 +50,10 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
         entity.setMontantEncaisse(ligne.getMontantEncaisse() != null ? ligne.getMontantEncaisse() : BigDecimal.ZERO);
         entity.setStatut(ligne.getStatut());
         entity.setMotifAnnulation(ligne.getMotifAnnulation());
+        // L'horodatage suit le motif : c'est lui qui dit à partir de quand la
+        // ligne a cessé d'être due, et son effacement qui la rend de nouveau
+        // exigible à la restauration.
+        entity.setAnnuleLe(ligne.getAnnuleLe());
 
         return mapper.toDomain(jpaRepository.save(entity));
     }

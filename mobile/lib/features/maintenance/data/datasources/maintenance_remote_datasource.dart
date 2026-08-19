@@ -74,8 +74,16 @@ class MaintenanceRemoteDatasource {
 
   Future<void> deleteMaintenance(int id) => _client.delete('/maintenances/$id');
 
-  Future<MaintenanceModel> annulerMaintenance(int id) async {
-    final data = await _client.patch('/maintenances/$id/annuler');
+  /// Annule l'intervention : le motif est obligatoire, le serveur refuse sans.
+  Future<MaintenanceModel> annulerMaintenance(int id, String motif) async {
+    final data = await _client.patch('/maintenances/$id/annuler', {'motif': motif});
+    return MaintenanceModel.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Remet une maintenance annulée en circulation : elle repasse en planifiée.
+  /// Refusé par le serveur si la période est clôturée.
+  Future<MaintenanceModel> restaurerMaintenance(int id) async {
+    final data = await _client.patch('/maintenances/$id/restaurer');
     return MaintenanceModel.fromJson(data as Map<String, dynamic>);
   }
 

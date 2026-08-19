@@ -21,6 +21,17 @@ class Maintenance {
   final String? categorieTypeLibelle;
   final DetailMaintenance? detailMaintenance;
 
+  /// Pourquoi l'intervention a été annulée, par qui et quand. Nul tant qu'elle
+  /// est au programme.
+  final String? motifAnnulation;
+  final String? annulePar;
+  final DateTime? annuleLe;
+
+  /// Faux si un arrêté — période comptable close, caisse comptée — interdit
+  /// désormais la restauration. Le bouton « Restaurer » est alors masqué :
+  /// le serveur refuserait.
+  final bool restaurable;
+
   const Maintenance({
     this.id,
     required this.type,
@@ -40,10 +51,20 @@ class Maintenance {
     this.categorieTypeId,
     this.categorieTypeLibelle,
     this.detailMaintenance,
+    this.motifAnnulation,
+    this.annulePar,
+    this.annuleLe,
+    this.restaurable = false,
   });
 
   bool get isPending => statut == 'PLANIFIEE' || statut == null;
   bool get isDone => statut == 'TERMINEE';
+
+  /// Une intervention close ne se retouche plus : terminée, son coût et sa date
+  /// sont ceux de la dépense déjà passée au journal ; annulée, elle n'a plus
+  /// rien à décrire. Le formulaire d'édition leur est fermé — c'est une
+  /// nouvelle intervention qu'il faut planifier.
+  bool get estModifiable => statut != 'TERMINEE' && statut != 'ANNULEE';
 
   Maintenance copyWith({
     int? id,
@@ -85,6 +106,13 @@ class Maintenance {
       categorieTypeId: categorieTypeId ?? this.categorieTypeId,
       categorieTypeLibelle: categorieTypeLibelle ?? this.categorieTypeLibelle,
       detailMaintenance: detailMaintenance ?? this.detailMaintenance,
+      // Le marquage d'annulation et la restaurabilité ne se saisissent pas :
+      // ils viennent du serveur et suivent la copie, sinon une maintenance
+      // annulée perdrait son motif au premier copyWith.
+      motifAnnulation: motifAnnulation,
+      annulePar: annulePar,
+      annuleLe: annuleLe,
+      restaurable: restaurable,
     );
   }
 }

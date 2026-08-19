@@ -182,16 +182,26 @@ class _DetailBody extends ConsumerWidget {
         // en sont exclus, leur montant appartient à la créance ou à
         // l'intervention qui les a produits. Pour ceux-là, la seule voie est
         // l'annulation, qui repositionne la source, puis la ressaisie.
-        if (op.statut != StatutOperation.ANNULEE)
+        //
+        // « Annuler » disparaît de son côté dès qu'un arrêté — période close ou
+        // caisse comptée — couvre la date de l'écriture : la contre-passation
+        // serait refusée.
+        //
+        // Les deux peuvent tomber en même temps — une écriture d'encaissement
+        // d'un mois clos, par exemple : la barre disparaît alors entièrement
+        // plutôt que de laisser une bande vide.
+        if (op.statut != StatutOperation.ANNULEE &&
+            (op.annulable || op.modifiable))
           PremiumButtonRow(buttons: [
-            PremiumButton(
-              label: 'Annuler',
-              icon: Icons.cancel_outlined,
-              color: AppColors.error,
-              filled: false,
-              expanded: true,
-              onPressed: () => _supprimer(context, ref),
-            ),
+            if (op.annulable)
+              PremiumButton(
+                label: 'Annuler',
+                icon: Icons.cancel_outlined,
+                color: AppColors.error,
+                filled: false,
+                expanded: true,
+                onPressed: () => _supprimer(context, ref),
+              ),
             if (op.modifiable)
               PremiumButton(
                 label: 'Modifier',

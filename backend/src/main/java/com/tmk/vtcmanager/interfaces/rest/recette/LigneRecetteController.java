@@ -4,6 +4,8 @@ import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecetteFiltres;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.usecases.recette.AnnulerLigneRecetteUseCase;
+import com.tmk.vtcmanager.application.usecases.recette.RestaurerLigneRecetteUseCase;
+import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.recette.ConfirmerVersementUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GenererLignesRecetteUseCase;
@@ -39,6 +41,8 @@ public class LigneRecetteController {
     private final GetLignesRecetteUseCase getLignesRecetteUseCase;
     private final CreateEncaissementUseCase createEncaissementUseCase;
     private final AnnulerLigneRecetteUseCase annulerLigneRecetteUseCase;
+    private final RestaurerLigneRecetteUseCase restaurerLigneRecetteUseCase;
+    private final VerrouArreteService verrouArreteService;
     private final ConfirmerVersementUseCase confirmerVersementUseCase;
     private final GenererLignesRecetteUseCase genererLignesRecetteUseCase;
     private final RecetteRestMapper mapper;
@@ -85,7 +89,11 @@ public class LigneRecetteController {
 
     @GetMapping("/{id:\\d+}")
     public LigneRecetteResponse getLigneById(@PathVariable Long id) {
-        return mapper.toResponse(getLignesRecetteUseCase.findById(id));
+        LigneRecette ligne = getLignesRecetteUseCase.findById(id);
+        // Dit au client si l'action « Restaurer » a encore un sens : un arrêté
+        // — période close, caisse comptée — peut l'avoir fermée depuis.
+        ligne.setRestaurable(verrouArreteService.estRestaurable(ligne.getDateRecette()));
+        return mapper.toResponse(ligne);
     }
 
     @PostMapping("/{id}/encaissements")
@@ -106,6 +114,16 @@ public class LigneRecetteController {
     public LigneRecetteResponse annuler(@PathVariable Long id,
                                         @Valid @RequestBody AnnulationRequest request) {
         return mapper.toResponse(annulerLigneRecetteUseCase.executer(id, request.motif()));
+    }
+
+    /**
+     * Remet une ligne annulée en circulation : elle retrouve le statut que
+     * dictent ses versements et redevient exigible. Refusé si la période est
+     * clôturée.
+     */
+    @PatchMapping("/{id}/restaurer")
+    public LigneRecetteResponse restaurer(@PathVariable Long id) {
+        return mapper.toResponse(restaurerLigneRecetteUseCase.executer(id));
     }
 
     @PatchMapping("/{id}/confirmer-versement")

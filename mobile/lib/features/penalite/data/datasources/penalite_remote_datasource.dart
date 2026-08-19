@@ -118,6 +118,11 @@ class PenaliteRemoteDatasource {
     return LignePenaliteModel.fromJson(data as Map<String, dynamic>);
   }
 
+  Future<LignePenaliteModel> restaurer(int id) async {
+    final data = await _client.patch('/penalites/lignes/$id/restaurer');
+    return LignePenaliteModel.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<List<LignePenaliteModel>> generer({String? date}) async {
     final query = date != null ? {'date': date} : null;
     final data = await _client.post(

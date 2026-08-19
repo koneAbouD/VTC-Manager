@@ -36,6 +36,10 @@ abstract interface class LigneRecetteRepository {
 
   Future<Either<Failure, LigneRecette>> annuler(int id, String motif);
 
+  /// Remet une ligne annulée en circulation : elle retrouve le statut que
+  /// dictent ses versements. Refusé par le serveur si la période est clôturée.
+  Future<Either<Failure, LigneRecette>> restaurer(int id);
+
   Future<Either<Failure, LigneRecette>> confirmerVersement(int id);
 
   Future<Either<Failure, List<LigneRecette>>> generer({DateTime? date});

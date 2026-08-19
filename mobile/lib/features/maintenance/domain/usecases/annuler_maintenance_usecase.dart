@@ -8,6 +8,6 @@ class AnnulerMaintenanceUseCase {
   final MaintenanceRepository _repository;
   const AnnulerMaintenanceUseCase(this._repository);
 
-  Future<Either<Failure, Maintenance>> call(int id) =>
-      _repository.annulerMaintenance(id);
+  Future<Either<Failure, Maintenance>> call(int id, String motif) =>
+      _repository.annulerMaintenance(id, motif);
 }

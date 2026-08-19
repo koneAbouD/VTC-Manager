@@ -34,6 +34,11 @@ class LigneRecette {
   final double? montantRestant;
   final StatutLigneRecette statut;
   final String? motifAnnulation;
+
+  /// Faux si un arrêté — période comptable close, caisse comptée — interdit
+  /// désormais la restauration. Le bouton « Restaurer » est alors masqué :
+  /// le serveur refuserait.
+  final bool restaurable;
   final List<Encaissement> encaissements;
 
   const LigneRecette({
@@ -48,6 +53,7 @@ class LigneRecette {
     this.montantRestant,
     required this.statut,
     this.motifAnnulation,
+    this.restaurable = false,
     this.encaissements = const [],
   });
 

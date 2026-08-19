@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/confirmation_restauration_dialog.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../domain/entities/maintenance.dart';
 import '../../../operation_financiere/domain/entities/element_maintenance.dart';
 import '../providers/maintenance_provider.dart';
@@ -87,6 +89,19 @@ class _MaintenanceDetailPageState
     return Icons.construction_outlined;
   }
 
+  /// Qui a prononcé l'annulation, et quand. Nul si le serveur n'a ni l'un ni
+  /// l'autre — les maintenances annulées avant que l'annulation ne soit signée.
+  String? _signatureAnnulation() {
+    final auteur = _m.annulePar?.isNotEmpty == true ? _m.annulePar : null;
+    final date = _m.annuleLe != null
+        ? DateFormat('dd MMM yyyy à HH:mm', 'fr_FR').format(_m.annuleLe!)
+        : null;
+    if (auteur != null && date != null) return 'Par $auteur · le $date';
+    if (auteur != null) return 'Par $auteur';
+    if (date != null) return 'Annulée le $date';
+    return null;
+  }
+
   String _displayType() =>
       (_m.categorieTypeLibelle?.isNotEmpty == true)
           ? _m.categorieTypeLibelle!
@@ -161,31 +176,40 @@ class _MaintenanceDetailPageState
   }
 
   Future<void> _annuler() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Annuler la maintenance',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        content: const Text(
-            'La maintenance sera marquée comme annulée. Confirmer ?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Non')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Oui, annuler'),
-          ),
-        ],
-      ),
+    // Même popup que l'annulation d'une ligne de recette : le motif est
+    // obligatoire, il reste attaché à l'intervention abandonnée.
+    final motif = await showMotifAnnulationDialog(
+      context,
+      titre: 'Annuler la maintenance ?',
+      message: 'L\'intervention quittera le programme du véhicule mais restera '
+          'à son historique. Indiquez le motif de l\'annulation.',
     );
-    if (confirmed != true) return;
+    if (motif == null || !mounted) return;
 
     final error = await ref
         .read(maintenanceNotifierProvider.notifier)
-        .annulerMaintenance(_m.id!);
+        .annulerMaintenance(_m.id!, motif);
+
+    if (!mounted) return;
+    if (error != null) {
+      _showToast(error, error: true);
+    } else {
+      Navigator.pop(context, true);
+    }
+  }
+
+  Future<void> _restaurer() async {
+    final confirme = await showConfirmationRestaurationDialog(
+      context,
+      titre: 'Restaurer la maintenance ?',
+      message: 'Elle repassera en planifiée : l\'intervention sera de nouveau '
+          'à faire.',
+    );
+    if (confirme != true || !mounted) return;
+
+    final error = await ref
+        .read(maintenanceNotifierProvider.notifier)
+        .restaurerMaintenance(_m.id!);
 
     if (!mounted) return;
     if (error != null) {
@@ -205,12 +229,12 @@ class _MaintenanceDetailPageState
       backgroundColor: _kBg,
       appBar: AppHeader(
         title: 'Détail maintenance',
-        // Une intervention terminée ne se retouche plus : son coût et sa date
-        // sont ceux de la dépense déjà passée au journal. Pour la reprendre, on
-        // annule cette dépense — la maintenance repasse en planifiée.
-        action: _m.statut == 'TERMINEE'
-            ? null
-            : AppHeaderAction(onTap: _edit, icon: Icons.edit_rounded),
+        // Une intervention close ne se retouche plus (voir `estModifiable`) :
+        // pour reprendre une intervention terminée, on annule la dépense
+        // qu'elle a générée — la maintenance repasse en planifiée.
+        action: _m.estModifiable
+            ? AppHeaderAction(onTap: _edit, icon: Icons.edit_rounded)
+            : null,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -287,8 +311,13 @@ class _MaintenanceDetailPageState
 
                   // ── Actions ───────────────────────────────────────────
                   // Maintenance planifiée : « Annuler » et « Terminer » sur une
-                  // même ligne. Sinon (déjà terminée, etc.) : « Annuler » seul,
-                  // proposé tant qu'elle n'est pas déjà annulée.
+                  // même ligne. En cours : « Annuler » seul.
+                  //
+                  // Terminée : aucune des deux. Sa complétion a produit une
+                  // dépense — ou une dette envers le prestataire — et l'annuler
+                  // ici laisserait cette charge au journal sans intervention en
+                  // face. La reprise passe par l'annulation de la dépense, qui
+                  // rend la maintenance à l'état planifié.
                   if (_m.isPending)
                     Row(
                       children: [
@@ -339,7 +368,26 @@ class _MaintenanceDetailPageState
                         ),
                       ],
                     )
-                  else if (_m.statut != 'ANNULEE')
+                  // Annulée à tort : elle se remet en circulation tant que les
+                  // livres du mois sont ouverts. Passé la clôture, le serveur
+                  // refuse.
+                  else if (_m.statut == 'ANNULEE' && _m.restaurable)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton.icon(
+                        onPressed: _restaurer,
+                        icon: const Icon(Icons.restore_rounded),
+                        label: const Text('Restaurer',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w600)),
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    )
+                  else if (_m.statut != 'TERMINEE')
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -396,6 +444,28 @@ class _MaintenanceDetailPageState
               _m.categorieTypeLibelle!),
       ]),
     ];
+
+    // Sur une intervention abandonnée, la première question est « pourquoi » :
+    // la rubrique suit immédiatement le badge « Annulée » du hero.
+    if (_m.motifAnnulation != null && _m.motifAnnulation!.isNotEmpty) {
+      rubriques.add(_rubrique(children: [
+        const SizedBox(height: 6),
+        _labelRubrique(Icons.cancel_outlined, 'Motif d\'annulation'),
+        const SizedBox(height: 10),
+        Text(
+          _m.motifAnnulation!,
+          style: const TextStyle(fontSize: 14, color: _kDark, height: 1.5),
+        ),
+        if (_signatureAnnulation() != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 10),
+            child: Text(
+              _signatureAnnulation()!,
+              style: const TextStyle(fontSize: 12, color: _kLabel),
+            ),
+          ),
+      ]));
+    }
 
     if (_m.vehiculeImmatriculation != null || _m.vehiculeId != null) {
       rubriques.add(_section(rows: [

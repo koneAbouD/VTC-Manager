@@ -23,6 +23,7 @@ class ContraventionModel extends Contravention {
     super.documentSourcePath,
     super.statutRattachement,
     super.motifAnnulation,
+    super.restaurable,
   });
 
   /// Extrait un libellé qu'une valeur soit une chaîne ou un objet {nom/libelle}.
@@ -77,6 +78,9 @@ class ContraventionModel extends Contravention {
       documentSourcePath: json['documentSourcePath'] as String?,
       statutRattachement: json['statutRattachement'] as String?,
       motifAnnulation: json['motifAnnulation'] as String?,
+      // Absent = pas de bouton : mieux vaut une action manquante
+      // qu'une action que le serveur refusera.
+      restaurable: json['restaurable'] as bool? ?? false,
     );
   }
 

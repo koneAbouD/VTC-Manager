@@ -32,6 +32,7 @@ class OperationFinanciereModel extends OperationFinanciere {
     super.annuleLe,
     super.motifAnnulation,
     super.modifiable,
+    super.annulable,
   });
 
   factory OperationFinanciereModel.fromJson(Map<String, dynamic> json) {
@@ -94,6 +95,7 @@ class OperationFinanciereModel extends OperationFinanciere {
       // Absent = on n'affiche pas « Modifier » : mieux vaut une action
       // manquante qu'une action que le serveur refusera.
       modifiable: json['modifiable'] as bool? ?? false,
+      annulable: json['annulable'] as bool? ?? false,
     );
   }
 }

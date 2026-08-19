@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.response.VehiculeResponse
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record MaintenanceResponse(
         Long id,
@@ -23,5 +24,15 @@ public record MaintenanceResponse(
         MaintenanceStatus statut,
         VehiculeResponse vehicule,
         CategorieOperationResponse categorieType,
-        DetailMaintenanceResponse detailMaintenance
+        DetailMaintenanceResponse detailMaintenance,
+        /** Pourquoi l'intervention a été annulée ; nul tant qu'elle est au programme. */
+        String motifAnnulation,
+        String annulePar,
+        LocalDateTime annuleLe,
+        /**
+         * Faux si un arrêté — période comptable close, caisse comptée — interdit
+         * désormais de restaurer cet élément annulé. Le client masque alors
+         * l'action « Restaurer », qui n'aboutirait pas.
+         */
+        Boolean restaurable
 ) {}

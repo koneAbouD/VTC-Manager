@@ -14,6 +14,7 @@ class LigneRecetteModel extends LigneRecette {
     super.montantRestant,
     required super.statut,
     super.motifAnnulation,
+    super.restaurable,
     super.encaissements,
   });
 
@@ -36,6 +37,9 @@ class LigneRecetteModel extends LigneRecette {
       montantRestant: (json['montantRestant'] as num?)?.toDouble(),
       statut: StatutLigneRecette.fromJson(json['statut'] as String),
       motifAnnulation: json['motifAnnulation'] as String?,
+      // Absent = pas de bouton : mieux vaut une action manquante
+      // qu'une action que le serveur refusera.
+      restaurable: json['restaurable'] as bool? ?? false,
       encaissements: encaissements,
     );
   }

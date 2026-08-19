@@ -21,4 +21,12 @@ public interface ClotureCaisseJpaRepository extends JpaRepository<ClotureCaisseE
 
     java.util.Optional<ClotureCaisseEntity>
             findFirstByCompteIdAndAnnuleLeIsNullOrderByDateClotureDesc(Long compteId);
+
+    /**
+     * Dernier comptage toutes caisses confondues : jusqu'à cette date incluse,
+     * les journées sont arrêtées pour toute l'entreprise et ce qui les datait
+     * ne peut plus changer sans faire mentir un procès-verbal signé.
+     */
+    java.util.Optional<ClotureCaisseEntity>
+            findFirstByAnnuleLeIsNullOrderByDateClotureDesc();
 }

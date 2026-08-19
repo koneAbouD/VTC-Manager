@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.operation.OperationFinanciereFiltre
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
 import com.tmk.vtcmanager.application.usecases.operationFinanciere.*;
+import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.AnnulationRequest;
 import com.tmk.vtcmanager.interfaces.rest.operationFinanciere.dto.request.OperationFinanciereRequest;
@@ -31,6 +32,7 @@ public class OperationFinanciereController {
     private final GetAllOperationsFinancieresUseCase getAllUseCase;
     private final CalculerSoldeOperationsFinancieresUseCase calculerSoldeUseCase;
     private final AnnulerOperationFinanciereUseCase annulerUseCase;
+    private final VerrouArreteService verrouArreteService;
     private final OperationFinanciereRestMapper mapper;
 
     @PostMapping
@@ -76,8 +78,14 @@ public class OperationFinanciereController {
         var filtres = new OperationFinanciereFiltres(
                 typeOperation, debut, fin, statut, recherche, categorieCode,
                 vehiculeId, chauffeurId, sousCategorieLibelle, partenaireId);
+        // Les bornes des arrêtés sont lues une seule fois, puis appliquées en
+        // mémoire : marquer une page ne doit pas coûter deux requêtes par ligne.
+        var verrous = verrouArreteService.verrous();
         var result = getAllUseCase.executePage(filtres, page, size)
-                .map(mapper::toResponse);
+                .map(op -> {
+                    op.setAnnulable(verrous.autorise(op.getDateOperation()));
+                    return mapper.toResponse(op);
+                });
         return PageResponse.from(result);
     }
 
@@ -133,7 +141,11 @@ public class OperationFinanciereController {
     // soit capturé par cette route et provoque une conversion "page" -> Long.
     @GetMapping("/{id:\\d+}")
     public OperationFinanciereResponse findById(@PathVariable Long id) {
-        return mapper.toResponse(getByIdUseCase.execute(id));
+        var operation = getByIdUseCase.execute(id);
+        // Dit au client si l'action « Annuler » a encore un sens : un arrêté
+        // — période close, caisse comptée — peut couvrir la date de l'écriture.
+        operation.setAnnulable(verrouArreteService.estRestaurable(operation.getDateOperation()));
+        return mapper.toResponse(operation);
     }
 
     @PutMapping("/{id}")

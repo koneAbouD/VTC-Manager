@@ -33,4 +33,9 @@ abstract interface class ContraventionRepository {
   /// Annule la contravention : elle reste au registre, motif à l'appui.
   Future<Either<Failure, Contravention>> annulerContravention(
       int id, String motif);
+
+  /// Remet une contravention annulée en circulation : elle retrouve le statut
+  /// que dicte ce qui a été versé. Refusé par le serveur si la période est
+  /// clôturée.
+  Future<Either<Failure, Contravention>> restaurerContravention(int id);
 }

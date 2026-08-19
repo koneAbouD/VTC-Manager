@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/detail_premium.dart';
+import '../../../../core/widgets/confirmation_restauration_dialog.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 
@@ -159,6 +160,17 @@ class _DetailBody extends ConsumerWidget {
               ligne.motifAnnulation),
         ]),
 
+        // Une pénalité annulée à tort se remet en circulation tant que les
+        // livres du mois sont ouverts : une amende retrouve le statut que
+        // dictent ses versements, les autres sanctions repartent en attente
+        // d'exécution. Passé la clôture, le serveur refuse.
+        if (ligne.statut == StatutLignePenalite.annulee && ligne.restaurable)
+          PremiumButton(
+            label: 'Restaurer',
+            icon: Icons.restore_rounded,
+            onPressed: () => _restaurer(context, ref),
+          ),
+
         // ── Boutons d'action (Annuler + action principale sur une ligne) ──
         if (primaire != null && annulable)
           PremiumButtonRow(buttons: [
@@ -271,6 +283,30 @@ class _DetailBody extends ConsumerWidget {
       refreshFinances(ref);
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Pénalité annulée')));
+    }
+  }
+
+  Future<void> _restaurer(BuildContext context, WidgetRef ref) async {
+    final confirme = await showConfirmationRestaurationDialog(
+      context,
+      titre: 'Restaurer la pénalité ?',
+      message: 'La sanction redeviendra applicable : une amende retrouve le '
+          'statut que dictent ses versements, les autres repartent en attente.',
+    );
+    if (confirme != true || !context.mounted) return;
+
+    final error = await ref
+        .read(lignePenaliteNotifierProvider.notifier)
+        .restaurerDetail(ligneId);
+    if (!context.mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: AppColors.error));
+    } else {
+      ref.invalidate(lignePenaliteDetailProvider(ligneId));
+      refreshFinances(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pénalité restaurée')));
     }
   }
 

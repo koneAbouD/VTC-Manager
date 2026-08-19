@@ -73,6 +73,13 @@ public class OperationFinanciere {
      */
     private Long extourneDeId;
 
+    /**
+     * Renseigné à la lecture seulement : faux si un arrêté — période comptable
+     * close, caisse comptée — couvre la date de l'écriture. Le client masque
+     * alors l'action « Annuler ».
+     */
+    private Boolean annulable;
+
     /** Motif d'annulation, porté par l'écriture d'origine. */
     private String motifAnnulation;
     private String annulePar;

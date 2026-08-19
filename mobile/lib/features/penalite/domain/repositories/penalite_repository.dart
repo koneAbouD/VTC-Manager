@@ -33,5 +33,10 @@ abstract class PenaliteRepository {
 
   Future<Either<Failure, LignePenalite>> annuler(int id, String motif);
 
+  /// Remet une pénalité annulée en circulation : une amende retrouve le statut
+  /// que dictent ses versements, les autres sanctions repartent en attente.
+  /// Refusé par le serveur si la période est clôturée.
+  Future<Either<Failure, LignePenalite>> restaurer(int id);
+
   Future<Either<Failure, List<LignePenalite>>> generer({DateTime? date});
 }

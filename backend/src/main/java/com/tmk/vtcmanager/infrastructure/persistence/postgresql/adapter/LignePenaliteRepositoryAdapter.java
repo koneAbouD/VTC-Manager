@@ -76,6 +76,10 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
         entity.setStatut(ligne.getStatut());
         entity.setCommentaire(ligne.getCommentaire());
         entity.setMotifAnnulation(ligne.getMotifAnnulation());
+        // L'horodatage suit le motif : c'est lui qui dit à partir de quand la
+        // ligne a cessé d'être due, et son effacement qui la rend de nouveau
+        // exigible à la restauration.
+        entity.setAnnuleLe(ligne.getAnnuleLe());
 
         return mapper.toDomain(jpaRepository.save(entity));
     }

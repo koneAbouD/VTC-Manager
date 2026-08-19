@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -38,6 +39,24 @@ public class Maintenance {
     private CategorieOperation categorieType;
     private DetailMaintenance detailMaintenance;
 
+    /**
+     * Pourquoi l'intervention a été annulée, qui l'a décidé et quand. Une
+     * annulation sans motif ne se distingue pas d'un oubli : six mois plus
+     * tard, personne ne sait plus si la vidange a été jugée inutile ou
+     * simplement laissée de côté.
+     */
+    private String motifAnnulation;
+    private String annulePar;
+    private LocalDateTime annuleLe;
+
+    /**
+     * Renseigné à la lecture seulement : faux si un arrêté — période close,
+     * caisse comptée — interdit désormais de restaurer cette maintenance
+     * annulée. Le client s'en sert pour ne pas proposer une action vouée au
+     * refus.
+     */
+    private Boolean restaurable;
+
     public void initializeDefaults() {
         if (this.statut == null) this.statut = MaintenanceStatus.PLANIFIEE;
     }
@@ -50,8 +69,25 @@ public class Maintenance {
         }
     }
 
-    public void annuler() {
+    public void annuler(String motif, String auteur) {
         this.statut = MaintenanceStatus.ANNULEE;
+        this.motifAnnulation = motif;
+        this.annulePar = auteur;
+        this.annuleLe = LocalDateTime.now();
+    }
+
+    /**
+     * Rend une maintenance annulée à l'état planifié : l'intervention est de
+     * nouveau à faire, en entier. Elle n'a jamais été exécutée — ni date
+     * d'exécution ni coût à restituer. Le marquage d'annulation s'efface : le
+     * motif ne vaudrait plus rien en face d'une intervention de nouveau au
+     * programme.
+     */
+    public void restaurer() {
+        this.statut = MaintenanceStatus.PLANIFIEE;
+        this.motifAnnulation = null;
+        this.annulePar = null;
+        this.annuleLe = null;
     }
 
     /**

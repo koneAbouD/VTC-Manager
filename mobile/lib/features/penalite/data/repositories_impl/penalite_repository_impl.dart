@@ -159,6 +159,10 @@ class PenaliteRepositoryImpl implements PenaliteRepository {
       _action(() => _datasource.annuler(id, motif));
 
   @override
+  Future<Either<Failure, LignePenalite>> restaurer(int id) async =>
+      _action(() => _datasource.restaurer(id));
+
+  @override
   Future<Either<Failure, List<LignePenalite>>> generer({DateTime? date}) async {
     try {
       final result = await _datasource.generer(

@@ -15,6 +15,7 @@ class LigneCotisationModel extends LigneCotisation {
     super.montantRestant,
     required super.statut,
     super.motifAnnulation,
+    super.restaurable,
     super.encaissements,
   });
 
@@ -36,6 +37,9 @@ class LigneCotisationModel extends LigneCotisation {
       montantRestant: (json['montantRestant'] as num?)?.toDouble(),
       statut: StatutLigneCotisation.fromJson(json['statut'] as String),
       motifAnnulation: json['motifAnnulation'] as String?,
+      // Absent = pas de bouton : mieux vaut une action manquante
+      // qu'une action que le serveur refusera.
+      restaurable: json['restaurable'] as bool? ?? false,
       encaissements: enc,
     );
   }

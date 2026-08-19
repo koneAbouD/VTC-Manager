@@ -48,6 +48,10 @@ class OperationFinanciere {
   /// « Modifier » est alors masquée ; l'annulation, elle, reste ouverte.
   final bool modifiable;
 
+  /// Faux si un arrêté — période comptable close, caisse comptée — couvre la
+  /// date de l'écriture. Le bouton « Annuler » est alors masqué.
+  final bool annulable;
+
   /// Cette écriture est une contre-passation.
   bool get estUneExtourne => extourneDeId != null;
 
@@ -81,6 +85,7 @@ class OperationFinanciere {
     this.annuleLe,
     this.motifAnnulation,
     this.modifiable = false,
+    this.annulable = false,
   });
 
   /// Date à afficher sur les lignes d'opération : la date métier si présente

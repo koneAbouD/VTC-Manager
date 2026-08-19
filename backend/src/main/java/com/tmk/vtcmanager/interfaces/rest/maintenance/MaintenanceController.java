@@ -3,6 +3,8 @@ package com.tmk.vtcmanager.interfaces.rest.maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import com.tmk.vtcmanager.application.usecases.maintenance.AnnulerMaintenanceUseCase;
+import com.tmk.vtcmanager.application.usecases.maintenance.RestaurerMaintenanceUseCase;
+import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.maintenance.CompleteMaintenanceUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.DeleteMaintenanceUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.GetAllMaintenancesUseCase;
@@ -11,6 +13,7 @@ import com.tmk.vtcmanager.application.usecases.maintenance.GetMaintenanceTotalCo
 import com.tmk.vtcmanager.application.usecases.maintenance.GetUpcomingMaintenancesUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.ScheduleMaintenanceUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.UpdateMaintenanceUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.request.CompleteMaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.request.MaintenanceRequest;
@@ -36,6 +39,8 @@ public class MaintenanceController {
     private final UpdateMaintenanceUseCase updateMaintenanceUseCase;
     private final DeleteMaintenanceUseCase deleteMaintenanceUseCase;
     private final AnnulerMaintenanceUseCase annulerMaintenanceUseCase;
+    private final RestaurerMaintenanceUseCase restaurerMaintenanceUseCase;
+    private final VerrouArreteService verrouArreteService;
     private final GetMaintenanceByIdUseCase getMaintenanceByIdUseCase;
     private final GetAllMaintenancesUseCase getAllMaintenancesUseCase;
     private final CompleteMaintenanceUseCase completeMaintenanceUseCase;
@@ -68,15 +73,24 @@ public class MaintenanceController {
             @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        // Les bornes des arrêtés sont lues une seule fois, puis appliquées en
+        // mémoire : marquer une page ne doit pas coûter deux requêtes par ligne.
+        var verrous = verrouArreteService.verrous();
         var result = getAllMaintenancesUseCase
                 .executePage(vehiculeId, dateDebut, dateFin, statut, recherche, page, size)
-                .map(mapper::toResponse);
+                .map(m -> {
+                    m.setRestaurable(verrous.autorise(m.getDatePrevue()));
+                    return mapper.toResponse(m);
+                });
         return PageResponse.from(result);
     }
 
     @GetMapping("/{id:\\d+}")
     public MaintenanceResponse findById(@PathVariable Long id) {
-        return mapper.toResponse(getMaintenanceByIdUseCase.execute(id));
+        Maintenance maintenance = getMaintenanceByIdUseCase.execute(id);
+        maintenance.setRestaurable(
+                verrouArreteService.estRestaurable(maintenance.getDatePrevue()));
+        return mapper.toResponse(maintenance);
     }
 
     @PutMapping("/{id}")
@@ -91,9 +105,23 @@ public class MaintenanceController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Annule une intervention qui n'aura pas lieu : elle reste à l'historique du
+     * véhicule, datée et motivée, mais quitte le programme.
+     */
     @PatchMapping("/{id}/annuler")
-    public MaintenanceResponse annuler(@PathVariable Long id) {
-        return mapper.toResponse(annulerMaintenanceUseCase.execute(id));
+    public MaintenanceResponse annuler(@PathVariable Long id,
+                                       @Valid @RequestBody AnnulationRequest request) {
+        return mapper.toResponse(annulerMaintenanceUseCase.execute(id, request.motif()));
+    }
+
+    /**
+     * Remet une maintenance annulée en circulation : elle repasse en planifiée,
+     * l'intervention est de nouveau à faire. Refusé si la période est clôturée.
+     */
+    @PatchMapping("/{id}/restaurer")
+    public MaintenanceResponse restaurer(@PathVariable Long id) {
+        return mapper.toResponse(restaurerMaintenanceUseCase.execute(id));
     }
 
     @PostMapping("/{id}/complete")

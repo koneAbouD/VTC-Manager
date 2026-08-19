@@ -22,6 +22,10 @@ class MaintenanceModel extends Maintenance {
     super.categorieTypeId,
     super.categorieTypeLibelle,
     super.detailMaintenance,
+    super.motifAnnulation,
+    super.annulePar,
+    super.annuleLe,
+    super.restaurable,
   });
 
   static String _str(dynamic v) {
@@ -72,6 +76,14 @@ class MaintenanceModel extends Maintenance {
           ? DetailMaintenanceModel.fromJson(
               json['detailMaintenance'] as Map<String, dynamic>)
           : null,
+      motifAnnulation:     json['motifAnnulation'] as String?,
+      annulePar:           json['annulePar'] as String?,
+      annuleLe:            json['annuleLe'] != null
+          ? DateTime.parse(json['annuleLe'] as String)
+          : null,
+      // Absent = pas de bouton : mieux vaut une action manquante qu'une
+      // action que le serveur refusera.
+      restaurable: json['restaurable'] as bool? ?? false,
     );
   }
 

@@ -101,6 +101,9 @@ class LignePenaliteNotifier extends StateNotifier<LignePenaliteState> {
 
   Future<String?> annulerDetail(int id, String motif) async =>
       (await _repository.annuler(id, motif)).fold((f) => f.message, (_) => null);
+
+  Future<String?> restaurerDetail(int id) async =>
+      (await _repository.restaurer(id)).fold((f) => f.message, (_) => null);
 }
 
 final lignePenaliteNotifierProvider =

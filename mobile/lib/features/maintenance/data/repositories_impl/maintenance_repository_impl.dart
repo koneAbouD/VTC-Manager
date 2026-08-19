@@ -127,9 +127,23 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
   }
 
   @override
-  Future<Either<Failure, Maintenance>> annulerMaintenance(int id) async {
+  Future<Either<Failure, Maintenance>> annulerMaintenance(
+      int id, String motif) async {
     try {
-      return Right(await _datasource.annulerMaintenance(id));
+      return Right(await _datasource.annulerMaintenance(id, motif));
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Maintenance>> restaurerMaintenance(int id) async {
+    try {
+      return Right(await _datasource.restaurerMaintenance(id));
     } on ApiException catch (e) {
       return Left(_mapApiException(e));
     } on NetworkException catch (e) {

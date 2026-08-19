@@ -84,6 +84,11 @@ class LignePenalite {
   final StatutLignePenalite statut;
   final String? commentaire;
   final String? motifAnnulation;
+
+  /// Faux si un arrêté — période comptable close, caisse comptée — interdit
+  /// désormais la restauration. Le bouton « Restaurer » est alors masqué :
+  /// le serveur refuserait.
+  final bool restaurable;
   final List<EncaissementPenalite> encaissements;
 
   const LignePenalite({
@@ -108,6 +113,7 @@ class LignePenalite {
     required this.statut,
     this.commentaire,
     this.motifAnnulation,
+    this.restaurable = false,
     this.encaissements = const [],
   });
 
