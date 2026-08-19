@@ -57,7 +57,12 @@ public class RapportFinancier {
         private String categorieLibelle;
         private String chauffeurNom;
         private String vehiculeLabel;
+        /** Montant signé : négatif sur une extourne, qui rend l'argent. */
         private BigDecimal montant;
         private LocalDate date;
+        /** Cette écriture est une contre-passation. */
+        private boolean estUneExtourne;
+        /** Cette écriture a été contre-passée : elle reste au journal, barrée. */
+        private boolean estExtournee;
     }
 }

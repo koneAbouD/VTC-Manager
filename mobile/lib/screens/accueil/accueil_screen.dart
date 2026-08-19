@@ -6,6 +6,7 @@ import 'package:vtc_manager/features/maintenance/presentation/pages/lignes_maint
 import 'package:vtc_manager/features/contravention/presentation/pages/contraventions_hub_page.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/extourne_badge.dart';
 import '../../features/operation_financiere/domain/entities/operation_financiere.dart';
 import '../../features/operation_financiere/domain/entities/solde_periode.dart';
 import '../../features/operation_financiere/domain/enums/statut_operation.dart';
@@ -982,7 +983,11 @@ class _DerniereOpTile extends StatelessWidget {
     // Une sortie porte son signe ; une entrée s'en passe, sauf sur une extourne
     // où le « + » dit clairement que l'argent revient.
     final sign = entreEnCaisse ? (op.estUneExtourne ? '+' : '') : '-';
+    // Trois états à distinguer, comme sur la liste des opérations : l'ancien
+    // statut ANNULEE, une écriture contre-passée (barrée, elle reste au
+    // journal) et la contre-passation elle-même (montant opposé).
     final isAnnulee = op.statut == StatutOperation.ANNULEE || op.estExtournee;
+    final isExtourne = op.estUneExtourne;
 
     // Ligne 1 : « [Catégorie opération] [d'hier / du JJ/MM/AAAA] »
     // La date relative (recalculée à l'affichage) n'est ajoutée que pour les
@@ -1051,6 +1056,8 @@ class _DerniereOpTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    ExtourneBadge(
+                        estUneExtourne: isExtourne, estAnnulee: isAnnulee),
                     const SizedBox(width: 8),
                     Text(
                       '$sign${money.format(effetCaisse.abs())}',

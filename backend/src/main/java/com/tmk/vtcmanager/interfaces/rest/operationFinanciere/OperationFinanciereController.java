@@ -117,6 +117,10 @@ public class OperationFinanciereController {
      * filtres courants <b>sans</b> le filtre catégorie : permet aux info-bulles
      * des chips d'afficher toujours leur propre montant, même quand une catégorie
      * est sélectionnée. La classification reprend celle des filtres serveur.
+     *
+     * <p>Les montants sont sommés <em>signés</em>, comme {@code SUM(o.montant)}
+     * dans les agrégats du reporting : c'est ce qui fait disparaître du total une
+     * écriture annulée, neutralisée par sa contre-passation.</p>
      */
     @GetMapping("/montants-categories")
     public MontantsCategoriesResponse montantsCategories(
@@ -134,7 +138,12 @@ public class OperationFinanciereController {
 
         double total = 0, recette = 0, cotisation = 0, penalite = 0, maintenance = 0, document = 0;
         for (var op : getAllUseCase.execute(filtres)) {
-            double m = op.getMontant() == null ? 0 : op.getMontant().abs().doubleValue();
+            // Montant signé : l'annulation ne retire rien du journal, elle oppose
+            // à l'écriture une extourne de montant opposé qui reprend son type, sa
+            // catégorie et son statut — les deux traversent donc ces filtres, et
+            // seul le signe les neutralise. En valeur absolue elles s'ajoutaient :
+            // une dépense de 50 000 annulée pesait 100 000 dans la chip, pas 0.
+            double m = op.getMontant() == null ? 0 : op.getMontant().doubleValue();
             total += m;
             String code = op.getCategorie() == null ? null : op.getCategorie().getCode();
             String sousCat = op.getSousCategorie() == null ? null : op.getSousCategorie().getLibelle();

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/widgets/app_header.dart';
+import '../../core/widgets/extourne_badge.dart';
 import '../../core/utils/libelle_operation.dart';
 import '../../core/widgets/month_filter_pill.dart';
 import '../../core/widgets/responsive_field_row.dart' show kFormPhoneBreakpoint;
@@ -37,8 +38,16 @@ class OperationLigne {
   final String? categorieLibelle;
   final String? chauffeurNom;
   final String? vehiculeLabel;
+  /// Montant signé : négatif sur une extourne, qui rend l'argent.
   final double montant;
   final String date;
+
+  /// Cette écriture est une contre-passation.
+  final bool estUneExtourne;
+
+  /// Cette écriture a été contre-passée : elle reste au journal, barrée.
+  final bool estExtournee;
+
   const OperationLigne(
       {required this.id,
       required this.type,
@@ -48,7 +57,9 @@ class OperationLigne {
       this.chauffeurNom,
       this.vehiculeLabel,
       required this.montant,
-      required this.date});
+      required this.date,
+      this.estUneExtourne = false,
+      this.estExtournee = false});
 
   factory OperationLigne.fromJson(Map<String, dynamic> j) => OperationLigne(
         id: j['id'] ?? 0,
@@ -60,6 +71,8 @@ class OperationLigne {
         vehiculeLabel: j['vehiculeLabel'],
         montant: (j['montant'] as num?)?.toDouble() ?? 0,
         date: j['date'] ?? '',
+        estUneExtourne: j['estUneExtourne'] as bool? ?? false,
+        estExtournee: j['estExtournee'] as bool? ?? false,
       );
 
   /// Titre de la ligne, aligné sur la liste des opérations : un encaissement
@@ -688,12 +701,22 @@ class _OperationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Le signe, la couleur et la flèche suivent l'effet réel sur la caisse, pas
+    // le type de l'écriture : une extourne garde le type de l'origine mais
+    // porte un montant opposé, donc une dépense annulée fait rentrer de
+    // l'argent.
     final isRevenu = op.type == 'REVENU';
+    final effetCaisse = isRevenu ? op.montant : -op.montant;
+    final entreEnCaisse = effetCaisse >= 0;
     final amountColor =
-        isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
-    // Seules les dépenses portent un signe : la couleur de la pastille
-    // suffit à distinguer les revenus.
-    final sign = isRevenu ? '' : '-';
+        entreEnCaisse ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+    // Une sortie porte son signe ; une entrée s'en passe, sauf sur une extourne
+    // où le « + » dit clairement que l'argent revient.
+    final sign = entreEnCaisse ? (op.estUneExtourne ? '+' : '') : '-';
+    // Une écriture contre-passée reste au journal, barrée ; la contre-passation
+    // elle-même porte sa propre marque.
+    final isAnnulee = op.estExtournee;
+    final isExtourne = op.estUneExtourne;
 
     final titre = op.titreLigne;
     final vehiculeChauffeur = [
@@ -731,7 +754,7 @@ class _OperationTile extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isRevenu
+              entreEnCaisse
                   ? Icons.trending_up_rounded
                   : Icons.trending_down_rounded,
               color: amountColor,
@@ -749,24 +772,33 @@ class _OperationTile extends StatelessWidget {
                     Expanded(
                       child: Text(
                         titre,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
-                          color: Color(0xFF1A1A1A),
+                          color:
+                              isAnnulee ? Colors.red : const Color(0xFF1A1A1A),
+                          decoration:
+                              isAnnulee ? TextDecoration.lineThrough : null,
+                          decorationColor: Colors.red,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    ExtourneBadge(
+                        estUneExtourne: isExtourne, estAnnulee: isAnnulee),
                     const SizedBox(width: 8),
                     Text(
-                      '$sign${NumberFormat('#,##0', 'fr_FR').format(op.montant.abs())} XOF',
-                      style: const TextStyle(
+                      '$sign${NumberFormat('#,##0', 'fr_FR').format(effetCaisse.abs())} XOF',
+                      style: TextStyle(
                         // Montant en noir comme le libellé ; le sens de
-                        // l'opération se lit sur la pastille d'icône.
-                        color: Color(0xFF1A1A1A),
+                        // l'opération se lit sur la pastille d'icône et le signe.
+                        color: isAnnulee ? Colors.red : const Color(0xFF1A1A1A),
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
+                        decoration:
+                            isAnnulee ? TextDecoration.lineThrough : null,
+                        decorationColor: Colors.red,
                       ),
                     ),
                   ],

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/extourne_badge.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
 import '../../domain/entities/operation_financiere.dart';
 import '../../domain/enums/statut_operation.dart';
@@ -821,10 +822,8 @@ class _OpCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (isExtourne)
-                  _StatusBadge(label: 'Extourne', color: Colors.orange.shade700)
-                else if (isAnnulee)
-                  _StatusBadge(label: 'Extournée', color: Colors.red.shade400),
+                ExtourneBadge(
+                    estUneExtourne: isExtourne, estAnnulee: isAnnulee),
                 const SizedBox(width: 8),
                 Text(
                   '$sign${NumberFormat('#,##0', 'fr_FR').format(effetCaisse.abs())} XOF',
@@ -985,33 +984,6 @@ class _CategoryChip extends StatelessWidget {
       infoText: infoText!,
       color: color,
       child: chip,
-    );
-  }
-}
-
-// ── Badge statut ───────────────────────────────────────────────────────────
-
-class _StatusBadge extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _StatusBadge({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(left: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.w600),
-      ),
     );
   }
 }

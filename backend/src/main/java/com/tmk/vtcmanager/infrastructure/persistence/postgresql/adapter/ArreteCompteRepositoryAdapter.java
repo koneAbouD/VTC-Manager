@@ -25,6 +25,12 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
+    /** En-tête + libellé du périmètre : l'immatriculation quand l'arrêté porte sur un véhicule. */
+    private static final String SELECT_ENTETE = """
+            SELECT a.*, v.immatriculation AS perimetre_libelle
+            FROM arretes_compte a
+            LEFT JOIN vehicules v ON a.perimetre = 'VEHICULE' AND v.id = a.perimetre_id""";
+
     private static final RowMapper<ArreteCompte> ARRETE_MAPPER = (rs, i) -> ArreteCompte.builder()
             .id(rs.getLong("id"))
             .perimetre(PerimetreArrete.valueOf(rs.getString("perimetre")))
@@ -35,6 +41,7 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
             .reference(rs.getString("reference"))
             .statut(StatutArrete.valueOf(rs.getString("statut")))
             .motifAnnulation(rs.getString("motif_annulation"))
+            .perimetreLibelle(rs.getString("perimetre_libelle"))
             .build();
 
     private static final RowMapper<LigneArrete> LIGNE_MAPPER = (rs, i) -> LigneArrete.builder()
@@ -126,15 +133,10 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
     @Override
     public Optional<ArreteCompte> findById(Long id) {
         List<ArreteCompte> entetes = jdbcTemplate.query(
-                "SELECT * FROM arretes_compte WHERE id = ?", ARRETE_MAPPER, id);
+                SELECT_ENTETE + " WHERE a.id = ?", ARRETE_MAPPER, id);
         if (entetes.isEmpty()) return Optional.empty();
 
         ArreteCompte arrete = entetes.get(0);
-        if (arrete.getPerimetre() == PerimetreArrete.VEHICULE) {
-            jdbcTemplate.query("SELECT immatriculation FROM vehicules WHERE id = ?",
-                            (rs, i) -> rs.getString(1), arrete.getPerimetreId())
-                    .stream().findFirst().ifPresent(arrete::setPerimetreLibelle);
-        }
         arrete.setLignes(jdbcTemplate.query("""
                 SELECT la.*, v.immatriculation
                 FROM lignes_arrete la
@@ -154,17 +156,17 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
 
     @Override
     public List<ArreteCompte> findAll(LocalDate debut, LocalDate fin) {
-        StringBuilder sql = new StringBuilder("SELECT * FROM arretes_compte WHERE 1 = 1");
+        StringBuilder sql = new StringBuilder(SELECT_ENTETE + " WHERE 1 = 1");
         List<Object> args = new ArrayList<>();
         if (debut != null) {
-            sql.append(" AND date_arrete >= ?");
+            sql.append(" AND a.date_arrete >= ?");
             args.add(debut);
         }
         if (fin != null) {
-            sql.append(" AND date_arrete <= ?");
+            sql.append(" AND a.date_arrete <= ?");
             args.add(fin);
         }
-        sql.append(" ORDER BY date_arrete DESC, id DESC");
+        sql.append(" ORDER BY a.date_arrete DESC, a.id DESC");
 
         List<ArreteCompte> entetes = jdbcTemplate.query(sql.toString(), ARRETE_MAPPER, args.toArray());
         for (ArreteCompte a : entetes) {
@@ -181,11 +183,10 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
 
     @Override
     public List<ArreteCompte> findByBeneficiaire(Long chauffeurId) {
-        List<ArreteCompte> entetes = jdbcTemplate.query("""
-                SELECT a.* FROM arretes_compte a
-                WHERE EXISTS (SELECT 1 FROM reglements_arrete r
-                              WHERE r.arrete_id = a.id AND r.chauffeur_id = ?)
-                ORDER BY a.date_arrete DESC, a.id DESC
+        List<ArreteCompte> entetes = jdbcTemplate.query(SELECT_ENTETE + """
+                 WHERE EXISTS (SELECT 1 FROM reglements_arrete r
+                               WHERE r.arrete_id = a.id AND r.chauffeur_id = ?)
+                 ORDER BY a.date_arrete DESC, a.id DESC
                 """, ARRETE_MAPPER, chauffeurId);
         for (ArreteCompte a : entetes) {
             a.setReglements(jdbcTemplate.query("""

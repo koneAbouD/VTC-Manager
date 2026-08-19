@@ -18,6 +18,7 @@ import '../../domain/enums/chauffeur_status.dart';
 import '../providers/chauffeur_provider.dart';
 import '../providers/chauffeur_state.dart';
 import '../providers/documents_by_chauffeur_provider.dart';
+import '../widgets/statut_chauffeur_affichage.dart';
 import '../../../indisponibilite/domain/entities/indisponibilite.dart';
 import '../../../indisponibilite/presentation/indisponibilite_overlay.dart';
 import '../../../indisponibilite/presentation/providers/indisponibilite_provider.dart';
@@ -242,10 +243,7 @@ class _HeaderCard extends StatelessWidget {
                   ],
                 ),
               ),
-              _StatusPill(
-                status: chauffeur.statut,
-                auProgrammeAujourdhui: chauffeur.auProgrammeAujourdhui,
-              ),
+              _StatusPill(chauffeur: chauffeur),
             ],
           ),
           const SizedBox(height: 14),
@@ -273,92 +271,55 @@ class _HeaderCard extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  final ChauffeurStatus? status;
+  final Chauffeur chauffeur;
+  const _StatusPill({required this.chauffeur});
 
-  /// Le chauffeur est-il attendu au volant aujourd'hui ? Renseigné par le
-  /// serveur pour un chauffeur en service ; nul, la pilule s'en tient au
-  /// statut et garde son icône.
-  final bool? auProgrammeAujourdhui;
-
-  const _StatusPill({required this.status, this.auProgrammeAujourdhui});
+  /// Icône de repli, montrée tant qu'aucun point n'a de sens : statut inconnu,
+  /// ou chauffeur en service dont le serveur n'a pas dit s'il roule aujourd'hui.
+  IconData get _icone => switch (chauffeur.statut) {
+        ChauffeurStatus.actif => Icons.check_circle,
+        ChauffeurStatus.enService => Icons.directions_car,
+        ChauffeurStatus.enConge => Icons.beach_access,
+        ChauffeurStatus.suspendu => Icons.cancel,
+        ChauffeurStatus.inactif => Icons.pause_circle,
+        _ => Icons.help_outline,
+      };
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg, label, icon) = switch (status) {
-      ChauffeurStatus.actif => (
-          const Color(0xFFE8F5E9),
-          const Color(0xFF2E7D32),
-          'Actif',
-          Icons.check_circle,
-        ),
-      ChauffeurStatus.enService => (
-          const Color(0xFFEFEFEF),
-          const Color(0xFF616161),
-          'En service',
-          Icons.directions_car,
-        ),
-      ChauffeurStatus.enConge => (
-          const Color(0xFFFFF3E0),
-          const Color(0xFFE65100),
-          'En congé',
-          Icons.beach_access,
-        ),
-      ChauffeurStatus.suspendu => (
-          const Color(0xFFFFEBEE),
-          const Color(0xFFC62828),
-          'Suspendu',
-          Icons.cancel,
-        ),
-      ChauffeurStatus.inactif => (
-          const Color(0xFFEFEFEF),
-          const Color(0xFF616161),
-          'Inactif',
-          Icons.pause_circle,
-        ),
-      _ => (
-          const Color(0xFFEFEFEF),
-          const Color(0xFF616161),
-          '—',
-          Icons.help_outline,
-        ),
-    };
-
-    // Être en service ne dit pas qu'on roule aujourd'hui : d'un binôme en
-    // alternance, les deux sont en service et un seul prend le volant. La
-    // pilule reste grise et laisse le point porter le signal — vert au volant,
-    // rouge au repos. Il remplace l'icône plutôt que de s'y ajouter : à cette
-    // taille, deux symboles côte à côte se gênent.
-    final auVolant =
-        status == ChauffeurStatus.enService ? auProgrammeAujourdhui : null;
-    final libelle = auVolant == false ? 'Au repos' : label;
-    final dot = auVolant == null
-        ? null
-        : (auVolant ? const Color(0xFF2E7D32) : const Color(0xFFC62828));
+    // Fond gris pour tous les statuts, comme la pastille de la liste : la
+    // couleur tient dans le point, et les deux écrans disent la même chose du
+    // même chauffeur. Le point remplace l'icône plutôt que de s'y ajouter — à
+    // cette taille, deux symboles côte à côte se gênent.
+    final statut = StatutChauffeurAffichage.of(chauffeur);
+    const fond = Color(0xFFEFEFEF);
+    const encre = Color(0xFF616161);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: bg,
+        color: fond,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (dot != null)
+          if (statut.point != null)
             Container(
               width: 7,
               height: 7,
-              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+              decoration:
+                  BoxDecoration(color: statut.point, shape: BoxShape.circle),
             )
           else
-            Icon(icon, size: 13, color: fg),
+            Icon(_icone, size: 13, color: encre),
           const SizedBox(width: 5),
           Text(
-            libelle,
-            style: TextStyle(
+            statut.libelle,
+            style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: fg,
+              color: encre,
             ),
           ),
         ],
@@ -366,6 +327,7 @@ class _StatusPill extends StatelessWidget {
     );
   }
 }
+
 
 class _StatChip extends StatelessWidget {
   final IconData icon;

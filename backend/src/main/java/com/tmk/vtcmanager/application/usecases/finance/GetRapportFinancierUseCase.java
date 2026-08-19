@@ -28,9 +28,11 @@ import java.util.Map;
  *
  * <p>Le périmètre reprend celui du compte de résultat en base caisse : seules
  * les opérations terminées (encaissées/payées) sont prises en compte et les
- * catégories HORS_RESULTAT (comptes de tiers) sont exclues. Les montants sont
- * stockés en valeur positive quel que soit le type ; le signe est porté par
- * {@link TypeOperation}.</p>
+ * catégories HORS_RESULTAT (comptes de tiers) sont exclues. Le sens revenu /
+ * dépense est porté par {@link TypeOperation}, et le montant reste sommé
+ * <em>signé</em> : une écriture annulée demeure au journal avec son statut
+ * terminal, et c'est la contre-passation de montant opposé qui l'efface des
+ * totaux — exactement comme dans les agrégats SQL du compte de résultat.</p>
  */
 @RequiredArgsConstructor
 public class GetRapportFinancierUseCase {
@@ -71,6 +73,7 @@ public class GetRapportFinancierUseCase {
                 .toList();
     }
 
+    /** Somme signée du type : le couple origine + extourne s'y annule. */
     private BigDecimal total(List<OperationFinanciere> operations, TypeOperation type) {
         return operations.stream()
                 .filter(op -> op.getTypeOperation() == type)
@@ -87,6 +90,12 @@ public class GetRapportFinancierUseCase {
                 .forEach(op -> parGroupe.merge(label.apply(op), montant(op), BigDecimal::add));
 
         return parGroupe.entrySet().stream()
+                // Un groupe dont tout a été extourné retombe à zéro : la part
+                // n'existe plus, et une ligne « 0 F — 0 % » n'aurait rien à
+                // montrer. Les groupes devenus négatifs, eux, sont conservés :
+                // ils signalent une extourne du mois qui dépasse les écritures
+                // qu'il porte, et c'est une information, pas un artefact.
+                .filter(e -> e.getValue().signum() != 0)
                 .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
                 .map(e -> LigneRepartition.builder()
                         .label(e.getKey())
@@ -107,8 +116,13 @@ public class GetRapportFinancierUseCase {
                     .categorieLibelle(op.getCategorie() == null ? null : op.getCategorie().getLibelle())
                     .chauffeurNom(nomChauffeur(op))
                     .vehiculeLabel(labelVehicule(op))
+                    // Même montant signé que les agrégats : le client lit le
+                    // sens réel sur la caisse, une extourne de dépense faisant
+                    // rentrer l'argent.
                     .montant(montant(op))
                     .date(op.getDateReference() != null ? op.getDateReference() : op.getDateOperation())
+                    .estUneExtourne(op.estUneExtourne())
+                    .estExtournee(op.estExtournee())
                     .build());
         }
         return lignes;
@@ -191,21 +205,40 @@ public class GetRapportFinancierUseCase {
         return op.getCategorie() == null ? null : op.getCategorie().getNatureResultat();
     }
 
-    /** Montant en valeur absolue (les montants sont stockés positifs, garde défensive). */
+    /**
+     * Montant <b>signé</b> de l'écriture.
+     *
+     * <p>C'est le signe qui porte l'annulation : une contre-passation reprend le
+     * type, la catégorie et le statut de son origine — les deux écritures
+     * franchissent donc le filtre {@code estTerminee()} — et seul son montant
+     * opposé les neutralise dans les agrégats. Les sommer en valeur absolue
+     * comptait la dépense annulée deux fois au lieu de zéro.
+     */
     private BigDecimal montant(OperationFinanciere op) {
-        return op.getMontant() == null ? BigDecimal.ZERO : op.getMontant().abs();
+        return op.getMontant() == null ? BigDecimal.ZERO : op.getMontant();
     }
 
+    /**
+     * Part d'un groupe dans le total. Le dénominateur est pris en valeur absolue :
+     * un mois où les extournes l'emportent donne un total négatif, et diviser par
+     * lui retournerait le signe de chaque part — un groupe négatif s'afficherait
+     * positif. Un total nul (tout extourné) ne se répartit pas : 0 %.
+     */
     private BigDecimal pourcentage(BigDecimal montant, BigDecimal total) {
         if (total == null || total.signum() == 0) return BigDecimal.ZERO;
         return montant.multiply(BigDecimal.valueOf(100))
-                .divide(total, 1, RoundingMode.HALF_UP);
+                .divide(total.abs(), 1, RoundingMode.HALF_UP);
     }
 
+    /**
+     * Évolution sur le mois précédent, en pourcentage. Base en valeur absolue,
+     * comme le tableau de bord : un mois précédent négatif — davantage extourné
+     * qu'écrit — inverserait sinon le sens de la flèche servie au client.
+     */
     private BigDecimal variation(BigDecimal courant, BigDecimal precedent) {
         if (precedent == null || precedent.signum() == 0) return BigDecimal.ZERO;
         return courant.subtract(precedent)
                 .multiply(BigDecimal.valueOf(100))
-                .divide(precedent, 1, RoundingMode.HALF_UP);
+                .divide(precedent.abs(), 1, RoundingMode.HALF_UP);
     }
 }

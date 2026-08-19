@@ -10,6 +10,7 @@ import '../../features/chauffeur/presentation/providers/chauffeur_provider.dart'
 import '../../features/chauffeur/presentation/providers/chauffeur_state.dart';
 import '../../features/chauffeur/presentation/pages/chauffeur_detail_page.dart';
 import '../../features/chauffeur/presentation/pages/chauffeur_form_page.dart';
+import '../../features/chauffeur/presentation/widgets/statut_chauffeur_affichage.dart';
 import '../../features/etat_parc/presentation/widgets/etat_parc_tab.dart';
 import '../../features/vehicule/domain/entities/statut_vehicule.dart';
 import '../../features/vehicule/domain/entities/vehicule.dart';
@@ -55,23 +56,13 @@ class _AddButton extends StatelessWidget {
 
 // ── Helpers couleur statut ───────────────────────────────────────────────────
 
-Color _cStatutColor(ChauffeurStatus? s) => switch (s) {
-      ChauffeurStatus.actif => const Color(0xFF2E7D32),
-      // « En service » reste gris : ce statut dit seulement que le chauffeur
-      // est en poste et affecté. Ce qui compte à l'œil — roule-t-il
-      // aujourd'hui ? — est porté par le point coloré de la pastille.
-      ChauffeurStatus.enService => Colors.grey,
-      ChauffeurStatus.inactif => Colors.grey,
-      ChauffeurStatus.enConge => const Color(0xFFE65100),
-      ChauffeurStatus.suspendu => const Color(0xFFC62828),
-      null => Colors.grey,
-    };
-
-/// Vert quand le chauffeur est attendu au volant aujourd'hui.
-const _cAuVolant = Color(0xFF2E7D32);
-
-/// Rouge quand il est en service mais que le planning ne l'appelle pas.
-const _cAuRepos = Color(0xFFC62828);
+/// Fond et bordure des pastilles de statut, chauffeurs comme véhicules : gris,
+/// quel que soit l'état. Cinq pastilles de cinq couleurs pleines sur une même
+/// liste se disputaient l'œil sans rien hiérarchiser ; désormais le fond est
+/// neutre et l'état tient dans le point, seul élément coloré. Côté chauffeur la
+/// teinte vient de [PointStatutChauffeur], côté véhicule du référentiel des
+/// statuts, qui la porte déjà.
+const _cStatutFond = Colors.grey;
 
 // ── Écran principal ──────────────────────────────────────────────────────────
 
@@ -409,7 +400,6 @@ class _VehiculeCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statut = StatutVehicule.resolve(
         vehicule.statut, ref.watch(statutsVehiculeResolvedProvider));
-    final sc = statut.couleur;
 
     return GestureDetector(
       onTap: onTap,
@@ -458,9 +448,13 @@ class _VehiculeCard extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
+                            // La couleur du statut est celle du référentiel
+                            // — paramétrable en base — et se porte désormais
+                            // sur le point plutôt que sur tout le fond.
                             _StatusChip(
                               label: statut.libelle,
-                              color: sc,
+                              color: _cStatutFond,
+                              dotColor: statut.couleur,
                             ),
                           ],
                         ),
@@ -814,21 +808,9 @@ class _ChauffeurCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sc = _cStatutColor(chauffeur.statut);
-
-    // Être en service et rouler aujourd'hui sont deux choses : d'un binôme en
-    // alternance, les deux sont en service et un seul prend le volant. Le
-    // serveur tranche par le planning du jour — vert, il roule ; rouge, il est
-    // au repos et le libellé le dit. Drapeau absent (liste d'une version
-    // antérieure du serveur), on s'en tient au statut, sans point.
-    final enService = chauffeur.statut == ChauffeurStatus.enService;
-    final auVolant = enService ? chauffeur.auProgrammeAujourdhui : null;
-    final statutLabel = auVolant == false
-        ? 'Au repos'
-        : (chauffeur.statut?.label ?? 'Inconnu');
-    final statutDot = auVolant == null
-        ? null
-        : (auVolant ? _cAuVolant : _cAuRepos);
+    // Libellé et point du moment : « En service » se dédouble selon le planning
+    // du jour — au volant, ou au repos. Sans drapeau du serveur, pas de point.
+    final statut = StatutChauffeurAffichage.of(chauffeur);
 
     final initials =
         '${chauffeur.prenom.isNotEmpty ? chauffeur.prenom[0] : ''}'
@@ -922,9 +904,9 @@ class _ChauffeurCard extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       _StatusChip(
-                                        label: statutLabel,
-                                        color: sc,
-                                        dotColor: statutDot,
+                                        label: statut.libelle,
+                                        color: _cStatutFond,
+                                        dotColor: statut.point,
                                       ),
                                       if (vehiculeLabel != null) ...[
                                         const SizedBox(height: 6),

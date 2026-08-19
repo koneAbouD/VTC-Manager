@@ -112,6 +112,18 @@ class _ArreteTile extends StatelessWidget {
   final ArreteCompte arrete;
   const _ArreteTile({required this.arrete});
 
+  /// Libellé de la ligne : le chauffeur quand l'arrêté n'a qu'un bénéficiaire,
+  /// sinon le véhicule qu'ils se partagent. La référence ne sert que de secours.
+  String get _libelle {
+    if (arrete.reglements.length == 1) {
+      final nom = arrete.reglements.first.chauffeurNom;
+      if (nom != null && nom.isNotEmpty) return nom;
+    }
+    final perimetre = arrete.perimetreLibelle;
+    if (perimetre != null && perimetre.isNotEmpty) return perimetre;
+    return arrete.reference ?? 'Arrêté #${arrete.id}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final annule = arrete.statut == 'ANNULE';
@@ -143,7 +155,9 @@ class _ArreteTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(arrete.reference ?? 'Arrêté #${arrete.id}',
+                  Text(_libelle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,

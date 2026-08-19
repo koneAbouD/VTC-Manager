@@ -11,6 +11,11 @@ public record OperationLigneResponse(
         String categorieLibelle,
         String chauffeurNom,
         String vehiculeLabel,
+        /** Montant signé : négatif sur une extourne, qui rend l'argent. */
         BigDecimal montant,
-        LocalDate date
+        LocalDate date,
+        /** Cette écriture est une contre-passation. */
+        boolean estUneExtourne,
+        /** Cette écriture a été contre-passée : elle reste au journal, barrée. */
+        boolean estExtournee
 ) {}

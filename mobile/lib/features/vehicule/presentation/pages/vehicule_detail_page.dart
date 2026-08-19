@@ -2333,17 +2333,16 @@ class _EmptyProgrammeView extends StatelessWidget {
 
 // ── Shared widgets ─────────────────────────────────────────────────────────
 
-/// Couleur d'accent + label pour un statut véhicule.
+/// Couleur du point + libellé d'un statut véhicule. La couleur vient du
+/// référentiel des statuts, paramétrable en base : rien n'est décidé ici.
 class _StatusVisual {
   final Color color;
-  final Color background;
-  final IconData icon;
   final String label;
-  const _StatusVisual(this.color, this.background, this.icon, this.label);
+  const _StatusVisual(this.color, this.label);
 
   static _StatusVisual of(String? statut, [List<StatutVehicule>? statuts]) {
     final s = StatutVehicule.resolve(statut, statuts);
-    return _StatusVisual(s.couleur, s.background, s.icon, s.libelle);
+    return _StatusVisual(s.couleur, s.libelle);
   }
 }
 
@@ -2479,23 +2478,32 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Fond gris, point coloré, libellé sombre : la même pastille que la liste
+    // de la flotte et que la fiche chauffeur. La couleur du statut ne teinte
+    // plus le fond — elle tient dans le point, où elle se voit mieux qu'en
+    // aplat à 12 % d'opacité.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: visual.background,
+        color: const Color(0xFFEFEFEF),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(visual.icon, size: 13, color: visual.color),
+          Container(
+            width: 7,
+            height: 7,
+            decoration:
+                BoxDecoration(color: visual.color, shape: BoxShape.circle),
+          ),
           const SizedBox(width: 5),
           Text(
             visual.label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: visual.color,
+              color: Color(0xFF616161),
             ),
           ),
         ],
