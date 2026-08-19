@@ -70,6 +70,10 @@ public class AnnulerOperationFinanciereUseCase {
         OperationFinanciere origine = operationRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Opération", id));
 
+        // Ces trois refus sont ce que résume OperationFinanciere#estAnnulable(),
+        // le drapeau que les lectures renvoient au client. Ils restent détaillés
+        // ici : l'appelant qui force le passage mérite de savoir lequel le
+        // concerne. Toute règle ajoutée doit l'être des deux côtés.
         if (origine.estUneExtourne()) {
             throw new IllegalStateException(
                     "Une extourne ne s'annule pas : elle corrige déjà une écriture.");

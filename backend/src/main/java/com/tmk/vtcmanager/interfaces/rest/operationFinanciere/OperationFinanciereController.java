@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.interfaces.rest.operationFinanciere;
 
+import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciereFiltres;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
@@ -59,8 +60,7 @@ public class OperationFinanciereController {
         var verrous = verrouArreteService.verrous();
         return getAllUseCase.execute(filtres).stream()
                 .map(op -> {
-                    op.setAnnulable(verrous.autoriseEcriture(
-                            op.getDateOperation(), op.getCompteTresorerieId()));
+                    op.setAnnulable(annulable(op, verrous));
                     return mapper.toResponse(op);
                 })
                 .toList();
@@ -93,8 +93,7 @@ public class OperationFinanciereController {
         var verrous = verrouArreteService.verrous();
         var result = getAllUseCase.executePage(filtres, page, size)
                 .map(op -> {
-                    op.setAnnulable(verrous.autoriseEcriture(
-                            op.getDateOperation(), op.getCompteTresorerieId()));
+                    op.setAnnulable(annulable(op, verrous));
                     return mapper.toResponse(op);
                 });
         return PageResponse.from(result);
@@ -153,10 +152,7 @@ public class OperationFinanciereController {
     @GetMapping("/{id:\\d+}")
     public OperationFinanciereResponse findById(@PathVariable Long id) {
         var operation = getByIdUseCase.execute(id);
-        // Dit au client si l'action « Annuler » a encore un sens : un arrêté
-        // — période close, caisse comptée — peut couvrir la date de l'écriture.
-        operation.setAnnulable(verrouArreteService.estAnnulable(
-                operation.getDateOperation(), operation.getCompteTresorerieId()));
+        operation.setAnnulable(annulable(operation, verrouArreteService.verrous()));
         return mapper.toResponse(operation);
     }
 
@@ -174,6 +170,24 @@ public class OperationFinanciereController {
     public OperationFinanciereResponse annuler(@PathVariable Long id,
                                                @Valid @RequestBody AnnulationRequest request) {
         return mapper.toResponse(annulerUseCase.execute(id, request.motif()));
+    }
+
+    /**
+     * Ce que le client doit savoir avant de proposer « Annuler » : deux refus de
+     * nature différente, réunis en un seul drapeau.
+     *
+     * <p>L'état de l'écriture d'abord — une extourne, une écriture déjà
+     * extournée ou déjà neutralisée ne se contre-passe pas, c'est la règle
+     * métier et elle vit dans le domaine. Les arrêtés ensuite — période close,
+     * caisse comptée — qui portent sur la date et se lisent ici.
+     *
+     * <p>Les deux refus sont ceux qu'opposerait l'annulation : un bouton qui
+     * mènerait à une erreur certaine n'a pas à s'afficher.
+     */
+    private boolean annulable(OperationFinanciere operation, VerrouArreteService.Verrous verrous) {
+        return operation.estAnnulable()
+                && verrous.autoriseEcriture(
+                        operation.getDateOperation(), operation.getCompteTresorerieId());
     }
 
     // La suppression d'une opération est volontairement non exposée :

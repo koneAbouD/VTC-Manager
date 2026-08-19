@@ -34,8 +34,11 @@ public record OperationFinanciereResponse(
          */
         boolean modifiable,
         /**
-         * Faux si un arrêté — période comptable close, caisse comptée — couvre
-         * la date de l'écriture. Le client masque alors l'action « Annuler ».
+         * Faux quand la contre-passation serait refusée : écriture qui ne
+         * s'annule pas (extourne, écriture déjà extournée ou déjà neutralisée),
+         * ou arrêté — période comptable close, caisse comptée — couvrant sa
+         * date. Le client masque alors l'action « Annuler » sans avoir à
+         * rejouer la règle.
          */
         Boolean annulable,
         /** Écriture contre-passée par celle-ci : non nul sur une extourne. */

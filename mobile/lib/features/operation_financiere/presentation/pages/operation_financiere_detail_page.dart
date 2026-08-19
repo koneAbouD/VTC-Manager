@@ -175,23 +175,25 @@ class _DetailBody extends ConsumerWidget {
 
         const SizedBox(height: 8),
 
-        // ── Actions (masquées si l'opération est déjà annulée) ────────────
+        // ── Actions ───────────────────────────────────────────────────────
         //
-        // « Modifier » ne s'affiche que si le serveur accepte encore de
-        // retoucher l'écriture : un encaissement et une dépense de maintenance
-        // en sont exclus, leur montant appartient à la créance ou à
-        // l'intervention qui les a produits. Pour ceux-là, la seule voie est
+        // Les deux drapeaux viennent du serveur, qui seul sait ce qu'il
+        // accepterait : proposer un bouton menant à un refus certain serait
+        // pire que ne pas le proposer du tout.
+        //
+        // « Modifier » tombe sur une écriture qui ne se retouche pas en place —
+        // un encaissement, une dépense de maintenance : leur montant appartient
+        // à la créance ou à l'intervention qui les a produits. La voie est
         // l'annulation, qui repositionne la source, puis la ressaisie.
         //
-        // « Annuler » disparaît de son côté dès qu'un arrêté — période close ou
-        // caisse comptée — couvre la date de l'écriture : la contre-passation
-        // serait refusée.
+        // « Annuler » tombe sur ce qui est déjà corrigé — une extourne, une
+        // écriture extournée ou annulée — et dès qu'un arrêté, période close ou
+        // caisse comptée, couvre la date de l'écriture.
         //
-        // Les deux peuvent tomber en même temps — une écriture d'encaissement
-        // d'un mois clos, par exemple : la barre disparaît alors entièrement
-        // plutôt que de laisser une bande vide.
-        if (op.statut != StatutOperation.ANNULEE &&
-            (op.annulable || op.modifiable))
+        // Les deux peuvent tomber ensemble — une extourne, ou un encaissement
+        // d'un mois clos : la barre disparaît alors entièrement plutôt que de
+        // laisser une bande vide.
+        if (op.annulable || op.modifiable)
           PremiumButtonRow(buttons: [
             if (op.annulable)
               PremiumButton(

@@ -48,8 +48,14 @@ class OperationFinanciere {
   /// « Modifier » est alors masquée ; l'annulation, elle, reste ouverte.
   final bool modifiable;
 
-  /// Faux si un arrêté — période comptable close, caisse comptée — couvre la
-  /// date de l'écriture. Le bouton « Annuler » est alors masqué.
+  /// Faux quand le backend refuserait la contre-passation : écriture déjà
+  /// corrigée (extourne, écriture extournée ou annulée), ou arrêté — période
+  /// comptable close, caisse comptée — couvrant sa date. Le bouton « Annuler »
+  /// est alors masqué. La règle est tenue côté serveur : ne pas la redéduire
+  /// ici, les deux versions divergeraient.
+  ///
+  /// Faux par défaut quand la réponse ne porte pas le drapeau : en l'absence
+  /// d'information, on ne propose pas une action qui pourrait être refusée.
   final bool annulable;
 
   /// Cette écriture est une contre-passation.

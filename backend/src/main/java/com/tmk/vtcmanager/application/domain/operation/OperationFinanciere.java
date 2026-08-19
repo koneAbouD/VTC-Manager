@@ -74,9 +74,9 @@ public class OperationFinanciere {
     private Long extourneDeId;
 
     /**
-     * Renseigné à la lecture seulement : faux si un arrêté — période comptable
-     * close, caisse comptée — couvre la date de l'écriture. Le client masque
-     * alors l'action « Annuler ».
+     * Renseigné à la lecture seulement : {@link #estAnnulable()} — ce que l'état
+     * de l'écriture permet — combiné au verrou des arrêtés, que seule la couche
+     * de lecture connaît. Faux, le client masque l'action « Annuler ».
      */
     private Boolean annulable;
 
@@ -139,5 +139,26 @@ public class OperationFinanciere {
                 && !estExtournee()
                 && !estUnEncaissement()
                 && !estIssueDUneMaintenance();
+    }
+
+    /**
+     * Vrai si l'écriture peut encore être contre-passée, au seul vu de son état.
+     *
+     * <p>Trois écritures ne s'annulent pas, et pour la même raison : la
+     * correction a déjà eu lieu. Une extourne <em>est</em> la correction —
+     * l'extourner rendrait vie à l'origine par la bande. Une écriture extournée
+     * l'a déjà reçue — une seconde contre-passation la compterait deux fois en
+     * négatif. Une écriture passée {@code ANNULEE} sans extourne — l'annulation
+     * d'un arrêté de compte, par exemple — a été neutralisée ailleurs.
+     *
+     * <p>Le verrou des arrêtés ne se lit pas ici : il porte sur la date, pas sur
+     * l'écriture, et se combine à ce jugement dans le drapeau {@code annulable}
+     * envoyé au client. La règle métier, elle, tient à cet endroit — les clients
+     * n'ont plus à la rejouer chacun de leur côté.
+     */
+    public boolean estAnnulable() {
+        return statut != StatutOperation.ANNULEE
+                && !estUneExtourne()
+                && !estExtournee();
     }
 }

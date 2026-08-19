@@ -38,10 +38,15 @@ final financeTabIndexProvider =
 /// porte l'en-tête.
 final soldeHorsEcranProvider = StateProvider<bool>((ref) => false);
 
-/// Solde tel que l'affiche la carte de l'Accueil : montant formaté, « •••••• »
-/// quand l'œil est fermé, « … » au premier chargement d'une période. Publié par
-/// la carte pour que l'en-tête le reprenne à l'identique, sans refaire ni le
-/// calcul de période ni le formatage.
+/// Solde de la carte de l'Accueil, toujours en clair : montant formaté, ou
+/// « … » au premier chargement d'une période. Publié par la carte pour que
+/// l'en-tête le reprenne sans refaire ni le calcul de période ni le formatage.
+///
+/// Le masquage de l'œil n'est volontairement pas appliqué ici : la carte est
+/// recyclée par la liste dès qu'elle sort de l'écran et ne republie donc plus
+/// rien. Un texte déjà masqué figerait le montant repris dans l'en-tête, dont
+/// l'œil ne changerait plus que d'icône. Chaque côté applique le masque
+/// lui-même à partir de [soldeVisibleProvider].
 final soldeAccueilTexteProvider = StateProvider<String>((ref) => '');
 
 /// Œil de la carte solde : montants en clair ou masqués. Hissé hors du widget

@@ -190,6 +190,10 @@ class _AccueilScreenState extends ConsumerState<AccueilScreen> {
 /// des accès rapides.
 const double _seuilTablette = 600;
 
+/// Montant du solde quand l'œil est fermé. Partagé par la carte et l'en-tête :
+/// chacun applique le masque de son côté (voir [soldeAccueilTexteProvider]).
+const String _soldeMasque = '••••••';
+
 /// Solde repris dans l'en-tête (HomeScreen) quand la carte est sortie de
 /// l'écran, avec son œil de masquage. Réservé aux grands écrans : sur
 /// téléphone, la barre est déjà prise par le menu et le bouton « Encaisser ».
@@ -200,8 +204,13 @@ class SoldeHeaderLabel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final large = MediaQuery.sizeOf(context).width >= _seuilTablette;
     final visible = large && ref.watch(soldeHorsEcranProvider);
-    final texte = ref.watch(soldeAccueilTexteProvider);
+    // Le provider ne porte que le montant en clair : la carte qui l'alimente
+    // est démontée dès qu'elle sort de l'écran et ne republie donc plus rien.
+    // C'est ici, et pas à la source, que l'œil doit masquer le montant, sinon
+    // il ne changerait plus que d'icône une fois la carte hors écran.
+    final texteClair = ref.watch(soldeAccueilTexteProvider);
     final soldeVisible = ref.watch(soldeVisibleProvider);
+    final texte = soldeVisible ? texteClair : _soldeMasque;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),
@@ -209,7 +218,7 @@ class SoldeHeaderLabel extends ConsumerWidget {
         opacity: animation,
         child: ScaleTransition(scale: animation, child: child),
       ),
-      child: visible && texte.isNotEmpty
+      child: visible && texteClair.isNotEmpty
           ? Row(
               key: const ValueKey('solde'),
               mainAxisSize: MainAxisSize.min,
@@ -554,14 +563,15 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
       return widget.money.format(v);
     }
 
-    // Le solde est republié pour l'en-tête, qui le reprend tel quel quand la
-    // carte sort de l'écran (après le rendu : on ne touche pas à un provider
-    // pendant un build).
-    final texteSolde = afficher(solde, '••••••');
+    // Le solde est republié pour l'en-tête (après le rendu : on ne touche pas à
+    // un provider pendant un build), toujours en clair — l'en-tête applique
+    // lui-même le masque de l'œil, puisque la carte ne republie plus rien une
+    // fois recyclée par la liste.
+    final texteSoldeClair = chargementInitial ? '…' : widget.money.format(solde);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (ref.read(soldeAccueilTexteProvider) != texteSolde) {
-        ref.read(soldeAccueilTexteProvider.notifier).state = texteSolde;
+      if (ref.read(soldeAccueilTexteProvider) != texteSoldeClair) {
+        ref.read(soldeAccueilTexteProvider.notifier).state = texteSoldeClair;
       }
     });
 
@@ -674,7 +684,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            afficher(solde, '••••••'),
+                            afficher(solde, _soldeMasque),
                             style: const TextStyle(
                               color: Color(0xFF1A1A1A),
                               fontSize: 30,
