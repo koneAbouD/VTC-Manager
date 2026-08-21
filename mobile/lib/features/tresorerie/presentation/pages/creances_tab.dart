@@ -292,12 +292,12 @@ class _CreanceChauffeurTile extends StatelessWidget {
     return _CreanceRow(
       leading: CircleAvatar(
         radius: 19,
-        backgroundColor: AppColors.primaryTint,
+        backgroundColor: AppColors.headerButton,
         child: Text(_initials,
             style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: AppColors.primaryDark)),
+                color: AppColors.label)),
       ),
       title: creance.displayName,
       subtitle:
@@ -319,9 +319,9 @@ class _CreanceVehiculeTile extends StatelessWidget {
     return _CreanceRow(
       leading: const CircleAvatar(
         radius: 19,
-        backgroundColor: AppColors.primaryTint,
+        backgroundColor: AppColors.headerButton,
         child: Icon(Icons.directions_car_rounded,
-            size: 18, color: AppColors.primaryDark),
+            size: 18, color: AppColors.label),
       ),
       title: creance.displayName,
       subtitle:
