@@ -4,14 +4,29 @@ enum StatutLigneCotisation {
   enAttente,
   partiellementEncaisse,
   encaisse,
-  annulee;
+  annulee,
+
+  /// Dépôt rendu au chauffeur par un arrêté de compte : hors fonds restituable,
+  /// et plus encaissable. Son absence de cette liste faisait tomber les lignes
+  /// restituées sur « En attente » — elles gonflaient ce compteur et se voyaient
+  /// proposer un bouton « Encaisser » que le serveur refuse.
+  restituee;
 
   static StatutLigneCotisation fromJson(String v) => switch (v) {
         'EN_ATTENTE'             => enAttente,
         'PARTIELLEMENT_ENCAISSE' => partiellementEncaisse,
         'ENCAISSE'               => encaisse,
         'ANNULEE'                => annulee,
+        'RESTITUEE'              => restituee,
         _                        => enAttente,
+      };
+
+  String get json => switch (this) {
+        enAttente             => 'EN_ATTENTE',
+        partiellementEncaisse => 'PARTIELLEMENT_ENCAISSE',
+        encaisse              => 'ENCAISSE',
+        annulee               => 'ANNULEE',
+        restituee             => 'RESTITUEE',
       };
 
   String get label => switch (this) {
@@ -19,6 +34,7 @@ enum StatutLigneCotisation {
         partiellementEncaisse => 'Partiellement encaissé',
         encaisse              => 'Encaissé',
         annulee               => 'Annulée',
+        restituee             => 'Restituée',
       };
 }
 

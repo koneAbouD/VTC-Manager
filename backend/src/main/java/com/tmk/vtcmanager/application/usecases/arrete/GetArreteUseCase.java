@@ -55,13 +55,19 @@ public class GetArreteUseCase {
         return arreteCompteRepository.findById(id).map(this::enrichirReste);
     }
 
+    /**
+     * Un seul nombre pour l'écran de détail : le restituable s'il en reste, sinon
+     * le reste dû en négatif. Sur l'axe véhicule les deux faces peuvent coexister
+     * — le fonds d'un chauffeur ne compensant pas la dette d'un autre — et c'est
+     * le restituable qui prime, puisque c'est lui qui appelle un nouvel arrêté.
+     */
     private ArreteCompte enrichirReste(ArreteCompte arrete) {
         List<CompteCourant> comptes = arrete.getPerimetre() == PerimetreArrete.VEHICULE
                 ? compteCourantRepository.getComptesCourantsParVehicule()
                 : compteCourantRepository.getComptesCourantsParChauffeur();
         BigDecimal reste = comptes.stream()
                 .filter(c -> arrete.getPerimetreId().equals(c.getTiersId()))
-                .map(CompteCourant::getNet)
+                .map(CompteCourant::soldeSigne)
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
         arrete.setResteNet(reste);

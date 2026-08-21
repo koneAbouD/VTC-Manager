@@ -1,6 +1,11 @@
 /// Solde de compte courant d'un tiers (chauffeur ou véhicule) : le fonds de
 /// cotisation restituable face aux créances ouvertes, ventilées par antériorité.
-/// net = fonds − créances (positif = en faveur du chauffeur).
+///
+/// La compensation se fait toujours **par chauffeur** — le dépôt de l'un ne peut
+/// pas éteindre la dette d'un autre. Sur l'axe véhicule, où plusieurs chauffeurs
+/// se croisent, les deux faces du solde coexistent donc : [net] est ce qu'un
+/// arrêté verserait réellement, [resteDu] ce qui resterait à leur charge. Sur
+/// l'axe chauffeur, l'un des deux est toujours nul.
 class CompteCourant {
   final int tiersId;
   final String libelle;
@@ -9,7 +14,12 @@ class CompteCourant {
   final double du8a30Jours;
   final double duPlus30Jours;
   final double totalCreances;
+
+  /// Montant réellement restituable : Σ max(fonds − créances, 0) par chauffeur.
   final double net;
+
+  /// Ce qui resterait dû après compensation : Σ max(créances − fonds, 0).
+  final double resteDu;
 
   const CompteCourant({
     required this.tiersId,
@@ -20,9 +30,14 @@ class CompteCourant {
     required this.duPlus30Jours,
     required this.totalCreances,
     required this.net,
+    required this.resteDu,
   });
 
   bool get estCrediteur => net > 0;
+
+  /// Vrai quand les deux faces coexistent : un véhicule dont un chauffeur est
+  /// créditeur et un autre débiteur. Un seul chiffre y serait mensonger.
+  bool get aDeuxFaces => net > 0 && resteDu > 0;
 
   factory CompteCourant.fromJson(Map<String, dynamic> j) => CompteCourant(
         tiersId: (j['tiersId'] as num).toInt(),
@@ -33,6 +48,7 @@ class CompteCourant {
         duPlus30Jours: (j['duPlus30Jours'] as num?)?.toDouble() ?? 0,
         totalCreances: (j['totalCreances'] as num?)?.toDouble() ?? 0,
         net: (j['net'] as num?)?.toDouble() ?? 0,
+        resteDu: (j['resteDu'] as num?)?.toDouble() ?? 0,
       );
 }
 

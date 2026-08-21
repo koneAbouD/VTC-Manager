@@ -26,6 +26,9 @@ public class LigneCotisation {
     private String nomCotisation;
     private BigDecimal montantDu;
     private BigDecimal montantEncaisse;
+    /** Part de {@link #montantEncaisse} déjà rendue par un arrêté de compte. */
+    @Builder.Default
+    private BigDecimal montantRestitue = BigDecimal.ZERO;
     private StatutLigneCotisation statut;
     /** Motif saisi lors de l'annulation de la ligne (obligatoire à l'annulation). */
     private String motifAnnulation;
@@ -106,10 +109,32 @@ public class LigneCotisation {
         this.annuleLe = null;
     }
 
-    /** Passe la ligne en RESTITUEE en la rattachant à l'arrêté qui l'a soldée. */
-    public void restituer(Long arreteId) {
-        this.statut = StatutLigneCotisation.RESTITUEE;
+    /**
+     * Fonds encore détenu sur cette ligne : ce qui a été encaissé moins ce qu'un
+     * arrêté a déjà rendu. C'est ce montant — et non l'encaissement brut — qui
+     * est restituable, sans quoi une ligne partiellement restituée reviendrait
+     * dans le fonds au prochain arrêté.
+     */
+    public BigDecimal fondRestituable() {
+        BigDecimal encaisse = montantEncaisse != null ? montantEncaisse : BigDecimal.ZERO;
+        BigDecimal restitue = montantRestitue != null ? montantRestitue : BigDecimal.ZERO;
+        return encaisse.subtract(restitue).max(BigDecimal.ZERO);
+    }
+
+    /**
+     * Enregistre la restitution de {@code montant} par cet arrêté.
+     *
+     * <p>Le statut ne bascule en RESTITUEE que si la ligne était intégralement
+     * encaissée : une cotisation à moitié payée reste due pour le reste, et la
+     * sortir de la balance âgée effacerait cette dette sans écriture.
+     */
+    public void restituer(Long arreteId, BigDecimal montant) {
+        BigDecimal restitue = montantRestitue != null ? montantRestitue : BigDecimal.ZERO;
+        this.montantRestitue = restitue.add(montant != null ? montant : BigDecimal.ZERO);
         this.arreteId = arreteId;
+        if (montantRestant().signum() == 0) {
+            this.statut = StatutLigneCotisation.RESTITUEE;
+        }
     }
 
     public BigDecimal montantRestant() {

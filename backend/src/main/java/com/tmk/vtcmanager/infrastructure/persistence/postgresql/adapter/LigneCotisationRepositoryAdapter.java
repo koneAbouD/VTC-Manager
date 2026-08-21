@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
+import com.tmk.vtcmanager.application.domain.cotisation.TotalCotisationParStatut;
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.LigneCotisationEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.ChauffeurJpaRepository;
@@ -11,7 +12,12 @@ import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.LigneCotisat
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.VehiculeJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.LigneCotisationPersistenceMapper;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,6 +40,9 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
     private final VehiculeJpaRepository vehiculeJpaRepository;
     private final ChauffeurJpaRepository chauffeurJpaRepository;
     private final LigneCotisationPersistenceMapper mapper;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     @Transactional
@@ -79,23 +88,58 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
                 result.getContent(), result.getNumber(), result.getSize(), result.getTotalElements());
     }
 
+    /**
+     * Agrégation côté base : un GROUP BY plutôt que le chargement de toutes les
+     * lignes, dont l'écran n'a besoin que des sommes. Le statut demandé est
+     * volontairement écarté des prédicats — c'est lui que l'utilisateur va
+     * choisir à partir de ces compteurs.
+     */
+    @Override
+    public List<TotalCotisationParStatut> totauxParStatut(LigneCotisationFiltres filtres) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<TotalCotisationParStatut> query =
+                cb.createQuery(TotalCotisationParStatut.class);
+        Root<LigneCotisationEntity> root = query.from(LigneCotisationEntity.class);
+
+        query.select(cb.construct(TotalCotisationParStatut.class,
+                        root.get("statut"),
+                        cb.count(root),
+                        cb.sum(root.<BigDecimal>get("montantDu")),
+                        cb.sum(root.<BigDecimal>get("montantEncaisse"))))
+                .where(predicats(filtres, root, cb, false).toArray(new Predicate[0]))
+                .groupBy(root.get("statut"));
+
+        return entityManager.createQuery(query).getResultList();
+    }
+
     private Specification<LigneCotisationEntity> buildSpec(LigneCotisationFiltres filtres) {
-        return (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (filtres.getVehiculeId() != null)
-                predicates.add(cb.equal(root.get("vehicule").get("id"), filtres.getVehiculeId()));
-            if (filtres.getChauffeurId() != null)
-                predicates.add(cb.equal(root.get("chauffeur").get("id"), filtres.getChauffeurId()));
-            if (filtres.getStatut() != null)
-                predicates.add(cb.equal(root.get("statut"), filtres.getStatut()));
-            if (filtres.getDateDebut() != null)
-                predicates.add(cb.greaterThanOrEqualTo(root.get("dateCotisation"), filtres.getDateDebut()));
-            if (filtres.getDateFin() != null)
-                predicates.add(cb.lessThanOrEqualTo(root.get("dateCotisation"), filtres.getDateFin()));
-            if (RechercheVehiculeChauffeur.estRenseignee(filtres.getRecherche()))
-                predicates.add(RechercheVehiculeChauffeur.predicat(root, cb, filtres.getRecherche()));
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        return (root, query, cb) ->
+                cb.and(predicats(filtres, root, cb, true).toArray(new Predicate[0]));
+    }
+
+    /**
+     * Prédicats communs à la liste et aux cumuls : un seul endroit à lire pour
+     * savoir ce que « le mois affiché » recouvre.
+     *
+     * @param avecStatut faux pour les cumuls, qui doivent porter sur tous les statuts.
+     */
+    private List<Predicate> predicats(LigneCotisationFiltres filtres,
+                                      Root<LigneCotisationEntity> root,
+                                      CriteriaBuilder cb, boolean avecStatut) {
+        List<Predicate> predicates = new ArrayList<>();
+        if (filtres.getVehiculeId() != null)
+            predicates.add(cb.equal(root.get("vehicule").get("id"), filtres.getVehiculeId()));
+        if (filtres.getChauffeurId() != null)
+            predicates.add(cb.equal(root.get("chauffeur").get("id"), filtres.getChauffeurId()));
+        if (avecStatut && filtres.getStatut() != null)
+            predicates.add(cb.equal(root.get("statut"), filtres.getStatut()));
+        if (filtres.getDateDebut() != null)
+            predicates.add(cb.greaterThanOrEqualTo(root.get("dateCotisation"), filtres.getDateDebut()));
+        if (filtres.getDateFin() != null)
+            predicates.add(cb.lessThanOrEqualTo(root.get("dateCotisation"), filtres.getDateFin()));
+        if (RechercheVehiculeChauffeur.estRenseignee(filtres.getRecherche()))
+            predicates.add(RechercheVehiculeChauffeur.predicat(root, cb, filtres.getRecherche()));
+        return predicates;
     }
 
     @Override
@@ -127,14 +171,14 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
 
     @Override
     @Transactional
-    public void marquerRestituee(Long ligneId, Long arreteId) {
-        jpaRepository.marquerRestituee(ligneId, arreteId);
+    public void marquerRestituee(Long ligneId, Long arreteId, BigDecimal montant) {
+        jpaRepository.marquerRestituee(ligneId, arreteId, montant);
     }
 
     @Override
     @Transactional
-    public void annulerRestitution(Long ligneId) {
-        jpaRepository.annulerRestitution(ligneId);
+    public void annulerRestitution(Long ligneId, BigDecimal montant) {
+        jpaRepository.annulerRestitution(ligneId, montant);
     }
 
     @Override

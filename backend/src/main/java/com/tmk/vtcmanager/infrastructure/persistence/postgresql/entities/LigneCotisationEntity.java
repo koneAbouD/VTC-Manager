@@ -57,6 +57,11 @@ public class LigneCotisationEntity extends AbstractAuditEntity {
     @Column(name = "montant_encaisse", precision = 19, scale = 2, nullable = false)
     private BigDecimal montantEncaisse;
 
+    /** Part de {@code montantEncaisse} déjà rendue par un arrêté de compte. */
+    @Column(name = "montant_restitue", precision = 19, scale = 2, nullable = false)
+    @Builder.Default
+    private BigDecimal montantRestitue = BigDecimal.ZERO;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "statut", nullable = false, length = 30)
     private StatutLigneCotisation statut;

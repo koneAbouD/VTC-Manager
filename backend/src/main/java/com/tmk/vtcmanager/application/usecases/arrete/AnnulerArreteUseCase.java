@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Annule un arrêté de compte (avec motif obligatoire) en contre-passant tous ses
  * effets : les décaissements et les opérations de compensation sont annulés, les
  * créances rouvertes (recalcul depuis les encaissements restants) et les
- * cotisations repassées de RESTITUEE à leur statut d'origine.
+ * cotisations rendues à leur statut d'origine, la part restituée reprise.
  *
  * <p>Refusé si la période de l'arrêté est clôturée, ou si la caisse qui a versé
  * le net a été comptée depuis. Les écritures sont ici <b>neutralisées</b>
@@ -79,10 +79,13 @@ public class AnnulerArreteUseCase {
                 .filter(l -> l.getSens() == SensArrete.DEBIT)
                 .forEach(this::reverserCompensation);
 
-        // 3. Repasse les cotisations RESTITUEE à leur statut d'origine.
+        // 3. Reprend la part que cet arrêté avait rendue et rouvre le fonds.
+        //    C'est le montant de la ligne qui fait foi, pas l'encaissement de la
+        //    cotisation : une ligne partiellement restituée n'a rendu qu'une part.
         arrete.getLignes().stream()
                 .filter(l -> l.getSens() == SensArrete.CREDIT)
-                .forEach(l -> ligneCotisationRepository.annulerRestitution(l.getDocumentId()));
+                .forEach(l -> ligneCotisationRepository.annulerRestitution(
+                        l.getDocumentId(), l.getMontant()));
 
         arreteCompteRepository.annuler(arreteId, motif);
         return arreteCompteRepository.findById(arreteId).orElse(arrete);

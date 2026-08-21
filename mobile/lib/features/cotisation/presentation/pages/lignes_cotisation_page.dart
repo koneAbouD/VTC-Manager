@@ -131,6 +131,21 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
             size: size,
           ),
         );
+    _chargerTotaux();
+  }
+
+  /// Cumuls des pastilles : mêmes filtres que la liste, statut mis à part. Ils
+  /// portent sur toute la sélection et ne peuvent donc pas se déduire des pages
+  /// déjà chargées.
+  void _chargerTotaux() {
+    final (debut, fin) = _plageActive();
+    ref.read(totauxCotisationProvider.notifier).charger(
+          LigneCotisationFiltres(
+            dateDebut: debut,
+            dateFin: fin,
+            recherche: _recherche,
+          ),
+        );
   }
 
   // ── Overlay filtre mode ─────────────────────────────────────────────────
@@ -319,14 +334,10 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
     final state = ref.watch(lignesCotisationListeProvider);
     final filtered = state.items;
 
-    // Montant (dû) par statut sur les lignes chargées, null = total.
-    double sommeCot(bool Function(LigneCotisation) test) =>
-        filtered.where(test).fold(0.0, (s, l) => s + l.montantDu);
-    final montantsStatut = <StatutLigneCotisation?, double>{
-      null: sommeCot((_) => true),
-      for (final s in StatutLigneCotisation.values)
-        s: sommeCot((l) => l.statut == s),
-    };
+    // Montants (dus) par statut sur TOUTE la sélection, null = total. Sommer les
+    // lignes chargées donnait un chiffre qui montait avec le scroll : sur un
+    // mois de 300 lignes, les pastilles n'annonçaient que les 20 premières.
+    final montantsStatut = ref.watch(totauxCotisationProvider).montantsDus;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
@@ -389,9 +400,15 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                                 textAlign: TextAlign.center),
                           ))
                       : RefreshIndicator(
-                          onRefresh: () => ref
-                              .read(lignesCotisationListeProvider.notifier)
-                              .refresh(),
+                          // Relit la liste ET les cumuls : ne rafraîchir que la
+                          // liste laisserait les pastilles sur les montants
+                          // d'avant le geste.
+                          onRefresh: () async {
+                            await ref
+                                .read(lignesCotisationListeProvider.notifier)
+                                .refresh();
+                            _chargerTotaux();
+                          },
                           child: CustomScrollView(
                             controller: _scrollController,
                             slivers: [
@@ -747,6 +764,7 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
         StatutLigneCotisation.partiellementEncaisse => _bleu,
         StatutLigneCotisation.encaisse              => _vert,
         StatutLigneCotisation.annulee               => _hint,
+        StatutLigneCotisation.restituee             => _hint,
       };
 }
 
@@ -930,6 +948,7 @@ class _LigneCotisationCard extends StatelessWidget {
         StatutLigneCotisation.partiellementEncaisse => const Color(0xFF1565C0),
         StatutLigneCotisation.encaisse              => const Color(0xFF2E7D32),
         StatutLigneCotisation.annulee               => const Color(0xFF8A94A6),
+        StatutLigneCotisation.restituee             => const Color(0xFF8A94A6),
       };
 
   IconData _icone(StatutLigneCotisation s) => switch (s) {
@@ -937,6 +956,7 @@ class _LigneCotisationCard extends StatelessWidget {
         StatutLigneCotisation.partiellementEncaisse => Icons.hourglass_top_rounded,
         StatutLigneCotisation.encaisse              => Icons.check_circle_rounded,
         StatutLigneCotisation.annulee               => Icons.cancel_rounded,
+        StatutLigneCotisation.restituee             => Icons.assignment_turned_in_rounded,
       };
 }
 

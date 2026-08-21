@@ -7,6 +7,7 @@ import '../../data/repositories_impl/ligne_cotisation_repository_impl.dart';
 import '../../domain/entities/encaissement_cotisation.dart';
 import '../../domain/entities/ligne_cotisation.dart';
 import '../../domain/entities/ligne_cotisation_filtres.dart';
+import '../../domain/entities/totaux_cotisation.dart';
 import '../../domain/repositories/ligne_cotisation_repository.dart';
 import 'ligne_cotisation_state.dart';
 
@@ -72,6 +73,28 @@ final ligneCotisationNotifierProvider =
     StateNotifierProvider<LigneCotisationNotifier, LigneCotisationState>((ref) {
   return LigneCotisationNotifier(ref.watch(ligneCotisationRepositoryProvider));
 });
+
+// ── Cumuls de la sélection ───────────────────────────────────────────────────
+
+/// Montants des pastilles de statut. Séparé de la liste parce qu'il ne suit pas
+/// la pagination : ils portent sur toute la sélection, pas sur les pages
+/// chargées. Une erreur de chargement retombe sur des montants vides plutôt que
+/// de masquer la liste — la page reste utilisable sans ses compteurs.
+class TotauxCotisationNotifier extends StateNotifier<TotauxCotisation> {
+  final LigneCotisationRepository _repository;
+  TotauxCotisationNotifier(this._repository) : super(TotauxCotisation.vide);
+
+  Future<void> charger(LigneCotisationFiltres filtres) async {
+    final result = await _repository.getTotaux(filtres);
+    if (!mounted) return;
+    state = result.fold((_) => TotauxCotisation.vide, (t) => t);
+  }
+}
+
+final totauxCotisationProvider = StateNotifierProvider.autoDispose<
+    TotauxCotisationNotifier, TotauxCotisation>(
+  (ref) => TotauxCotisationNotifier(ref.watch(ligneCotisationRepositoryProvider)),
+);
 
 // ── Liste paginée (scroll infini) pour la page Cotisations ───────────────────
 

@@ -47,7 +47,9 @@ class _ComptesCourantsPageState extends ConsumerState<ComptesCourantsPage> {
               onRetry: () => ref.invalidate(comptesCourantsProvider(_perimetre))),
           data: (comptes) {
             final totalFonds = comptes.fold<double>(0, (s, c) => s + c.fondsCotisation);
-            final totalNet = comptes.fold<double>(0, (s, c) => s + (c.net > 0 ? c.net : 0));
+            // Le serveur ne rend plus qu'un net déjà compensé chauffeur par
+            // chauffeur : il est positif ou nul, rien à borner ici.
+            final totalNet = comptes.fold<double>(0, (s, c) => s + c.net);
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
               children: [
@@ -192,7 +194,17 @@ class _CompteRow extends StatelessWidget {
     final crediteur = compte.net > 0;
     final (netBg, netFg) = crediteur
         ? (const Color(0xFFE8F5E9), Colors.green.shade800)
-        : (const Color(0xFFFDECEA), Colors.red.shade900);
+        : compte.resteDu > 0
+            ? (const Color(0xFFFDECEA), Colors.red.shade900)
+            : (AppColors.headerButton, AppColors.label);
+    // Un véhicule peut porter les deux à la fois : un chauffeur créditeur, un
+    // autre débiteur. Le badge annonce ce qui sera versé, la mention dessous ce
+    // qui restera dû — les afficher en un seul solde reviendrait à compenser
+    // entre deux personnes.
+    final montantBadge = crediteur ? compte.net : compte.resteDu;
+    // Fonds et créances qui s'annulent exactement : ni versement ni dette. Le
+    // dire évite un « reste dû 0 FCFA » en rouge, qui se lit comme une alerte.
+    final estSolde = !crediteur && compte.resteDu == 0;
     return InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -239,15 +251,23 @@ class _CompteRow extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                       color: netBg, borderRadius: BorderRadius.circular(10)),
-                  child: Text(CurrencyFormatter.format(compte.net),
+                  child: Text(CurrencyFormatter.format(montantBadge),
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: netFg)),
                 ),
                 const SizedBox(height: 3),
-                Text(crediteur ? 'à restituer' : 'reste dû',
+                Text(estSolde
+                    ? 'soldé'
+                    : crediteur
+                        ? 'à restituer'
+                        : 'reste dû',
                     style: const TextStyle(fontSize: 10.5, color: AppColors.hint)),
+                if (compte.aDeuxFaces)
+                  Text('+ ${CurrencyFormatter.format(compte.resteDu)} dû',
+                      style: TextStyle(
+                          fontSize: 10.5, color: Colors.red.shade900)),
               ],
             ),
           ],

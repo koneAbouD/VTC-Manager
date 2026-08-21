@@ -63,13 +63,26 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
 
   bool get _toutLeFonds => _mois == null || _annee == null;
 
+  /// Vrai si le document est daté hors du mois choisi. Toujours faux quand
+  /// aucun mois n'est sélectionné : il n'y a alors pas de « hors période ».
+  bool _horsPeriode(LigneArrete l) {
+    if (_toutLeFonds || l.dateDocument == null) return false;
+    final d = l.dateDocument!;
+    return d.isBefore(_debut) || d.isAfter(_fin);
+  }
+
   /// Bornes envoyées au serveur. Sans mois choisi, on ouvre large des deux
   /// côtés : le serveur resserre ensuite la période enregistrée sur les
   /// cotisations réellement restituées, l'historique reste donc lisible.
+  ///
+  /// La borne haute va au-delà d'aujourd'hui à dessein : la liste des comptes
+  /// courants ne borne rien, et s'arrêter à la date du jour ferait manquer à cet
+  /// écran une cotisation générée d'avance — le solde annoncé sur la ligne
+  /// qu'on vient de taper ne s'y retrouverait plus.
   DateTime get _debut =>
       _toutLeFonds ? DateTime(2000, 1, 1) : DateTime(_annee!, _mois!, 1);
   DateTime get _fin =>
-      _toutLeFonds ? DateTime.now() : DateTime(_annee!, _mois! + 1, 0);
+      _toutLeFonds ? DateTime(2100, 12, 31) : DateTime(_annee!, _mois! + 1, 0);
 
   Future<void> _chargerApercu() async {
     setState(() {
@@ -138,8 +151,10 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   double _fondsGroupe(_GroupeBeneficiaire g) =>
       g.cotisations.where(_cotChoisie).fold(0.0, (s, l) => s + l.montant);
 
+  /// Tout ce que le chauffeur doit encore, cases cochées ou non : décocher une
+  /// créance la retire de la compensation, pas de sa dette.
   double _creancesGroupe(_GroupeBeneficiaire g) =>
-      g.creances.where(_creChoisie).fold(0.0, (s, l) => s + l.du);
+      g.creances.fold(0.0, (s, l) => s + l.du);
 
   /// Ce que le fonds éteint, créance par créance, de la plus ancienne à la plus
   /// récente — l'ordre dans lequel le serveur les a rendues. Reproduire ici son
@@ -166,7 +181,8 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   double _netGroupe(_GroupeBeneficiaire g) =>
       _fondsGroupe(g) - _compenseGroupe(g);
 
-  /// Ce qui reste dû après cet arrêté, sur les seules créances retenues.
+  /// Ce qui reste dû après cet arrêté, sur l'ensemble des créances ouvertes —
+  /// c'est le chiffre que le serveur consigne dans le règlement et sur le PDF.
   double _reliquatGroupe(_GroupeBeneficiaire g) =>
       _creancesGroupe(g) - _compenseGroupe(g);
 
@@ -262,6 +278,13 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.label)),
+          const SizedBox(height: 2),
+          // Le filtre porte sur le jour que la cotisation couvre, pas sur celui
+          // où le chauffeur l'a payée : une cotisation de juillet réglée en août
+          // se trouve sous juillet. Sans ce rappel, l'écart avec la caisse du
+          // mois passe pour une erreur de calcul.
+          const Text('Mois de la cotisation, pas du versement',
+              style: TextStyle(fontSize: 11, color: AppColors.hint)),
           const SizedBox(height: 6),
           MonthFilterPill(
             mois: _mois,
@@ -284,6 +307,34 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
               _chargerApercu();
             },
           ),
+          if (!_toutLeFonds) ...[
+            const SizedBox(height: 6),
+            // Le mois ne borne que le fonds : côté créances, le serveur rend
+            // tout ce qui est ouvert, parce qu'un dépôt doit pouvoir éteindre
+            // une dette plus ancienne que lui. Le taire laissait croire que le
+            // total des créances était celui du mois.
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                  color: AppColors.headerButton,
+                  borderRadius: BorderRadius.circular(10)),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline_rounded,
+                      size: 15, color: AppColors.label),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                        'Le mois ne filtre que le fonds. Toutes les créances '
+                        'ouvertes restent compensables, y compris antérieures.',
+                        style: TextStyle(
+                            fontSize: 11.5, color: AppColors.label, height: 1.3)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           if (_loading)
             const Padding(
@@ -354,8 +405,14 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
       ),
       bottomNavigationBar: rien
           ? null
-          : SafeArea(
-              minimum: const EdgeInsets.all(16),
+          : Padding(
+              // La fenêtre est en edge-to-edge : la barre de navigation Android
+              // (gestes ou trois boutons) se dessine par-dessus le bas de
+              // l'écran et recouvrait le bouton. On lit viewPadding plutôt que
+              // de compter sur SafeArea, qui s'appuie sur `padding` — ramené à
+              // zéro dès qu'un clavier s'ouvre ou qu'un ancêtre l'a consommé.
+              padding: EdgeInsets.fromLTRB(
+                  16, 16, 16, 16 + MediaQuery.viewPaddingOf(context).bottom),
               child: FilledButton.icon(
                 onPressed:
                     _submitting || _loading || !_peutValider ? null : _confirmer,
@@ -394,9 +451,10 @@ class _SyntheseCard extends StatelessWidget {
   final double compense;
   final double net;
 
-  /// Ce que le fonds ne couvre pas et qui restera du apres l'arrete. Affiche
-  /// des qu'il est non nul : valider en ignorant ce qui reste a la charge du
-  /// chauffeur est precisement ce qu'il faut eviter.
+  /// Ce que le fonds ne couvre pas et qui restera dû après l'arrêté, sur
+  /// l'ensemble des créances ouvertes — décocher une ligne ne l'en retire pas.
+  /// Affiché dès qu'il est non nul : valider en ignorant ce qui reste à la
+  /// charge du chauffeur est précisément ce qu'il faut éviter.
   final double reliquat;
   const _SyntheseCard(
       {required this.fonds,
@@ -419,7 +477,8 @@ class _SyntheseCard extends StatelessWidget {
           const Divider(height: 18),
           _ligne('− Créances compensées', compense, Colors.orange.shade900),
           if (reliquat > 0)
-            _ligne('Reste dû après arrêté', reliquat, Colors.red.shade900),
+            _ligne('Reste dû après arrêté', reliquat, Colors.red.shade900,
+                aide: 'toutes créances ouvertes'),
           const Divider(height: 18),
           _ligne('= Net à restituer', net, Colors.green.shade800, gras: true),
         ],
@@ -428,17 +487,25 @@ class _SyntheseCard extends StatelessWidget {
   }
 
   Widget _ligne(String label, double montant, Color couleur,
-      {bool gras = false}) {
+      {bool gras = false, String? aide}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: gras ? FontWeight.w700 : FontWeight.w500,
-                  color: AppColors.dark)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: gras ? FontWeight.w700 : FontWeight.w500,
+                      color: AppColors.dark)),
+              if (aide != null)
+                Text(aide,
+                    style: const TextStyle(fontSize: 10.5, color: AppColors.hint)),
+            ],
+          ),
           Text(CurrencyFormatter.format(montant),
               style: TextStyle(
                   fontSize: gras ? 15 : 13,
@@ -473,6 +540,9 @@ class _GroupeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final net = etat._netGroupe(groupe);
     final parts = etat._allocations(groupe);
+    final horsPeriode = groupe.creances.where(etat._horsPeriode).toList();
+    final dansPeriode =
+        groupe.creances.where((l) => !etat._horsPeriode(l)).toList();
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -515,25 +585,37 @@ class _GroupeCard extends StatelessWidget {
               coche: etat._cotChoisie(l),
               onChanged: (v) => etat.basculeCotisation(l.documentId, v),
             ),
-          if (groupe.creances.isNotEmpty) _sousTitre('Créances à compenser'),
-          for (final l in groupe.creances)
-            _tuile(
-              context,
-              titre: _libellesDoc[l.document] ?? l.document,
-              sousTitre: _repere(l),
-              montant: parts[_ArreteFormPageState._cleCreance(l)] ?? 0,
-              // Le dû n'est rappelé que lorsqu'il dépasse la part éteinte :
-              // sinon la créance est soldée et le répéter n'apprend rien.
-              reste: l.du - (parts[_ArreteFormPageState._cleCreance(l)] ?? 0),
-              couleurMontant: Colors.orange.shade900,
-              coche: etat._creChoisie(l),
-              onChanged: (v) => etat.basculeCreance(l, v),
-            ),
+          // Le serveur rend toutes les créances ouvertes, mois filtré ou non.
+          // Les séparer est ce qui permet de voir d'un coup d'œil ce que le
+          // fonds du mois s'apprête à éteindre en dehors de ce mois — l'ordre
+          // de compensation, lui, reste celui du serveur (par antériorité).
+          if (dansPeriode.isNotEmpty)
+            _sousTitre(etat._toutLeFonds
+                ? 'Créances à compenser'
+                : 'Créances du mois'),
+          for (final l in dansPeriode) _tuileCreance(context, l, parts),
+          if (horsPeriode.isNotEmpty) _sousTitre('Créances antérieures'),
+          for (final l in horsPeriode) _tuileCreance(context, l, parts),
           const SizedBox(height: 6),
         ],
       ),
     );
   }
+
+  Widget _tuileCreance(
+          BuildContext context, LigneArrete l, Map<String, double> parts) =>
+      _tuile(
+        context,
+        titre: _libellesDoc[l.document] ?? l.document,
+        sousTitre: _repere(l),
+        montant: parts[_ArreteFormPageState._cleCreance(l)] ?? 0,
+        // Le dû n'est rappelé que lorsqu'il dépasse la part éteinte : sinon la
+        // créance est soldée et le répéter n'apprend rien.
+        reste: l.du - (parts[_ArreteFormPageState._cleCreance(l)] ?? 0),
+        couleurMontant: Colors.orange.shade900,
+        coche: etat._creChoisie(l),
+        onChanged: (v) => etat.basculeCreance(l, v),
+      );
 
   Widget _sousTitre(String texte) => Padding(
         padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),

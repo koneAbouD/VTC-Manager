@@ -78,6 +78,8 @@ class _Body extends ConsumerWidget {
         StatutLigneCotisation.encaisse =>
           (ligne.statut.label, AppColors.success),
         StatutLigneCotisation.annulee => (ligne.statut.label, AppColors.error),
+        // Dépôt rendu : ni en cours, ni en échec — un état de sortie neutre.
+        StatutLigneCotisation.restituee => (ligne.statut.label, AppColors.label),
       };
 
   @override

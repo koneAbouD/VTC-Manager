@@ -14,6 +14,7 @@ import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.request.EncaissementCotisationRequest;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.EncaissementCotisationResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.LigneCotisationResponse;
+import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.TotauxCotisationResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.mapper.CotisationRestMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -77,6 +78,28 @@ public class LigneCotisationController {
                         .build(),
                 page, size).map(mapper::toResponse);
         return PageResponse.from(result);
+    }
+
+    /**
+     * Cumuls de la sélection courante, tous statuts confondus.
+     *
+     * <p>Le paramètre {@code statut} est volontairement absent : ces compteurs
+     * servent justement à choisir un statut, et les filtrer dessus mettrait
+     * toutes les autres pastilles à zéro.</p>
+     */
+    @GetMapping("/totaux")
+    public TotauxCotisationResponse getTotaux(
+            @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(required = false) Long chauffeurId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(required = false) String recherche) {
+        return TotauxCotisationResponse.from(getLignesCotisationUseCase.totauxParStatut(
+                LigneCotisationFiltres.builder()
+                        .vehiculeId(vehiculeId).chauffeurId(chauffeurId)
+                        .dateDebut(dateDebut).dateFin(dateFin)
+                        .recherche(recherche)
+                        .build()));
     }
 
     @GetMapping("/{id:\\d+}")

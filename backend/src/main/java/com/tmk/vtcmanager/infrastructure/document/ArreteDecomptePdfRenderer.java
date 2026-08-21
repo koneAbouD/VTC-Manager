@@ -98,8 +98,8 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
                         "Cotisation = depot detenu pour le chauffeur (hors resultat). "
                                 + "Net = fonds - creances compensees.");
                 y = ligne(cs, REGULAR, 9, MARGE, y,
-                        "Reste = solde de compte courant du perimetre a ce jour "
-                                + "(fonds actif - creances ouvertes).");
+                        "Reste = solde de compte courant du perimetre a ce jour, "
+                                + "compense chauffeur par chauffeur.");
             }
 
             document.save(out);

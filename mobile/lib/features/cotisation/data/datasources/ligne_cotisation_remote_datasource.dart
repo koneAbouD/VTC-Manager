@@ -3,6 +3,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/page_result.dart';
 import '../models/encaissement_cotisation_model.dart';
 import '../models/ligne_cotisation_model.dart';
+import '../../domain/entities/totaux_cotisation.dart';
 
 class LigneCotisationRemoteDatasource {
   final ApiClient _client;
@@ -54,6 +55,33 @@ class LigneCotisationRemoteDatasource {
     final data = await _client.get('/cotisations/lignes', query: query.isEmpty ? null : query);
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data.map((e) => LigneCotisationModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Cumuls de la sélection via `GET /cotisations/lignes/totaux`.
+  ///
+  /// Le statut n'est pas transmis : ces montants servent à choisir un statut,
+  /// et filtrer dessus mettrait toutes les autres pastilles à zéro.
+  Future<TotauxCotisation> getTotaux({
+    int? vehiculeId,
+    int? chauffeurId,
+    String? dateDebut,
+    String? dateFin,
+    String? recherche,
+  }) async {
+    final query = <String, String>{
+      if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
+      if (chauffeurId != null) 'chauffeurId': '$chauffeurId',
+      if (dateDebut != null) 'dateDebut': dateDebut,
+      if (dateFin != null) 'dateFin': dateFin,
+      if (recherche != null && recherche.trim().isNotEmpty)
+        'recherche': recherche.trim(),
+    };
+    final data = await _client.get('/cotisations/lignes/totaux',
+        query: query.isEmpty ? null : query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return TotauxCotisation.fromJson(data);
   }
 
   Future<LigneCotisationModel> getLigneById(int id) async {

@@ -47,7 +47,12 @@ import java.util.stream.Stream;
  * Exécute un arrêté de compte : fige le décompte, compense les créances par
  * antériorité via des encaissements <b>cash-neutres</b> (opération sans compte de
  * trésorerie — le cash est déjà entré via la cotisation), décaisse le net positif
- * (« prime », HORS_RESULTAT) et passe les cotisations en RESTITUEE.
+ * (« prime », HORS_RESULTAT) et sort du fonds les cotisations rendues.
+ *
+ * <p>Une cotisation n'est marquée RESTITUEE que si elle était intégralement
+ * encaissée. Partiellement payée, elle voit seulement sa part rendue consignée
+ * et reste une créance ouverte pour le solde : la restituer en entier effacerait
+ * de la balance âgée une dette que rien n'a éteinte.</p>
  *
  * <p>Le versement se résout toujours par bénéficiaire chauffeur : un arrêté par
  * véhicule multi-chauffeur produit plusieurs règlements.</p>
@@ -161,6 +166,10 @@ public class ArreterCompteUseCase {
         for (DecompteBeneficiaire d : decomptes) {
             // Snapshot du fonds (cotisations, au crédit) + passage en RESTITUEE.
             for (LigneCotisation cot : d.getCotisations()) {
+                // La part rendue est le fonds encore détenu, pas l'encaissement
+                // brut : une ligne déjà entamée par un arrêté précédent ne rend
+                // que ce qu'il en reste.
+                BigDecimal partRendue = cot.fondRestituable();
                 lignes.add(LigneArrete.builder()
                         .arreteId(arreteId)
                         .document(TypeDocumentCreance.COTISATION)
@@ -168,10 +177,10 @@ public class ArreterCompteUseCase {
                         .chauffeurId(cot.getChauffeurId())
                         .vehiculeId(cot.getVehiculeId())
                         .dateDocument(cot.getDateCotisation())
-                        .montant(cot.getMontantEncaisse())
+                        .montant(partRendue)
                         .sens(SensArrete.CREDIT)
                         .build());
-                ligneCotisationRepository.marquerRestituee(cot.getId(), arreteId);
+                ligneCotisationRepository.marquerRestituee(cot.getId(), arreteId, partRendue);
             }
 
             // Compensation des créances (au débit), par antériorité, cash-neutre.

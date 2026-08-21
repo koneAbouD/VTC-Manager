@@ -45,6 +45,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -160,6 +161,12 @@ class ArreterCompteUseCaseTest {
                 .montantDu(restant).montantRegle(BigDecimal.ZERO).restant(restant).build();
     }
 
+    /** La part rendue est vérifiée numériquement : BigDecimal.equals compare aussi l'échelle. */
+    private void verifieRestitution(Long ligneId, Long arreteId, String montant) {
+        verify(ligneCotisationRepository).marquerRestituee(eq(ligneId), eq(arreteId),
+                argThat(m -> m != null && m.compareTo(new BigDecimal(montant)) == 0));
+    }
+
     @Test
     void net_positif_compense_cash_neutre_et_decaisse_le_net() {
         // Fonds 100, une recette due 30 → net 70.
@@ -188,7 +195,7 @@ class ArreterCompteUseCaseTest {
         assertThat(decaissement.getTypeOperation()).isEqualTo(TypeOperation.DEPENSE);
 
         verify(ligneRecetteRepository).recalculerDepuisEncaissements(200L);
-        verify(ligneCotisationRepository).marquerRestituee(100L, 1L);
+        verifieRestitution(100L, 1L, "100");
 
         ArgumentCaptor<List<ReglementArrete>> reglements = ArgumentCaptor.forClass(List.class);
         verify(arreteCompteRepository).enregistrerReglements(reglements.capture());
@@ -232,8 +239,46 @@ class ArreterCompteUseCaseTest {
         // Seules les lignes sélectionnées bougent.
         verify(ligneRecetteRepository).recalculerDepuisEncaissements(201L);
         verify(ligneRecetteRepository, never()).recalculerDepuisEncaissements(200L);
-        verify(ligneCotisationRepository).marquerRestituee(100L, 1L);
-        verify(ligneCotisationRepository, never()).marquerRestituee(eq(101L), anyLong());
+        verifieRestitution(100L, 1L, "100");
+        verify(ligneCotisationRepository, never()).marquerRestituee(eq(101L), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("Une cotisation à moitié payée ne rend que ce qui a été encaissé")
+    void restitution_partielle_ne_rend_que_le_fonds_detenu() {
+        // Cotisation de 100 dont 40 encaissés : le fonds détenu vaut 40, pas 100.
+        LigneCotisation partielle = LigneCotisation.builder()
+                .id(100L).vehiculeId(VEHICULE).chauffeurId(CHAUFFEUR)
+                .dateCotisation(LocalDate.of(2026, 6, 15)).nomCotisation("Entretien")
+                .montantDu(BigDecimal.valueOf(100)).montantEncaisse(BigDecimal.valueOf(40))
+                .statut(StatutLigneCotisation.PARTIELLEMENT_ENCAISSE).build();
+        when(ligneCotisationRepository.findByCriteres(any())).thenReturn(List.of(partielle));
+        when(creanceRepository.getLignesCreance(CHAUFFEUR)).thenReturn(List.of());
+        when(compteTresorerieResolver.resoudre(any(), eq(ModePaiement.ESPECES))).thenReturn(5L);
+
+        useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null);
+
+        verifieRestitution(100L, 1L, "40");
+
+        ArgumentCaptor<List<ReglementArrete>> reglements = ArgumentCaptor.forClass(List.class);
+        verify(arreteCompteRepository).enregistrerReglements(reglements.capture());
+        assertThat(reglements.getValue().get(0).getMontantNet()).isEqualByComparingTo("40");
+    }
+
+    @Test
+    @DisplayName("Une cotisation déjà rendue en partie n'apporte plus que son solde")
+    void cotisation_deja_entamee_ne_rend_que_le_reste() {
+        LigneCotisation entamee = cotisation(100L, BigDecimal.valueOf(100));
+        entamee.setMontantRestitue(BigDecimal.valueOf(60));
+        when(ligneCotisationRepository.findByCriteres(any())).thenReturn(List.of(entamee));
+        when(creanceRepository.getLignesCreance(CHAUFFEUR)).thenReturn(List.of());
+        when(compteTresorerieResolver.resoudre(any(), eq(ModePaiement.ESPECES))).thenReturn(5L);
+
+        useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null);
+
+        verifieRestitution(100L, 1L, "40");
     }
 
     @Test
@@ -266,7 +311,7 @@ class ArreterCompteUseCaseTest {
         ReglementArrete r = reglements.getValue().get(0);
         assertThat(r.getMontantNet()).isEqualByComparingTo("0");
         assertThat(r.getReliquatReporte()).isEqualByComparingTo("30");
-        verify(ligneCotisationRepository).marquerRestituee(100L, 1L);
+        verifieRestitution(100L, 1L, "100");
     }
 
     @Test
@@ -375,7 +420,7 @@ class ArreterCompteUseCaseTest {
         // Rien n'a été écrit : ni l'arrêté, ni la moindre cotisation restituée.
         verify(arreteCompteRepository, never()).enregistrerEntete(any());
         verify(operationFinanciereRepository, never()).save(any());
-        verify(ligneCotisationRepository, never()).marquerRestituee(anyLong(), anyLong());
+        verify(ligneCotisationRepository, never()).marquerRestituee(anyLong(), anyLong(), any());
     }
 
     @Test

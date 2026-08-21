@@ -141,7 +141,7 @@ public class ArreteCompteController {
     public static CompteCourantResponse toCompteCourant(CompteCourant c) {
         return new CompteCourantResponse(c.getTiersId(), c.getLibelle(), c.getFondsCotisation(),
                 c.getDu0a7Jours(), c.getDu8a30Jours(), c.getDuPlus30Jours(),
-                c.getTotalCreances(), c.getNet());
+                c.getTotalCreances(), c.getNet(), c.getResteDu());
     }
 
     public static ArreteResponse toArrete(ArreteCompte a) {

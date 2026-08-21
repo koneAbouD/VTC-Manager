@@ -6,6 +6,7 @@ import '../../../../core/network/page_result.dart';
 import '../../domain/entities/encaissement_cotisation.dart';
 import '../../domain/entities/ligne_cotisation.dart';
 import '../../domain/entities/ligne_cotisation_filtres.dart';
+import '../../domain/entities/totaux_cotisation.dart';
 import '../../domain/repositories/ligne_cotisation_repository.dart';
 import '../datasources/ligne_cotisation_remote_datasource.dart';
 import '../models/encaissement_cotisation_model.dart';
@@ -23,6 +24,21 @@ class LigneCotisationRepositoryImpl implements LigneCotisationRepository {
         statut: _statutStr(f.statut),
         dateDebut: f.dateDebut?.toIso8601String().substring(0, 10),
         dateFin: f.dateFin?.toIso8601String().substring(0, 10),
+      ));
+    } on ApiException catch (e) { return Left(_map(e)); }
+    on NetworkException catch (e) { return Left(NetworkFailure(e.message)); }
+    catch (e) { return Left(UnknownFailure(e.toString())); }
+  }
+
+  @override
+  Future<Either<Failure, TotauxCotisation>> getTotaux(LigneCotisationFiltres f) async {
+    try {
+      return Right(await _datasource.getTotaux(
+        vehiculeId: f.vehiculeId,
+        chauffeurId: f.chauffeurId,
+        dateDebut: f.dateDebut?.toIso8601String().substring(0, 10),
+        dateFin: f.dateFin?.toIso8601String().substring(0, 10),
+        recherche: f.recherche,
       ));
     } on ApiException catch (e) { return Left(_map(e)); }
     on NetworkException catch (e) { return Left(NetworkFailure(e.message)); }
@@ -99,13 +115,7 @@ class LigneCotisationRepositoryImpl implements LigneCotisationRepository {
     catch (e) { return Left(UnknownFailure(e.toString())); }
   }
 
-  String? _statutStr(StatutLigneCotisation? s) => switch (s) {
-        StatutLigneCotisation.enAttente             => 'EN_ATTENTE',
-        StatutLigneCotisation.partiellementEncaisse => 'PARTIELLEMENT_ENCAISSE',
-        StatutLigneCotisation.encaisse              => 'ENCAISSE',
-        StatutLigneCotisation.annulee               => 'ANNULEE',
-        null                                        => null,
-      };
+  String? _statutStr(StatutLigneCotisation? s) => s?.json;
 
   Failure _map(ApiException e) => switch (e.statusCode) {
         404        => NotFoundFailure(e.message),

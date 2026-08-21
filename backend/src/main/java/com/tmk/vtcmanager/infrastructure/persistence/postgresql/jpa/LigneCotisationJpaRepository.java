@@ -77,25 +77,48 @@ public interface LigneCotisationJpaRepository
             """, nativeQuery = true)
     void recalculerDepuisEncaissements(@Param("ligneId") Long ligneId);
 
-    /** Passe la ligne en RESTITUEE et la rattache à l'arrêté qui l'a soldée. */
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("UPDATE LigneCotisationEntity l SET l.statut = 'RESTITUEE', l.arreteId = :arreteId WHERE l.id = :id")
-    void marquerRestituee(@Param("id") Long id, @Param("arreteId") Long arreteId);
-
     /**
-     * Annule la restitution : détache l'arrêté et recalcule le statut à partir
-     * du montant déjà encaissé (les encaissements de cotisation sont inchangés).
+     * Enregistre la part rendue par un arrêté et rattache la ligne à cet arrêté.
+     *
+     * <p>Le passage en RESTITUEE est <b>conditionné à une ligne soldée</b> : une
+     * cotisation partiellement encaissée doit rester dans
+     * {@code v_creances_chauffeurs} pour le reste qu'elle doit. La marquer
+     * restituée en entier effacerait cette dette de la balance âgée sans
+     * qu'aucune écriture ne l'ait éteinte.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
             UPDATE lignes_cotisation
-            SET arrete_id = NULL,
+            SET montant_restitue = montant_restitue + :montant,
+                arrete_id = :arreteId,
+                statut = CASE WHEN montant_encaisse >= montant_du THEN 'RESTITUEE' ELSE statut END
+            WHERE id = :id
+            """, nativeQuery = true)
+    void marquerRestituee(@Param("id") Long id, @Param("arreteId") Long arreteId,
+                          @Param("montant") BigDecimal montant);
+
+    /**
+     * Annule la restitution : reprend la part rendue par cet arrêté, détache
+     * l'arrêté et recalcule le statut à partir du montant encaissé (les
+     * encaissements de cotisation, eux, sont inchangés).
+     *
+     * <p>Le statut n'est recalculé que s'il valait RESTITUEE : une ligne restée
+     * partiellement encaissée pendant l'arrêté n'a jamais changé d'état, et le
+     * recalculer écraserait un statut que d'autres écritures ont pu faire
+     * évoluer depuis.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE lignes_cotisation
+            SET montant_restitue = GREATEST(montant_restitue - :montant, 0),
+                arrete_id = NULL,
                 statut = CASE
+                    WHEN statut <> 'RESTITUEE' THEN statut
                     WHEN montant_encaisse >= montant_du THEN 'ENCAISSE'
                     WHEN montant_encaisse > 0 THEN 'PARTIELLEMENT_ENCAISSE'
                     ELSE 'EN_ATTENTE'
                 END
-            WHERE id = :ligneId AND statut = 'RESTITUEE'
+            WHERE id = :ligneId
             """, nativeQuery = true)
-    void annulerRestitution(@Param("ligneId") Long ligneId);
+    void annulerRestitution(@Param("ligneId") Long ligneId, @Param("montant") BigDecimal montant);
 }

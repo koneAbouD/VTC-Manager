@@ -29,9 +29,12 @@ import java.util.Set;
  * chauffeur, le fonds de cotisation de la période face aux créances ouvertes,
  * l'allocation de compensation par antériorité, le net et le reliquat.
  *
- * <p>Fonds = Σ montant_encaisse des cotisations actives (les cotisations impayées
- * ne sont pas dans le fonds et ne sont pas comptées comme créance : mathématiquement
- * équivalent à « cotisations dues − créances incl. cotisations impayées »).</p>
+ * <p>Fonds = Σ de la part <b>encore détenue</b> des cotisations actives
+ * (montant_encaisse − montant_restitue) : une ligne déjà rendue en partie par un
+ * arrêté précédent n'y revient pas. Les cotisations impayées ne sont pas dans le
+ * fonds et ne sont pas comptées comme créance ici — mathématiquement équivalent
+ * à « cotisations dues − créances incl. cotisations impayées » —, mais elles
+ * restent dues dans la balance âgée tant qu'elles ne sont pas soldées.</p>
  */
 @RequiredArgsConstructor
 public class CalculerCompteCourantUseCase {
@@ -55,6 +58,11 @@ public class CalculerCompteCourantUseCase {
      * Décomptes par bénéficiaire (seuls ceux avec matière à arrêter), restreints à
      * la sélection : seules les cotisations retenues forment le fonds et seules les
      * créances retenues sont compensables (arrêté partiel).
+     *
+     * <p><b>La période ne borne que le fonds.</b> Les créances ouvertes sont prises
+     * toutes périodes confondues : un dépôt doit pouvoir éteindre une dette plus
+     * ancienne que lui, et la compensation se fait par antériorité. C'est aux
+     * écrans de dire lesquelles sortent de la période demandée.</p>
      */
     public List<DecompteBeneficiaire> calculer(PerimetreArrete perimetre, Long perimetreId,
                                                LocalDate debut, LocalDate fin,
@@ -67,10 +75,16 @@ public class CalculerCompteCourantUseCase {
                     .filter(selection::cotisationIncluse)
                     .toList();
             BigDecimal fond = cotisations.stream()
-                    .map(LigneCotisation::getMontantEncaisse)
+                    .map(LigneCotisation::fondRestituable)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            List<LigneCreance> creances = creancesOuvertes(chauffeurId, vehiculeId).stream()
+            // Toutes les créances ouvertes, avant sélection : le reliquat se
+            // mesure sur ce que le chauffeur doit vraiment. Ne compter que les
+            // créances cochées ferait déclarer à l'arrêté — et à son PDF — une
+            // dette résiduelle inférieure à la réalité, alors qu'il suffit d'en
+            // décocher une pour qu'elle cesse d'exister sur le papier.
+            List<LigneCreance> toutesCreances = creancesOuvertes(chauffeurId, vehiculeId);
+            List<LigneCreance> creances = toutesCreances.stream()
                     .filter(selection::creanceIncluse)
                     .toList();
             List<DecompteBeneficiaire.Allocation> allocations = allouer(fond, creances);
@@ -78,7 +92,7 @@ public class CalculerCompteCourantUseCase {
             BigDecimal totalCompense = allocations.stream()
                     .map(DecompteBeneficiaire.Allocation::getMontant)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal totalCreances = creances.stream()
+            BigDecimal totalCreances = toutesCreances.stream()
                     .map(LigneCreance::getRestant)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal net = fond.subtract(totalCompense);
@@ -117,7 +131,7 @@ public class CalculerCompteCourantUseCase {
                         .chauffeurId(cot.getChauffeurId())
                         .vehiculeId(cot.getVehiculeId())
                         .dateDocument(cot.getDateCotisation())
-                        .montant(cot.getMontantEncaisse())
+                        .montant(cot.fondRestituable())
                         .sens(SensArrete.CREDIT)
                         .build());
             }
@@ -181,7 +195,7 @@ public class CalculerCompteCourantUseCase {
                 .build();
         return ligneCotisationRepository.findByCriteres(filtres).stream()
                 .filter(l -> STATUTS_FONDS.contains(l.getStatut()))
-                .filter(l -> l.getMontantEncaisse() != null && l.getMontantEncaisse().signum() > 0)
+                .filter(l -> l.fondRestituable().signum() > 0)
                 .toList();
     }
 

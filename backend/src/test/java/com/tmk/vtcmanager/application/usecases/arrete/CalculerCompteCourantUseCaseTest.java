@@ -262,6 +262,27 @@ class CalculerCompteCourantUseCaseTest {
 
         assertThat(decomptes.get(0).getTotalCompense()).isEqualByComparingTo("5000");
         assertThat(decomptes.get(0).getNet()).isEqualByComparingTo("5000");
+        // La recette décochée reste due : le reliquat la compte quand même.
+        assertThat(decomptes.get(0).getReliquat()).isEqualByComparingTo("3000");
+    }
+
+    @Test
+    @DisplayName("Décocher une créance ne la fait pas disparaître du reliquat")
+    void reliquat_porte_sur_toutes_les_creances_ouvertes() {
+        cotisations(cotisation(1L, 2_000, StatutLigneCotisation.ENCAISSE));
+        creances(
+                creance(TypeDocumentCreance.RECETTE, 100L, 3_000, DEBUT.minusDays(30)),
+                creance(TypeDocumentCreance.PENALITE, 200L, 5_000, DEBUT.minusDays(10)));
+
+        List<DecompteBeneficiaire> decomptes = useCase.calculer(
+                PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                new SelectionArrete(null, Set.of()));
+
+        assertThat(decomptes.get(0).getTotalCompense()).isEqualByComparingTo("0");
+        assertThat(decomptes.get(0).getNet()).isEqualByComparingTo("2000");
+        // 8 000 dus, rien de compensé : c'est bien 8 000 qui restent à la charge
+        // du chauffeur, quel que soit ce que la sélection a écarté.
+        assertThat(decomptes.get(0).getReliquat()).isEqualByComparingTo("8000");
     }
 
     @Test

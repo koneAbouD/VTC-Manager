@@ -33,7 +33,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -104,7 +106,7 @@ class AnnulerArreteUseCaseTest {
 
         verify(encaissementRepository).deleteById(700L);
         verify(ligneRecetteRepository).recalculerDepuisEncaissements(200L);
-        verify(ligneCotisationRepository).annulerRestitution(100L);
+        verify(ligneCotisationRepository).annulerRestitution(eq(100L), any());
         verify(arreteCompteRepository).annuler(1L, "Erreur de saisie");
     }
 
@@ -141,7 +143,7 @@ class AnnulerArreteUseCaseTest {
         // exactement tel qu'il était, sinon on laisserait derrière soi une
         // annulation à moitié faite.
         verify(operationFinanciereRepository, never()).save(org.mockito.ArgumentMatchers.any());
-        verify(ligneCotisationRepository, never()).annulerRestitution(anyLong());
+        verify(ligneCotisationRepository, never()).annulerRestitution(anyLong(), any());
         verify(arreteCompteRepository, never()).annuler(anyLong(), org.mockito.ArgumentMatchers.anyString());
     }
 
