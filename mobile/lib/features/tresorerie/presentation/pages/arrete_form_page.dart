@@ -7,9 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/month_filter_pill.dart';
-import '../../../../core/widgets/premium_select_field.dart';
 import '../../domain/entities/compte_courant.dart';
-import '../../domain/entities/compte_tresorerie.dart';
 import '../providers/tresorerie_providers.dart';
 import 'arretes_history_page.dart' show fmtDate;
 
@@ -43,12 +41,6 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   int? _annee;
   int? _mois;
   String _mode = 'ESPECES';
-
-  /// Compte à débiter, quand l'utilisateur en a désigné un. Null = celui que
-  /// [_compteChoisi] retient par défaut ; le laisser nul plutôt que de figer un
-  /// identifiant à l'ouverture évite d'avoir à le remettre à jour chaque fois
-  /// que le mode de paiement change.
-  int? _compteId;
 
   ArreteCompte? _apercu;
   bool _loading = true;
@@ -186,29 +178,6 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   double get _totalReliquat =>
       _groupes.fold(0.0, (s, g) => s + _reliquatGroupe(g));
 
-  // ── Compte à débiter ───────────────────────────────────────────────────
-
-  /// Comptes ouverts au mode de versement retenu. Le serveur applique la même
-  /// correspondance : mobile money d'un côté, caisse d'espèces de l'autre. Un
-  /// compte fermé n'est pas proposé — il refuserait l'écriture.
-  List<CompteTresorerie> _eligibles(TresorerieSummary? summary) {
-    final type = _mode == 'MOBILE_MONEY' ? 'MOBILE_MONEY' : 'CAISSE';
-    return (summary?.comptes ?? [])
-        .where((c) => c.actif && c.type == type)
-        .toList();
-  }
-
-  /// Le compte retenu : celui désigné s'il reste éligible, sinon celui marqué
-  /// par défaut, sinon le premier. Changer de mode de paiement écarte donc de
-  /// lui-même un choix devenu impossible.
-  int? _compteChoisi(List<CompteTresorerie> eligibles) {
-    if (eligibles.any((c) => c.id == _compteId)) return _compteId;
-    for (final c in eligibles) {
-      if (c.parDefaut) return c.id;
-    }
-    return eligibles.isEmpty ? null : eligibles.first.id;
-  }
-
   bool get _peutValider => _cotisationsChoisies.isNotEmpty;
 
   /// Vrai quand l'écran ne montre que des créances : rien à restituer, et le
@@ -240,20 +209,15 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
           .where((l) => !l.estCredit && _creChoisie(l))
           .map((l) => {'document': l.document, 'documentId': l.documentId})
           .toList();
-      // Le compte n'accompagne que les arrêtés qui versent réellement : une
-      // compensation pure ne touche aucune caisse, et en désigner une n'aurait
-      // rien à débiter.
-      final compteId = _totalNet > 0
-          ? _compteChoisi(
-              _eligibles(ref.read(tresorerieSummaryProvider).valueOrNull))
-          : null;
+      // Le compte à débiter se déduit du mode : espèces → la caisse, mobile
+      // money → le portefeuille. C'est le serveur qui le résout, sur les
+      // comptes marqués par défaut ; l'écran n'a rien à désigner.
       await ref.read(tresorerieDatasourceProvider).arreter(
             perimetre: widget.perimetre,
             perimetreId: widget.perimetreId,
             periodeDebut: _debut,
             periodeFin: _fin,
             modePaiement: _mode,
-            compteTresorerieId: compteId,
             cotisationIds: _cotisationsChoisies.toList(),
             creances: creances,
           );
@@ -287,12 +251,6 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   Widget build(BuildContext context) {
     final apercu = _apercu;
     final rien = apercu == null || apercu.lignes.isEmpty;
-    final comptes =
-        _eligibles(ref.watch(tresorerieSummaryProvider).valueOrNull);
-    final compteId = _compteChoisi(comptes);
-    // Un versement sans caisse à débiter serait refusé par le serveur : autant
-    // barrer le bouton et dire pourquoi, plutôt que laisser tenter.
-    final versementImpossible = _totalNet > 0 && compteId == null;
 
     return Scaffold(
       appBar: AppHeader(title: 'Arrêté — ${widget.libelle}'),
@@ -390,39 +348,6 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                 selected: {_mode},
                 onSelectionChanged: (s) => setState(() => _mode = s.first),
               ),
-              const SizedBox(height: 12),
-              const Text('Compte à débiter',
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.label)),
-              const SizedBox(height: 6),
-              if (comptes.isEmpty)
-                _MessageCard(
-                    _mode == 'MOBILE_MONEY'
-                        ? 'Aucun compte mobile money ouvert. Créez-en un, ou'
-                            ' versez en espèces.'
-                        : 'Aucune caisse ouverte. Créez-en une avant de verser.',
-                    Colors.red.shade900,
-                    const Color(0xFFFDECEA))
-              else
-                PremiumSelectField<int>(
-                  value: compteId,
-                  sheetTitle: 'Compte à débiter',
-                  hint: 'Choisir un compte',
-                  // Le solde décide de la faisabilité : le serveur refuse de
-                  // rendre une caisse créditrice, autant le voir avant de valider.
-                  options: [
-                    for (final c in comptes)
-                      SelectOption(
-                        value: c.id,
-                        label: c.libelle,
-                        sousTitre: 'Solde ${CurrencyFormatter.format(c.solde)}'
-                            '${c.parDefaut ? ' · par défaut' : ''}',
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => _compteId = v),
-                ),
             ],
           ],
         ],
@@ -432,12 +357,8 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
           : SafeArea(
               minimum: const EdgeInsets.all(16),
               child: FilledButton.icon(
-                onPressed: _submitting ||
-                        _loading ||
-                        !_peutValider ||
-                        versementImpossible
-                    ? null
-                    : _confirmer,
+                onPressed:
+                    _submitting || _loading || !_peutValider ? null : _confirmer,
                 icon: _submitting
                     ? const SizedBox(
                         width: 16,
@@ -448,11 +369,9 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                     ? (_aucuneCotisation
                         ? 'Aucune cotisation à restituer'
                         : 'Sélectionnez au moins une cotisation')
-                    : versementImpossible
-                        ? 'Aucun compte à débiter'
-                        : _totalNet > 0
-                            ? 'Restituer ${CurrencyFormatter.format(_totalNet)}'
-                            : 'Compenser (aucun versement)'),
+                    : _totalNet > 0
+                        ? 'Restituer ${CurrencyFormatter.format(_totalNet)}'
+                        : 'Compenser (aucun versement)'),
                 style:
                     FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               ),

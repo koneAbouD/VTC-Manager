@@ -122,6 +122,26 @@ public class ArreterCompteUseCase {
                     "Aucune cotisation à restituer ni créance à compenser sur cette période.");
         }
 
+        // Le versement, s'il y en a un, sort d'un seul compte : celui du mode de
+        // paiement. On le résout et on l'éprouve ici, avant la première
+        // écriture, sur le TOTAL à verser et non chauffeur par chauffeur — un
+        // arrêté par véhicule en paie plusieurs, et les contrôler séparément
+        // laisserait passer un cumul que la caisse ne peut pas honorer. Le
+        // premier versement serait alors déjà écrit quand le troisième
+        // échouerait, et le message parlerait d'un solde que les précédents
+        // avaient déjà entamé.
+        ModePaiement mode = modePaiement != null ? modePaiement : ModePaiement.ESPECES;
+        BigDecimal totalAVerser = decomptes.stream()
+                .map(DecompteBeneficiaire::getNet)
+                .filter(net -> net.signum() > 0)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Long compteVersement = null;
+        if (totalAVerser.signum() > 0) {
+            compteVersement = resoudreCompteVersement(compteTresorerieId, mode);
+            caisseClotureeGuard.verifier(compteVersement, effetArrete);
+            caisseCreditriceGuard.verifier(compteVersement, totalAVerser, effetArrete);
+        }
+
         String reference = sequenceReferenceService.suivante(SequenceReferenceService.Journal.ARRETE);
 
         ArreteCompte entete = arreteCompteRepository.enregistrerEntete(ArreteCompte.builder()
@@ -175,7 +195,7 @@ public class ArreterCompteUseCase {
             Long operationDecaissementId = null;
             if (d.getNet().signum() > 0) {
                 operationDecaissementId = decaisserNet(d, perimetre, perimetreId, effetArrete,
-                        modePaiement, compteTresorerieId, reference).getId();
+                        mode, compteVersement, reference).getId();
             }
 
             reglements.add(ReglementArrete.builder()
@@ -186,11 +206,8 @@ public class ArreterCompteUseCase {
                     .totalCreancesCompensees(d.getTotalCompense())
                     .montantNet(d.getNet())
                     .reliquatReporte(d.getReliquat())
-                    .modePaiement(d.getNet().signum() > 0
-                            ? (modePaiement != null ? modePaiement : ModePaiement.ESPECES) : null)
-                    .compteTresorerieId(operationDecaissementId != null
-                            ? compteTresorerieResolver.resoudre(compteTresorerieId,
-                                    modePaiement != null ? modePaiement : ModePaiement.ESPECES) : null)
+                    .modePaiement(d.getNet().signum() > 0 ? mode : null)
+                    .compteTresorerieId(operationDecaissementId != null ? compteVersement : null)
                     .operationDecaissementId(operationDecaissementId)
                     .build());
         }
@@ -276,29 +293,33 @@ public class ArreterCompteUseCase {
         return operationFinanciereRepository.save(op);
     }
 
-    private OperationFinanciere decaisserNet(DecompteBeneficiaire d, PerimetreArrete perimetre, Long perimetreId,
-                                             LocalDate date, ModePaiement modePaiement, Long compteTresorerieId,
-                                             String refArrete) {
-        ModePaiement mode = modePaiement != null ? modePaiement : ModePaiement.ESPECES;
-        Long compteId = compteTresorerieResolver.resoudre(compteTresorerieId, mode);
-        // Sans compte, l'écriture ne sortirait d'aucune caisse : le chauffeur
-        // repartirait avec l'argent sans que la trésorerie ne bouge, et les deux
-        // verrous ci-dessous — qui s'effacent devant un compte nul — laisseraient
-        // passer le versement en silence. Le résolveur tolère cette absence pour
-        // les écritures historiques ; un décaissement, non.
+    /**
+     * Le compte que le mode de paiement désigne : la caisse pour des espèces, le
+     * portefeuille pour du mobile money. L'appelant peut en imposer un — c'est
+     * ce que fait un client qui sait déjà lequel débiter —, sinon c'est le
+     * compte marqué par défaut pour ce type qui répond.
+     *
+     * <p>Sans compte, l'écriture ne sortirait d'aucune caisse : le chauffeur
+     * repartirait avec l'argent sans que la trésorerie ne bouge, et les deux
+     * verrous — qui s'effacent devant un compte nul — laisseraient passer le
+     * versement en silence. Le résolveur tolère cette absence pour les écritures
+     * historiques ; un décaissement, non.
+     */
+    private Long resoudreCompteVersement(Long compteImpose, ModePaiement mode) {
+        Long compteId = compteTresorerieResolver.resoudre(compteImpose, mode);
         if (compteId == null) {
             throw new IllegalStateException(
                     "Aucun compte de trésorerie pour un versement en "
-                    + (mode == ModePaiement.ESPECES ? "espèces" : "mobile money")
-                    + " : désignez le compte à débiter, ou marquez-en un par défaut"
-                    + " pour ce mode de paiement.");
+                    + (mode == ModePaiement.MOBILE_MONEY ? "mobile money" : "espèces")
+                    + " : marquez-en un par défaut pour ce mode de paiement.");
         }
-        // Seul ce versement sort de la caisse : c'est ici — et pas plus tôt —
-        // qu'on vérifie qu'elle n'a pas déjà été comptée à cette date, et
-        // qu'elle détient bien de quoi payer.
-        caisseClotureeGuard.verifier(compteId, date);
-        caisseCreditriceGuard.verifier(compteId, d.getNet(), date);
+        return compteId;
+    }
 
+    /** Verse le net d'un bénéficiaire. Le compte est déjà résolu et éprouvé par l'appelant. */
+    private OperationFinanciere decaisserNet(DecompteBeneficiaire d, PerimetreArrete perimetre, Long perimetreId,
+                                             LocalDate date, ModePaiement mode, Long compteId,
+                                             String refArrete) {
         CategorieOperation categorie = categorieOperationRepository.findByCode(CAT_RESTITUTION).orElse(null);
         OperationFinanciere op = OperationFinanciere.builder()
                 .typeOperation(TypeOperation.DEPENSE)

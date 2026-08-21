@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
 import com.tmk.vtcmanager.application.domain.arrete.StatutArrete;
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
+import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.domain.finance.LigneCreance;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
@@ -24,6 +25,8 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepositor
 import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.exception.CaisseCreditriceException;
+import com.tmk.vtcmanager.application.domain.tresorerie.TypeCompteTresorerie;
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
@@ -332,5 +335,65 @@ class ArreterCompteUseCaseTest {
         verify(arreteCompteRepository).enregistrerEntete(entete.capture());
         assertThat(entete.getValue().getPeriodeDebut()).isEqualTo(LocalDate.of(2026, 3, 4));
         assertThat(entete.getValue().getPeriodeFin()).isEqualTo(LocalDate.of(2026, 5, 20));
+    }
+
+    @Test
+    @DisplayName("Le solde est éprouvé sur le total à verser, pas chauffeur par chauffeur")
+    void refuse_si_la_caisse_ne_couvre_pas_le_cumul() {
+        // Un véhicule, deux chauffeurs, 60 chacun. La caisse en détient 100 :
+        // chaque versement passerait isolément, leur somme non. Contrôler
+        // séparément aurait laissé écrire le premier avant d'échouer sur le
+        // second, et le message aurait parlé d'un solde déjà entamé.
+        LigneCotisation aliCotisation = cotisation(100L, BigDecimal.valueOf(60));
+        LigneCotisation binta = LigneCotisation.builder()
+                .id(101L).vehiculeId(VEHICULE).chauffeurId(2L)
+                .dateCotisation(LocalDate.of(2026, 6, 16)).nomCotisation("Entretien")
+                .montantDu(BigDecimal.valueOf(60)).montantEncaisse(BigDecimal.valueOf(60))
+                .statut(StatutLigneCotisation.ENCAISSE).build();
+        when(ligneCotisationRepository.findByCriteres(any())).thenAnswer(inv -> {
+            LigneCotisationFiltres f = inv.getArgument(0);
+            return List.of(aliCotisation, binta).stream()
+                    .filter(c -> f.getChauffeurId() == null
+                            || f.getChauffeurId().equals(c.getChauffeurId()))
+                    .toList();
+        });
+        when(chauffeurRepository.findById(2L)).thenReturn(Optional.of(
+                Chauffeur.builder().id(2L).nom("Diallo").prenom("Binta").build()));
+        when(compteTresorerieResolver.resoudre(any(), eq(ModePaiement.ESPECES))).thenReturn(5L);
+        org.mockito.Mockito.doThrow(new CaisseCreditriceException("Caisse principale",
+                        TypeCompteTresorerie.CAISSE, BigDecimal.valueOf(100),
+                        BigDecimal.valueOf(120), LocalDate.of(2026, 7, 1)))
+                .when(caisseCreditriceGuard)
+                .verifier(eq(5L), org.mockito.ArgumentMatchers.argThat(
+                        m -> m != null && m.compareTo(BigDecimal.valueOf(120)) == 0),
+                        any());
+
+        assertThatThrownBy(() -> useCase.executer(PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null))
+                .isInstanceOf(CaisseCreditriceException.class);
+
+        // Rien n'a été écrit : ni l'arrêté, ni la moindre cotisation restituée.
+        verify(arreteCompteRepository, never()).enregistrerEntete(any());
+        verify(operationFinanciereRepository, never()).save(any());
+        verify(ligneCotisationRepository, never()).marquerRestituee(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("Le compte à débiter se déduit du mode de versement")
+    void compte_deduit_du_mode() {
+        when(ligneCotisationRepository.findByCriteres(any()))
+                .thenReturn(List.of(cotisation(BigDecimal.valueOf(100))));
+        when(compteTresorerieResolver.resoudre(null, ModePaiement.MOBILE_MONEY)).thenReturn(8L);
+
+        useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.MOBILE_MONEY, null);
+
+        ArgumentCaptor<OperationFinanciere> ops = ArgumentCaptor.forClass(OperationFinanciere.class);
+        verify(operationFinanciereRepository).save(ops.capture());
+        assertThat(ops.getValue().getCompteTresorerieId()).isEqualTo(8L);
+        assertThat(ops.getValue().getModePaiement()).isEqualTo(ModePaiement.MOBILE_MONEY);
+        // Le compte est résolu une seule fois, sur le mode : le règlement reprend
+        // celui-là, sans repasser par le résolveur.
+        verify(compteTresorerieResolver).resoudre(null, ModePaiement.MOBILE_MONEY);
     }
 }
