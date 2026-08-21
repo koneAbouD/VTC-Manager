@@ -11,6 +11,19 @@ import java.util.Optional;
 /** Persistance des arrêtés de compte (en-tête + lignes snapshot + règlements). */
 public interface ArreteCompteRepository {
 
+    /**
+     * Prend le verrou qui sérialise l'exécution et l'annulation des arrêtés,
+     * jusqu'à la fin de la transaction courante.
+     *
+     * <p>Une créance ouverte n'est marquée nulle part comme « en cours
+     * d'arrêté » : deux arrêtés simultanés — l'un par chauffeur, l'autre par le
+     * véhicule qu'il conduit — la voient tous les deux et l'éteignent deux fois.
+     * Aucune contrainte de base ne peut le rattraper, le montant encaissé étant
+     * recalculé par somme. Les arrêtés se comptent en unités par jour : les
+     * sérialiser ne coûte rien et ferme le trou entièrement.
+     */
+    void verrouillerExecution();
+
     /** Insère l'en-tête et renvoie l'arrêté avec son id (nécessaire aux FK). */
     ArreteCompte enregistrerEntete(ArreteCompte arrete);
 

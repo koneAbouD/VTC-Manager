@@ -344,6 +344,26 @@ class CalculerCompteCourantUseCaseTest {
     }
 
     @Test
+    @DisplayName("Chaque ligne de l'aperçu porte le jour de son document")
+    void apercu_date_des_lignes() {
+        LocalDate jourCreance = DEBUT.minusDays(30);
+        cotisations(cotisation(1L, 10_000, StatutLigneCotisation.ENCAISSE));
+        creances(creance(TypeDocumentCreance.RECETTE, 100L, 3_000, jourCreance));
+
+        ArreteCompte apercu = useCase.construireApercu(
+                PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN);
+
+        // C'est ce que l'écran met à la place de l'identifiant du document :
+        // deux cotisations du même montant ne se distinguent que par leur jour.
+        assertThat(apercu.getLignes()).filteredOn(l -> l.getSens() == SensArrete.CREDIT)
+                .singleElement().extracting(LigneArrete::getDateDocument)
+                .isEqualTo(DEBUT.plusDays(3));
+        assertThat(apercu.getLignes()).filteredOn(l -> l.getSens() == SensArrete.DEBIT)
+                .singleElement().extracting(LigneArrete::getDateDocument)
+                .isEqualTo(jourCreance);
+    }
+
+    @Test
     @DisplayName("L'aperçu récapitule le règlement par bénéficiaire")
     void apercu_reglement() {
         cotisations(cotisation(1L, 10_000, StatutLigneCotisation.ENCAISSE));
@@ -360,5 +380,42 @@ class CalculerCompteCourantUseCaseTest {
             assertThat(r.getMontantNet()).isEqualByComparingTo("7000");
             assertThat(r.getReliquatReporte()).isEqualByComparingTo("0");
         });
+    }
+
+    @Test
+    @DisplayName("L'aperçu montre aussi les créances que le fonds ne couvre pas")
+    void apercu_creances_non_couvertes() {
+        // Fonds 5 000 face à 4 000 + 3 000 : la seconde créance n'est éteinte
+        // qu'à hauteur de 1 000, et rien ne va à la troisième.
+        cotisations(cotisation(1L, 5_000, StatutLigneCotisation.ENCAISSE));
+        creances(creance(TypeDocumentCreance.RECETTE, 100L, 4_000, DEBUT.minusDays(30)),
+                creance(TypeDocumentCreance.RECETTE, 101L, 3_000, DEBUT.minusDays(20)),
+                creance(TypeDocumentCreance.PENALITE, 102L, 2_000, DEBUT.minusDays(10)));
+
+        ArreteCompte apercu = useCase.construireApercu(
+                PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN);
+
+        // Les trois créances figurent, y compris celle qu'aucun franc n'atteint :
+        // sans elle, l'écran laisserait valider sans montrer ce qui reste dû.
+        assertThat(apercu.getLignes()).filteredOn(l -> l.getSens() == SensArrete.DEBIT)
+                .hasSize(3)
+                .extracting(LigneArrete::getDocumentId, LigneArrete::getMontant, LigneArrete::getRestant)
+                .containsExactly(
+                        org.assertj.core.api.Assertions.tuple(100L, BigDecimal.valueOf(4_000), BigDecimal.valueOf(4_000)),
+                        org.assertj.core.api.Assertions.tuple(101L, BigDecimal.valueOf(1_000), BigDecimal.valueOf(3_000)),
+                        org.assertj.core.api.Assertions.tuple(102L, BigDecimal.ZERO, BigDecimal.valueOf(2_000)));
+    }
+
+    @Test
+    @DisplayName("Le décompte distingue ce qu'il y a à montrer de ce qu'il y a à écrire")
+    void reliquat_seul_ne_vaut_pas_matiere_a_arreter() {
+        // Aucune cotisation encaissée, une créance ouverte : il y a bien quelque
+        // chose à afficher — le chauffeur reste débiteur — mais rien à enregistrer.
+        creances(creance(TypeDocumentCreance.RECETTE, 100L, 3_000, DEBUT.minusDays(30)));
+
+        DecompteBeneficiaire decompte = calculerChauffeur();
+
+        assertThat(decompte.estNonVide()).isTrue();
+        assertThat(decompte.aMatiereAArreter()).isFalse();
     }
 }

@@ -154,7 +154,7 @@ public class ArreteCompteController {
         List<LigneArreteResponse> lignes = a.getLignes().stream()
                 .map(l -> new LigneArreteResponse(l.getDocument(), l.getDocumentId(),
                         l.getChauffeurId(), l.getVehiculeId(), l.getImmatriculation(),
-                        l.getMontant(), l.getSens()))
+                        l.getDateDocument(), l.getMontant(), l.getRestant(), l.getSens()))
                 .toList();
 
         String libelle = a.getPerimetreLibelle();

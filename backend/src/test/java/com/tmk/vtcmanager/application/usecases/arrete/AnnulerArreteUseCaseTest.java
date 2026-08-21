@@ -18,8 +18,11 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepositor
 import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.exception.CaisseClotureeException;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -47,6 +50,7 @@ class AnnulerArreteUseCaseTest {
     private ContraventionRepository contraventionRepository;
     private OperationFinanciereRepository operationFinanciereRepository;
     private PeriodeClotureeGuard periodeClotureeGuard;
+    private CaisseClotureeGuard caisseClotureeGuard;
     private AnnulerArreteUseCase useCase;
 
     @BeforeEach
@@ -60,10 +64,11 @@ class AnnulerArreteUseCaseTest {
         contraventionRepository = mock(ContraventionRepository.class);
         operationFinanciereRepository = mock(OperationFinanciereRepository.class);
         periodeClotureeGuard = mock(PeriodeClotureeGuard.class);
+        caisseClotureeGuard = mock(CaisseClotureeGuard.class);
         useCase = new AnnulerArreteUseCase(arreteCompteRepository, ligneCotisationRepository,
                 ligneRecetteRepository, encaissementRepository, lignePenaliteRepository,
                 encaissementPenaliteRepository, contraventionRepository, operationFinanciereRepository,
-                periodeClotureeGuard);
+                periodeClotureeGuard, caisseClotureeGuard);
     }
 
     private ArreteCompte arreteValide() {
@@ -73,7 +78,7 @@ class AnnulerArreteUseCaseTest {
                 .dateArrete(LocalDate.of(2026, 7, 1)).reference("ARR-2026-x").statut(StatutArrete.VALIDE)
                 .reglements(List.of(ReglementArrete.builder()
                         .chauffeurId(7L).montantNet(BigDecimal.valueOf(70))
-                        .operationDecaissementId(500L).build()))
+                        .compteTresorerieId(9L).operationDecaissementId(500L).build()))
                 .lignes(List.of(
                         LigneArrete.builder().document(TypeDocumentCreance.COTISATION).documentId(100L)
                                 .montant(BigDecimal.valueOf(100)).sens(SensArrete.CREDIT).build(),
@@ -119,5 +124,36 @@ class AnnulerArreteUseCaseTest {
         assertThatThrownBy(() -> useCase.executer(1L, "motif"))
                 .isInstanceOf(IllegalStateException.class);
         verify(arreteCompteRepository, never()).annuler(anyLong(), org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("Une caisse déjà comptée depuis le versement interdit l'annulation")
+    void refuse_si_caisse_comptee() {
+        when(arreteCompteRepository.findById(1L)).thenReturn(Optional.of(arreteValide()));
+        org.mockito.Mockito.doThrow(new CaisseClotureeException(
+                        LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 5)))
+                .when(caisseClotureeGuard).verifier(9L, LocalDate.of(2026, 7, 1));
+
+        assertThatThrownBy(() -> useCase.executer(1L, "Erreur de saisie"))
+                .isInstanceOf(CaisseClotureeException.class);
+
+        // Le refus tombe avant la moindre écriture : l'arrêté doit rester
+        // exactement tel qu'il était, sinon on laisserait derrière soi une
+        // annulation à moitié faite.
+        verify(operationFinanciereRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(ligneCotisationRepository, never()).annulerRestitution(anyLong());
+        verify(arreteCompteRepository, never()).annuler(anyLong(), org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("L'annulation prend le verrou qui la sérialise avec les arrêtés")
+    void verrouille_avant_de_contre_passer() {
+        when(arreteCompteRepository.findById(1L)).thenReturn(Optional.of(arreteValide()));
+        when(operationFinanciereRepository.findById(anyLong())).thenAnswer(inv ->
+                Optional.of(OperationFinanciere.builder().id(inv.getArgument(0)).statut(StatutOperation.ENCAISSE).build()));
+
+        useCase.executer(1L, "Erreur de saisie");
+
+        verify(arreteCompteRepository).verrouillerExecution();
     }
 }

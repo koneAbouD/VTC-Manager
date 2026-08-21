@@ -99,11 +99,19 @@ class ArreteDetailPage extends ConsumerWidget {
     if (motif == null) return;
     try {
       await ref.read(tresorerieDatasourceProvider).annulerArrete(id, motif);
+      // L'annulation rouvre des créances, rend des cotisations au fonds et
+      // remet le versement en caisse : les mêmes vues qu'à la création sont
+      // périmées, comptes courants compris.
       ref.invalidate(arreteDetailProvider(id));
       ref.invalidate(arretesProvider);
+      ref.invalidate(comptesCourantsProvider);
       ref.invalidate(balanceAgeeProvider);
       ref.invalidate(balanceAgeeVehiculeProvider);
+      ref.invalidate(creancesChauffeurProvider);
+      ref.invalidate(creancesVehiculeProvider);
+      ref.invalidate(releveChauffeurProvider);
       ref.invalidate(tresorerieSummaryProvider);
+      ref.invalidate(bilanProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Arrêté annulé')));
@@ -323,7 +331,12 @@ class _LigneTile extends StatelessWidget {
                         ? '$_label · ${ligne.immatriculation}'
                         : _label,
                     style: const TextStyle(fontSize: 13, color: AppColors.dark)),
-                Text('#${ligne.documentId}',
+                // Le jour du document plutôt que son identifiant technique ;
+                // celui-ci ne reste qu'en repli si la date est introuvable.
+                Text(
+                    ligne.dateDocument != null
+                        ? fmtDate(ligne.dateDocument)
+                        : '#${ligne.documentId}',
                     style: const TextStyle(fontSize: 11, color: AppColors.hint)),
               ],
             ),

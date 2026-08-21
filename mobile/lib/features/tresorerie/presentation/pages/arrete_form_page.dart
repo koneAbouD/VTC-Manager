@@ -7,13 +7,21 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/month_filter_pill.dart';
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../domain/entities/compte_courant.dart';
+import '../../domain/entities/compte_tresorerie.dart';
 import '../providers/tresorerie_providers.dart';
+import 'arretes_history_page.dart' show fmtDate;
 
-/// Formulaire d'arrêté de compte : choisir la période, **sélectionner les lignes**
-/// à restituer/compenser (restitution partielle), prévisualiser le décompte
-/// (fonds − créances = net), puis confirmer. Toutes les lignes sont cochées par
-/// défaut → l'arrêté total reste le comportement d'un simple « Restituer ».
+/// Formulaire d'arrêté de compte : **sélectionner les lignes** à restituer et
+/// les créances à compenser, prévisualiser le décompte (fonds − créances = net),
+/// puis confirmer. Toutes les lignes sont cochées par défaut → l'arrêté total
+/// reste le comportement d'un simple « Restituer ».
+///
+/// L'écran s'ouvre sur **tout le fonds détenu**, pas sur le mois courant : c'est
+/// le solde que la liste des comptes courants vient d'annoncer, et l'utilisateur
+/// qui tape dessus s'attend à le retrouver. Restreindre à un mois reste possible,
+/// mais c'est un geste explicite.
 class ArreteFormPage extends ConsumerStatefulWidget {
   final String perimetre; // CHAUFFEUR | VEHICULE
   final int perimetreId;
@@ -31,9 +39,16 @@ class ArreteFormPage extends ConsumerStatefulWidget {
 }
 
 class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
-  late int _annee;
-  late int _mois;
+  /// Mois choisi, ou null pour « tout le fonds détenu » (l'état par défaut).
+  int? _annee;
+  int? _mois;
   String _mode = 'ESPECES';
+
+  /// Compte à débiter, quand l'utilisateur en a désigné un. Null = celui que
+  /// [_compteChoisi] retient par défaut ; le laisser nul plutôt que de figer un
+  /// identifiant à l'ouverture évite d'avoir à le remettre à jour chaque fois
+  /// que le mode de paiement change.
+  int? _compteId;
 
   ArreteCompte? _apercu;
   bool _loading = true;
@@ -51,14 +66,18 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _annee = now.year;
-    _mois = now.month;
     _chargerApercu();
   }
 
-  DateTime get _debut => DateTime(_annee, _mois, 1);
-  DateTime get _fin => DateTime(_annee, _mois + 1, 0);
+  bool get _toutLeFonds => _mois == null || _annee == null;
+
+  /// Bornes envoyées au serveur. Sans mois choisi, on ouvre large des deux
+  /// côtés : le serveur resserre ensuite la période enregistrée sur les
+  /// cotisations réellement restituées, l'historique reste donc lisible.
+  DateTime get _debut =>
+      _toutLeFonds ? DateTime(2000, 1, 1) : DateTime(_annee!, _mois!, 1);
+  DateTime get _fin =>
+      _toutLeFonds ? DateTime.now() : DateTime(_annee!, _mois! + 1, 0);
 
   Future<void> _chargerApercu() async {
     setState(() {
@@ -128,22 +147,74 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
       g.cotisations.where(_cotChoisie).fold(0.0, (s, l) => s + l.montant);
 
   double _creancesGroupe(_GroupeBeneficiaire g) =>
-      g.creances.where(_creChoisie).fold(0.0, (s, l) => s + l.montant);
+      g.creances.where(_creChoisie).fold(0.0, (s, l) => s + l.du);
 
-  /// Compensé = min(fonds, créances) ; le fonds éteint les créances (par antériorité côté serveur).
+  /// Ce que le fonds éteint, créance par créance, de la plus ancienne à la plus
+  /// récente — l'ordre dans lequel le serveur les a rendues. Reproduire ici son
+  /// allocation, plutôt qu'un simple min(fonds, créances), est ce qui permet à
+  /// chaque ligne d'annoncer sa propre part : une créance à moitié couverte ne
+  /// doit pas s'afficher comme soldée.
+  Map<String, double> _allocations(_GroupeBeneficiaire g) {
+    var reste = _fondsGroupe(g);
+    final parts = <String, double>{};
+    for (final l in g.creances.where(_creChoisie)) {
+      if (reste <= 0) break;
+      final part = math.min(reste, l.du);
+      if (part > 0) {
+        parts[_cleCreance(l)] = part;
+        reste -= part;
+      }
+    }
+    return parts;
+  }
+
   double _compenseGroupe(_GroupeBeneficiaire g) =>
-      math.min(_fondsGroupe(g), _creancesGroupe(g));
+      _allocations(g).values.fold(0.0, (s, m) => s + m);
 
   double _netGroupe(_GroupeBeneficiaire g) =>
       _fondsGroupe(g) - _compenseGroupe(g);
+
+  /// Ce qui reste dû après cet arrêté, sur les seules créances retenues.
+  double _reliquatGroupe(_GroupeBeneficiaire g) =>
+      _creancesGroupe(g) - _compenseGroupe(g);
 
   double get _totalFonds =>
       _groupes.fold(0.0, (s, g) => s + _fondsGroupe(g));
   double get _totalCompense =>
       _groupes.fold(0.0, (s, g) => s + _compenseGroupe(g));
   double get _totalNet => _groupes.fold(0.0, (s, g) => s + _netGroupe(g));
+  double get _totalReliquat =>
+      _groupes.fold(0.0, (s, g) => s + _reliquatGroupe(g));
+
+  // ── Compte à débiter ───────────────────────────────────────────────────
+
+  /// Comptes ouverts au mode de versement retenu. Le serveur applique la même
+  /// correspondance : mobile money d'un côté, caisse d'espèces de l'autre. Un
+  /// compte fermé n'est pas proposé — il refuserait l'écriture.
+  List<CompteTresorerie> _eligibles(TresorerieSummary? summary) {
+    final type = _mode == 'MOBILE_MONEY' ? 'MOBILE_MONEY' : 'CAISSE';
+    return (summary?.comptes ?? [])
+        .where((c) => c.actif && c.type == type)
+        .toList();
+  }
+
+  /// Le compte retenu : celui désigné s'il reste éligible, sinon celui marqué
+  /// par défaut, sinon le premier. Changer de mode de paiement écarte donc de
+  /// lui-même un choix devenu impossible.
+  int? _compteChoisi(List<CompteTresorerie> eligibles) {
+    if (eligibles.any((c) => c.id == _compteId)) return _compteId;
+    for (final c in eligibles) {
+      if (c.parDefaut) return c.id;
+    }
+    return eligibles.isEmpty ? null : eligibles.first.id;
+  }
 
   bool get _peutValider => _cotisationsChoisies.isNotEmpty;
+
+  /// Vrai quand l'écran ne montre que des créances : rien à restituer, et le
+  /// bouton doit le dire plutôt que réclamer une sélection impossible.
+  bool get _aucuneCotisation =>
+      _apercu != null && _apercu!.lignes.every((l) => !l.estCredit);
 
   void basculeCotisation(int documentId, bool? coche) => setState(() {
         if (coche == true) {
@@ -169,20 +240,35 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
           .where((l) => !l.estCredit && _creChoisie(l))
           .map((l) => {'document': l.document, 'documentId': l.documentId})
           .toList();
+      // Le compte n'accompagne que les arrêtés qui versent réellement : une
+      // compensation pure ne touche aucune caisse, et en désigner une n'aurait
+      // rien à débiter.
+      final compteId = _totalNet > 0
+          ? _compteChoisi(
+              _eligibles(ref.read(tresorerieSummaryProvider).valueOrNull))
+          : null;
       await ref.read(tresorerieDatasourceProvider).arreter(
             perimetre: widget.perimetre,
             perimetreId: widget.perimetreId,
             periodeDebut: _debut,
             periodeFin: _fin,
             modePaiement: _mode,
+            compteTresorerieId: compteId,
             cotisationIds: _cotisationsChoisies.toList(),
             creances: creances,
           );
-      // Rafraîchit créances, trésorerie, historique et comptes courants.
+      // L'arrêté touche les créances, les cotisations et une caisse : tout ce
+      // qui en dérive est périmé. Les familles sont invalidées sans argument —
+      // n'en rafraîchir qu'un axe laisserait l'autre afficher l'avant.
       ref.invalidate(arretesProvider);
+      ref.invalidate(comptesCourantsProvider);
       ref.invalidate(balanceAgeeProvider);
       ref.invalidate(balanceAgeeVehiculeProvider);
+      ref.invalidate(creancesChauffeurProvider);
+      ref.invalidate(creancesVehiculeProvider);
+      ref.invalidate(releveChauffeurProvider);
       ref.invalidate(tresorerieSummaryProvider);
+      ref.invalidate(bilanProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Arrêté enregistré')));
@@ -201,13 +287,19 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   Widget build(BuildContext context) {
     final apercu = _apercu;
     final rien = apercu == null || apercu.lignes.isEmpty;
+    final comptes =
+        _eligibles(ref.watch(tresorerieSummaryProvider).valueOrNull);
+    final compteId = _compteChoisi(comptes);
+    // Un versement sans caisse à débiter serait refusé par le serveur : autant
+    // barrer le bouton et dire pourquoi, plutôt que laisser tenter.
+    final versementImpossible = _totalNet > 0 && compteId == null;
 
     return Scaffold(
       appBar: AppHeader(title: 'Arrêté — ${widget.libelle}'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
         children: [
-          const Text('Période à restituer',
+          const Text('Fonds à restituer',
               style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -216,10 +308,20 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
           MonthFilterPill(
             mois: _mois,
             annee: _annee,
+            libelleVide: 'Tout le fonds détenu',
             onChanged: (m, a) {
               setState(() {
                 _mois = m;
                 _annee = a;
+              });
+              _chargerApercu();
+            },
+            // La croix ramène au fonds entier — l'état où ce que montre l'écran
+            // correspond au solde annoncé par la liste des comptes courants.
+            onEfface: () {
+              setState(() {
+                _mois = null;
+                _annee = null;
               });
               _chargerApercu();
             },
@@ -233,13 +335,16 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
             _MessageCard('Impossible de calculer le décompte : $_erreur',
                 Colors.red.shade900, const Color(0xFFFDECEA))
           else if (rien)
-            const _MessageCard('Aucune cotisation ni créance sur cette période.',
-                AppColors.label, AppColors.headerButton)
+            const _MessageCard(
+                'Aucune cotisation ni créance sur cette période.',
+                AppColors.label,
+                AppColors.headerButton)
           else ...[
             _SyntheseCard(
               fonds: _totalFonds,
               compense: _totalCompense,
               net: _totalNet,
+              reliquat: _totalReliquat,
             ),
             const SizedBox(height: 4),
             Row(
@@ -285,6 +390,39 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                 selected: {_mode},
                 onSelectionChanged: (s) => setState(() => _mode = s.first),
               ),
+              const SizedBox(height: 12),
+              const Text('Compte à débiter',
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.label)),
+              const SizedBox(height: 6),
+              if (comptes.isEmpty)
+                _MessageCard(
+                    _mode == 'MOBILE_MONEY'
+                        ? 'Aucun compte mobile money ouvert. Créez-en un, ou'
+                            ' versez en espèces.'
+                        : 'Aucune caisse ouverte. Créez-en une avant de verser.',
+                    Colors.red.shade900,
+                    const Color(0xFFFDECEA))
+              else
+                PremiumSelectField<int>(
+                  value: compteId,
+                  sheetTitle: 'Compte à débiter',
+                  hint: 'Choisir un compte',
+                  // Le solde décide de la faisabilité : le serveur refuse de
+                  // rendre une caisse créditrice, autant le voir avant de valider.
+                  options: [
+                    for (final c in comptes)
+                      SelectOption(
+                        value: c.id,
+                        label: c.libelle,
+                        sousTitre: 'Solde ${CurrencyFormatter.format(c.solde)}'
+                            '${c.parDefaut ? ' · par défaut' : ''}',
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => _compteId = v),
+                ),
             ],
           ],
         ],
@@ -294,8 +432,12 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
           : SafeArea(
               minimum: const EdgeInsets.all(16),
               child: FilledButton.icon(
-                onPressed:
-                    _submitting || _loading || !_peutValider ? null : _confirmer,
+                onPressed: _submitting ||
+                        _loading ||
+                        !_peutValider ||
+                        versementImpossible
+                    ? null
+                    : _confirmer,
                 icon: _submitting
                     ? const SizedBox(
                         width: 16,
@@ -303,10 +445,14 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                         child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.check_rounded),
                 label: Text(!_peutValider
-                    ? 'Sélectionnez au moins une cotisation'
-                    : _totalNet > 0
-                        ? 'Restituer ${CurrencyFormatter.format(_totalNet)}'
-                        : 'Compenser (aucun versement)'),
+                    ? (_aucuneCotisation
+                        ? 'Aucune cotisation à restituer'
+                        : 'Sélectionnez au moins une cotisation')
+                    : versementImpossible
+                        ? 'Aucun compte à débiter'
+                        : _totalNet > 0
+                            ? 'Restituer ${CurrencyFormatter.format(_totalNet)}'
+                            : 'Compenser (aucun versement)'),
                 style:
                     FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               ),
@@ -328,8 +474,16 @@ class _SyntheseCard extends StatelessWidget {
   final double fonds;
   final double compense;
   final double net;
+
+  /// Ce que le fonds ne couvre pas et qui restera du apres l'arrete. Affiche
+  /// des qu'il est non nul : valider en ignorant ce qui reste a la charge du
+  /// chauffeur est precisement ce qu'il faut eviter.
+  final double reliquat;
   const _SyntheseCard(
-      {required this.fonds, required this.compense, required this.net});
+      {required this.fonds,
+      required this.compense,
+      required this.net,
+      required this.reliquat});
 
   @override
   Widget build(BuildContext context) {
@@ -345,6 +499,8 @@ class _SyntheseCard extends StatelessWidget {
           _ligne('Fonds sélectionné', fonds, AppColors.dark),
           const Divider(height: 18),
           _ligne('− Créances compensées', compense, Colors.orange.shade900),
+          if (reliquat > 0)
+            _ligne('Reste dû après arrêté', reliquat, Colors.red.shade900),
           const Divider(height: 18),
           _ligne('= Net à restituer', net, Colors.green.shade800, gras: true),
         ],
@@ -388,9 +544,16 @@ class _GroupeCard extends StatelessWidget {
     'CONTRAVENTION': 'Contravention',
   };
 
+  /// Ce qui distingue deux lignes du même type pour l'utilisateur : le jour que
+  /// le document couvre. L'identifiant ne sert plus que de repli, quand le
+  /// serveur n'a pas su résoudre la date.
+  static String _repere(LigneArrete l) =>
+      l.dateDocument != null ? fmtDate(l.dateDocument) : '#${l.documentId}';
+
   @override
   Widget build(BuildContext context) {
     final net = etat._netGroupe(groupe);
+    final parts = etat._allocations(groupe);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -427,7 +590,7 @@ class _GroupeCard extends StatelessWidget {
             _tuile(
               context,
               titre: 'Cotisation',
-              sousTitre: '#${l.documentId}',
+              sousTitre: _repere(l),
               montant: l.montant,
               couleurMontant: AppColors.dark,
               coche: etat._cotChoisie(l),
@@ -438,8 +601,11 @@ class _GroupeCard extends StatelessWidget {
             _tuile(
               context,
               titre: _libellesDoc[l.document] ?? l.document,
-              sousTitre: '#${l.documentId}',
-              montant: l.montant,
+              sousTitre: _repere(l),
+              montant: parts[_ArreteFormPageState._cleCreance(l)] ?? 0,
+              // Le dû n'est rappelé que lorsqu'il dépasse la part éteinte :
+              // sinon la créance est soldée et le répéter n'apprend rien.
+              reste: l.du - (parts[_ArreteFormPageState._cleCreance(l)] ?? 0),
               couleurMontant: Colors.orange.shade900,
               coche: etat._creChoisie(l),
               onChanged: (v) => etat.basculeCreance(l, v),
@@ -467,6 +633,7 @@ class _GroupeCard extends StatelessWidget {
     required Color couleurMontant,
     required bool coche,
     required ValueChanged<bool?> onChanged,
+    double reste = 0,
   }) {
     return InkWell(
       onTap: () => onChanged(!coche),
@@ -481,8 +648,18 @@ class _GroupeCard extends StatelessWidget {
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             Expanded(
-              child: Text('$titre  $sousTitre',
-                  style: const TextStyle(fontSize: 13, color: AppColors.dark)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$titre  $sousTitre',
+                      style:
+                          const TextStyle(fontSize: 13, color: AppColors.dark)),
+                  if (reste > 0)
+                    Text('reste ${CurrencyFormatter.format(reste)} dû',
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.red.shade900)),
+                ],
+              ),
             ),
             Text(CurrencyFormatter.format(montant),
                 style: TextStyle(

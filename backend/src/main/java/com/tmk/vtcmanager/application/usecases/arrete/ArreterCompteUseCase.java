@@ -40,6 +40,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * Exécute un arrêté de compte : fige le décompte, compense les créances par
@@ -75,7 +77,15 @@ public class ArreterCompteUseCase {
     private final CaisseClotureeGuard caisseClotureeGuard;
     private final CaisseCreditriceGuard caisseCreditriceGuard;
 
-    /** Arrêté total : toutes les cotisations et créances de la période. */
+    /**
+     * Arrêté total : toutes les cotisations et créances de la période.
+     *
+     * <p>Annotée elle aussi : sans cela, l'appel qu'elle délègue passe par
+     * {@code this} et non par le proxy, et la surcharge ci-dessous s'exécuterait
+     * hors transaction — une compensation échouée laisserait derrière elle des
+     * cotisations déjà marquées restituées.
+     */
+    @Transactional
     public ArreteCompte executer(PerimetreArrete perimetre, Long perimetreId,
                                  LocalDate periodeDebut, LocalDate periodeFin,
                                  LocalDate dateArrete, ModePaiement modePaiement,
@@ -96,10 +106,20 @@ public class ArreterCompteUseCase {
         LocalDate effetArrete = dateArrete != null ? dateArrete : LocalDate.now();
         periodeClotureeGuard.verifier(effetArrete);
 
+        // Deux arrêtés menés de front — l'un par chauffeur, l'autre par
+        // véhicule — voient la même créance ouverte et la compenseraient tous
+        // les deux. Rien ne marque une créance « en cours d'arrêté » : la seule
+        // protection est de les sérialiser. Ils sont rares, le coût est nul.
+        arreteCompteRepository.verrouillerExecution();
+
         List<DecompteBeneficiaire> decomptes =
-                calculerCompteCourantUseCase.calculer(perimetre, perimetreId, periodeDebut, periodeFin, selection);
+                calculerCompteCourantUseCase.calculer(perimetre, perimetreId, periodeDebut, periodeFin, selection)
+                        .stream()
+                        .filter(DecompteBeneficiaire::aMatiereAArreter)
+                        .toList();
         if (decomptes.isEmpty()) {
-            throw new IllegalArgumentException("Aucune cotisation ni créance à arrêter sur cette période.");
+            throw new IllegalArgumentException(
+                    "Aucune cotisation à restituer ni créance à compenser sur cette période.");
         }
 
         String reference = sequenceReferenceService.suivante(SequenceReferenceService.Journal.ARRETE);
@@ -107,8 +127,8 @@ public class ArreterCompteUseCase {
         ArreteCompte entete = arreteCompteRepository.enregistrerEntete(ArreteCompte.builder()
                 .perimetre(perimetre)
                 .perimetreId(perimetreId)
-                .periodeDebut(periodeDebut)
-                .periodeFin(periodeFin)
+                .periodeDebut(debutEffectif(decomptes, periodeDebut))
+                .periodeFin(finEffective(decomptes, periodeFin))
                 .dateArrete(effetArrete)
                 .reference(reference)
                 .statut(StatutArrete.VALIDE)
@@ -127,6 +147,7 @@ public class ArreterCompteUseCase {
                         .documentId(cot.getId())
                         .chauffeurId(cot.getChauffeurId())
                         .vehiculeId(cot.getVehiculeId())
+                        .dateDocument(cot.getDateCotisation())
                         .montant(cot.getMontantEncaisse())
                         .sens(SensArrete.CREDIT)
                         .build());
@@ -143,6 +164,7 @@ public class ArreterCompteUseCase {
                         .documentId(creance.getDocumentId())
                         .chauffeurId(d.getChauffeurId())
                         .vehiculeId(creance.getVehiculeId())
+                        .dateDocument(creance.getDateReference())
                         .montant(alloc.getMontant())
                         .sens(SensArrete.DEBIT)
                         .operationId(operationId)
@@ -259,6 +281,18 @@ public class ArreterCompteUseCase {
                                              String refArrete) {
         ModePaiement mode = modePaiement != null ? modePaiement : ModePaiement.ESPECES;
         Long compteId = compteTresorerieResolver.resoudre(compteTresorerieId, mode);
+        // Sans compte, l'écriture ne sortirait d'aucune caisse : le chauffeur
+        // repartirait avec l'argent sans que la trésorerie ne bouge, et les deux
+        // verrous ci-dessous — qui s'effacent devant un compte nul — laisseraient
+        // passer le versement en silence. Le résolveur tolère cette absence pour
+        // les écritures historiques ; un décaissement, non.
+        if (compteId == null) {
+            throw new IllegalStateException(
+                    "Aucun compte de trésorerie pour un versement en "
+                    + (mode == ModePaiement.ESPECES ? "espèces" : "mobile money")
+                    + " : désignez le compte à débiter, ou marquez-en un par défaut"
+                    + " pour ce mode de paiement.");
+        }
         // Seul ce versement sort de la caisse : c'est ici — et pas plus tôt —
         // qu'on vérifie qu'elle n'a pas déjà été comptée à cette date, et
         // qu'elle détient bien de quoi payer.
@@ -281,6 +315,30 @@ public class ArreterCompteUseCase {
                 .statut(StatutOperation.PAYE)
                 .build();
         return operationFinanciereRepository.save(op);
+    }
+
+    /**
+     * Période réellement couverte, resserrée sur les cotisations restituées.
+     *
+     * <p>L'utilisateur qui vide tout un compte courant demande « depuis
+     * toujours » : garder ses bornes telles quelles ferait figurer dans
+     * l'historique et sur le décompte PDF une période qui commence des années
+     * avant la première cotisation. On borne donc à ce qui a été arrêté, en
+     * gardant les bornes demandées quand rien ne permet de resserrer.
+     */
+    private LocalDate debutEffectif(List<DecompteBeneficiaire> decomptes, LocalDate demande) {
+        return datesCotisations(decomptes).min(LocalDate::compareTo).orElse(demande);
+    }
+
+    private LocalDate finEffective(List<DecompteBeneficiaire> decomptes, LocalDate demandee) {
+        return datesCotisations(decomptes).max(LocalDate::compareTo).orElse(demandee);
+    }
+
+    private Stream<LocalDate> datesCotisations(List<DecompteBeneficiaire> decomptes) {
+        return decomptes.stream()
+                .flatMap(d -> d.getCotisations().stream())
+                .map(LigneCotisation::getDateCotisation)
+                .filter(Objects::nonNull);
     }
 
     private Vehicule vehiculeRef(Long id) {

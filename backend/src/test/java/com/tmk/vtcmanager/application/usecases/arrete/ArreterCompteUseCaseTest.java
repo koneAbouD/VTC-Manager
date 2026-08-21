@@ -30,6 +30,7 @@ import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -39,6 +40,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -136,9 +138,13 @@ class ArreterCompteUseCaseTest {
     }
 
     private LigneCotisation cotisation(Long id, BigDecimal encaisse) {
+        return cotisation(id, LocalDate.of(2026, 6, 15), encaisse);
+    }
+
+    private LigneCotisation cotisation(Long id, LocalDate jour, BigDecimal encaisse) {
         return LigneCotisation.builder()
                 .id(id).vehiculeId(VEHICULE).chauffeurId(CHAUFFEUR)
-                .dateCotisation(LocalDate.of(2026, 6, 15)).nomCotisation("Entretien")
+                .dateCotisation(jour).nomCotisation("Entretien")
                 .montantDu(encaisse).montantEncaisse(encaisse)
                 .statut(StatutLigneCotisation.ENCAISSE).build();
     }
@@ -258,5 +264,73 @@ class ArreterCompteUseCaseTest {
         assertThat(r.getMontantNet()).isEqualByComparingTo("0");
         assertThat(r.getReliquatReporte()).isEqualByComparingTo("30");
         verify(ligneCotisationRepository).marquerRestituee(100L, 1L);
+    }
+
+    @Test
+    @DisplayName("Un versement sans compte de trésorerie est refusé")
+    void refuse_decaissement_sans_compte() {
+        when(ligneCotisationRepository.findByCriteres(any()))
+                .thenReturn(List.of(cotisation(BigDecimal.valueOf(100))));
+        // Aucun compte désigné, aucun compte par défaut pour le mode : le
+        // résolveur rend null. L'écriture sortirait alors d'aucune caisse.
+        when(compteTresorerieResolver.resoudre(any(), any())).thenReturn(null);
+
+        assertThatThrownBy(() -> useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("compte de trésorerie");
+
+        verify(operationFinanciereRepository, never()).save(any());
+        verify(arreteCompteRepository, never()).enregistrerReglements(any());
+    }
+
+    @Test
+    @DisplayName("Sans fonds ni compensation, l'arrêté est refusé plutôt qu'enregistré à vide")
+    void refuse_arrete_sans_matiere() {
+        // Cas du second arrêté lancé sur la même période : les cotisations sont
+        // déjà restituées, il ne reste que des créances qu'aucun fonds ne couvre.
+        when(ligneCotisationRepository.findByCriteres(any())).thenReturn(List.of());
+        when(creanceRepository.getLignesCreance(CHAUFFEUR))
+                .thenReturn(List.of(recette(200L, BigDecimal.valueOf(30))));
+
+        assertThatThrownBy(() -> useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(arreteCompteRepository, never()).enregistrerEntete(any());
+        verify(arreteCompteRepository, never()).enregistrerReglements(any());
+    }
+
+    @Test
+    @DisplayName("L'exécution prend le verrou qui la sérialise avec les autres arrêtés")
+    void verrouille_avant_de_calculer() {
+        when(ligneCotisationRepository.findByCriteres(any()))
+                .thenReturn(List.of(cotisation(BigDecimal.valueOf(100))));
+        when(compteTresorerieResolver.resoudre(any(), eq(ModePaiement.ESPECES))).thenReturn(5L);
+
+        useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null);
+
+        verify(arreteCompteRepository).verrouillerExecution();
+    }
+
+    @Test
+    @DisplayName("La période enregistrée se resserre sur les cotisations réellement restituées")
+    void periode_resserree_sur_les_cotisations() {
+        // L'utilisateur vide tout un compte courant : il demande « depuis
+        // toujours ». Ce qui est archivé doit rester lisible.
+        when(ligneCotisationRepository.findByCriteres(any())).thenReturn(List.of(
+                cotisation(100L, LocalDate.of(2026, 3, 4), BigDecimal.valueOf(60)),
+                cotisation(101L, LocalDate.of(2026, 5, 20), BigDecimal.valueOf(40))));
+        when(compteTresorerieResolver.resoudre(any(), eq(ModePaiement.ESPECES))).thenReturn(5L);
+
+        useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR,
+                LocalDate.of(2000, 1, 1), LocalDate.of(2026, 12, 31),
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null);
+
+        ArgumentCaptor<ArreteCompte> entete = ArgumentCaptor.forClass(ArreteCompte.class);
+        verify(arreteCompteRepository).enregistrerEntete(entete.capture());
+        assertThat(entete.getValue().getPeriodeDebut()).isEqualTo(LocalDate.of(2026, 3, 4));
+        assertThat(entete.getValue().getPeriodeFin()).isEqualTo(LocalDate.of(2026, 5, 20));
     }
 }

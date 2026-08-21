@@ -15,6 +15,7 @@ import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepositor
 import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
  * Annule un arrêté de compte (avec motif obligatoire) en contre-passant tous ses
  * effets : les décaissements et les opérations de compensation sont annulés, les
  * créances rouvertes (recalcul depuis les encaissements restants) et les
- * cotisations repassées de RESTITUEE à leur statut d'origine. Refusé si la
- * période de l'arrêté est clôturée.
+ * cotisations repassées de RESTITUEE à leur statut d'origine.
+ *
+ * <p>Refusé si la période de l'arrêté est clôturée, ou si la caisse qui a versé
+ * le net a été comptée depuis. Les écritures sont ici <b>neutralisées</b>
+ * (statut ANNULE) et non extournées : elles disparaissent des soldes à toute
+ * date, y compris avant le jour de l'annulation. C'est acceptable tant qu'aucun
+ * procès-verbal ne s'appuie dessus — d'où le verrou de caisse, sans lequel un
+ * relevé signé se retrouverait faux après coup, et sans écart visible nulle
+ * part pour le signaler.
  */
 @RequiredArgsConstructor
 public class AnnulerArreteUseCase {
@@ -38,6 +46,7 @@ public class AnnulerArreteUseCase {
     private final ContraventionRepository contraventionRepository;
     private final OperationFinanciereRepository operationFinanciereRepository;
     private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final CaisseClotureeGuard caisseClotureeGuard;
 
     @Transactional
     public ArreteCompte executer(Long arreteId, String motif) {
@@ -50,6 +59,17 @@ public class AnnulerArreteUseCase {
             throw new IllegalStateException("Cet arrêté est déjà annulé.");
         }
         periodeClotureeGuard.verifier(arrete.getDateArrete());
+        arreteCompteRepository.verrouillerExecution();
+
+        // Le versement a fait baisser une caisse. Le retirer maintenant la
+        // referait remonter au jour de l'arrêté, donc avant tout comptage
+        // postérieur : on vérifie d'abord qu'aucun relevé ne l'a déjà constaté.
+        // Contrôlé avant la moindre écriture — l'arrêté doit rester intact si
+        // le refus tombe.
+        arrete.getReglements().stream()
+                .filter(r -> r.getOperationDecaissementId() != null)
+                .forEach(r -> caisseClotureeGuard.verifier(
+                        r.getCompteTresorerieId(), arrete.getDateArrete()));
 
         // 1. Contre-passe les décaissements (« primes »).
         arrete.getReglements().forEach(r -> annulerOperation(r.getOperationDecaissementId()));

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * Photo figée d'un document pris en compte dans un arrêté : une cotisation
@@ -31,4 +32,20 @@ public class LigneArrete {
     private Long operationId;
     /** Immatriculation du véhicule de la ligne (résolue à la lecture ; null si non rattachée). */
     private String immatriculation;
+    /**
+     * Jour que le document couvre — date de recette, de cotisation, de faute ou
+     * d'infraction. C'est ce que l'utilisateur reconnaît d'une ligne, là où son
+     * identifiant technique ne lui dit rien. Résolue à la lecture depuis le
+     * document d'origine, comme l'immatriculation : rien n'est figé au snapshot,
+     * et la valeur reste nulle si le document a disparu.
+     */
+    private LocalDate dateDocument;
+    /**
+     * Ce que le document doit encore, indépendamment de la part que cet arrêté
+     * en éteint. Renseigné à l'aperçu seulement : sans lui, une recette de
+     * 10 000 couverte à 3 000 s'affiche « 3 000 » et laisse croire qu'elle est
+     * soldée. Null sur un arrêté enregistré — le snapshot fige ce qui a été
+     * fait, pas ce qui restait.
+     */
+    private BigDecimal restant;
 }

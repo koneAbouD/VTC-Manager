@@ -86,7 +86,7 @@ public class CalculerCompteCourantUseCase {
 
             DecompteBeneficiaire decompte = new DecompteBeneficiaire(
                     chauffeurId, nomChauffeur(chauffeurId, cotisations, creances),
-                    cotisations, fond, allocations, totalCompense, net, reliquat);
+                    cotisations, fond, creances, allocations, totalCompense, net, reliquat);
             if (decompte.estNonVide()) {
                 resultats.add(decompte);
             }
@@ -94,7 +94,15 @@ public class CalculerCompteCourantUseCase {
         return resultats;
     }
 
-    /** Aperçu non persisté : un ArreteCompte transient prêt à afficher. */
+    /**
+     * Aperçu non persisté : un ArreteCompte transient prêt à afficher.
+     *
+     * <p>Toutes les créances ouvertes y figurent, pas seulement celles que le
+     * fonds atteint : chaque ligne porte ce qu'elle éteint ({@code montant}) et
+     * ce qu'elle doit ({@code restant}). Ne montrer que les créances couvertes
+     * laissait l'utilisateur valider sans voir le reste dû, et lui interdisait
+     * d'arbitrer entre une vieille créance et une récente.
+     */
     public ArreteCompte construireApercu(PerimetreArrete perimetre, Long perimetreId,
                                          LocalDate debut, LocalDate fin) {
         List<DecompteBeneficiaire> decomptes = calculer(perimetre, perimetreId, debut, fin);
@@ -108,18 +116,20 @@ public class CalculerCompteCourantUseCase {
                         .documentId(cot.getId())
                         .chauffeurId(cot.getChauffeurId())
                         .vehiculeId(cot.getVehiculeId())
+                        .dateDocument(cot.getDateCotisation())
                         .montant(cot.getMontantEncaisse())
                         .sens(SensArrete.CREDIT)
                         .build());
             }
-            for (DecompteBeneficiaire.Allocation alloc : d.getAllocations()) {
-                LigneCreance c = alloc.getCreance();
+            for (LigneCreance c : d.getCreances()) {
                 lignes.add(LigneArrete.builder()
                         .document(c.getDocument())
                         .documentId(c.getDocumentId())
                         .chauffeurId(d.getChauffeurId())
                         .vehiculeId(c.getVehiculeId())
-                        .montant(alloc.getMontant())
+                        .dateDocument(c.getDateReference())
+                        .montant(d.montantCompense(c))
+                        .restant(c.getRestant())
                         .sens(SensArrete.DEBIT)
                         .build());
             }

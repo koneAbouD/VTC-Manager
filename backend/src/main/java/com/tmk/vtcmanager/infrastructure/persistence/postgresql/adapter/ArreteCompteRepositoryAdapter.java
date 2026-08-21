@@ -23,7 +23,23 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
 
+    /**
+     * Clé du verrou consultatif des arrêtés. Arbitraire, mais fixe : c'est elle
+     * seule qui fait que deux sessions parlent bien du même verrou.
+     */
+    private static final long CLE_VERROU_ARRETE = 774_213_905L;
+
     private final JdbcTemplate jdbcTemplate;
+
+    @Override
+    public void verrouillerExecution() {
+        // Consultatif et lié à la transaction : relâché au commit comme au
+        // rollback, sans table ni ligne à verrouiller — il n'existe aucun
+        // enregistrement qui représenterait « l'ensemble des créances ouvertes ».
+        // La fonction renvoie le type `void` de Postgres, qui ne se convertit en
+        // rien d'utile : on consomme le résultat sans chercher à le lire.
+        jdbcTemplate.query("SELECT pg_advisory_xact_lock(?)", rs -> null, CLE_VERROU_ARRETE);
+    }
 
     /** En-tête + libellé du périmètre : l'immatriculation quand l'arrêté porte sur un véhicule. */
     private static final String SELECT_ENTETE = """
@@ -55,6 +71,8 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
             .sens(SensArrete.valueOf(rs.getString("sens")))
             .operationId(rs.getObject("operation_id", Long.class))
             .immatriculation(rs.getString("immatriculation"))
+            .dateDocument(rs.getDate("date_document") != null
+                    ? rs.getDate("date_document").toLocalDate() : null)
             .build();
 
     private static final RowMapper<ReglementArrete> REGLEMENT_MAPPER = (rs, i) -> ReglementArrete.builder()
@@ -137,10 +155,26 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
         if (entetes.isEmpty()) return Optional.empty();
 
         ArreteCompte arrete = entetes.get(0);
+        // Le jour couvert par chaque document, joint depuis sa table d'origine :
+        // une seule des quatre jointures aboutit, celle du document_type de la
+        // ligne, donc le COALESCE ne choisit qu'entre des NULL et la bonne date.
+        // Le mapping reprend celui de v_creances_chauffeurs — même définition du
+        // « jour » d'une créance des deux côtés.
         arrete.setLignes(jdbcTemplate.query("""
-                SELECT la.*, v.immatriculation
+                SELECT la.*, v.immatriculation,
+                       COALESCE(lc.date_cotisation, lr.date_recette,
+                                lp.date_faute, lp.date_generation,
+                                ct.date_infraction) AS date_document
                 FROM lignes_arrete la
                 LEFT JOIN vehicules v ON v.id = la.vehicule_id
+                LEFT JOIN lignes_cotisation lc
+                       ON la.document_type = 'COTISATION' AND lc.id = la.document_id
+                LEFT JOIN lignes_recette lr
+                       ON la.document_type = 'RECETTE' AND lr.id = la.document_id
+                LEFT JOIN lignes_penalite lp
+                       ON la.document_type = 'PENALITE' AND lp.id = la.document_id
+                LEFT JOIN contraventions ct
+                       ON la.document_type = 'CONTRAVENTION' AND ct.id = la.document_id
                 WHERE la.arrete_id = ?
                 ORDER BY la.sens DESC, la.id
                 """, LIGNE_MAPPER, id));

@@ -43,7 +43,18 @@ class LigneArrete {
   final int? chauffeurId;
   final int? vehiculeId;
   final String? immatriculation;
+
+  /// Jour couvert par le document (recette, cotisation, faute, infraction) :
+  /// ce que l'utilisateur reconnaît de la ligne. Null si le serveur n'a pas pu
+  /// le résoudre — on retombe alors sur l'identifiant.
+  final DateTime? dateDocument;
+
+  /// Part que cet arrêté éteint.
   final double montant;
+
+  /// Ce que le document doit encore, indépendamment de cette part. Servi par
+  /// l'aperçu seulement : un arrêté enregistré ne fige que ce qui a été fait.
+  final double? restant;
   final String sens; // CREDIT | DEBIT
 
   const LigneArrete({
@@ -52,11 +63,17 @@ class LigneArrete {
     this.chauffeurId,
     this.vehiculeId,
     this.immatriculation,
+    this.dateDocument,
     required this.montant,
+    this.restant,
     required this.sens,
   });
 
   bool get estCredit => sens == 'CREDIT';
+
+  /// Le dû de la ligne. Hors aperçu le serveur ne l'envoie pas : le montant
+  /// figé est alors tout ce qu'on sait du document.
+  double get du => restant ?? montant;
 
   factory LigneArrete.fromJson(Map<String, dynamic> j) => LigneArrete(
         document: j['document'] ?? '',
@@ -64,7 +81,11 @@ class LigneArrete {
         chauffeurId: (j['chauffeurId'] as num?)?.toInt(),
         vehiculeId: (j['vehiculeId'] as num?)?.toInt(),
         immatriculation: j['immatriculation'] as String?,
+        dateDocument: j['dateDocument'] != null
+            ? DateTime.parse(j['dateDocument'] as String)
+            : null,
         montant: (j['montant'] as num?)?.toDouble() ?? 0,
+        restant: (j['restant'] as num?)?.toDouble(),
         sens: j['sens'] ?? '',
       );
 }

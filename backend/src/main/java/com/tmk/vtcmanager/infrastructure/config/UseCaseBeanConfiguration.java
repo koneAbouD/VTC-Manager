@@ -1454,11 +1454,13 @@ public class UseCaseBeanConfiguration {
             EncaissementPenaliteRepository encaissementPenaliteRepository,
             ContraventionRepository contraventionRepository,
             OperationFinanciereRepository operationFinanciereRepository,
-            PeriodeClotureeGuard periodeClotureeGuard) {
+            PeriodeClotureeGuard periodeClotureeGuard,
+            CaisseClotureeGuard caisseClotureeGuard) {
         return new AnnulerArreteUseCase(
                 arreteCompteRepository, ligneCotisationRepository, ligneRecetteRepository,
                 encaissementRepository, lignePenaliteRepository, encaissementPenaliteRepository,
-                contraventionRepository, operationFinanciereRepository, periodeClotureeGuard);
+                contraventionRepository, operationFinanciereRepository, periodeClotureeGuard,
+                caisseClotureeGuard);
     }
 
     @Bean

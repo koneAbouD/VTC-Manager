@@ -96,7 +96,10 @@ class _ComptesCourantsPageState extends ConsumerState<ComptesCourantsPage> {
       ),
     );
     if (fait == true) {
-      ref.invalidate(comptesCourantsProvider(_perimetre));
+      // Sans argument : un arrêté par chauffeur déplace aussi le solde du
+      // véhicule qu'il conduit, et l'axe qu'on n'affiche pas resterait faux
+      // jusqu'à la prochaine bascule.
+      ref.invalidate(comptesCourantsProvider);
     }
   }
 
@@ -203,13 +206,13 @@ class _CompteRow extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 19,
-              backgroundColor: AppColors.primaryTint,
+              backgroundColor: AppColors.headerButton,
               child: Icon(
                   parVehicule
                       ? Icons.directions_car_rounded
                       : Icons.person_rounded,
                   size: 18,
-                  color: AppColors.primaryDark),
+                  color: AppColors.label),
             ),
             const SizedBox(width: 12),
             Expanded(
