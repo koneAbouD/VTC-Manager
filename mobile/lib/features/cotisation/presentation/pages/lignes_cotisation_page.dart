@@ -11,6 +11,8 @@ import '../../domain/entities/ligne_cotisation_filtres.dart';
 import '../providers/ligne_cotisation_provider.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/widgets/encaissement_ligne_dialog.dart';
+import '../../../../core/widgets/encaissement_lot_dialog.dart';
+import '../../../../core/widgets/selection_lot_bar.dart';
 import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'ligne_cotisation_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
@@ -28,6 +30,12 @@ String _libelleVehiculeChauffeur(LigneCotisation ligne) {
   final nom = ligne.chauffeurNom;
   return (nom != null && nom.isNotEmpty) ? '$immat - $nom' : immat;
 }
+
+/// Reste dû d'une cotisation : ce que le serveur annonce, ou le calcul local
+/// quand il ne l'a pas fourni.
+double _restantCotisation(LigneCotisation ligne) =>
+    ligne.montantRestant ??
+    (ligne.montantDu - ligne.montantEncaisse).clamp(0, double.infinity).toDouble();
 
 // ── Page principale ────────────────────────────────────────────────────────
 
@@ -53,6 +61,12 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
   // ── Filtres serveur (statut + recherche) ───────────────────────────────
   StatutLigneCotisation? _statut;
   String _recherche = '';
+
+  // ── Sélection multiple, ouverte par un appui long sur une ligne ──────────
+  // Un chauffeur règle souvent plusieurs cotisations d'un même versement : on
+  // coche ce qu'il solde, et un seul aller-retour porte tout le lot.
+  bool _selectionMode = false;
+  final Set<int> _selectedIds = {};
 
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
@@ -282,6 +296,95 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
 
   // ── Génération ──────────────────────────────────────────────────────────
 
+  // ── Sélection multiple ────────────────────────────────────────────────────
+
+  /// Ne se cochent que les lignes encore ouvertes — en attente ou
+  /// partiellement encaissées — qui ont encore quelque chose à recevoir.
+  List<LigneCotisation> _selectionnables(List<LigneCotisation> lignes) => lignes
+      .where((l) => l.id != null && l.estActive && _restantCotisation(l) > 0)
+      .toList();
+
+  void _entrerSelection(int id) {
+    setState(() {
+      _selectionMode = true;
+      _selectedIds.add(id);
+    });
+  }
+
+  /// Quitte le mode sélection sans rien encaisser : croix de l'en-tête, croix
+  /// de la barre basse, ou geste retour du téléphone.
+  void _quitterSelection() {
+    setState(() {
+      _selectedIds.clear();
+      _selectionMode = false;
+    });
+  }
+
+  void _basculerSelection(int id, bool coche) {
+    setState(() {
+      if (coche) {
+        _selectedIds.add(id);
+      } else {
+        _selectedIds.remove(id);
+      }
+      // Plus rien de coché : on sort du mode, le tap rouvre les fiches.
+      if (_selectedIds.isEmpty) _selectionMode = false;
+    });
+  }
+
+  /// Encaissement de masse : un versement, plusieurs cotisations soldées, un
+  /// montant réglable créance par créance dans la feuille.
+  ///
+  /// Le lot ne touche **que** les cotisations : une ligne est plafonnée à son
+  /// propre reste dû, et la recette du même jour, même ouverte, s'encaisse
+  /// depuis sa liste ou sa fiche.
+  Future<void> _encaisserSelection(List<LigneCotisation> selection) async {
+    if (selection.isEmpty) return;
+
+    final repo    = ref.read(ligneCotisationRepositoryProvider);
+    final dateFmt = DateFormat('dd/MM/yyyy');
+
+    final ok = await showEncaissementLotDialog(
+      context,
+      titre:   'Encaisser ${selection.length} cotisation(s)',
+      couleur: const Color(0xFFE65100),
+      icone:   Icons.analytics_outlined,
+      lignes: [
+        for (final l in selection)
+          LigneLotEncaissable(
+            id:        l.id!,
+            titre:     _libelleVehiculeChauffeur(l),
+            sousTitre:
+                '${l.nomCotisation} du ${dateFmt.format(l.dateCotisation)}',
+            restant:   _restantCotisation(l),
+          ),
+      ],
+      onEncaisser: (saisie) async {
+        final resultat = await repo.createEncaissementsLot(
+          lignes: saisie.lignes,
+          modeEncaissement: saisie.mode == ModeEncaissementSaisie.mobileMoney
+              ? ModePaiementCotisation.mobileMoney
+              : ModePaiementCotisation.especes,
+          dateEncaissement: saisie.date,
+          reference:        saisie.reference,
+          commentaire:      saisie.commentaire,
+        );
+        return resultat.fold(
+          (f) => IssueLot.erreur(f.message),
+          IssueLot.depuis,
+        );
+      },
+    );
+
+    if (!mounted || ok != true) return;
+    setState(() {
+      _selectedIds.clear();
+      _selectionMode = false;
+    });
+    _load();
+    ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+  }
+
   Future<void> _openEncaisserDialog(LigneCotisation ligne) async {
     final repo   = ref.read(ligneCotisationRepositoryProvider);
     final result = await showEncaissementLigneDialog(
@@ -339,155 +442,217 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
     // mois de 300 lignes, les pastilles n'annonçaient que les 20 premières.
     final montantsStatut = ref.watch(totauxCotisationProvider).montantsDus;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── En-tête ────────────────────────────────────────────────
-            Container(
-              color: AppColors.header,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 56, height: 38,
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFF0F2F8),
-                          borderRadius: BorderRadius.circular(20)),
-                      child: const Icon(Icons.arrow_back_rounded,
-                          size: 18, color: Color(0xFF1A1A2E)),
+    // Sélection : ce qui est cochable à l'écran, et ce qui l'est réellement.
+    final selectionnables = _selectionnables(filtered);
+    final selection =
+        selectionnables.where((l) => _selectedIds.contains(l.id)).toList();
+    final totalSelection =
+        selection.fold<double>(0, (somme, l) => somme + _restantCotisation(l));
+
+    return PopScope(
+      // Le geste retour ferme d'abord la sélection : c'est ce qu'attend
+      // n'importe quelle liste multi-sélection sur Android.
+      canPop: !_selectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _quitterSelection();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FB),
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── En-tête ────────────────────────────────────────────────
+              Container(
+                color: AppColors.header,
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      // En sélection, ce bouton referme la sélection : quitter la
+                      // page d'un geste alors que des lignes sont cochées ferait
+                      // perdre le travail en cours.
+                      onTap: _selectionMode
+                          ? _quitterSelection
+                          : () => Navigator.pop(context),
+                      child: Container(
+                        width: 56, height: 38,
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFF0F2F8),
+                            borderRadius: BorderRadius.circular(20)),
+                        child: Icon(
+                            _selectionMode
+                                ? Icons.close_rounded
+                                : Icons.arrow_back_rounded,
+                            size: 18,
+                            color: const Color(0xFF1A1A2E)),
+                      ),
                     ),
-                  ),
-                  const Expanded(
-                    child: Text('Cotisations',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1A1A2E),
-                            letterSpacing: -0.3)),
-                  ),
-                  GestureDetector(
-                    onTap: _generer,
-                    child: Container(
-                      width: 56, height: 38,
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFF0F2F8),
-                          borderRadius: BorderRadius.circular(20)),
-                      child: const Icon(Icons.auto_awesome_rounded,
-                          size: 18, color: Color(0xFF1A1A2E)),
+                    const Expanded(
+                      child: Text('Cotisations',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1A1A2E),
+                              letterSpacing: -0.3)),
                     ),
-                  ),
-                ],
+                    GestureDetector(
+                      onTap: _generer,
+                      child: Container(
+                        width: 56, height: 38,
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFF0F2F8),
+                            borderRadius: BorderRadius.circular(20)),
+                        child: const Icon(Icons.auto_awesome_rounded,
+                            size: 18, color: Color(0xFF1A1A2E)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // ── Corps ──────────────────────────────────────────────────
-            Expanded(
-              child: state.initialLoading && state.items.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : (state.error != null && state.items.isEmpty)
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(state.error!,
-                                style: const TextStyle(color: Colors.red),
-                                textAlign: TextAlign.center),
-                          ))
-                      : RefreshIndicator(
-                          // Relit la liste ET les cumuls : ne rafraîchir que la
-                          // liste laisserait les pastilles sur les montants
-                          // d'avant le geste.
-                          onRefresh: () async {
-                            await ref
-                                .read(lignesCotisationListeProvider.notifier)
-                                .refresh();
-                            _chargerTotaux();
-                          },
-                          child: CustomScrollView(
-                            controller: _scrollController,
-                            slivers: [
-                              // ── Filtre date ──────────────────────────
-                              SliverToBoxAdapter(
-                                child: _FiltreDateBar(
-                                  mode: _filtreMode,
-                                  filtreKey: _filtreButtonKey,
-                                  onFiltrePressed: _showFiltreOverlay,
-                                  moisSelectionne: _moisSelectionne,
-                                  anneeSelectionnee: _anneeSelectionnee,
-                                  onPickMois: _pickMois,
-                                  semaineDebut: _semaineDebut,
-                                  onPickSemaine: _pickSemaine,
-                                  jourSelectionne: _jourSelectionne,
-                                  onPickJour: _pickJour,
-                                  periodeDebut: _periodeDebut,
-                                  periodeFin: _periodeFin,
-                                  onPickPeriode: _pickPeriode,
-                                ),
-                              ),
-
-                              // ── Recherche + Statut ───────────────────
-                              SliverToBoxAdapter(
-                                child: _SearchAndStatutBar(
-                                  controller: _searchController,
-                                  onSearchChanged: _onRechercheChanged,
-                                  statutSelectionne: _statut,
-                                  onStatutChanged: (s) {
-                                    setState(() => _statut = s);
-                                    _load();
-                                  },
-                                  montantsStatut: montantsStatut,
-                                  money: money,
-                                ),
-                              ),
-
-                              // ── Liste / vide / loader bas de page ────
-                              if (filtered.isEmpty)
-                                const SliverFillRemaining(
-                                    hasScrollBody: false,
-                                    child: _EmptyState())
-                              else
-                                SliverPadding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16, 10, 16, 24),
-                                  sliver: SliverList(
-                                    delegate: SliverChildBuilderDelegate(
-                                      (_, i) {
-                                        if (i >= filtered.length) {
-                                          return const PagedListLoadMoreTile();
-                                        }
-                                        final ligne = filtered[i];
-                                        return _LigneCotisationCard(
-                                          ligne: ligne,
-                                          money: money,
-                                          onTap: () => Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  LigneCotisationDetailPage(
-                                                      ligneId: ligne.id!),
-                                            ),
-                                          ).then((_) => _load()),
-                                          onEncaisser: ligne.estActive
-                                              ? () => _openEncaisserDialog(ligne)
-                                              : null,
-                                        );
-                                      },
-                                      childCount: filtered.length +
-                                          (state.hasMore ? 1 : 0),
-                                    ),
+              // ── Corps ──────────────────────────────────────────────────
+              Expanded(
+                child: state.initialLoading && state.items.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : (state.error != null && state.items.isEmpty)
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(state.error!,
+                                  style: const TextStyle(color: Colors.red),
+                                  textAlign: TextAlign.center),
+                            ))
+                        : RefreshIndicator(
+                            // Relit la liste ET les cumuls : ne rafraîchir que la
+                            // liste laisserait les pastilles sur les montants
+                            // d'avant le geste.
+                            onRefresh: () async {
+                              await ref
+                                  .read(lignesCotisationListeProvider.notifier)
+                                  .refresh();
+                              _chargerTotaux();
+                            },
+                            child: CustomScrollView(
+                              controller: _scrollController,
+                              slivers: [
+                                // ── Filtre date ──────────────────────────
+                                SliverToBoxAdapter(
+                                  child: _FiltreDateBar(
+                                    mode: _filtreMode,
+                                    filtreKey: _filtreButtonKey,
+                                    onFiltrePressed: _showFiltreOverlay,
+                                    moisSelectionne: _moisSelectionne,
+                                    anneeSelectionnee: _anneeSelectionnee,
+                                    onPickMois: _pickMois,
+                                    semaineDebut: _semaineDebut,
+                                    onPickSemaine: _pickSemaine,
+                                    jourSelectionne: _jourSelectionne,
+                                    onPickJour: _pickJour,
+                                    periodeDebut: _periodeDebut,
+                                    periodeFin: _periodeFin,
+                                    onPickPeriode: _pickPeriode,
                                   ),
                                 ),
-                            ],
+
+                                // ── Recherche + Statut ───────────────────
+                                SliverToBoxAdapter(
+                                  child: _SearchAndStatutBar(
+                                    controller: _searchController,
+                                    onSearchChanged: _onRechercheChanged,
+                                    statutSelectionne: _statut,
+                                    onStatutChanged: (s) {
+                                      setState(() => _statut = s);
+                                      _load();
+                                    },
+                                    montantsStatut: montantsStatut,
+                                    money: money,
+                                  ),
+                                ),
+
+                                // ── Liste / vide / loader bas de page ────
+                                if (filtered.isEmpty)
+                                  const SliverFillRemaining(
+                                      hasScrollBody: false,
+                                      child: _EmptyState())
+                                else
+                                  SliverPadding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 10, 16, 24),
+                                    sliver: SliverList(
+                                      delegate: SliverChildBuilderDelegate(
+                                        (_, i) {
+                                          if (i >= filtered.length) {
+                                            return const PagedListLoadMoreTile();
+                                          }
+                                          final ligne = filtered[i];
+                                          final cochable = ligne.id != null &&
+                                              ligne.estActive &&
+                                              _restantCotisation(ligne) > 0;
+                                          final coche =
+                                              _selectedIds.contains(ligne.id);
+                                          return _LigneCotisationCard(
+                                            ligne: ligne,
+                                            money: money,
+                                            selectionMode: _selectionMode,
+                                            cochable: cochable,
+                                            coche: coche,
+                                            onTap: _selectionMode
+                                                ? (cochable
+                                                    ? () => _basculerSelection(
+                                                        ligne.id!, !coche)
+                                                    : null)
+                                                : () => Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            LigneCotisationDetailPage(
+                                                                ligneId:
+                                                                    ligne.id!),
+                                                      ),
+                                                    ).then((_) => _load()),
+                                            // L'appui long ouvre le mode
+                                            // sélection, sur les seules lignes
+                                            // encaissables.
+                                            onLongPress:
+                                                (!_selectionMode && cochable)
+                                                    ? () => _entrerSelection(
+                                                        ligne.id!)
+                                                    : null,
+                                            onCoche: cochable
+                                                ? (v) => _basculerSelection(
+                                                    ligne.id!, v ?? false)
+                                                : null,
+                                            onEncaisser: (!_selectionMode &&
+                                                    ligne.estActive)
+                                                ? () => _openEncaisserDialog(ligne)
+                                                : null,
+                                          );
+                                        },
+                                        childCount: filtered.length +
+                                            (state.hasMore ? 1 : 0),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-            ),
-          ],
+              ),
+
+              // Sous l'Expanded, jamais en bottomNavigationBar : cette page est
+              // un Scaffold imbriqué, la barre y écraserait la liste.
+              if (selection.isNotEmpty)
+                SelectionActionBar(
+                  count: selection.length,
+                  total: totalSelection,
+                  busy: false,
+                  onEncaisser: () => _encaisserSelection(selection),
+                  onAnnuler: _quitterSelection,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -822,34 +987,51 @@ class _Chip extends StatelessWidget {
 class _LigneCotisationCard extends StatelessWidget {
   final LigneCotisation ligne;
   final NumberFormat  money;
-  final VoidCallback  onTap;
+
+  /// `null` quand la carte n'est pas actionnable — en mode sélection, une ligne
+  /// soldée ou annulée ne se coche pas.
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final VoidCallback? onEncaisser;
+
+  // ── Sélection multiple ────────────────────────────────────────────────────
+  final bool selectionMode;
+  final bool cochable;
+  final bool coche;
+  final ValueChanged<bool?>? onCoche;
+
   const _LigneCotisationCard({
     required this.ligne,
     required this.money,
     required this.onTap,
+    this.onLongPress,
     this.onEncaisser,
+    this.selectionMode = false,
+    this.cochable = false,
+    this.coche = false,
+    this.onCoche,
   });
 
   @override
   Widget build(BuildContext context) {
     final color   = _couleur(ligne.statut);
-    final restant = ligne.montantRestant ??
-        (ligne.montantDu - ligne.montantEncaisse)
-            .clamp(0, double.infinity)
-            .toDouble();
+    final restant = _restantCotisation(ligne);
     // Toujours ce qui manque, encaissement partiel compris : c'est le reste à
     // recouvrer qui appelle une action. Le total est rappelé juste en dessous.
     final montantPrincipal = restant;
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: coche
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.55))
+              : null,
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
@@ -860,6 +1042,24 @@ class _LigneCotisationCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Case de sélection : seules les lignes encaissables en portent une,
+            // les autres gardent leur place pour que la liste ne se décale pas.
+            if (selectionMode) ...[
+              SizedBox(
+                width: 22,
+                height: 40,
+                child: cochable
+                    ? Center(
+                        child: SelectionCheckbox(
+                          value: coche,
+                          onChanged: onCoche ?? (_) {},
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+            ],
+
             Container(
               width: 40, height: 40,
               decoration: BoxDecoration(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'long_press_info_bubble.dart';
 
 /// Briques d'une page de détail « à la maintenance » : une carte d'en-tête qui
 /// nomme l'objet et son statut, puis une carte unique où les couples
@@ -142,6 +143,116 @@ class DetailInfoRow extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: AppColors.dark),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Variante actionnable de [DetailInfoRow] : la ligne reste en tout point
+/// identique aux autres — même icône, même libellé, mêmes mesures — et seule
+/// **la valeur** répond au toucher. Le libellé n'est pas un bouton : c'est le
+/// nom du chauffeur qu'on va changer, pas le mot « Chauffeur ».
+///
+/// L'affordance tient à un rien : un chevron suit la valeur. Le nom, lui, garde
+/// le noir des autres rubriques — le teinter le faisait lire comme autre chose
+/// qu'une donnée de la fiche.
+///
+/// Quand [verrouille] est vrai, le chevron cède la place à un cadenas et le tap
+/// n'ouvre rien : un appui
+/// prolongé montre [motifVerrou] dans une bulle. Dire pourquoi c'est fermé vaut
+/// mieux que retirer l'indice, qui laisserait chercher.
+class DetailInfoRowAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+  final VoidCallback onTap;
+
+  /// Teinte du chevron — le seul indice que la valeur est modifiable.
+  /// Défaut : le vert de la charte.
+  final Color accent;
+
+  final bool verrouille;
+  final String? motifVerrou;
+
+  const DetailInfoRowAction(
+    this.icon,
+    this.label,
+    this.value, {
+    super.key,
+    required this.onTap,
+    this.accent = AppColors.primaryDark,
+    this.verrouille = false,
+    this.motifVerrou,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (value == null || value!.isEmpty) return const SizedBox.shrink();
+
+    // La valeur et son indice, réunis : c'est la seule zone qui réagit.
+    Widget valeur = Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            value!,
+            textAlign: TextAlign.end,
+            // Le noir des autres valeurs, verrouillée ou non : la teinte
+            // signalait l'action, mais elle faisait aussi lire le nom comme
+            // autre chose qu'une donnée de la fiche. Le chevron suffit à dire
+            // qu'on peut le toucher.
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.dark),
+          ),
+        ),
+        const SizedBox(width: 3),
+        Icon(
+          verrouille ? Icons.lock_outline_rounded : Icons.chevron_right_rounded,
+          size: verrouille ? 12 : 15,
+          color: verrouille ? AppColors.hint : accent,
+        ),
+      ],
+    );
+
+    // Aucun retrait autour de la zone tactile : la valeur doit rester sur la
+    // même ligne de base que celles des rubriques voisines. La cible fait la
+    // hauteur du texte et la largeur du nom — celle d'un lien dans une phrase.
+    valeur = verrouille
+        ? LongPressInfoBubble(
+            infoText: motifVerrou ?? 'Cette valeur ne peut plus être modifiée.',
+            color: AppColors.warning,
+            child: valeur,
+          )
+        : Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: onTap,
+              child: valeur,
+            ),
+          );
+
+    // À partir d'ici, mesures strictement identiques à [DetailInfoRow].
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 15, color: AppColors.label),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: Text(label,
+                style: const TextStyle(fontSize: 13, color: AppColors.label)),
+          ),
+          Expanded(
+            flex: 3,
+            child: Align(alignment: Alignment.centerRight, child: valeur),
           ),
         ],
       ),

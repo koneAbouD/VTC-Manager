@@ -35,6 +35,15 @@ public interface LigneCotisationRepository {
 
     Optional<LigneCotisation> findActiveByChauffeurIdAndDate(Long chauffeurId, LocalDate date);
 
+    /** Cf. {@link LigneRecetteRepository#findByChauffeurIdAndDateRecette} : tous statuts. */
+    List<LigneCotisation> findByChauffeurIdAndDateCotisation(Long chauffeurId, LocalDate date);
+
+    /** Cf. {@link LigneRecetteRepository#findByDateRecette} : la journée entière, en une requête. */
+    List<LigneCotisation> findByDateCotisation(LocalDate date);
+
+    /** Change le titulaire du dépôt. Ni montant ni statut ne bougent. */
+    void reaffecterChauffeur(Long ligneId, Long chauffeurId);
+
     void updateStatutAndMontantEncaisse(Long id, StatutLigneCotisation statut, BigDecimal montantEncaisse);
 
     /** Recalcule montant_encaisse + statut de la ligne depuis ses encaissements (source de vérité). */

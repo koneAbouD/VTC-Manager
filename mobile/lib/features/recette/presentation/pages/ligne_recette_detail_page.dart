@@ -12,7 +12,9 @@ import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/confirmation_restauration_dialog.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
+import '../../../../core/widgets/reaffectation_chauffeur_sheet.dart';
 import '../../../../screens/finance/finance_refresh.dart';
+import '../../../../screens/finance/ligne_jumelle_encaissement.dart';
 
 class LigneRecetteDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -107,8 +109,16 @@ class _DetailBody extends ConsumerWidget {
               dateFmt.format(ligne.dateRecette)),
           DetailInfoRow(Icons.directions_car_filled_rounded, 'Véhicule',
               ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}'),
-          DetailInfoRow(
-              Icons.person_outline_rounded, 'Chauffeur', ligne.chauffeurNom),
+          // Le chauffeur est la seule valeur modifiable de la fiche : elle porte
+          // donc son affordance, plutôt qu'un bouton de plus dans le corps.
+          DetailInfoRowAction(
+            Icons.person_outline_rounded,
+            'Chauffeur',
+            ligne.chauffeurNom ?? 'Chauffeur #${ligne.chauffeurId}',
+            verrouille: !ligne.reaffectable,
+            motifVerrou: ligne.motifNonReaffectable,
+            onTap: () => _reaffecter(context, ref),
+          ),
           DetailInfoRow(
               Icons.payments_outlined,
               'Attendu',
@@ -173,6 +183,11 @@ class _DetailBody extends ConsumerWidget {
     final immat = ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}';
     final nom = ligne.chauffeurNom;
 
+    // Le même versement solde souvent la cotisation du jour : si elle est
+    // encore ouverte, la feuille la propose à cocher.
+    final jumelle = await chercherCotisationDuMemeJour(ref, ligne);
+    if (!context.mounted) return;
+
     final refreshed = await showEncaissementLigneDialog(
       context,
       titre:          'Recette',
@@ -180,6 +195,7 @@ class _DetailBody extends ConsumerWidget {
       montantRestant: ligne.montantRestant,
       couleur:        const Color(0xFF2E7D32),
       icone:          Icons.account_balance_wallet_outlined,
+      jumelle:        jumelle,
       onEncaisser: (saisie) async {
         final enc = Encaissement(
           ligneRecetteId:   ligne.id!,
@@ -198,6 +214,62 @@ class _DetailBody extends ConsumerWidget {
     if (refreshed == true) {
       ref.invalidate(ligneRecetteDetailProvider(ligneId));
       refreshFinances(ref);
+    }
+  }
+
+  /// Porte la recette au compte d'un autre chauffeur. Rien ne bouge des
+  /// montants : c'est le débiteur qui change, et avec lui les écritures
+  /// d'encaissement et la pénalité de recette non versée qui s'y adosse.
+  Future<void> _reaffecter(BuildContext context, WidgetRef ref) async {
+    final repo = ref.read(ligneRecetteRepositoryProvider);
+    final fmt = NumberFormat.currency(
+        locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
+    final immat =
+        ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}';
+    final dateFmt = DateFormat('dd/MM/yyyy');
+    final du = ligne.montantAttendu ?? ligne.montantEncaisse;
+
+    final ok = await showReaffectationChauffeurSheet(
+      context,
+      titre: 'Réaffecter la recette',
+      sousTitre:
+          '$immat · ${dateFmt.format(ligne.dateRecette)} · ${fmt.format(du)}',
+      chauffeurActuel: ligne.chauffeurNom ?? 'Chauffeur #${ligne.chauffeurId}',
+      // Le serveur juge chaque chauffeur et compte les impacts : l'écran ne
+      // recalcule rien, et n'annonce plus une pénalité qui n'existe pas.
+      chargerApercu: () async {
+        final res = await repo.getApercuReaffectation(ligneId);
+        return res.fold((f) => throw Exception(f.message), (apercu) => apercu);
+      },
+      decrireImpacts: (impacts, choisi) => [
+        ImpactReaffectation('La créance de ${fmt.format(impacts.montantCreance)} '
+            'passe au compte de ${choisi.nom}.'),
+        if (impacts.encaissementsRattaches > 0)
+          ImpactReaffectation(
+              '${impacts.encaissementsRattaches} encaissement'
+              '${impacts.encaissementsRattaches > 1 ? 's' : ''} '
+              '(${fmt.format(impacts.montantEncaisse)}) lui '
+              '${impacts.encaissementsRattaches > 1 ? 'sont' : 'est'} '
+              'rattaché${impacts.encaissementsRattaches > 1 ? 's' : ''} au journal.'),
+        if (impacts.penalitesQuiSuivent > 0)
+          ImpactReaffectation(
+              '${impacts.penalitesQuiSuivent} pénalité'
+              '${impacts.penalitesQuiSuivent > 1 ? 's' : ''} « recette non versée » '
+              '(${fmt.format(impacts.montantPenalites)}) bascule'
+              '${impacts.penalitesQuiSuivent > 1 ? 'nt' : ''} aussi.',
+              secondaire: true),
+      ],
+      onReaffecter: (choisi, motif) async {
+        final r = await repo.reaffecterChauffeur(ligneId, choisi.id, motif);
+        return r.fold((f) => f.message, (_) => null);
+      },
+    );
+
+    if (ok == true && context.mounted) {
+      ref.invalidate(ligneRecetteDetailProvider(ligneId));
+      refreshFinances(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Recette réaffectée')));
     }
   }
 

@@ -12,7 +12,9 @@ import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/confirmation_restauration_dialog.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
+import '../../../../core/widgets/reaffectation_chauffeur_sheet.dart';
 import '../../../../screens/finance/finance_refresh.dart';
+import '../../../../screens/finance/ligne_jumelle_encaissement.dart';
 
 class LigneCotisationDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -107,8 +109,17 @@ class _Body extends ConsumerWidget {
             dateFmt.format(ligne.dateCotisation)),
         DetailInfoRow(Icons.directions_car_filled_rounded, 'Véhicule',
             ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}'),
-        DetailInfoRow(
-            Icons.person_outline_rounded, 'Chauffeur', ligne.chauffeurNom),
+        // Cf. la fiche recette : la valeur porte son affordance, et un cadenas
+        // remplace le chevron dès qu'un arrêté a figé le dépôt.
+        DetailInfoRowAction(
+          Icons.person_outline_rounded,
+          'Chauffeur',
+          ligne.chauffeurNom ?? 'Chauffeur #${ligne.chauffeurId}',
+          accent: const Color(0xFFE65100),
+          verrouille: !ligne.reaffectable,
+          motifVerrou: ligne.motifNonReaffectable,
+          onTap: () => _reaffecter(context, ref),
+        ),
         DetailInfoRow(Icons.payments_outlined, 'Dû', fmt.format(ligne.montantDu)),
         DetailInfoRow(Icons.check_circle_outline_rounded, 'Encaissé',
             fmt.format(ligne.montantEncaisse)),
@@ -160,6 +171,11 @@ class _Body extends ConsumerWidget {
     final immat = ligne.vehiculeImmatriculation ?? 'Véhicule ${ligne.vehiculeId}';
     final nom = ligne.chauffeurNom;
 
+    // Le même versement solde souvent la recette du jour : si elle est encore
+    // ouverte, la feuille la propose à cocher.
+    final jumelle = await chercherRecetteDuMemeJour(ref, ligne);
+    if (!context.mounted) return;
+
     final ok = await showEncaissementLigneDialog(
       context,
       titre:     ligne.nomCotisation,
@@ -168,6 +184,7 @@ class _Body extends ConsumerWidget {
           (ligne.montantDu - ligne.montantEncaisse),
       couleur: const Color(0xFFE65100),
       icone:   Icons.analytics_outlined,
+      jumelle: jumelle,
       onEncaisser: (saisie) async {
         final enc = EncaissementCotisation(
           ligneCotisationId: ligne.id!,
@@ -186,6 +203,51 @@ class _Body extends ConsumerWidget {
     if (ok == true) {
       ref.invalidate(ligneCotisationDetailProvider(ligneId));
       refreshFinances(ref);
+    }
+  }
+
+  /// Porte la cotisation au compte d'un autre chauffeur. Une cotisation
+  /// encaissée est un dépôt détenu pour lui : c'est son titulaire qui change,
+  /// et le serveur refuse dès qu'un arrêté en a rendu tout ou partie.
+  Future<void> _reaffecter(BuildContext context, WidgetRef ref) async {
+    final repo = ref.read(ligneCotisationRepositoryProvider);
+    final fmt = NumberFormat.currency(
+        locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
+    final dateFmt = DateFormat('dd/MM/yyyy');
+    final immat =
+        ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}';
+
+    final ok = await showReaffectationChauffeurSheet(
+      context,
+      titre: 'Réaffecter la cotisation',
+      sousTitre: '${ligne.nomCotisation} · $immat · '
+          '${dateFmt.format(ligne.dateCotisation)}',
+      chauffeurActuel: ligne.chauffeurNom ?? 'Chauffeur #${ligne.chauffeurId}',
+      accent: const Color(0xFFE65100),
+      // Cf. la fiche recette : c'est le serveur qui juge et qui compte.
+      chargerApercu: () async {
+        final res = await repo.getApercuReaffectation(ligneId);
+        return res.fold((f) => throw Exception(f.message), (apercu) => apercu);
+      },
+      decrireImpacts: (impacts, choisi) => [
+        ImpactReaffectation('La cotisation « ${ligne.nomCotisation} » de '
+            '${fmt.format(impacts.montantCreance)} passe au compte de ${choisi.nom}.'),
+        if (impacts.montantEncaisse > 0)
+          ImpactReaffectation(
+              'Le dépôt déjà versé (${fmt.format(impacts.montantEncaisse)}) devient le sien : '
+              "c'est à lui qu'un arrêté le restituera."),
+      ],
+      onReaffecter: (choisi, motif) async {
+        final r = await repo.reaffecterChauffeur(ligneId, choisi.id, motif);
+        return r.fold((f) => f.message, (_) => null);
+      },
+    );
+
+    if (ok == true && context.mounted) {
+      ref.invalidate(ligneCotisationDetailProvider(ligneId));
+      refreshFinances(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cotisation réaffectée')));
     }
   }
 

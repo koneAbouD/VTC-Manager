@@ -184,4 +184,17 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
     public void updateFinImmobilisation(Long id, StatutLignePenalite statut, LocalDateTime dateFin) {
         jpaRepository.updateFinImmobilisation(id, statut, dateFin);
     }
+
+    @Override
+    public List<LignePenalite> findByLigneRecetteId(Long ligneRecetteId) {
+        return jpaRepository.findByLigneRecetteId(ligneRecetteId).stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void reaffecterChauffeur(Long id, Long chauffeurId) {
+        jpaRepository.reaffecterChauffeur(id, chauffeurId);
+    }
 }

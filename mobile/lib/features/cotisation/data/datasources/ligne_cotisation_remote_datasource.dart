@@ -4,6 +4,8 @@ import '../../../../core/network/page_result.dart';
 import '../models/encaissement_cotisation_model.dart';
 import '../models/ligne_cotisation_model.dart';
 import '../../domain/entities/totaux_cotisation.dart';
+import '../../../../core/models/apercu_reaffectation.dart';
+import '../../../../core/models/encaissement_lot.dart';
 
 class LigneCotisationRemoteDatasource {
   final ApiClient _client;
@@ -95,8 +97,44 @@ class LigneCotisationRemoteDatasource {
     return EncaissementCotisationModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Encaissement de masse : un seul aller-retour pour tout le lot. Le serveur
+  /// répond toujours 200 et rend son verdict ligne par ligne.
+  Future<ResultatEncaissementLot> createEncaissementsLot({
+    required List<MontantLigne> lignes,
+    required String modeEncaissement,
+    required DateTime dateEncaissement,
+    String? reference,
+    String? commentaire,
+  }) async {
+    final data = await _client.post('/cotisations/lignes/encaissements-lot', {
+      'lignes': lignes.map((l) => l.toJson()).toList(),
+      'modeEncaissement': modeEncaissement,
+      'dateEncaissement': dateEncaissement.toIso8601String().substring(0, 10),
+      if (reference != null) 'reference': reference,
+      if (commentaire != null) 'commentaire': commentaire,
+    });
+    return ResultatEncaissementLot.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<LigneCotisationModel> annuler(int id, String motif) async {
     final data = await _client.patch('/cotisations/lignes/$id/annuler', {'motif': motif});
+    return LigneCotisationModel.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Qui peut reprendre la ligne, et ce que le déplacement entraînera. Le
+  /// serveur juge chaque chauffeur : l'écran n'a rien à recalculer.
+  Future<ApercuReaffectation> getApercuReaffectation(int id) async {
+    final data = await _client.get('/cotisations/lignes/$id/chauffeurs-eligibles');
+    return ApercuReaffectation.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Porte la ligne au compte d'un autre chauffeur. Le motif est obligatoire :
+  /// le serveur refuse une réaffectation qui ne s'explique pas.
+  Future<LigneCotisationModel> reaffecterChauffeur(int id, int chauffeurId, String motif) async {
+    final data = await _client.patch('/cotisations/lignes/$id/chauffeur', {
+      'chauffeurId': chauffeurId,
+      'motif': motif,
+    });
     return LigneCotisationModel.fromJson(data as Map<String, dynamic>);
   }
 

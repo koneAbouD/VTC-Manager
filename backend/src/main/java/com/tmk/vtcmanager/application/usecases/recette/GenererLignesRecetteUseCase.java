@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.ports.persistence.JourFerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
+import com.tmk.vtcmanager.application.services.SignalementCoherenceGenerationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class GenererLignesRecetteUseCase {
     private final IndisponibiliteSubstitutionService indisponibiliteSubstitutionService;
     private final IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
     private final JourFerieRepository jourFerieRepository;
+    private final SignalementCoherenceGenerationService signalementCoherenceGenerationService;
 
     @Transactional
     public List<LigneRecette> executer(LocalDate date) {
@@ -123,6 +125,12 @@ public class GenererLignesRecetteUseCase {
                         programme.getVehiculeId(), chauffeurId, date, montantAttendu);
             }
         }
+
+        // La boucle sert les véhicules un par un : rien ne l'empêche de servir
+        // deux fois le même conducteur — un titulaire qui remplace un collègue
+        // absent garde son propre programme. On ne bloque pas (une recette non
+        // créée est de l'argent que personne ne réclame), on signale.
+        signalementCoherenceGenerationService.controler(date);
 
         return generees;
     }

@@ -9,6 +9,7 @@ import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedExceptio
 import com.tmk.vtcmanager.application.exception.ClotureCaisseDejaEffectueeException;
 import com.tmk.vtcmanager.application.exception.MotifEcartObligatoireException;
 import com.tmk.vtcmanager.application.exception.PeriodeClotureeException;
+import com.tmk.vtcmanager.application.exception.ReaffectationImpossibleException;
 import com.tmk.vtcmanager.application.exception.PeriodeNonCloturableException;
 import com.tmk.vtcmanager.application.exception.ChauffeurPermisExpireException;
 import com.tmk.vtcmanager.application.exception.ChauffeurSuspenduException;
@@ -277,6 +278,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handlePeriodeNonCloturable(PeriodeNonCloturableException ex, HttpServletRequest request) {
         return respond(HttpStatus.CONFLICT, ex.getMotif().name(), ex.getMessage(), request,
                 ex.getObstacles().isEmpty() ? null : ex.getObstacles(), ex);
+    }
+
+    /**
+     * Réaffectation refusée pour une raison métier — arrêté, ligne annulée,
+     * paiement en vol, chauffeur déjà pris ailleurs ce jour-là. Le message porte
+     * l'explication ; le client l'affiche tel quel.
+     */
+    @ExceptionHandler(ReaffectationImpossibleException.class)
+    public ResponseEntity<ApiError> handleReaffectationImpossible(
+            ReaffectationImpossibleException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "REAFFECTATION_IMPOSSIBLE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(EcritureFigeeException.class)

@@ -21,6 +21,8 @@ public interface LigneRecettePersistenceMapper {
     @Mapping(target = "encaissements", source = "encaissements")
     // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
     @Mapping(target = "restaurable", ignore = true)
+    @Mapping(target = "reaffectable", ignore = true)
+    @Mapping(target = "motifNonReaffectable", ignore = true)
     LigneRecette toDomain(LigneRecetteEntity entity);
 
     List<LigneRecette> toDomainList(List<LigneRecetteEntity> entities);

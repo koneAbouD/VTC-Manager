@@ -139,4 +139,14 @@ public interface LignePenaliteJpaRepository
             @Param("id") Long id,
             @Param("statut") StatutLignePenalite statut,
             @Param("dateFin") LocalDateTime dateFin);
+
+    /** Pénalités adossées à une recette (RECETTE_NON_VERSEE), tous statuts. */
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    List<LignePenaliteEntity> findByLigneRecetteId(Long ligneRecetteId);
+
+    /** Suit la recette qui vient de changer de débiteur. Cf. LigneRecetteJpaRepository. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE lignes_penalite SET chauffeur_id = :chauffeurId, updated_at = now()"
+            + " WHERE id = :id", nativeQuery = true)
+    void reaffecterChauffeur(@Param("id") Long id, @Param("chauffeurId") Long chauffeurId);
 }

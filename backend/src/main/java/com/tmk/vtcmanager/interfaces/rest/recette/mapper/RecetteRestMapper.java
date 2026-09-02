@@ -1,8 +1,12 @@
 package com.tmk.vtcmanager.interfaces.rest.recette.mapper;
 
+import com.tmk.vtcmanager.application.domain.encaissement.MontantParLigne;
+import com.tmk.vtcmanager.application.domain.encaissement.ResultatEncaissementLot;
 import com.tmk.vtcmanager.application.domain.recette.Encaissement;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
+import com.tmk.vtcmanager.interfaces.rest.recette.dto.request.EncaissementLotRequest;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.request.EncaissementRequest;
+import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.EncaissementLotResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.EncaissementResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.LigneRecetteResponse;
 import org.mapstruct.Mapper;
@@ -31,6 +35,22 @@ public interface RecetteRestMapper {
     LigneRecetteResponse toResponse(LigneRecette ligne);
 
     List<LigneRecetteResponse> toResponseList(List<LigneRecette> lignes);
+
+    // ── Encaissement de masse ────────────────────────────────────────────
+
+    List<MontantParLigne> toMontants(List<EncaissementLotRequest.LigneMontantRequest> lignes);
+
+    EncaissementLotResponse.ResultatLigneResponse toResponse(ResultatEncaissementLot resultat);
+
+    List<EncaissementLotResponse.ResultatLigneResponse> toResultatList(
+            List<ResultatEncaissementLot> resultats);
+
+    /** Compte les verdicts au passage : l'écran affiche « n encaissées, m en échec ». */
+    default EncaissementLotResponse toLotResponse(List<ResultatEncaissementLot> resultats) {
+        int reussis = (int) resultats.stream().filter(ResultatEncaissementLot::succes).count();
+        return new EncaissementLotResponse(reussis, resultats.size() - reussis,
+                toResultatList(resultats));
+    }
 
     default BigDecimal computeMontantRestant(LigneRecette ligne) {
         if (ligne.getMontantAttendu() == null) return null;

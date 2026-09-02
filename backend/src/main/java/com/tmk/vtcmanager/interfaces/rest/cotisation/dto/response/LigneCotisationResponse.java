@@ -25,5 +25,13 @@ public record LigneCotisationResponse(
          * désormais de restaurer cet élément annulé. Le client masque alors
          * l'action « Restaurer », qui n'aboutirait pas.
          */
-        Boolean restaurable
+        Boolean restaurable,
+        /**
+         * Faux si la ligne ne peut plus changer de débiteur : un arrêté de compte
+         * l'a consignée, les livres du jour sont fermés, un paiement est en vol,
+         * ou elle est annulée. Le client rend alors le chauffeur non modifiable.
+         */
+        Boolean reaffectable,
+        /** Ce qui ferme la réaffectation, en français. Null quand elle est ouverte. */
+        String motifNonReaffectable
 ) {}

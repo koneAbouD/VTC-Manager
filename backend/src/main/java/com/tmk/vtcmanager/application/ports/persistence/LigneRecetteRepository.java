@@ -29,6 +29,24 @@ public interface LigneRecetteRepository {
 
     Optional<LigneRecette> findActiveByChauffeurIdAndDate(Long chauffeurId, LocalDate date);
 
+    /**
+     * Toutes les lignes d'un chauffeur ce jour-là, <b>quel que soit leur
+     * statut</b> : les vivantes disent sur quel véhicule il roulait, les
+     * annulées signalent le doublon que la contrainte d'unicité refuserait.
+     */
+    List<LigneRecette> findByChauffeurIdAndDateRecette(Long chauffeurId, LocalDate date);
+
+    /**
+     * Toutes les lignes d'une journée, tous chauffeurs et tous statuts. Juger
+     * trente candidats un par un coûterait soixante requêtes ; on lit la journée
+     * une fois et chacun se juge en mémoire — comme
+     * {@code VerrouArreteService.Verrous} le fait déjà pour les arrêtés.
+     */
+    List<LigneRecette> findByDateRecette(LocalDate date);
+
+    /** Change le débiteur de la ligne. Ni montant ni statut ne bougent. */
+    void reaffecterChauffeur(Long ligneId, Long chauffeurId);
+
     void updateStatutAndMontantEncaisse(Long id, StatutLigneRecette statut, java.math.BigDecimal montantEncaisse);
 
     /** Recalcule montant_encaisse + statut de la ligne depuis ses encaissements (source de vérité). */

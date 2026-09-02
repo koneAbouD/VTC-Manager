@@ -247,4 +247,25 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
                 "SELECT COUNT(*) FROM arretes_compte WHERE reference = ?", Integer.class, reference);
         return count != null && count > 0;
     }
+
+    /**
+     * Un arrêté valide a-t-il déjà pris ce document dans son décompte ?
+     *
+     * <p>Les lignes d'un arrêté annulé ne comptent pas : le contre-passage a
+     * remis la créance en circulation, et elle peut de nouveau changer de main.
+     */
+    @Override
+    public boolean existeLigneValidePourDocument(TypeDocumentCreance document, Long documentId) {
+        if (document == null || documentId == null) return false;
+        Boolean existe = jdbcTemplate.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM lignes_arrete la
+                    JOIN arretes_compte a ON a.id = la.arrete_id
+                    WHERE la.document_type = ?
+                      AND la.document_id = ?
+                      AND a.statut = 'VALIDE')
+                """, Boolean.class, document.name(), documentId);
+        return Boolean.TRUE.equals(existe);
+    }
 }

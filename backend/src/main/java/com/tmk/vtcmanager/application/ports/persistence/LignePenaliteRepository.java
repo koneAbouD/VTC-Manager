@@ -29,6 +29,12 @@ public interface LignePenaliteRepository {
     /** Indique si une immobilisation pénalité est actuellement en cours sur le véhicule. */
     boolean hasImmobilisationActiveByVehiculeId(Long vehiculeId);
 
+    /** Pénalités adossées à une recette (RECETTE_NON_VERSEE), tous statuts. */
+    List<LignePenalite> findByLigneRecetteId(Long ligneRecetteId);
+
+    /** Change le débiteur d'une pénalité qui suit sa recette. */
+    void reaffecterChauffeur(Long id, Long chauffeurId);
+
     void updateStatut(Long id, StatutLignePenalite statut);
 
     /** Annulation : passe le statut à ANNULEE et enregistre le motif. */

@@ -8,6 +8,8 @@ import '../../domain/entities/ligne_recette.dart';
 import '../../domain/repositories/ligne_recette_repository.dart';
 import '../datasources/ligne_recette_remote_datasource.dart';
 import '../models/encaissement_model.dart';
+import '../../../../core/models/apercu_reaffectation.dart';
+import '../../../../core/models/encaissement_lot.dart';
 
 class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
   final LigneRecetteRemoteDatasource _datasource;
@@ -109,9 +111,61 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
   }
 
   @override
+  Future<Either<Failure, ResultatEncaissementLot>> createEncaissementsLot({
+    required List<MontantLigne> lignes,
+    required ModeEncaissement modeEncaissement,
+    required DateTime dateEncaissement,
+    String? reference,
+    String? commentaire,
+  }) async {
+    try {
+      return Right(await _datasource.createEncaissementsLot(
+        lignes:           lignes,
+        modeEncaissement: modeEncaissement.toJson(),
+        dateEncaissement: dateEncaissement,
+        reference:        reference,
+        commentaire:      commentaire,
+      ));
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, LigneRecette>> annuler(int id, String motif) async {
     try {
       return Right(await _datasource.annuler(id, motif));
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ApercuReaffectation>> getApercuReaffectation(int id) async {
+    try {
+      return Right(await _datasource.getApercuReaffectation(id));
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, LigneRecette>> reaffecterChauffeur(
+      int id, int chauffeurId, String motif) async {
+    try {
+      return Right(await _datasource.reaffecterChauffeur(id, chauffeurId, motif));
     } on ApiException catch (e) {
       return Left(_mapApiException(e));
     } on NetworkException catch (e) {

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -63,4 +64,51 @@ public interface OperationFinanciereJpaRepository
                                    @Param("statutExclu") StatutOperation statutExclu,
                                    @Param("debut") LocalDate debut,
                                    @Param("fin") LocalDate fin);
+
+    /**
+     * Passe au nouveau tiers les écritures des versements <b>vivants</b> d'une
+     * recette qui vient de changer de débiteur.
+     *
+     * <p>Trois filtres, chacun pour une raison : l'encaissement doit tenir
+     * encore ({@code e.annule_le IS NULL}) ; l'écriture ne doit pas être déjà
+     * extournée ni être elle-même une extourne — une écriture contre-passée ne
+     * se modifie plus, et le couple qu'elle forme avec son origine s'annule de
+     * toute façon, laissant le solde de l'ancien chauffeur intact.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE operations_financieres o
+            SET chauffeur_id = :chauffeurId,
+                updated_by   = :auteur,
+                updated_at   = now()
+            WHERE o.annule_le IS NULL
+              AND o.extourne_de_id IS NULL
+              AND o.id IN (SELECT e.operation_financiere_id
+                           FROM encaissements e
+                           WHERE e.ligne_recette_id = :ligneId
+                             AND e.annule_le IS NULL
+                             AND e.operation_financiere_id IS NOT NULL)
+            """, nativeQuery = true)
+    int reaffecterChauffeurEncaissementsRecette(@Param("ligneId") Long ligneId,
+                                                @Param("chauffeurId") Long chauffeurId,
+                                                @Param("auteur") String auteur);
+
+    /** Cf. {@link #reaffecterChauffeurEncaissementsRecette}, côté cotisation. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE operations_financieres o
+            SET chauffeur_id = :chauffeurId,
+                updated_by   = :auteur,
+                updated_at   = now()
+            WHERE o.annule_le IS NULL
+              AND o.extourne_de_id IS NULL
+              AND o.id IN (SELECT e.operation_financiere_id
+                           FROM encaissements_cotisation e
+                           WHERE e.ligne_cotisation_id = :ligneId
+                             AND e.annule_le IS NULL
+                             AND e.operation_financiere_id IS NOT NULL)
+            """, nativeQuery = true)
+    int reaffecterChauffeurEncaissementsCotisation(@Param("ligneId") Long ligneId,
+                                                   @Param("chauffeurId") Long chauffeurId,
+                                                   @Param("auteur") String auteur);
 }

@@ -15,6 +15,8 @@ class LigneRecetteModel extends LigneRecette {
     required super.statut,
     super.motifAnnulation,
     super.restaurable,
+    super.reaffectable,
+    super.motifNonReaffectable,
     super.encaissements,
   });
 
@@ -40,6 +42,10 @@ class LigneRecetteModel extends LigneRecette {
       // Absent = pas de bouton : mieux vaut une action manquante
       // qu'une action que le serveur refusera.
       restaurable: json['restaurable'] as bool? ?? false,
+      // Même prudence : sans le drapeau, le chauffeur reste figé plutôt
+      // que d'offrir une modification que le serveur refuserait.
+      reaffectable: json['reaffectable'] as bool? ?? false,
+      motifNonReaffectable: json['motifNonReaffectable'] as String?,
       encaissements: encaissements,
     );
   }

@@ -4,14 +4,22 @@ import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.usecases.cotisation.AnnulerLigneCotisationUseCase;
+import com.tmk.vtcmanager.application.usecases.cotisation.ReaffecterChauffeurCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.RestaurerLigneCotisationUseCase;
+import com.tmk.vtcmanager.application.usecases.reaffectation.GetApercuReaffectationUseCase;
+import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.cotisation.CreateEncaissementCotisationUseCase;
+import com.tmk.vtcmanager.application.usecases.cotisation.CreateEncaissementsCotisationLotUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GenererLignesCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GetLignesCotisationUseCase;
 import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
+import com.tmk.vtcmanager.interfaces.rest.common.ReaffectationChauffeurRequest;
+import com.tmk.vtcmanager.interfaces.rest.reaffectation.dto.ApercuReaffectationResponse;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
+import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.request.EncaissementCotisationLotRequest;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.request.EncaissementCotisationRequest;
+import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.EncaissementCotisationLotResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.EncaissementCotisationResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.LigneCotisationResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.TotauxCotisationResponse;
@@ -40,9 +48,13 @@ public class LigneCotisationController {
 
     private final GetLignesCotisationUseCase getLignesCotisationUseCase;
     private final CreateEncaissementCotisationUseCase createEncaissementUseCase;
+    private final CreateEncaissementsCotisationLotUseCase createEncaissementsLotUseCase;
     private final AnnulerLigneCotisationUseCase annulerUseCase;
     private final RestaurerLigneCotisationUseCase restaurerUseCase;
+    private final ReaffecterChauffeurCotisationUseCase reaffecterChauffeurUseCase;
     private final VerrouArreteService verrouArreteService;
+    private final ReaffectationChauffeurService reaffectationChauffeurService;
+    private final GetApercuReaffectationUseCase getApercuReaffectationUseCase;
     private final GenererLignesCotisationUseCase genererUseCase;
     private final CotisationRestMapper mapper;
 
@@ -108,6 +120,11 @@ public class LigneCotisationController {
         // Dit au client si l'action « Restaurer » a encore un sens : un arrêté
         // — période close, caisse comptée — peut l'avoir fermée depuis.
         ligne.setRestaurable(verrouArreteService.estRestaurable(ligne.getDateCotisation()));
+        // Et si le titulaire du dépôt peut encore changer : la fiche dit au client
+        // ce qu'elle permet plutôt que de le laisser tenter puis échouer.
+        String blocage = reaffectationChauffeurService.motifBlocage(ligne);
+        ligne.setReaffectable(blocage == null);
+        ligne.setMotifNonReaffectable(blocage);
         return mapper.toResponse(ligne);
     }
 
@@ -117,6 +134,25 @@ public class LigneCotisationController {
             @PathVariable Long id,
             @Valid @RequestBody EncaissementCotisationRequest request) {
         return mapper.toResponse(createEncaissementUseCase.executer(id, mapper.toDomain(request)));
+    }
+
+    /**
+     * Encaissement de masse : un versement du chauffeur solde plusieurs
+     * cotisations d'un coup, avec un montant propre à chaque ligne.
+     *
+     * <p>Toujours 200, même si tout a été refusé : le lot n'est pas un tout ou
+     * rien, et c'est le détail de la réponse qui porte le verdict de chaque
+     * ligne — motif compris, rédigé pour être affiché tel quel.
+     */
+    @PostMapping("/encaissements-lot")
+    public EncaissementCotisationLotResponse createEncaissementsLot(
+            @Valid @RequestBody EncaissementCotisationLotRequest request) {
+        return mapper.toLotResponse(createEncaissementsLotUseCase.executer(
+                mapper.toMontants(request.lignes()),
+                request.modeEncaissement(),
+                request.dateEncaissement(),
+                request.reference(),
+                request.commentaire()));
     }
 
     @GetMapping("/{id}/encaissements")
@@ -138,6 +174,33 @@ public class LigneCotisationController {
     @PatchMapping("/{id}/restaurer")
     public LigneCotisationResponse restaurer(@PathVariable Long id) {
         return mapper.toResponse(restaurerUseCase.executer(id));
+    }
+
+    /**
+     * Ce qu'il faut savoir avant de déplacer la cotisation : qui peut la reprendre, et
+     * ce que le déplacement entraînera.
+     *
+     * <p>Le serveur juge chaque chauffeur — un candidat pris ailleurs ce jour-là
+     * revient marqué non éligible, avec sa raison. L'écran montre ainsi le
+     * conflit <b>avant</b> le choix, au lieu de laisser choisir puis refuser.
+     */
+    @GetMapping("/{id:\\d+}/chauffeurs-eligibles")
+    public ApercuReaffectationResponse chauffeursEligibles(@PathVariable Long id) {
+        return ApercuReaffectationResponse.de(getApercuReaffectationUseCase.pourCotisation(id));
+    }
+
+    /**
+     * Porte la cotisation au compte d'un autre chauffeur : le dépôt et ses
+     * versements changent de titulaire, sans qu'aucun montant ne bouge. Refusé
+     * si un arrêté a déjà rendu tout ou partie du fonds, si les livres du jour
+     * sont fermés, ou si le chauffeur visé conduisait ailleurs ce jour-là.
+     */
+    @PatchMapping("/{id}/chauffeur")
+    public LigneCotisationResponse reaffecterChauffeur(
+            @PathVariable Long id,
+            @Valid @RequestBody ReaffectationChauffeurRequest request) {
+        return mapper.toResponse(reaffecterChauffeurUseCase.executer(
+                id, request.chauffeurId(), request.motif()));
     }
 
     @PostMapping("/generer")

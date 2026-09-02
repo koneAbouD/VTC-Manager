@@ -21,6 +21,8 @@ public interface LigneCotisationPersistenceMapper {
     @Mapping(target = "encaissements", source = "encaissements")
     // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
     @Mapping(target = "restaurable", ignore = true)
+    @Mapping(target = "reaffectable", ignore = true)
+    @Mapping(target = "motifNonReaffectable", ignore = true)
     LigneCotisation toDomain(LigneCotisationEntity entity);
 
     List<LigneCotisation> toDomainList(List<LigneCotisationEntity> entities);

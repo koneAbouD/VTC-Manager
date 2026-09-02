@@ -14,6 +14,7 @@ import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeR
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
+import com.tmk.vtcmanager.application.services.SignalementCoherenceGenerationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,7 @@ class GenererLignesCotisationUseCaseTest {
     private LigneCotisationRepository ligneCotisationRepository;
     private IndisponibiliteSubstitutionService substitutionService;
     private IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
+    private SignalementCoherenceGenerationService signalementService;
     private GenererLignesCotisationUseCase useCase;
 
     @BeforeEach
@@ -60,6 +62,7 @@ class GenererLignesCotisationUseCaseTest {
         ligneCotisationRepository = mock(LigneCotisationRepository.class);
         substitutionService = mock(IndisponibiliteSubstitutionService.class);
         indisponibiliteVehiculeRepository = mock(IndisponibiliteVehiculeRepository.class);
+        signalementService = mock(SignalementCoherenceGenerationService.class);
 
         when(indisponibiliteVehiculeRepository.isImmobiliseAt(anyLong(), any())).thenReturn(false);
         when(substitutionService.appliquer(any(), any())).thenAnswer(inv -> inv.getArgument(0));
@@ -76,7 +79,7 @@ class GenererLignesCotisationUseCaseTest {
 
         useCase = new GenererLignesCotisationUseCase(programmeTravailRepository,
                 configurationRecetteRepository, ligneCotisationRepository, substitutionService,
-                indisponibiliteVehiculeRepository);
+                indisponibiliteVehiculeRepository, signalementService);
     }
 
     // ── Fixtures ────────────────────────────────────────────────────────────

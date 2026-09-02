@@ -121,4 +121,18 @@ public interface LigneCotisationJpaRepository
             WHERE id = :ligneId
             """, nativeQuery = true)
     void annulerRestitution(@Param("ligneId") Long ligneId, @Param("montant") BigDecimal montant);
+
+    /** Cf. {@link LigneRecetteJpaRepository#findByChauffeurIdAndDateRecette} : tous statuts. */
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    List<LigneCotisationEntity> findByChauffeurIdAndDateCotisation(Long chauffeurId, LocalDate dateCotisation);
+
+    /** Cf. {@link LigneRecetteJpaRepository#reaffecterChauffeur}. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE lignes_cotisation SET chauffeur_id = :chauffeurId, updated_at = now()"
+            + " WHERE id = :id", nativeQuery = true)
+    void reaffecterChauffeur(@Param("id") Long id, @Param("chauffeurId") Long chauffeurId);
+
+    /** Cf. {@link LigneRecetteJpaRepository#findByDateRecette}. */
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    List<LigneCotisationEntity> findByDateCotisation(LocalDate dateCotisation);
 }

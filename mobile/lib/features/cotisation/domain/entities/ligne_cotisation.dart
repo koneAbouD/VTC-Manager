@@ -56,6 +56,15 @@ class LigneCotisation {
   /// désormais la restauration. Le bouton « Restaurer » est alors masqué :
   /// le serveur refuserait.
   final bool restaurable;
+
+  /// Faux si la ligne ne peut plus changer de débiteur : un arrêté de compte
+  /// l'a consignée, les livres du jour sont fermés, un paiement mobile money
+  /// est en vol, ou elle est annulée. Le chauffeur n'est alors pas modifiable.
+  final bool reaffectable;
+
+  /// Ce qui ferme la réaffectation, en français — affiché à l'appui prolongé
+  /// sur la ligne verrouillée. Nul quand elle est ouverte.
+  final String? motifNonReaffectable;
   final List<EncaissementCotisation> encaissements;
 
   const LigneCotisation({
@@ -72,6 +81,8 @@ class LigneCotisation {
     required this.statut,
     this.motifAnnulation,
     this.restaurable = false,
+    this.reaffectable = false,
+    this.motifNonReaffectable,
     this.encaissements = const [],
   });
 

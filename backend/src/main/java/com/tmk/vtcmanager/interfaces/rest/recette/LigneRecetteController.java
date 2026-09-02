@@ -4,15 +4,23 @@ import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecetteFiltres;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.usecases.recette.AnnulerLigneRecetteUseCase;
+import com.tmk.vtcmanager.application.usecases.recette.ReaffecterChauffeurRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.RestaurerLigneRecetteUseCase;
+import com.tmk.vtcmanager.application.usecases.reaffectation.GetApercuReaffectationUseCase;
+import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.recette.ConfirmerVersementUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementUseCase;
+import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementsLotUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GenererLignesRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GetLignesRecetteUseCase;
 import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
+import com.tmk.vtcmanager.interfaces.rest.common.ReaffectationChauffeurRequest;
+import com.tmk.vtcmanager.interfaces.rest.reaffectation.dto.ApercuReaffectationResponse;
+import com.tmk.vtcmanager.interfaces.rest.recette.dto.request.EncaissementLotRequest;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.request.EncaissementRequest;
+import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.EncaissementLotResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.EncaissementResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.LigneRecetteResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.mapper.RecetteRestMapper;
@@ -40,9 +48,13 @@ public class LigneRecetteController {
 
     private final GetLignesRecetteUseCase getLignesRecetteUseCase;
     private final CreateEncaissementUseCase createEncaissementUseCase;
+    private final CreateEncaissementsLotUseCase createEncaissementsLotUseCase;
     private final AnnulerLigneRecetteUseCase annulerLigneRecetteUseCase;
     private final RestaurerLigneRecetteUseCase restaurerLigneRecetteUseCase;
+    private final ReaffecterChauffeurRecetteUseCase reaffecterChauffeurRecetteUseCase;
     private final VerrouArreteService verrouArreteService;
+    private final ReaffectationChauffeurService reaffectationChauffeurService;
+    private final GetApercuReaffectationUseCase getApercuReaffectationUseCase;
     private final ConfirmerVersementUseCase confirmerVersementUseCase;
     private final GenererLignesRecetteUseCase genererLignesRecetteUseCase;
     private final RecetteRestMapper mapper;
@@ -93,6 +105,11 @@ public class LigneRecetteController {
         // Dit au client si l'action « Restaurer » a encore un sens : un arrêté
         // — période close, caisse comptée — peut l'avoir fermée depuis.
         ligne.setRestaurable(verrouArreteService.estRestaurable(ligne.getDateRecette()));
+        // Et si le chauffeur peut encore changer : même principe, la fiche dit au
+        // client ce qu'elle permet plutôt que de le laisser tenter puis échouer.
+        String blocage = reaffectationChauffeurService.motifBlocage(ligne);
+        ligne.setReaffectable(blocage == null);
+        ligne.setMotifNonReaffectable(blocage);
         return mapper.toResponse(ligne);
     }
 
@@ -102,6 +119,25 @@ public class LigneRecetteController {
             @PathVariable Long id,
             @Valid @RequestBody EncaissementRequest request) {
         return mapper.toResponse(createEncaissementUseCase.executer(id, mapper.toDomain(request)));
+    }
+
+    /**
+     * Encaissement de masse : un versement du chauffeur solde plusieurs
+     * journées d'un coup, avec un montant propre à chaque ligne.
+     *
+     * <p>Toujours 200, même si tout a été refusé : le lot n'est pas un tout ou
+     * rien, et c'est le détail de la réponse qui porte le verdict de chaque
+     * ligne — motif compris, rédigé pour être affiché tel quel.
+     */
+    @PostMapping("/encaissements-lot")
+    public EncaissementLotResponse createEncaissementsLot(
+            @Valid @RequestBody EncaissementLotRequest request) {
+        return mapper.toLotResponse(createEncaissementsLotUseCase.executer(
+                mapper.toMontants(request.lignes()),
+                request.modeEncaissement(),
+                request.dateEncaissement(),
+                request.reference(),
+                request.commentaire()));
     }
 
     @GetMapping("/{id}/encaissements")
@@ -124,6 +160,33 @@ public class LigneRecetteController {
     @PatchMapping("/{id}/restaurer")
     public LigneRecetteResponse restaurer(@PathVariable Long id) {
         return mapper.toResponse(restaurerLigneRecetteUseCase.executer(id));
+    }
+
+    /**
+     * Ce qu'il faut savoir avant de déplacer la recette : qui peut la reprendre, et
+     * ce que le déplacement entraînera.
+     *
+     * <p>Le serveur juge chaque chauffeur — un candidat pris ailleurs ce jour-là
+     * revient marqué non éligible, avec sa raison. L'écran montre ainsi le
+     * conflit <b>avant</b> le choix, au lieu de laisser choisir puis refuser.
+     */
+    @GetMapping("/{id:\\d+}/chauffeurs-eligibles")
+    public ApercuReaffectationResponse chauffeursEligibles(@PathVariable Long id) {
+        return ApercuReaffectationResponse.de(getApercuReaffectationUseCase.pourRecette(id));
+    }
+
+    /**
+     * Porte la recette au compte d'un autre chauffeur : la créance, ses
+     * versements et la pénalité qu'elle a pu engendrer changent de débiteur.
+     * Aucun montant ne bouge. Refusé si un arrêté l'a consignée, si les livres
+     * du jour sont fermés, ou si le chauffeur visé conduisait ailleurs ce jour-là.
+     */
+    @PatchMapping("/{id}/chauffeur")
+    public LigneRecetteResponse reaffecterChauffeur(
+            @PathVariable Long id,
+            @Valid @RequestBody ReaffectationChauffeurRequest request) {
+        return mapper.toResponse(reaffecterChauffeurRecetteUseCase.executer(
+                id, request.chauffeurId(), request.motif()));
     }
 
     @PatchMapping("/{id}/confirmer-versement")

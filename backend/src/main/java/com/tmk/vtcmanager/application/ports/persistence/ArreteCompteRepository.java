@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.application.ports.persistence;
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
 import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
+import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -48,6 +49,13 @@ public interface ArreteCompteRepository {
 
     /** Passe l'arrêté en ANNULE avec son motif. */
     void annuler(Long id, String motif);
+
+    /**
+     * Vrai si un arrêté <b>valide</b> a déjà pris ce document dans son
+     * décompte. Le snapshot nomme un chauffeur et le décompte est parti : la
+     * créance ne peut plus changer de débiteur tant que l'arrêté tient.
+     */
+    boolean existeLigneValidePourDocument(TypeDocumentCreance document, Long documentId);
 
     boolean existsByReference(String reference);
 }

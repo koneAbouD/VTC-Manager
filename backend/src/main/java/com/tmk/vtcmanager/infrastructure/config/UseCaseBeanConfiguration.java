@@ -167,6 +167,15 @@ import org.springframework.beans.factory.annotation.Value;
 import com.tmk.vtcmanager.application.usecases.sousCategorieOperation.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import com.tmk.vtcmanager.application.ports.persistence.ReaffectationChauffeurRepository;
+import com.tmk.vtcmanager.application.services.NotificationReaffectationService;
+import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
+import com.tmk.vtcmanager.application.usecases.cotisation.ReaffecterChauffeurCotisationUseCase;
+import com.tmk.vtcmanager.application.usecases.recette.ReaffecterChauffeurRecetteUseCase;
+import com.tmk.vtcmanager.application.ports.persistence.CoherenceGenerationRepository;
+import com.tmk.vtcmanager.application.services.SignalementCoherenceGenerationService;
+import com.tmk.vtcmanager.application.usecases.reaffectation.GetApercuReaffectationUseCase;
+import com.tmk.vtcmanager.application.usecases.reaffectation.GetConflitsChauffeurUseCase;
 
 @Configuration
 public class UseCaseBeanConfiguration {
@@ -784,9 +793,11 @@ public class UseCaseBeanConfiguration {
             ConfigurationRecetteRepository configurationRecetteRepository,
             LigneCotisationRepository ligneCotisationRepository,
             IndisponibiliteSubstitutionService indisponibiliteSubstitutionService,
-            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository) {
+            IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository,
+            SignalementCoherenceGenerationService signalementCoherenceGenerationService) {
         return new GenererLignesCotisationUseCase(programmeTravailRepository, configurationRecetteRepository,
-                ligneCotisationRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository);
+                ligneCotisationRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository,
+                signalementCoherenceGenerationService);
     }
 
     @Bean
@@ -813,6 +824,16 @@ public class UseCaseBeanConfiguration {
                 encaissementFuturGuard, notificationEncaissementService);
     }
 
+    /**
+     * Le lot s'appuie sur le use case unitaire — et sur lui seul : c'est par ce
+     * bean, donc par son proxy, que chaque ligne obtient sa propre transaction.
+     */
+    @Bean
+    public CreateEncaissementsCotisationLotUseCase createEncaissementsCotisationLotUseCase(
+            CreateEncaissementCotisationUseCase createEncaissementCotisationUseCase) {
+        return new CreateEncaissementsCotisationLotUseCase(createEncaissementCotisationUseCase);
+    }
+
     @Bean
     public AnnulerLigneCotisationUseCase annulerLigneCotisationUseCase(LigneCotisationRepository ligneCotisationRepository) {
         return new AnnulerLigneCotisationUseCase(ligneCotisationRepository);
@@ -833,10 +854,11 @@ public class UseCaseBeanConfiguration {
             LigneRecetteRepository ligneRecetteRepository,
             IndisponibiliteSubstitutionService indisponibiliteSubstitutionService,
             IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository,
-            JourFerieRepository jourFerieRepository) {
+            JourFerieRepository jourFerieRepository,
+            SignalementCoherenceGenerationService signalementCoherenceGenerationService) {
         return new GenererLignesRecetteUseCase(programmeTravailRepository, configurationRecetteRepository,
                 ligneRecetteRepository, indisponibiliteSubstitutionService, indisponibiliteVehiculeRepository,
-                jourFerieRepository);
+                jourFerieRepository, signalementCoherenceGenerationService);
     }
 
     @Bean
@@ -862,6 +884,13 @@ public class UseCaseBeanConfiguration {
                 configurationRecetteRepository, operationFinanciereRepository,
                 categorieOperationRepository, compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard,
                 encaissementFuturGuard, notificationEncaissementService);
+    }
+
+    /** Voir {@link #createEncaissementsCotisationLotUseCase} : une transaction par ligne. */
+    @Bean
+    public CreateEncaissementsLotUseCase createEncaissementsLotUseCase(
+            CreateEncaissementUseCase createEncaissementUseCase) {
+        return new CreateEncaissementsLotUseCase(createEncaissementUseCase);
     }
 
     @Bean
@@ -1796,5 +1825,97 @@ public class UseCaseBeanConfiguration {
             KeycloakAdminPort keycloakAdminPort) {
         return new NotificationEncaissementService(
                 creerNotificationUseCase, chauffeurRepository, keycloakAdminPort);
+    }
+
+    // ----- Réaffectation du chauffeur d'une créance -----
+
+    /**
+     * Les règles d'un changement de débiteur, servies deux fois : au serveur qui
+     * refuse, et au client qui n'affiche pas ce qui serait refusé.
+     */
+    @Bean
+    public ReaffectationChauffeurService reaffectationChauffeurService(
+            VerrouArreteService verrouArreteService,
+            ArreteCompteRepository arreteCompteRepository,
+            PaiementRepository paiementRepository,
+            LigneRecetteRepository ligneRecetteRepository,
+            LigneCotisationRepository ligneCotisationRepository,
+            LignePenaliteRepository lignePenaliteRepository) {
+        return new ReaffectationChauffeurService(verrouArreteService, arreteCompteRepository,
+                paiementRepository, ligneRecetteRepository, ligneCotisationRepository,
+                lignePenaliteRepository);
+    }
+
+    @Bean
+    public NotificationReaffectationService notificationReaffectationService(
+            CreerNotificationUseCase creerNotificationUseCase,
+            ChauffeurRepository chauffeurRepository,
+            KeycloakAdminPort keycloakAdminPort) {
+        return new NotificationReaffectationService(
+                creerNotificationUseCase, chauffeurRepository, keycloakAdminPort);
+    }
+
+    @Bean
+    public ReaffecterChauffeurRecetteUseCase reaffecterChauffeurRecetteUseCase(
+            LigneRecetteRepository ligneRecetteRepository,
+            ChauffeurRepository chauffeurRepository,
+            ArreteCompteRepository arreteCompteRepository,
+            OperationFinanciereRepository operationFinanciereRepository,
+            LignePenaliteRepository lignePenaliteRepository,
+            ReaffectationChauffeurRepository reaffectationChauffeurRepository,
+            ReaffectationChauffeurService reaffectationChauffeurService,
+            NotificationReaffectationService notificationReaffectationService,
+            AuteurCourant auteurCourant) {
+        return new ReaffecterChauffeurRecetteUseCase(ligneRecetteRepository, chauffeurRepository,
+                arreteCompteRepository, operationFinanciereRepository, lignePenaliteRepository,
+                reaffectationChauffeurRepository, reaffectationChauffeurService,
+                notificationReaffectationService, auteurCourant);
+    }
+
+    @Bean
+    public ReaffecterChauffeurCotisationUseCase reaffecterChauffeurCotisationUseCase(
+            LigneCotisationRepository ligneCotisationRepository,
+            ChauffeurRepository chauffeurRepository,
+            ArreteCompteRepository arreteCompteRepository,
+            OperationFinanciereRepository operationFinanciereRepository,
+            ReaffectationChauffeurRepository reaffectationChauffeurRepository,
+            ReaffectationChauffeurService reaffectationChauffeurService,
+            NotificationReaffectationService notificationReaffectationService,
+            AuteurCourant auteurCourant) {
+        return new ReaffecterChauffeurCotisationUseCase(ligneCotisationRepository, chauffeurRepository,
+                arreteCompteRepository, operationFinanciereRepository,
+                reaffectationChauffeurRepository, reaffectationChauffeurService,
+                notificationReaffectationService, auteurCourant);
+    }
+
+    /**
+     * Contrôle de cohérence des journées générées : signale sans bloquer.
+     */
+    @Bean
+    public SignalementCoherenceGenerationService signalementCoherenceGenerationService(
+            CoherenceGenerationRepository coherenceGenerationRepository,
+            CreerNotificationUseCase creerNotificationUseCase,
+            KeycloakAdminPort keycloakAdminPort) {
+        return new SignalementCoherenceGenerationService(
+                coherenceGenerationRepository, creerNotificationUseCase, keycloakAdminPort);
+    }
+
+    @Bean
+    public GetApercuReaffectationUseCase getApercuReaffectationUseCase(
+            LigneRecetteRepository ligneRecetteRepository,
+            LigneCotisationRepository ligneCotisationRepository,
+            ChauffeurRepository chauffeurRepository,
+            ProgrammeTravailRepository programmeTravailRepository,
+            IndisponibiliteSubstitutionService indisponibiliteSubstitutionService,
+            ReaffectationChauffeurService reaffectationChauffeurService) {
+        return new GetApercuReaffectationUseCase(ligneRecetteRepository, ligneCotisationRepository,
+                chauffeurRepository, programmeTravailRepository,
+                indisponibiliteSubstitutionService, reaffectationChauffeurService);
+    }
+
+    @Bean
+    public GetConflitsChauffeurUseCase getConflitsChauffeurUseCase(
+            CoherenceGenerationRepository coherenceGenerationRepository) {
+        return new GetConflitsChauffeurUseCase(coherenceGenerationRepository);
     }
 }

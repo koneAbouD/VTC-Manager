@@ -145,4 +145,20 @@ public class LigneRecetteRepositoryAdapter implements LigneRecetteRepository {
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public List<LigneRecette> findByChauffeurIdAndDateRecette(Long chauffeurId, LocalDate date) {
+        return mapper.toDomainList(jpaRepository.findByChauffeurIdAndDateRecette(chauffeurId, date));
+    }
+
+    @Override
+    @Transactional
+    public void reaffecterChauffeur(Long ligneId, Long chauffeurId) {
+        jpaRepository.reaffecterChauffeur(ligneId, chauffeurId);
+    }
+
+    @Override
+    public List<LigneRecette> findByDateRecette(LocalDate date) {
+        return mapper.toDomainList(jpaRepository.findByDateRecette(date));
+    }
 }

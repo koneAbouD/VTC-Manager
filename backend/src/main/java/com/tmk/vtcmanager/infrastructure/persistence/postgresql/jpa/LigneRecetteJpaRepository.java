@@ -86,4 +86,27 @@ public interface LigneRecetteJpaRepository
             WHERE lr.id = :ligneId AND lr.statut <> 'ANNULEE'
             """, nativeQuery = true)
     void recalculerDepuisEncaissements(@Param("ligneId") Long ligneId);
+
+    /**
+     * Toutes les lignes d'un chauffeur ce jour-là, tous statuts confondus : la
+     * réaffectation a besoin des vivantes (sur quel véhicule roulait-il ?) comme
+     * des annulées (quel doublon la contrainte d'unicité refuserait-elle ?).
+     */
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    List<LigneRecetteEntity> findByChauffeurIdAndDateRecette(Long chauffeurId, LocalDate dateRecette);
+
+    /**
+     * Change le débiteur de la ligne, et lui seul. En natif : JPQL ne sait pas
+     * affecter la clé d'une association sans charger l'entité liée.
+     * clearAutomatically : l'entité en session porte encore l'ancien chauffeur
+     * et l'écraserait au commit.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE lignes_recette SET chauffeur_id = :chauffeurId, updated_at = now()"
+            + " WHERE id = :id", nativeQuery = true)
+    void reaffecterChauffeur(@Param("id") Long id, @Param("chauffeurId") Long chauffeurId);
+
+    /** La journée entière : le jugement des candidats se fait ensuite en mémoire. */
+    @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
+    List<LigneRecetteEntity> findByDateRecette(LocalDate dateRecette);
 }

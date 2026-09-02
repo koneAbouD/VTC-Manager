@@ -22,6 +22,21 @@ public enum TypeNotification {
     /** Une maintenance planifiée approche de sa date prévue. */
     MAINTENANCE_A_VENIR,
 
+    /**
+     * Une créance a changé de débiteur : elle quitte le compte d'un chauffeur
+     * pour celui d'un autre. Les deux sont prévenus — l'un est déchargé, l'autre
+     * doit désormais la somme.
+     */
+    LIGNE_REAFFECTEE,
+
+    /**
+     * La génération quotidienne a produit des créances incohérentes : un
+     * chauffeur se retrouve sur plusieurs véhicules le même jour. Rien n'a été
+     * bloqué — une recette manquante coûte plus cher qu'une recette en trop —
+     * mais l'exploitation doit trancher.
+     */
+    ANOMALIE_GENERATION,
+
     /** Envoi de vérification, déclenché manuellement depuis l'application. */
     TEST
 }

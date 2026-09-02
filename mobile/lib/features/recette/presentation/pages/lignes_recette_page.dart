@@ -10,10 +10,15 @@ import '../../domain/entities/ligne_recette.dart';
 import '../providers/ligne_recette_provider.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/widgets/encaissement_ligne_dialog.dart';
+import '../../../../core/widgets/encaissement_lot_dialog.dart';
+import '../../../../core/widgets/selection_lot_bar.dart';
+import '../../../../screens/finance/encaissement_lot_jumele.dart';
+import '../../../../screens/finance/ligne_jumelle_encaissement.dart';
 import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'ligne_recette_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
+import '../../../coherence/presentation/widgets/bandeau_conflits_chauffeur.dart';
 
 // ── Constantes partagées ───────────────────────────────────────────────────
 
@@ -49,6 +54,12 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
   DateTime _periodeFin = DateTime.now();
   StatutLigneRecette? _statutFiltre;
   String _recherche = '';
+
+  // ── Sélection multiple, ouverte par un appui long sur une ligne ──────────
+  // Un chauffeur règle souvent plusieurs journées d'un même versement : on
+  // coche ce qu'il solde, et un seul aller-retour porte tout le lot.
+  bool _selectionMode = false;
+  final Set<int> _selectedIds = {};
 
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
@@ -157,7 +168,8 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     // null = « Toutes les périodes » (désactive le filtre par date).
-                    children: <_FiltreMode?>[null, ..._FiltreMode.values].map((mode) {
+                    children:
+                        <_FiltreMode?>[null, ..._FiltreMode.values].map((mode) {
                       final label = switch (mode) {
                         null => 'Tous',
                         _FiltreMode.mois => 'Mois',
@@ -191,9 +203,8 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                                 label,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: sel
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
+                                  fontWeight:
+                                      sel ? FontWeight.w600 : FontWeight.w400,
                                   color: sel
                                       ? const Color(0xFF43A047)
                                       : const Color(0xFF1A1A1A),
@@ -248,6 +259,28 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     }
   }
 
+  /// La période que le bandeau d'anomalies contrôle.
+  ///
+  /// Sans filtre de date, l'écran montre tout l'historique : contrôler
+  /// l'intégralité coûterait cher pour un rappel qui ne concerne, en pratique,
+  /// que les journées récentes. On se borne alors aux soixante derniers jours.
+  (DateTime, DateTime) _plageControlee() {
+    final (debut, fin) = _plageActive();
+    if (debut != null && fin != null) return (debut, fin);
+    final maintenant = DateTime.now();
+    return (maintenant.subtract(const Duration(days: 60)), maintenant);
+  }
+
+  /// Amène l'écran sur la journée d'une anomalie : les deux créances en cause
+  /// s'y lisent côte à côte, ce qui est le seul moyen de trancher.
+  void _allerAuJour(DateTime jour) {
+    setState(() {
+      _filtreMode = _FiltreMode.jour;
+      _jourSelectionne = jour;
+    });
+    _load();
+  }
+
   Future<void> _pickJour() async {
     final result = await showDialog<DateTime>(
       context: context,
@@ -276,25 +309,125 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     }
   }
 
+  // ── Sélection multiple ────────────────────────────────────────────────────
+
+  /// Ne se cochent que les lignes encore ouvertes — en attente ou
+  /// partiellement encaissées — dont le reste dû est connu : une recette sans
+  /// montant attendu n'a pas de plafond à proposer au lot.
+  List<LigneRecette> _selectionnables(List<LigneRecette> lignes) => lignes
+      .where((l) => l.id != null && l.estActive && (l.montantRestant ?? 0) > 0)
+      .toList();
+
+  void _entrerSelection(int id) {
+    setState(() {
+      _selectionMode = true;
+      _selectedIds.add(id);
+    });
+  }
+
+  /// Quitte le mode sélection sans rien encaisser : croix de l'en-tête, croix
+  /// de la barre basse, ou geste retour du téléphone.
+  void _quitterSelection() {
+    setState(() {
+      _selectedIds.clear();
+      _selectionMode = false;
+    });
+  }
+
+  void _basculerSelection(int id, bool coche) {
+    setState(() {
+      if (coche) {
+        _selectedIds.add(id);
+      } else {
+        _selectedIds.remove(id);
+      }
+      // Plus rien de coché : on sort du mode, le tap rouvre les fiches.
+      if (_selectedIds.isEmpty) _selectionMode = false;
+    });
+  }
+
+  /// Encaissement de masse : un versement, plusieurs journées soldées, un
+  /// montant réglable créance par créance dans la feuille.
+  ///
+  /// La limite d'une ligne est la recette du jour **plus la cotisation du même
+  /// jour** : le chauffeur règle les deux d'un seul versement, et le surplus
+  /// est imputé à la cotisation sans quitter l'écran.
+  Future<void> _encaisserSelection(List<LigneRecette> selection) async {
+    if (selection.isEmpty) return;
+
+    final repoRecette = ref.read(ligneRecetteRepositoryProvider);
+    final dateFmt = DateFormat('dd/MM/yyyy');
+
+    // Une seule requête pour tout le lot : les cotisations ouvertes du même
+    // jour, appariées par véhicule et chauffeur.
+    final jumelles = await chercherCotisationsDuMemeJour(ref, selection);
+    if (!mounted) return;
+
+    final lignes = [
+      for (final l in selection)
+        LigneLotEncaissable(
+          id: l.id!,
+          titre: _libelleVehiculeChauffeur(l),
+          sousTitre: 'Recette du ${dateFmt.format(l.dateRecette)}',
+          restant: l.montantRestant ?? 0,
+          jumelle: jumelles[l.id],
+        ),
+    ];
+
+    final executeur = ExecuteurLotJumele(
+      lignes: lignes,
+      envoyerPrincipal: (imputations, saisie) =>
+          repoRecette.createEncaissementsLot(
+        lignes: imputations,
+        modeEncaissement: saisie.mode == ModeEncaissementSaisie.mobileMoney
+            ? ModeEncaissement.mobileMoney
+            : ModeEncaissement.especes,
+        dateEncaissement: saisie.date,
+        reference: saisie.reference,
+        commentaire: saisie.commentaire,
+      ),
+      // Le surplus d'une ligne va à la cotisation du même jour, par son
+      // propre endpoint.
+      envoyerJumelle: envoiLotCotisations(ref),
+    );
+
+    final ok = await showEncaissementLotDialog(
+      context,
+      titre: 'Encaisser ${selection.length} recette(s)',
+      couleur: const Color(0xFF2E7D32),
+      icone: Icons.account_balance_wallet_outlined,
+      lignes: lignes,
+      onEncaisser: executeur.executer,
+    );
+
+    if (!mounted || ok != true) return;
+    setState(() {
+      _selectedIds.clear();
+      _selectionMode = false;
+    });
+    _load();
+    ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+  }
+
   Future<void> _openEncaisserDialog(LigneRecette ligne) async {
-    final repo   = ref.read(ligneRecetteRepositoryProvider);
+    final repo = ref.read(ligneRecetteRepositoryProvider);
     final result = await showEncaissementLigneDialog(
       context,
-      titre:          'Recette',
-      sousTitre:      _libelleVehiculeChauffeur(ligne),
+      titre: 'Recette',
+      sousTitre: _libelleVehiculeChauffeur(ligne),
       montantRestant: ligne.montantRestant,
-      couleur:        const Color(0xFF2E7D32),
-      icone:          Icons.account_balance_wallet_outlined,
+      couleur: const Color(0xFF2E7D32),
+      icone: Icons.account_balance_wallet_outlined,
       onEncaisser: (saisie) async {
         final enc = Encaissement(
-          ligneRecetteId:   ligne.id!,
-          montant:          saisie.montant,
+          ligneRecetteId: ligne.id!,
+          montant: saisie.montant,
           modeEncaissement: saisie.mode == ModeEncaissementSaisie.mobileMoney
               ? ModeEncaissement.mobileMoney
               : ModeEncaissement.especes,
           dateEncaissement: saisie.date,
-          reference:        saisie.reference,
-          commentaire:      saisie.commentaire,
+          reference: saisie.reference,
+          commentaire: saisie.commentaire,
         );
         final r = await repo.createEncaissement(ligne.id!, enc);
         return r.fold((f) => f.message, (_) => null);
@@ -307,8 +440,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
   }
 
   Future<void> _generer() async {
-    final result =
-        await ref.read(ligneRecetteRepositoryProvider).generer();
+    final result = await ref.read(ligneRecetteRepositoryProvider).generer();
     final error = result.fold((f) => f.message, (_) => null);
     if (!mounted) return;
     if (error != null) {
@@ -336,149 +468,226 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
         .fold(0.0, (s, l) => s + (l.montantAttendu ?? l.montantEncaisse));
     final montantsStatut = <StatutLigneRecette?, double>{
       null: sommeRec((_) => true),
-      for (final s in StatutLigneRecette.values) s: sommeRec((l) => l.statut == s),
+      for (final s in StatutLigneRecette.values)
+        s: sommeRec((l) => l.statut == s),
     };
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── En-tête ────────────────────────────────────────────────
-            Container(
-              color: AppColors.header,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 56,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0F2F8),
-                        borderRadius: BorderRadius.circular(20),
+    // Sélection : ce qui est cochable à l'écran, et ce qui l'est réellement.
+    final selectionnables = _selectionnables(filtered);
+    final selection =
+        selectionnables.where((l) => _selectedIds.contains(l.id)).toList();
+    final totalSelection = selection.fold<double>(
+        0, (somme, l) => somme + (l.montantRestant ?? 0));
+
+    return PopScope(
+      // Le geste retour ferme d'abord la sélection : c'est ce qu'attend
+      // n'importe quelle liste multi-sélection sur Android.
+      canPop: !_selectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _quitterSelection();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FB),
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── En-tête ────────────────────────────────────────────────
+              Container(
+                color: AppColors.header,
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      // En sélection, ce bouton referme la sélection : quitter la
+                      // page d'un geste alors que des lignes sont cochées ferait
+                      // perdre le travail en cours.
+                      onTap: _selectionMode
+                          ? _quitterSelection
+                          : () => Navigator.pop(context),
+                      child: Container(
+                        width: 56,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F2F8),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Icon(
+                            _selectionMode
+                                ? Icons.close_rounded
+                                : Icons.arrow_back_rounded,
+                            size: 18,
+                            color: const Color(0xFF1A1A2E)),
                       ),
-                      child: const Icon(Icons.arrow_back_rounded,
-                          size: 18, color: Color(0xFF1A1A2E)),
                     ),
-                  ),
-                  const Expanded(
-                    child: Text(
-                      'Recettes',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1A1A2E),
-                        letterSpacing: -0.3,
+                    const Expanded(
+                      child: Text(
+                        'Recettes',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A1A2E),
+                          letterSpacing: -0.3,
+                        ),
                       ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: _generer,
-                    child: Container(
-                      width: 56,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0F2F8),
-                        borderRadius: BorderRadius.circular(20),
+                    GestureDetector(
+                      onTap: _generer,
+                      child: Container(
+                        width: 56,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F2F8),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(Icons.auto_awesome_rounded,
+                            size: 18, color: Color(0xFF1A1A2E)),
                       ),
-                      child: const Icon(Icons.auto_awesome_rounded,
-                          size: 18, color: Color(0xFF1A1A2E)),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            // ── Corps ──────────────────────────────────────────────────
-            Expanded(
-              child: state.initialLoading && state.items.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: () =>
-                          ref.read(lignesRecetteListeProvider.notifier).refresh(),
-                      child: CustomScrollView(
-                        controller: _scrollController,
-                        slivers: [
-                          // ── Filtre date ──────────────────────────────
-                          SliverToBoxAdapter(
-                            child: _FiltreBar(
-                              mode: _filtreMode,
-                              filtreKey: _filtreButtonKey,
-                              onFiltrePressed: _showFiltreOverlay,
-                              moisSelectionne: _moisSelectionne,
-                              anneeSelectionnee: _anneeSelectionnee,
-                              onPickMois: _pickMois,
-                              semaineDebut: _semaineDebut,
-                              onPickSemaine: _pickSemaine,
-                              jourSelectionne: _jourSelectionne,
-                              onPickJour: _pickJour,
-                              periodeDebut: _periodeDebut,
-                              periodeFin: _periodeFin,
-                              onPickPeriode: _pickPeriode,
-                            ),
-                          ),
-
-                          // ── Filtre statut + recherche ────────────────
-                          SliverToBoxAdapter(
-                            child: _SearchAndStatutBar(
-                              controller: _searchController,
-                              onSearchChanged: _onRechercheChanged,
-                              statutSelectionne: _statutFiltre,
-                              onStatutChanged: (s) {
-                                setState(() => _statutFiltre = s);
-                                _load();
-                              },
-                              montantsStatut: montantsStatut,
-                              money: money,
-                            ),
-                          ),
-
-                          // ── Liste / état vide / loader bas de page ───
-                          if (filtered.isEmpty)
-                            const SliverFillRemaining(
-                                hasScrollBody: false, child: _EmptyState())
-                          else
-                            SliverPadding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 10, 16, 24),
-                              sliver: SliverList(
-                                delegate: SliverChildBuilderDelegate(
-                                  (_, i) {
-                                    if (i >= filtered.length) {
-                                      return const PagedListLoadMoreTile();
-                                    }
-                                    final ligne = filtered[i];
-                                    return _LigneCard(
-                                      ligne: ligne,
-                                      money: money,
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => LigneRecetteDetailPage(
-                                            ligneId: ligne.id!,
-                                          ),
-                                        ),
-                                      ).then((_) => _load()),
-                                      onEncaisser: ligne.estActive
-                                          ? () => _openEncaisserDialog(ligne)
-                                          : null,
-                                    );
-                                  },
-                                  childCount:
-                                      filtered.length + (state.hasMore ? 1 : 0),
-                                ),
+              // ── Corps ──────────────────────────────────────────────────
+              Expanded(
+                child: state.initialLoading && state.items.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : RefreshIndicator(
+                        onRefresh: () => ref
+                            .read(lignesRecetteListeProvider.notifier)
+                            .refresh(),
+                        child: CustomScrollView(
+                          controller: _scrollController,
+                          slivers: [
+                            // ── Filtre date ──────────────────────────────
+                            SliverToBoxAdapter(
+                              child: _FiltreBar(
+                                mode: _filtreMode,
+                                filtreKey: _filtreButtonKey,
+                                onFiltrePressed: _showFiltreOverlay,
+                                moisSelectionne: _moisSelectionne,
+                                anneeSelectionnee: _anneeSelectionnee,
+                                onPickMois: _pickMois,
+                                semaineDebut: _semaineDebut,
+                                onPickSemaine: _pickSemaine,
+                                jourSelectionne: _jourSelectionne,
+                                onPickJour: _pickJour,
+                                periodeDebut: _periodeDebut,
+                                periodeFin: _periodeFin,
+                                onPickPeriode: _pickPeriode,
                               ),
                             ),
-                        ],
+
+                            // ── Filtre statut + recherche ────────────────
+                            SliverToBoxAdapter(
+                              child: _SearchAndStatutBar(
+                                controller: _searchController,
+                                onSearchChanged: _onRechercheChanged,
+                                statutSelectionne: _statutFiltre,
+                                onStatutChanged: (s) {
+                                  setState(() => _statutFiltre = s);
+                                  _load();
+                                },
+                                montantsStatut: montantsStatut,
+                                money: money,
+                              ),
+                            ),
+
+                            // ── Anomalies de génération ──────────────────
+                            // La génération n'a rien bloqué : elle a créé les
+                            // deux créances et signalé. Le rappel tient tant
+                            // que rien n'a été tranché.
+                            SliverToBoxAdapter(
+                              child: Builder(builder: (_) {
+                                final (d, f) = _plageControlee();
+                                return BandeauConflitsChauffeur(
+                                  debut: d,
+                                  fin: f,
+                                  onVoirJour: _allerAuJour,
+                                );
+                              }),
+                            ),
+
+                            // ── Liste / état vide / loader bas de page ───
+                            if (filtered.isEmpty)
+                              const SliverFillRemaining(
+                                  hasScrollBody: false, child: _EmptyState())
+                            else
+                              SliverPadding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (_, i) {
+                                      if (i >= filtered.length) {
+                                        return const PagedListLoadMoreTile();
+                                      }
+                                      final ligne = filtered[i];
+                                      final cochable = ligne.id != null &&
+                                          ligne.estActive &&
+                                          (ligne.montantRestant ?? 0) > 0;
+                                      final coche =
+                                          _selectedIds.contains(ligne.id);
+                                      return _LigneCard(
+                                        ligne: ligne,
+                                        money: money,
+                                        selectionMode: _selectionMode,
+                                        cochable: cochable,
+                                        coche: coche,
+                                        onTap: _selectionMode
+                                            ? (cochable
+                                                ? () => _basculerSelection(
+                                                    ligne.id!, !coche)
+                                                : null)
+                                            : () => Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        LigneRecetteDetailPage(
+                                                      ligneId: ligne.id!,
+                                                    ),
+                                                  ),
+                                                ).then((_) => _load()),
+                                        // L'appui long ouvre le mode sélection,
+                                        // sur les seules lignes encaissables.
+                                        onLongPress: (!_selectionMode &&
+                                                cochable)
+                                            ? () => _entrerSelection(ligne.id!)
+                                            : null,
+                                        onCoche: cochable
+                                            ? (v) => _basculerSelection(
+                                                ligne.id!, v ?? false)
+                                            : null,
+                                        onEncaisser: (!_selectionMode &&
+                                                ligne.estActive)
+                                            ? () => _openEncaisserDialog(ligne)
+                                            : null,
+                                      );
+                                    },
+                                    childCount: filtered.length +
+                                        (state.hasMore ? 1 : 0),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-            ),
-          ],
+              ),
+
+              // Sous l'Expanded, jamais en bottomNavigationBar : cette page est
+              // un Scaffold imbriqué, la barre y écraserait la liste.
+              if (selection.isNotEmpty)
+                SelectionActionBar(
+                  count: selection.length,
+                  total: totalSelection,
+                  busy: false,
+                  onEncaisser: () => _encaisserSelection(selection),
+                  onAnnuler: _quitterSelection,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -607,7 +816,8 @@ class _DatePill extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _DatePill({required this.icon, required this.label, required this.onTap});
+  const _DatePill(
+      {required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -843,14 +1053,29 @@ class _StatutChip extends StatelessWidget {
 class _LigneCard extends StatelessWidget {
   final LigneRecette ligne;
   final NumberFormat money;
-  final VoidCallback  onTap;
+
+  /// `null` quand la carte n'est pas actionnable — en mode sélection, une ligne
+  /// soldée ou annulée ne se coche pas.
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final VoidCallback? onEncaisser;
+
+  // ── Sélection multiple ────────────────────────────────────────────────────
+  final bool selectionMode;
+  final bool cochable;
+  final bool coche;
+  final ValueChanged<bool?>? onCoche;
 
   const _LigneCard({
     required this.ligne,
     required this.money,
     required this.onTap,
+    this.onLongPress,
     this.onEncaisser,
+    this.selectionMode = false,
+    this.cochable = false,
+    this.coche = false,
+    this.onCoche,
   });
 
   String _labelDate(DateTime date) {
@@ -862,7 +1087,15 @@ class _LigneCard extends StatelessWidget {
     if (diff == 0) return "Aujourd'hui";
     if (diff == 1) return 'Hier';
     if (diff < 7) {
-      const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+      const jours = [
+        'Lundi',
+        'Mardi',
+        'Mercredi',
+        'Jeudi',
+        'Vendredi',
+        'Samedi',
+        'Dimanche'
+      ];
       return jours[date.weekday - 1];
     }
     return DateFormat('dd/MM/yyyy').format(date);
@@ -872,22 +1105,27 @@ class _LigneCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _couleurStatut(ligne.statut);
     final montantRestant = ligne.montantAttendu != null
-        ? (ligne.montantAttendu! - ligne.montantEncaisse).clamp(0, double.infinity)
+        ? (ligne.montantAttendu! - ligne.montantEncaisse)
+            .clamp(0, double.infinity)
         : null;
     // Toujours ce qui manque, encaissement partiel compris : c'est le reste à
     // recouvrer qui appelle une action. Le total est rappelé juste en dessous.
     final montantPrincipal = montantRestant;
-    final montantAttenduDifferent = montantPrincipal != null &&
-        montantPrincipal != ligne.montantAttendu;
+    final montantAttenduDifferent =
+        montantPrincipal != null && montantPrincipal != ligne.montantAttendu;
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: coche
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.55))
+              : null,
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
@@ -898,6 +1136,24 @@ class _LigneCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Case de sélection : seules les lignes encaissables en portent une,
+            // les autres gardent leur place pour que la liste ne se décale pas.
+            if (selectionMode) ...[
+              SizedBox(
+                width: 22,
+                height: 40,
+                child: cochable
+                    ? Center(
+                        child: SelectionCheckbox(
+                          value: coche,
+                          onChanged: onCoche ?? (_) {},
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+            ],
+
             // Icône statut
             Container(
               width: 40,
@@ -991,7 +1247,6 @@ class _LigneCard extends StatelessWidget {
       };
 }
 
-
 // ── État vide ─────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
@@ -1038,4 +1293,3 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-

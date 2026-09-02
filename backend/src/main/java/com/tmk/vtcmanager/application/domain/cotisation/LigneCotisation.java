@@ -47,6 +47,14 @@ public class LigneCotisation {
      * client s'en sert pour ne pas proposer une action vouée au refus.
      */
     private Boolean restaurable;
+    /**
+     * Renseigné à la lecture seulement : faux si la ligne ne peut plus changer
+     * de débiteur — arrêté de compte, livres fermés, paiement en cours. Le
+     * client s'en sert pour ne pas proposer une action vouée au refus.
+     */
+    private Boolean reaffectable;
+    /** Ce qui ferme la réaffectation, en français. Null quand elle est ouverte. */
+    private String motifNonReaffectable;
 
     public void recalculerStatutEtMontant() {
         BigDecimal total = encaissements.stream()

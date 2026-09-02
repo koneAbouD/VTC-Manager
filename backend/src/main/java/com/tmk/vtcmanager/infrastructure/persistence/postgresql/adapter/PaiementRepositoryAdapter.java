@@ -10,6 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import com.tmk.vtcmanager.application.domain.payment.StatutPaiement;
+import com.tmk.vtcmanager.application.domain.payment.TypeCiblePaiement;
+import java.util.Arrays;
 
 @Component
 @RequiredArgsConstructor
@@ -82,5 +85,19 @@ public class PaiementRepositoryAdapter implements PaiementRepository {
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())
                 .build();
+    }
+
+    /**
+     * Non terminal = encore susceptible d'aboutir. Un paiement échoué ou expiré
+     * ne crée plus rien : il ne retient pas la créance.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existeEnCours(TypeCiblePaiement typeCible, Long cibleId) {
+        if (typeCible == null || cibleId == null) return false;
+        List<StatutPaiement> enVol = Arrays.stream(StatutPaiement.values())
+                .filter(s -> !s.estTerminal())
+                .toList();
+        return jpaRepository.existsByTypeCibleAndCibleIdAndStatutIn(typeCible, cibleId, enVol);
     }
 }

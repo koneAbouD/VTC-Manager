@@ -16,11 +16,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 
 @Component
 @RequiredArgsConstructor
@@ -103,5 +105,20 @@ public class OperationFinanciereRepositoryAdapter implements OperationFinanciere
     @Override
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public int reaffecterChauffeurDesEncaissements(TypeDocumentCreance typeLigne, Long ligneId,
+                                                   Long chauffeurId, String auteur) {
+        return switch (typeLigne) {
+            case RECETTE -> jpaRepository.reaffecterChauffeurEncaissementsRecette(
+                    ligneId, chauffeurId, auteur);
+            case COTISATION -> jpaRepository.reaffecterChauffeurEncaissementsCotisation(
+                    ligneId, chauffeurId, auteur);
+            // Pénalités et contraventions ne se réaffectent pas par ce chemin :
+            // leurs versements suivent leur propre ligne, pas celle-ci.
+            case PENALITE, CONTRAVENTION -> 0;
+        };
     }
 }

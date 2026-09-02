@@ -83,11 +83,19 @@ class _LongPressInfoBubbleState extends State<LongPressInfoBubble> {
           ),
         ],
       ),
-      child: Text(
-        widget.infoText,
-        style: TextStyle(
-            color: widget.color, fontSize: 13, fontWeight: FontWeight.bold),
-        maxLines: 1,
+      // Une largeur plafonnée et trois lignes : les badges de statut tiennent
+      // toujours sur une ligne et ne bougent pas, mais une explication — « un
+      // arrêté a figé cette créance, voici pourquoi » — reste lisible au lieu
+      // d'être coupée au premier mot de trop.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 260),
+        child: Text(
+          widget.infoText,
+          style: TextStyle(
+              color: widget.color, fontSize: 13, fontWeight: FontWeight.bold),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }

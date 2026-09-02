@@ -10,6 +10,7 @@ import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteVehiculeR
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
+import com.tmk.vtcmanager.application.services.SignalementCoherenceGenerationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class GenererLignesCotisationUseCase {
     private final LigneCotisationRepository ligneCotisationRepository;
     private final IndisponibiliteSubstitutionService indisponibiliteSubstitutionService;
     private final IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
+    private final SignalementCoherenceGenerationService signalementCoherenceGenerationService;
 
     @Transactional
     public List<LigneCotisation> executer(LocalDate date) {
@@ -101,6 +103,10 @@ public class GenererLignesCotisationUseCase {
                 }
             }
         }
+
+        // Cf. GenererLignesRecetteUseCase : on signale un chauffeur servi par
+        // deux véhicules le même jour, on ne le bloque pas.
+        signalementCoherenceGenerationService.controler(date);
 
         return generees;
     }

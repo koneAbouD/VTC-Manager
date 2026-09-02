@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/widgets/montant_field.dart';
 import '../../../features/vehicule/domain/entities/vehicule.dart';
 import '../../../features/vehicule/presentation/providers/vehicule_provider.dart';
 import '../../../features/vehicule/presentation/providers/vehicule_state.dart';
@@ -66,6 +67,14 @@ class _EncaissementRapideSheetState
   LigneCotisation? _ligneCotisation;
   String? _lignesError;
 
+  // ── Lignes retenues pour le versement ──────────────────────────────────────
+  // Le chauffeur ne règle pas toujours les deux : les cases écartent une ligne
+  // du versement. Elles pilotent le montant prérempli, et le montant saisi à la
+  // main les repilote en retour (une cotisation que la saisie ne couvre plus se
+  // décoche d'elle-même).
+  bool _inclureRecette    = false;
+  bool _inclureCotisation = false;
+
   // ── Formulaire ─────────────────────────────────────────────────────────────
   final _montantCtrl  = TextEditingController();
   final _commentCtrl  = TextEditingController();
@@ -76,7 +85,7 @@ class _EncaissementRapideSheetState
   @override
   void initState() {
     super.initState();
-    _montantCtrl.addListener(() => setState(() {}));
+    _montantCtrl.addListener(_onMontantChange);
     // S'assurer que la liste des véhicules est disponible pour la sélection.
     Future.microtask(
         () => ref.read(vehiculeNotifierProvider.notifier).loadVehicules());
@@ -118,36 +127,95 @@ class _EncaissementRapideSheetState
     return (rr ?? 0) + (cc ?? 0);
   }
 
-  double get _recetteRestant =>
-      _ligneRecette == null ? 0 : (_restantRecette(_ligneRecette) ?? double.maxFinite);
+  double get _recetteRestant => (_ligneRecette == null || !_inclureRecette)
+      ? 0
+      : (_restantRecette(_ligneRecette) ?? double.maxFinite);
 
-  double get _cotisationRestant => _restantCotisation(_ligneCotisation) ?? 0;
+  double get _cotisationRestant =>
+      _inclureCotisation ? (_restantCotisation(_ligneCotisation) ?? 0) : 0;
 
-  /// Formatage brut (sans séparateur) pour rester saisissable et parsable.
-  static String _formatSaisie(double v) =>
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  /// Somme des restants des seules lignes cochées : plafond de la saisie et
+  /// valeur du préremplissage. `null` quand aucun restant n'est connu.
+  double? get _totalSelectionne => _totalRestant(
+        _inclureRecette ? _ligneRecette : null,
+        _inclureCotisation ? _ligneCotisation : null,
+      );
+
+  bool get _aUneLigneSelectionnee =>
+      (_ligneRecette != null && _inclureRecette) ||
+      (_ligneCotisation != null && _inclureCotisation);
 
   // ── Répartition : recette d'abord, cotisation ensuite ─────────────────────
 
   ({double recette, double cotisation}) get _distribution {
-    final montant =
-        double.tryParse(_montantCtrl.text.replaceAll(',', '.')) ?? 0;
+    final montant = parseMontant(_montantCtrl.text) ?? 0;
     if (montant <= 0) return (recette: 0, cotisation: 0);
     final recettePart     = montant.clamp(0.0, _recetteRestant);
     final cotisationPart  = (montant - recettePart).clamp(0.0, _cotisationRestant);
     return (recette: recettePart, cotisation: cotisationPart);
   }
 
+  // ── Synchronisation cases ↔ montant ───────────────────────────────────────
+
+  /// Réaligne le champ montant sur les lignes cochées.
+  void _appliquerMontantSelection() {
+    final total = _totalSelectionne;
+    _montantCtrl.text =
+        (total != null && total > 0) ? formatMontantSaisie(total) : '';
+  }
+
+  /// La cotisation, servie après la recette, suit ce qui reste du montant :
+  /// elle se décoche dès que la saisie ne laisse rien pour elle, et se recoche
+  /// dès que la saisie repasse au-dessus de la recette. La recette, elle, garde
+  /// le choix de l'utilisateur : la décocher est une façon de ne régler que la
+  /// cotisation, et le montant est alors plafonné à celle-ci.
+  void _synchroniserCotisation() {
+    if (_ligneCotisation == null) return;
+
+    final montant = parseMontant(_montantCtrl.text) ?? 0;
+    // Champ vidé : on laisse les cases en l'état plutôt que de tout décocher
+    // sous les doigts de l'utilisateur en train d'effacer.
+    if (montant <= 0) return;
+
+    final restantRecette =
+        _inclureRecette ? _restantRecette(_ligneRecette) : 0.0;
+    // Recette sans montant attendu : elle absorbe tout, la part de la
+    // cotisation n'est pas calculable — on ne touche pas aux cases.
+    if (_ligneRecette != null && _inclureRecette && restantRecette == null) {
+      return;
+    }
+
+    _inclureCotisation = montant > (restantRecette ?? 0);
+  }
+
+  void _onMontantChange() {
+    _synchroniserCotisation();
+    if (mounted) setState(() {});
+  }
+
+  void _basculerRecette(bool? valeur) {
+    setState(() => _inclureRecette = valeur ?? false);
+    _appliquerMontantSelection();
+  }
+
+  void _basculerCotisation(bool? valeur) {
+    setState(() => _inclureCotisation = valeur ?? false);
+    _appliquerMontantSelection();
+  }
+
   // ── Chargement des lignes après sélection du véhicule ─────────────────────
 
   Future<void> _chargerLignes(Vehicule v) async {
+    // Hors setState : vider le champ notifie déjà le listener, qui reconstruit.
+    _montantCtrl.clear();
     setState(() {
       _vehicule     = v;
       _lignesStatus = _LignesStatus.loading;
       _ligneRecette = null;
       _ligneCotisation = null;
+      _inclureRecette    = false;
+      _inclureCotisation = false;
       _lignesError  = null;
-      _montantCtrl.clear();
     });
 
     final recetteRepo    = ref.read(ligneRecetteRepositoryProvider);
@@ -185,17 +253,18 @@ class _EncaissementRapideSheetState
       err = 'Aucune ligne active (recette ou cotisation) pour ce véhicule';
     }
 
-    // Préremplissage : total restant des lignes actives trouvées.
-    final total = err != null ? null : _totalRestant(ligneR, ligneC);
-
     setState(() {
       _lignesStatus    = err != null ? _LignesStatus.error : _LignesStatus.loaded;
       _ligneRecette    = ligneR;
       _ligneCotisation = ligneC;
       _lignesError     = err;
-      _montantCtrl.text =
-          (total != null && total > 0) ? _formatSaisie(total) : '';
+      // Toutes les lignes trouvées sont retenues par défaut.
+      _inclureRecette    = err == null && ligneR != null;
+      _inclureCotisation = err == null && ligneC != null;
     });
+
+    // Préremplissage : total restant des lignes cochées.
+    _appliquerMontantSelection();
   }
 
   // ── Soumission ─────────────────────────────────────────────────────────────
@@ -203,12 +272,19 @@ class _EncaissementRapideSheetState
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final dist = _distribution;
+    // Filet : rien de coché, ou un montant qu'aucune ligne retenue n'absorbe.
+    if (dist.recette <= 0 && dist.cotisation <= 0) {
+      setState(() => _submitError =
+          'Aucun montant à encaisser sur les lignes sélectionnées');
+      return;
+    }
+
     setState(() {
       _submitting = true;
       _submitError = null;
     });
 
-    final dist       = _distribution;
     final commentaire = _commentCtrl.text.trim().isEmpty
         ? null
         : _commentCtrl.text.trim();
@@ -284,7 +360,7 @@ class _EncaissementRapideSheetState
     final lignesLoading  = _lignesStatus == _LignesStatus.loading;
     final lignesError    = _lignesStatus == _LignesStatus.error;
 
-    final totalRestantConnu = _totalRestant(_ligneRecette, _ligneCotisation);
+    final totalRestantConnu = _totalSelectionne;
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + keyboardHeight + bottomSafe),
@@ -417,10 +493,21 @@ class _EncaissementRapideSheetState
             // ── Section : Lignes actives ──────────────────────────────────
             if (lignesOk) ...[
               _LignesCard(
-                ligneRecette:    _ligneRecette,
-                ligneCotisation: _ligneCotisation,
-                fmt:             fmt,
+                ligneRecette:      _ligneRecette,
+                ligneCotisation:   _ligneCotisation,
+                inclureRecette:    _inclureRecette,
+                inclureCotisation: _inclureCotisation,
+                onRecetteChanged:    _basculerRecette,
+                onCotisationChanged: _basculerCotisation,
+                fmt:               fmt,
               ),
+              if (!_aUneLigneSelectionnee) ...[
+                const _InlineAlert(
+                  message: 'Cochez au moins une ligne à encaisser',
+                  isError: false,
+                ),
+                const SizedBox(height: 8),
+              ],
             ],
 
             if (lignesError && _lignesError != null)
@@ -440,10 +527,12 @@ class _EncaissementRapideSheetState
                     _LabeledField(
                       label:      'Montant',
                       isRequired: true,
-                      child: TextFormField(
+                      child: MontantField(
                         controller: _montantCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
+                        // Le versement ne peut couvrir que ce qui est coché :
+                        // la recette du jour, la cotisation, ou les deux.
+                        plafond:        totalRestantConnu,
+                        libellePlafond: 'le total restant',
                         style: const TextStyle(fontSize: 15, color: _kDark),
                         decoration: _fieldDeco('0').copyWith(
                           suffixText: 'XOF',
@@ -452,19 +541,6 @@ class _EncaissementRapideSheetState
                               fontSize: 13,
                               fontWeight: FontWeight.w600),
                         ),
-                        validator: (v) {
-                          final val = double.tryParse(
-                              v?.replaceAll(',', '.') ?? '');
-                          if (val == null || val <= 0) {
-                            return 'Montant invalide';
-                          }
-                          if (totalRestantConnu != null &&
-                              val > totalRestantConnu) {
-                            return 'Dépasse le total restant'
-                                ' (${fmt.format(totalRestantConnu)})';
-                          }
-                          return null;
-                        },
                       ),
                     ),
 
@@ -472,8 +548,13 @@ class _EncaissementRapideSheetState
                     if (dist.recette > 0 || dist.cotisation > 0) ...[
                       const SizedBox(height: 10),
                       _RepartitionCard(
-                        recette:    _ligneRecette    != null ? dist.recette    : null,
-                        cotisation: _ligneCotisation != null ? dist.cotisation : null,
+                        recette: (_ligneRecette != null && _inclureRecette)
+                            ? dist.recette
+                            : null,
+                        cotisation:
+                            (_ligneCotisation != null && _inclureCotisation)
+                                ? dist.cotisation
+                                : null,
                         fmt: fmt,
                       ),
                     ],
@@ -507,7 +588,10 @@ class _EncaissementRapideSheetState
             SizedBox(
               height: 50,
               child: FilledButton.icon(
-                onPressed: (_submitting || lignesLoading || !lignesOk)
+                onPressed: (_submitting ||
+                        lignesLoading ||
+                        !lignesOk ||
+                        !_aUneLigneSelectionnee)
                     ? null
                     : _submit,
                 icon: _submitting
@@ -545,16 +629,32 @@ class _EncaissementRapideSheetState
 class _LignesCard extends StatelessWidget {
   final LigneRecette?    ligneRecette;
   final LigneCotisation? ligneCotisation;
+
+  /// Lignes retenues pour le versement : la case de chacune.
+  final bool inclureRecette;
+  final bool inclureCotisation;
+  final ValueChanged<bool?> onRecetteChanged;
+  final ValueChanged<bool?> onCotisationChanged;
+
   final NumberFormat     fmt;
 
   const _LignesCard({
     required this.ligneRecette,
     required this.ligneCotisation,
+    required this.inclureRecette,
+    required this.inclureCotisation,
+    required this.onRecetteChanged,
+    required this.onCotisationChanged,
     required this.fmt,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Deux lignes actives peuvent porter des jours différents : une recette
+    // d'hier encore ouverte face à la cotisation du jour. Chaque badge affiche
+    // donc sa propre date.
+    final jourFmt = DateFormat('EEE dd/MM/yyyy', 'fr_FR');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -578,12 +678,22 @@ class _LignesCard extends StatelessWidget {
                   size: 18, color: _kPrimary),
             ),
             const SizedBox(width: 10),
-            const Text('Lignes actives trouvées',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: _kDark,
-                    letterSpacing: -0.2)),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Lignes actives trouvées',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: _kDark,
+                          letterSpacing: -0.2)),
+                  SizedBox(height: 2),
+                  Text('Décochez une ligne pour la retirer du versement',
+                      style: TextStyle(fontSize: 11, color: _kHint)),
+                ],
+              ),
+            ),
           ]),
           const SizedBox(height: 14),
 
@@ -592,10 +702,13 @@ class _LignesCard extends StatelessWidget {
             _LigneBadge(
               icon:    Icons.account_balance_wallet_outlined,
               label:   'Recette',
+              jour:    jourFmt.format(ligneRecette!.dateRecette),
               montant: ligneRecette!.montantRestant != null
                   ? fmt.format(ligneRecette!.montantRestant!)
                   : '—',
               color:   _kGreen,
+              selectionne: inclureRecette,
+              onChanged:   onRecetteChanged,
             ),
 
           if (ligneRecette != null && ligneCotisation != null)
@@ -606,12 +719,15 @@ class _LignesCard extends StatelessWidget {
             _LigneBadge(
               icon:    Icons.analytics_outlined,
               label:   ligneCotisation!.nomCotisation,
+              jour:    jourFmt.format(ligneCotisation!.dateCotisation),
               montant: fmt.format(
                 ligneCotisation!.montantRestant ??
                     (ligneCotisation!.montantDu -
                         ligneCotisation!.montantEncaisse),
               ),
               color:   _kOrange,
+              selectionne: inclureCotisation,
+              onChanged:   onCotisationChanged,
             ),
         ],
       ),
@@ -622,50 +738,105 @@ class _LignesCard extends StatelessWidget {
 class _LigneBadge extends StatelessWidget {
   final IconData icon;
   final String   label;
+
+  /// Jour rattaché à la ligne, déjà formaté (« lun. 01/09/2026 »).
+  final String   jour;
   final String   montant;
   final Color    color;
+
+  /// Ligne retenue pour le versement. Décochée, elle reste affichée mais
+  /// grisée : elle ne reçoit rien et ne compte plus dans le montant.
+  final bool                selectionne;
+  final ValueChanged<bool?> onChanged;
 
   const _LigneBadge({
     required this.icon,
     required this.label,
+    required this.jour,
     required this.montant,
     required this.color,
+    required this.selectionne,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(children: [
-      Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, size: 14, color: color),
+    // Ligne écartée : tout passe en gris, le montant restant n'entre plus dans
+    // le versement.
+    final teinte = selectionne ? color : _kHint;
+
+    return InkWell(
+      onTap: () => onChanged(!selectionne),
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: Checkbox(
+              value: selectionne,
+              onChanged: onChanged,
+              activeColor: color,
+              side: const BorderSide(color: _kHint, width: 1.6),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: teinte.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 14, color: teinte),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: selectionne ? _kDark : _kHint)),
+                const SizedBox(height: 2),
+                Row(children: [
+                  const Icon(Icons.event_outlined, size: 11, color: _kHint),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(jour,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: _kHint)),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: teinte.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'Restant : $montant',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: teinte),
+            ),
+          ),
+        ]),
       ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: Text(label,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: _kDark)),
-      ),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          'Restant : $montant',
-          style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color),
-        ),
-      ),
-    ]);
+    );
   }
 }
 

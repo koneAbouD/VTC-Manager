@@ -185,4 +185,21 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public List<LigneCotisation> findByChauffeurIdAndDateCotisation(Long chauffeurId, LocalDate date) {
+        return mapper.toDomainList(
+                jpaRepository.findByChauffeurIdAndDateCotisation(chauffeurId, date));
+    }
+
+    @Override
+    @Transactional
+    public void reaffecterChauffeur(Long ligneId, Long chauffeurId) {
+        jpaRepository.reaffecterChauffeur(ligneId, chauffeurId);
+    }
+
+    @Override
+    public List<LigneCotisation> findByDateCotisation(LocalDate date) {
+        return mapper.toDomainList(jpaRepository.findByDateCotisation(date));
+    }
 }

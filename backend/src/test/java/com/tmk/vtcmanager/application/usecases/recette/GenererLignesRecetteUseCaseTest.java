@@ -14,6 +14,7 @@ import com.tmk.vtcmanager.application.ports.persistence.JourFerieRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
 import com.tmk.vtcmanager.application.services.IndisponibiliteSubstitutionService;
+import com.tmk.vtcmanager.application.services.SignalementCoherenceGenerationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,7 @@ class GenererLignesRecetteUseCaseTest {
     private IndisponibiliteSubstitutionService substitutionService;
     private IndisponibiliteVehiculeRepository indisponibiliteVehiculeRepository;
     private JourFerieRepository jourFerieRepository;
+    private SignalementCoherenceGenerationService signalementService;
     private GenererLignesRecetteUseCase useCase;
 
     @BeforeEach
@@ -67,6 +69,7 @@ class GenererLignesRecetteUseCaseTest {
         substitutionService = mock(IndisponibiliteSubstitutionService.class);
         indisponibiliteVehiculeRepository = mock(IndisponibiliteVehiculeRepository.class);
         jourFerieRepository = mock(JourFerieRepository.class);
+        signalementService = mock(SignalementCoherenceGenerationService.class);
 
         // Cas nominal : véhicule disponible, jour ordinaire, aucune substitution.
         when(indisponibiliteVehiculeRepository.isImmobiliseAt(anyLong(), any())).thenReturn(false);
@@ -85,7 +88,7 @@ class GenererLignesRecetteUseCaseTest {
 
         useCase = new GenererLignesRecetteUseCase(programmeTravailRepository,
                 configurationRecetteRepository, ligneRecetteRepository, substitutionService,
-                indisponibiliteVehiculeRepository, jourFerieRepository);
+                indisponibiliteVehiculeRepository, jourFerieRepository, signalementService);
     }
 
     // ── Fixtures ────────────────────────────────────────────────────────────

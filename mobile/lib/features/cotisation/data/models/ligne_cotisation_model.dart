@@ -16,6 +16,8 @@ class LigneCotisationModel extends LigneCotisation {
     required super.statut,
     super.motifAnnulation,
     super.restaurable,
+    super.reaffectable,
+    super.motifNonReaffectable,
     super.encaissements,
   });
 
@@ -40,6 +42,10 @@ class LigneCotisationModel extends LigneCotisation {
       // Absent = pas de bouton : mieux vaut une action manquante
       // qu'une action que le serveur refusera.
       restaurable: json['restaurable'] as bool? ?? false,
+      // Même prudence : sans le drapeau, le chauffeur reste figé plutôt
+      // que d'offrir une modification que le serveur refuserait.
+      reaffectable: json['reaffectable'] as bool? ?? false,
+      motifNonReaffectable: json['motifNonReaffectable'] as String?,
       encaissements: enc,
     );
   }

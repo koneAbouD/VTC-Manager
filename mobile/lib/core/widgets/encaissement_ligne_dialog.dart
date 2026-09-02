@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import 'app_error_banner.dart';
 import 'date_filter_dialogs.dart';
+import 'montant_field.dart';
 import 'premium_select_field.dart';
 
 // ── Palette (cohérente avec MaintenanceFormPage) ──────────────────────────────
@@ -94,6 +95,40 @@ class SaisieEncaissement {
   });
 }
 
+// ── Ligne jumelle ─────────────────────────────────────────────────────────────
+
+/// Ligne du même jour que l'on peut encaisser dans la foulée : la cotisation
+/// du jour depuis la fiche recette, la recette du jour depuis la fiche
+/// cotisation. Le chauffeur verse le plus souvent les deux d'un coup.
+///
+/// Décochée par défaut — la feuille reste celle de la ligne ouverte. Cochée,
+/// elle reçoit ce que le montant laisse une fois la ligne principale servie.
+class LigneJumelleEncaissement {
+  /// Libellé de la case (« Encaisser aussi la cotisation du même jour »).
+  final String libelle;
+
+  /// Identité de la ligne, comme sur la carte de la ligne principale.
+  final String   titre;
+  final String?  sousTitre;
+  final double   montantRestant;
+  final Color    couleur;
+  final IconData icone;
+
+  /// Même contrat que `onEncaisser` : `null` si l'appel a réussi, sinon le
+  /// message d'erreur. Reçoit la saisie avec la part revenant à cette ligne.
+  final Future<String?> Function(SaisieEncaissement saisie) onEncaisser;
+
+  const LigneJumelleEncaissement({
+    required this.libelle,
+    required this.titre,
+    this.sousTitre,
+    required this.montantRestant,
+    required this.couleur,
+    required this.icone,
+    required this.onEncaisser,
+  });
+}
+
 // ── Entrée ────────────────────────────────────────────────────────────────────
 
 /// Ouvre un popup d'encaissement pour une ligne (recette, cotisation, pénalité).
@@ -110,6 +145,7 @@ Future<bool?> showEncaissementLigneDialog(
   Color couleur = _kGreen,
   IconData icone = Icons.payments_outlined,
   required Future<String?> Function(SaisieEncaissement saisie) onEncaisser,
+  LigneJumelleEncaissement? jumelle,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -126,6 +162,7 @@ Future<bool?> showEncaissementLigneDialog(
       couleur: couleur,
       icone: icone,
       onEncaisser: onEncaisser,
+      jumelle: jumelle,
     ),
   );
 }
@@ -139,6 +176,7 @@ class _EncaissementLigneSheet extends StatefulWidget {
   final Color    couleur;
   final IconData icone;
   final Future<String?> Function(SaisieEncaissement) onEncaisser;
+  final LigneJumelleEncaissement? jumelle;
 
   const _EncaissementLigneSheet({
     required this.titre,
@@ -147,6 +185,7 @@ class _EncaissementLigneSheet extends StatefulWidget {
     required this.couleur,
     required this.icone,
     required this.onEncaisser,
+    required this.jumelle,
   });
 
   @override
@@ -169,6 +208,15 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
   bool  _submitting  = false;
   String? _submitError;
 
+  /// Ligne du même jour encaissée dans la foulée. Décochée à l'ouverture : la
+  /// feuille sert d'abord la ligne sur laquelle l'utilisateur a cliqué.
+  bool _inclureJumelle = false;
+
+  /// Vrai quand la ligne principale est passée mais que la jumelle a échoué :
+  /// le versement est en partie enregistré, il ne faut surtout pas le rejouer.
+  /// La feuille ne propose plus que de se fermer.
+  bool _principaleReglee = false;
+
   @override
   void initState() {
     super.initState();
@@ -176,10 +224,75 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
     // Saisie brute (sans séparateur) pour rester éditable et parsable.
     final restant = widget.montantRestant;
     if (restant != null && restant > 0) {
-      _montantCtrl.text = restant == restant.roundToDouble()
-          ? restant.toStringAsFixed(0)
-          : restant.toStringAsFixed(2);
+      _montantCtrl.text = formatMontantSaisie(restant);
     }
+    // La case suit le montant, et le montant suit la case : on n'écoute la
+    // saisie que lorsqu'une ligne jumelle est proposée.
+    if (widget.jumelle != null) {
+      _montantCtrl.addListener(_onMontantChange);
+    }
+  }
+
+  // ── Ligne jumelle : montant et case, tenus synchrones ──────────────────────
+
+  /// Plafond de la saisie : la ligne principale, plus la jumelle si elle est
+  /// cochée. `null` quand le restant de la principale est inconnu.
+  double? get _plafond {
+    final principal = widget.montantRestant;
+    if (principal == null) return null;
+    final j = widget.jumelle;
+    return (_inclureJumelle && j != null)
+        ? principal + j.montantRestant
+        : principal;
+  }
+
+  /// Répartition du montant saisi : la ligne principale d'abord, la jumelle
+  /// ensuite avec ce qui reste.
+  ({double principal, double jumelle}) get _repartition {
+    final montant = parseMontant(_montantCtrl.text) ?? 0;
+    if (montant <= 0) return (principal: 0, jumelle: 0);
+
+    final restantPrincipal = widget.montantRestant ?? double.maxFinite;
+    final partPrincipale   = montant.clamp(0.0, restantPrincipal);
+    final j = widget.jumelle;
+    final partJumelle = (_inclureJumelle && j != null)
+        ? (montant - partPrincipale).clamp(0.0, j.montantRestant)
+        : 0.0;
+    return (principal: partPrincipale, jumelle: partJumelle);
+  }
+
+  /// Réaligne le montant sur ce qui est coché.
+  void _appliquerMontantSelection() {
+    final plafond = _plafond;
+    if (plafond == null) return;
+    _montantCtrl.text = plafond > 0 ? formatMontantSaisie(plafond) : '';
+  }
+
+  /// La jumelle, servie après la ligne principale, suit ce que le montant lui
+  /// laisse : elle se décoche dès que la saisie ne dépasse plus la principale,
+  /// et se recoche dès qu'elle la dépasse à nouveau.
+  void _synchroniserJumelle() {
+    final restantPrincipal = widget.montantRestant;
+    if (widget.jumelle == null || restantPrincipal == null) return;
+
+    final montant = parseMontant(_montantCtrl.text) ?? 0;
+    // Champ en cours d'effacement : on laisse la case en l'état.
+    if (montant <= 0) return;
+
+    _inclureJumelle = montant > restantPrincipal;
+  }
+
+  void _onMontantChange() {
+    _synchroniserJumelle();
+    if (mounted) setState(() {});
+  }
+
+  void _basculerJumelle(bool? valeur) {
+    setState(() {
+      _inclureJumelle = valeur ?? false;
+      _submitError = null;
+    });
+    _appliquerMontantSelection();
   }
 
   @override
@@ -211,6 +324,13 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
   }
 
   Future<void> _submit() async {
+    // Versement déjà passé côté ligne principale : le bouton ne fait plus que
+    // refermer, rejouer l'appel encaisserait deux fois.
+    if (_principaleReglee) {
+      Navigator.pop(context, true);
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -218,7 +338,7 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
       _submitError = null;
     });
 
-    final montant = double.parse(_montantCtrl.text.replaceAll(',', '.'));
+    final parts = _repartition;
     final commentaire = _commentCtrl.text.trim().isEmpty
         ? null
         : _commentCtrl.text.trim();
@@ -229,13 +349,36 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
         ? _refCtrl.text.trim()
         : null;
 
-    final error = await widget.onEncaisser(SaisieEncaissement(
-      montant:     montant,
-      commentaire: commentaire,
-      mode:        _mode,
-      reference:   reference,
-      date:        _date,
-    ));
+    SaisieEncaissement saisiePour(double montant) => SaisieEncaissement(
+          montant:     montant,
+          commentaire: commentaire,
+          mode:        _mode,
+          reference:   reference,
+          date:        _date,
+        );
+
+    String? error;
+    if (parts.principal > 0) {
+      error = await widget.onEncaisser(saisiePour(parts.principal));
+    }
+
+    // La jumelle ne part qu'une fois la principale acceptée : deux écritures
+    // pour un seul versement, dans l'ordre où l'utilisateur les voit.
+    final jumelle = widget.jumelle;
+    var principaleReglee = false;
+    if (error == null && jumelle != null && parts.jumelle > 0) {
+      principaleReglee = parts.principal > 0;
+      final erreurJumelle = await jumelle.onEncaisser(saisiePour(parts.jumelle));
+      if (erreurJumelle != null) {
+        error = principaleReglee
+            ? '${widget.titre} : versement enregistré. En revanche '
+                '« ${jumelle.titre} » n\'a pas pu être encaissée — '
+                '$erreurJumelle'
+            : erreurJumelle;
+      } else {
+        principaleReglee = false;
+      }
+    }
 
     if (!mounted) return;
     setState(() {
@@ -243,6 +386,7 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
       // L'erreur s'affiche dans la feuille (bandeau inline) : un SnackBar
       // resterait masqué sous le bottom sheet tant qu'il est ouvert.
       _submitError = error;
+      _principaleReglee = error != null && principaleReglee;
     });
 
     if (error == null) {
@@ -308,6 +452,17 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
             ),
             const SizedBox(height: 12),
 
+            // ── Ligne du même jour, à encaisser dans la foulée ────────
+            if (widget.jumelle != null) ...[
+              _JumelleCard(
+                jumelle:     widget.jumelle!,
+                selectionne: _inclureJumelle,
+                onChanged:   _principaleReglee ? null : _basculerJumelle,
+                fmt:         fmt,
+              ),
+              const SizedBox(height: 12),
+            ],
+
             // ── Section encaissement ──────────────────────────────────
             _FormCard(
               icon:   Icons.payments_outlined,
@@ -321,10 +476,11 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                   _LabeledField(
                     label:      'Montant',
                     isRequired: true,
-                    child: TextFormField(
-                      controller:  _montantCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                    child: MontantField(
+                      controller: _montantCtrl,
+                      // Ce que le versement peut couvrir : la ligne ouverte,
+                      // plus la ligne du même jour quand elle est cochée.
+                      plafond: _plafond,
                       style: const TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco('0').copyWith(
                         suffixText: 'XOF',
@@ -333,21 +489,22 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                             fontSize: 13,
                             fontWeight: FontWeight.w600),
                       ),
-                      validator: (v) {
-                        final val = double.tryParse(
-                            v?.replaceAll(',', '.') ?? '');
-                        if (val == null || val <= 0) {
-                          return 'Montant invalide';
-                        }
-                        if (widget.montantRestant != null &&
-                            val > widget.montantRestant!) {
-                          return 'Dépasse le montant restant'
-                              ' (${fmt.format(widget.montantRestant!)})';
-                        }
-                        return null;
-                      },
                     ),
                   ),
+
+                  // Ce que chaque ligne reçoit du montant saisi.
+                  if (widget.jumelle != null && _inclureJumelle) ...[
+                    const SizedBox(height: 10),
+                    _RepartitionCard(
+                      principalLabel: widget.titre,
+                      principalMontant: _repartition.principal,
+                      principalCouleur: widget.couleur,
+                      jumelleLabel:   widget.jumelle!.titre,
+                      jumelleMontant: _repartition.jumelle,
+                      jumelleCouleur: widget.jumelle!.couleur,
+                      fmt: fmt,
+                    ),
+                  ],
                   const SizedBox(height: 12),
 
                   // Mode de règlement — décide de la caisse créditée.
@@ -431,9 +588,15 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : const Icon(Icons.check_rounded, size: 18),
+                    : Icon(
+                        _principaleReglee
+                            ? Icons.close_rounded
+                            : Icons.check_rounded,
+                        size: 18),
                 label: Text(
-                  _submitting ? 'Encaissement en cours…' : 'Encaisser',
+                  _submitting
+                      ? 'Encaissement en cours…'
+                      : (_principaleReglee ? 'Fermer' : 'Encaisser'),
                   style: const TextStyle(
                       fontSize: 15, fontWeight: FontWeight.w700),
                 ),
@@ -497,6 +660,209 @@ class _DateField extends StatelessWidget {
         ]),
       ),
     );
+  }
+}
+
+// ── Carte de la ligne jumelle ─────────────────────────────────────────────────
+
+class _JumelleCard extends StatelessWidget {
+  final LigneJumelleEncaissement jumelle;
+  final bool                     selectionne;
+
+  /// `null` fige la case : le versement est déjà parti côté ligne principale.
+  final ValueChanged<bool?>?     onChanged;
+  final NumberFormat             fmt;
+
+  const _JumelleCard({
+    required this.jumelle,
+    required this.selectionne,
+    required this.onChanged,
+    required this.fmt,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Case décochée : la ligne reste lisible, mais grisée — elle ne recevra
+    // rien et ne compte pas dans le montant.
+    final teinte = selectionne ? jumelle.couleur : _kHint;
+
+    return InkWell(
+      onTap: onChanged == null ? null : () => onChanged!(!selectionne),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: selectionne
+                  ? jumelle.couleur.withValues(alpha: 0.35)
+                  : _kBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: Checkbox(
+                  value: selectionne,
+                  onChanged: onChanged,
+                  activeColor: jumelle.couleur,
+                  side: const BorderSide(color: _kHint, width: 1.6),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(jumelle.libelle,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: selectionne ? _kDark : _kLabel,
+                        letterSpacing: -0.2)),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              const SizedBox(width: 32),
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: teinte.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(jumelle.icone, size: 15, color: teinte),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(jumelle.titre,
+                        style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: selectionne ? _kDark : _kHint)),
+                    if (jumelle.sousTitre != null)
+                      Text(jumelle.sousTitre!,
+                          style:
+                              const TextStyle(fontSize: 11, color: _kHint)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: teinte.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Restant : ${fmt.format(jumelle.montantRestant)}',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: teinte),
+                ),
+              ),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Répartition du montant entre les deux lignes ──────────────────────────────
+
+class _RepartitionCard extends StatelessWidget {
+  final String  principalLabel;
+  final double  principalMontant;
+  final Color   principalCouleur;
+  final String  jumelleLabel;
+  final double  jumelleMontant;
+  final Color   jumelleCouleur;
+  final NumberFormat fmt;
+
+  const _RepartitionCard({
+    required this.principalLabel,
+    required this.principalMontant,
+    required this.principalCouleur,
+    required this.jumelleLabel,
+    required this.jumelleMontant,
+    required this.jumelleCouleur,
+    required this.fmt,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: _kGreen.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kGreen.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.alt_route_outlined, size: 13, color: _kGreen),
+            const SizedBox(width: 5),
+            Text('Répartition du montant',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: _kGreen.withValues(alpha: 0.85),
+                    letterSpacing: 0.2)),
+          ]),
+          const SizedBox(height: 8),
+          _RepartitionRow(
+              label: principalLabel,
+              value: fmt.format(principalMontant),
+              color: principalCouleur),
+          const SizedBox(height: 5),
+          _RepartitionRow(
+              label: jumelleLabel,
+              value: fmt.format(jumelleMontant),
+              color: jumelleCouleur),
+        ],
+      ),
+    );
+  }
+}
+
+class _RepartitionRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color  color;
+
+  const _RepartitionRow({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Icon(Icons.circle, size: 8, color: color),
+      const SizedBox(width: 7),
+      Expanded(
+        child: Text(label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: _kLabel)),
+      ),
+      Text(value,
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+    ]);
   }
 }
 
