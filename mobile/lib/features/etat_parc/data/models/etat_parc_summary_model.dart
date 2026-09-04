@@ -67,6 +67,14 @@ class VehiculeExceptionModel {
   /// `MAINTENANCE_PREVUE`). Null pour les autres motifs.
   final DateTime? dateMaintenancePrevue;
 
+  /// Date de la prochaine vidange (motif `VIDANGE_DUE`), si la dernière vidange
+  /// en portait une. Null si la vidange n'est due que par kilométrage.
+  final DateTime? dateProchaineVidange;
+
+  /// Kilomètres restants avant la vidange cible (motif `VIDANGE_DUE`), négatif
+  /// si la cible est dépassée. Null si la vidange n'est due que par date.
+  final int? kmRestantVidange;
+
   const VehiculeExceptionModel({
     required this.vehiculeId,
     required this.immatriculation,
@@ -76,6 +84,8 @@ class VehiculeExceptionModel {
     required this.joursDansStatut,
     this.finPrevue,
     this.dateMaintenancePrevue,
+    this.dateProchaineVidange,
+    this.kmRestantVidange,
   });
 
   factory VehiculeExceptionModel.fromJson(Map<String, dynamic> json) =>
@@ -92,6 +102,10 @@ class VehiculeExceptionModel {
         dateMaintenancePrevue: json['dateMaintenancePrevue'] != null
             ? DateTime.tryParse(json['dateMaintenancePrevue'] as String)
             : null,
+        dateProchaineVidange: json['dateProchaineVidange'] != null
+            ? DateTime.tryParse(json['dateProchaineVidange'] as String)
+            : null,
+        kmRestantVidange: (json['kmRestantVidange'] as num?)?.toInt(),
       );
 
   /// Libellé français du motif historisé.
@@ -101,6 +115,7 @@ class VehiculeExceptionModel {
         'PANNE_OU_ACCIDENT' => 'Panne ou accident',
         'MAINTENANCE_EN_COURS' => 'Maintenance en cours',
         'MAINTENANCE_PREVUE' => 'Maintenance prévue',
+        'VIDANGE_DUE' => 'Vidange prévue',
         'SANS_CHAUFFEUR' => 'Aucun chauffeur affecté',
         'CHAUFFEUR_AFFECTE' => 'Chauffeur affecté',
         'SORTIE_PARC' => 'Sorti du parc',
@@ -112,10 +127,15 @@ class VehiculeExceptionModel {
 
 class EtatParcAlertesModel {
   final int documentsExpirantSous30Jours;
+
+  /// Nombre de **véhicules** (et non de lignes de maintenance) dont une
+  /// maintenance planifiée est échue ou due sous 7 j — même horizon et même
+  /// périmètre que la liste « véhicules demandant une action ».
   final int maintenancesDuesSous7Jours;
+
   final int permisExpires;
 
-  /// Vidanges dues : date prévue proche (≤ 7 j) ou km cible presque atteint.
+  /// Vidanges prévues : date proche (≤ 7 j) ou km cible presque atteint.
   final int vidangesDues;
 
   const EtatParcAlertesModel({

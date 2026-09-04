@@ -100,7 +100,7 @@ class IssueLot {
   /// Nouveau reste à imputer, pour une ligne dont une moitié seulement est
   /// passée : la créance sœur a été réglée mais pas la principale, ou
   /// l'inverse. Sans cela, réessayer rejouerait la part déjà encaissée.
-  final Map<int, double> restantsAjustes;
+  final Map<int, RestantsLigne> restantsAjustes;
 
   const IssueLot({
     this.erreurGlobale,
@@ -121,6 +121,18 @@ class IssueLot {
             r.ligneId: r.message ?? 'Encaissement refusé.',
         },
       );
+}
+
+/// Ce qu'il reste à imputer sur une ligne, créance par créance. La feuille en
+/// a besoin décomposé : la case de la créance sœur ne doit rouvrir que ce qui
+/// lui revient encore.
+class RestantsLigne {
+  final double principal;
+  final double jumelle;
+
+  const RestantsLigne({required this.principal, required this.jumelle});
+
+  double get total => principal + jumelle;
 }
 
 /// Ouvre la feuille d'encaissement de masse.
@@ -203,12 +215,63 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
 
   /// Reste à imputer révisé, quand une moitié du versement est déjà passée :
   /// la créance sœur a été réglée mais pas la principale, ou l'inverse.
-  final Map<int, double> _restantsRevises = {};
+  final Map<int, RestantsLigne> _restantsRevises = {};
 
-  /// Ce qu'une ligne peut encore recevoir : sa créance et celle du même jour,
-  /// ou le reste révisé si un premier envoi n'a été accepté qu'à moitié.
+  /// Créances sœurs écartées du versement. Cochées par défaut : le chauffeur
+  /// règle le plus souvent la journée entière d'un seul coup.
+  final Set<int> _jumellesExclues = {};
+
+  bool _jumelleIncluse(LigneLotEncaissable ligne) =>
+      ligne.jumelle != null && !_jumellesExclues.contains(ligne.id);
+
+  double _restantPrincipal(LigneLotEncaissable ligne) =>
+      _restantsRevises[ligne.id]?.principal ?? ligne.restant;
+
+  double _restantJumelle(LigneLotEncaissable ligne) =>
+      _restantsRevises[ligne.id]?.jumelle ?? ligne.jumelle?.restant ?? 0;
+
+  /// Ce qu'une ligne peut encore recevoir : sa créance, plus celle du même
+  /// jour tant qu'elle est cochée.
   double _plafondDe(LigneLotEncaissable ligne) =>
-      _restantsRevises[ligne.id] ?? ligne.plafond;
+      _restantPrincipal(ligne) +
+      (_jumelleIncluse(ligne) ? _restantJumelle(ligne) : 0);
+
+  /// Où ira le montant saisi, sur les restes du moment.
+  ({double principal, double jumelle}) _repartir(
+      LigneLotEncaissable ligne, double montant) {
+    final part = montant.clamp(0.0, _restantPrincipal(ligne));
+    final surplus = (montant - part)
+        .clamp(0.0, _jumelleIncluse(ligne) ? _restantJumelle(ligne) : 0.0);
+    return (principal: part, jumelle: surplus);
+  }
+
+  /// La créance sœur suit le montant, et le montant suit la case : décochée,
+  /// elle ramène la saisie au reste de la créance affichée ; recochée, elle la
+  /// porte au total de la journée. À l'inverse, un montant qui ne dépasse plus
+  /// la créance affichée décoche la sœur — elle ne recevrait rien.
+  void _basculerJumelle(LigneLotEncaissable ligne, bool inclure) {
+    setState(() {
+      if (inclure) {
+        _jumellesExclues.remove(ligne.id);
+      } else {
+        _jumellesExclues.add(ligne.id);
+      }
+    });
+    _montants[ligne.id]?.text = formatMontantSaisie(_plafondDe(ligne));
+  }
+
+  void _synchroniserJumelle(LigneLotEncaissable ligne) {
+    if (ligne.jumelle == null) return;
+    final montant = parseMontant(_montants[ligne.id]!.text) ?? 0;
+    // Champ en cours d'effacement : on laisse la case en l'état.
+    if (montant <= 0) return;
+
+    if (montant > _restantPrincipal(ligne)) {
+      _jumellesExclues.remove(ligne.id);
+    } else {
+      _jumellesExclues.add(ligne.id);
+    }
+  }
 
   @override
   void initState() {
@@ -219,7 +282,7 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
     _montants = {
       for (final l in widget.lignes)
         l.id: TextEditingController(text: formatMontantSaisie(l.plafond))
-          ..addListener(_onMontantChange),
+          ..addListener(() => _onMontantChange(l)),
     };
   }
 
@@ -233,7 +296,8 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
     super.dispose();
   }
 
-  void _onMontantChange() {
+  void _onMontantChange(LigneLotEncaissable ligne) {
+    _synchroniserJumelle(ligne);
     if (mounted) setState(() {});
   }
 
@@ -311,14 +375,17 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
 
       // Une ligne dont une moitié est passée ne doit plus proposer que le
       // reste : sans cela, réessayer rejouerait la part déjà encaissée.
-      issue.restantsAjustes.forEach((ligneId, restant) {
-        if (restant <= 0) {
+      issue.restantsAjustes.forEach((ligneId, restants) {
+        if (restants.total <= 0) {
           _reussies.add(ligneId);
           _echecs.remove(ligneId);
           return;
         }
-        _restantsRevises[ligneId] = restant;
-        _montants[ligneId]?.text = formatMontantSaisie(restant);
+        _restantsRevises[ligneId] = restants;
+        // La créance sœur ne se recoche que s'il lui reste quelque chose.
+        if (restants.jumelle <= 0) _jumellesExclues.add(ligneId);
+        _montants[ligneId]?.text = formatMontantSaisie(
+            restants.jumelle > 0 ? restants.total : restants.principal);
       });
     });
 
@@ -412,7 +479,13 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                         couleur: widget.couleur,
                         motifEchec: _echecs[restantes[i].id],
                         plafond: _plafondDe(restantes[i]),
-                        montantSaisi: _montantDe(restantes[i]),
+                        restantPrincipal: _restantPrincipal(restantes[i]),
+                        restantJumelle: _restantJumelle(restantes[i]),
+                        jumelleIncluse: _jumelleIncluse(restantes[i]),
+                        onJumelleChanged: (v) =>
+                            _basculerJumelle(restantes[i], v ?? false),
+                        repartition:
+                            _repartir(restantes[i], _montantDe(restantes[i])),
                         fmt: fmt,
                         actif: !_submitting,
                       ),
@@ -564,11 +637,20 @@ class _LigneLotTile extends StatelessWidget {
   final Color couleur;
   final String? motifEchec;
 
-  /// Ce que la ligne peut recevoir : sa créance et celle du même jour.
+  /// Ce que la ligne peut recevoir : sa créance, et celle du même jour tant
+  /// que sa case est cochée.
   final double plafond;
 
-  /// Le montant tel qu'il est saisi, pour montrer où il ira.
-  final double montantSaisi;
+  /// Restes du moment, révisions comprises.
+  final double restantPrincipal;
+  final double restantJumelle;
+
+  /// La créance du même jour entre-t-elle dans le versement ?
+  final bool jumelleIncluse;
+  final ValueChanged<bool?> onJumelleChanged;
+
+  /// Où ira le montant saisi.
+  final ({double principal, double jumelle}) repartition;
 
   final NumberFormat fmt;
   final bool actif;
@@ -579,7 +661,11 @@ class _LigneLotTile extends StatelessWidget {
     required this.couleur,
     required this.motifEchec,
     required this.plafond,
-    required this.montantSaisi,
+    required this.restantPrincipal,
+    required this.restantJumelle,
+    required this.jumelleIncluse,
+    required this.onJumelleChanged,
+    required this.repartition,
     required this.fmt,
     required this.actif,
   });
@@ -600,15 +686,46 @@ class _LigneLotTile extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         color: _kDark)),
                 const SizedBox(height: 2),
-                Text('${ligne.sousTitre} · reste ${fmt.format(ligne.restant)}',
+                Text(
+                    '${ligne.sousTitre} · reste '
+                    '${fmt.format(restantPrincipal)}',
                     style: const TextStyle(fontSize: 11, color: _kHint)),
-                // La créance du même jour entre dans la limite : le chauffeur
-                // règle les deux d'un seul versement.
+                // La créance du même jour entre dans le versement tant qu'elle
+                // est cochée : le chauffeur règle le plus souvent les deux
+                // d'un seul coup, mais peut n'en régler qu'une.
                 if (ligne.jumelle != null)
-                  Text(
-                    '+ ${ligne.jumelle!.libelle} · reste '
-                    '${fmt.format(ligne.jumelle!.restant)}',
-                    style: TextStyle(fontSize: 11, color: couleur),
+                  InkWell(
+                    onTap: actif
+                        ? () => onJumelleChanged(!jumelleIncluse)
+                        : null,
+                    child: Row(children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: Checkbox(
+                          value: jumelleIncluse,
+                          onChanged: actif ? onJumelleChanged : null,
+                          activeColor: couleur,
+                          side: const BorderSide(color: _kHint, width: 1.5),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          '${ligne.jumelle!.libelle} · reste '
+                          '${fmt.format(restantJumelle)}',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: jumelleIncluse ? couleur : _kHint),
+                        ),
+                      ),
+                    ]),
                   ),
               ],
             ),
@@ -639,17 +756,16 @@ class _LigneLotTile extends StatelessWidget {
         ]),
         // Où ira l'argent, dès que le montant déborde sur la ligne sœur : le
         // guichet doit le voir avant d'envoyer.
-        if (ligne.jumelle != null && montantSaisi > ligne.restant) ...[
+        if (ligne.jumelle != null && repartition.jumelle > 0) ...[
           const SizedBox(height: 6),
-          Builder(builder: (_) {
-            final parts = ligne.repartir(montantSaisi);
-            return _Bandeau(
-              icone: Icons.alt_route_outlined,
-              couleur: couleur,
-              message: '${ligne.sousTitre} : ${fmt.format(parts.principal)}'
-                  ' · ${ligne.jumelle!.libelle} : ${fmt.format(parts.jumelle)}',
-            );
-          }),
+          _Bandeau(
+            icone: Icons.alt_route_outlined,
+            couleur: couleur,
+            message: '${ligne.sousTitre} : '
+                '${fmt.format(repartition.principal)} · '
+                '${ligne.jumelle!.libelle} : '
+                '${fmt.format(repartition.jumelle)}',
+          ),
         ],
 
         if (motifEchec != null) ...[

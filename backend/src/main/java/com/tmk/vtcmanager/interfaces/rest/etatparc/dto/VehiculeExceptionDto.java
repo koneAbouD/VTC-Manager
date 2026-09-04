@@ -8,7 +8,10 @@ import java.time.LocalDate;
  * {@code finPrevue} est la date de fin de l'indisponibilité véhicule en cours
  * (null si le motif n'est pas une immobilisation planifiée ou si elle est ouverte).
  * {@code dateMaintenancePrevue} est l'échéance de la maintenance planifiée la plus
- * proche (motif {@code MAINTENANCE_PREVUE}), null sinon.
+ * proche (motif {@code MAINTENANCE_PREVUE}), null sinon. {@code dateProchaineVidange}
+ * et {@code kmRestantVidange} ne sont renseignés que pour le motif
+ * {@code VIDANGE_DUE}, et seulement si la dernière vidange porte la cible
+ * correspondante (une vidange peut n'être due que par date, ou que par kilométrage).
  */
 public record VehiculeExceptionDto(
         Long vehiculeId,
@@ -18,5 +21,7 @@ public record VehiculeExceptionDto(
         String motif,
         Long joursDansStatut,
         LocalDate finPrevue,
-        LocalDate dateMaintenancePrevue
+        LocalDate dateMaintenancePrevue,
+        LocalDate dateProchaineVidange,
+        Integer kmRestantVidange
 ) {}

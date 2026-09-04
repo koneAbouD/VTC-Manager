@@ -45,6 +45,39 @@ class EtatParcFiltre {
 final etatParcFiltreProvider =
     StateProvider<EtatParcFiltre>((ref) => const EtatParcFiltre());
 
+/// Critère de filtrage de la liste « véhicules demandant une action ».
+///
+/// Filtre purement local : le résumé est déjà chargé, la liste est réduite à
+/// l'affichage (aucun appel réseau supplémentaire). Le critère porte sur le
+/// motif — ce qui appelle une action —, motif nul = « Tous ».
+class ExceptionCritere {
+  /// Code motif ciblé (`PANNE_OU_ACCIDENT`, `MAINTENANCE_PREVUE`,
+  /// `VIDANGE_DUE`, …).
+  final String? motif;
+
+  const ExceptionCritere({this.motif});
+
+  bool get estActif => motif != null;
+
+  bool correspond(VehiculeExceptionModel e) => motif == null || e.motif == motif;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExceptionCritere && other.motif == motif);
+
+  @override
+  int get hashCode => motif.hashCode;
+}
+
+/// Critère courant de la liste des exceptions. Réinitialisé à « Tous » lorsque
+/// le filtre groupe/activité change : le parc affiché n'est plus le même.
+final etatParcExceptionCritereProvider =
+    StateProvider<ExceptionCritere>((ref) {
+  ref.watch(etatParcFiltreProvider);
+  return const ExceptionCritere();
+});
+
 /// Photo du parc (lecture seule), cadrée par [etatParcFiltreProvider].
 /// Invalider le provider pour rafraîchir.
 final etatParcSummaryProvider =

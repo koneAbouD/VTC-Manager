@@ -16,6 +16,9 @@ public enum VehiculeStatutMotif {
     MAINTENANCE_EN_COURS,
     /** Au moins une maintenance planifiée dont l'échéance est proche (état de parc). */
     MAINTENANCE_PREVUE,
+    /** Vidange due par date ou par kilométrage (état de parc). Motif calculé,
+     *  jamais historisé : aucune transition de statut ne le pose. */
+    VIDANGE_DUE,
     /** Un chauffeur est affecté au véhicule. */
     CHAUFFEUR_AFFECTE,
     /** Aucun chauffeur affecté : le véhicule ne produit pas. */

@@ -7,6 +7,7 @@ import '../../../vehicule/presentation/pages/vehicule_detail_page.dart';
 import '../../../vehicule/presentation/providers/referentiel_provider.dart';
 import '../../data/models/etat_parc_summary_model.dart';
 import '../providers/etat_parc_provider.dart';
+import 'etat_parc_exception_filtre_sheet.dart';
 import 'etat_parc_filtre_sheet.dart';
 
 /// Largeur à partir de laquelle on bascule en disposition « large »
@@ -414,7 +415,7 @@ class _LegendeItem extends StatelessWidget {
 
 // ── Carte des exceptions (défilement interne) ────────────────────────────────
 
-class _ExceptionsCard extends StatelessWidget {
+class _ExceptionsCard extends ConsumerWidget {
   final List<VehiculeExceptionModel> exceptions;
   const _ExceptionsCard({required this.exceptions});
 
@@ -422,19 +423,42 @@ class _ExceptionsCard extends StatelessWidget {
   static const double _maxListHeight = 260;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statutsRef = ref.watch(statutsVehiculeResolvedProvider);
+    final critere = ref.watch(etatParcExceptionCritereProvider);
+    // Le bouton n'apparaît que si le sélecteur a de quoi discriminer : sur un
+    // parc où tout se ressemble, filtrer reviendrait à « Tous ».
+    final filtrable = criteresDisponibles(exceptions, statutsRef).isNotEmpty;
+    final visibles = exceptions.where(critere.correspond).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 10),
-          child: Text(
-            'Véhicules demandant une action',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-              color: Color(0xFF1A1A2E),
-            ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Véhicules demandant une action',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (filtrable) ...[
+                const SizedBox(width: 10),
+                _ExceptionFiltreBouton(
+                  exceptions: exceptions,
+                  libelle: libelleCritereException(critere, exceptions),
+                  actif: critere.estActif,
+                ),
+              ],
+            ],
           ),
         ),
         Container(
@@ -443,19 +467,127 @@ class _ExceptionsCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.grey.shade200),
           ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: _maxListHeight),
-            child: ListView.separated(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: exceptions.length,
-              separatorBuilder: (_, __) =>
-                  Divider(height: 1, indent: 60, color: Colors.grey.shade100),
-              itemBuilder: (_, i) => _ExceptionTile(exception: exceptions[i]),
+          child: visibles.isEmpty
+              // Le critère ne retient plus rien (données rafraîchies depuis).
+              ? _ExceptionsVide(
+                  onReinitialiser: () => ref
+                      .read(etatParcExceptionCritereProvider.notifier)
+                      .state = const ExceptionCritere(),
+                )
+              : ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: _maxListHeight),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    itemCount: visibles.length,
+                    separatorBuilder: (_, __) => Divider(
+                        height: 1, indent: 60, color: Colors.grey.shade100),
+                    itemBuilder: (_, i) =>
+                        _ExceptionTile(exception: visibles[i]),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bouton-pastille ouvrant le sélecteur de critère, aligné sur le bouton de
+/// filtre de l'en-tête (même gabarit, même vert quand un filtre est posé).
+class _ExceptionFiltreBouton extends StatelessWidget {
+  final List<VehiculeExceptionModel> exceptions;
+  final String libelle;
+  final bool actif;
+
+  const _ExceptionFiltreBouton({
+    required this.exceptions,
+    required this.libelle,
+    required this.actif,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const vert = Color(0xFF43A047);
+    final couleur = actif ? vert : Colors.grey.shade600;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => showEtatParcExceptionFiltreSheet(context, exceptions),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 165),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color:
+                  actif ? vert.withValues(alpha: 0.1) : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(20),
+              border:
+                  Border.all(color: actif ? vert : Colors.grey.shade300),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.filter_list_rounded, size: 14, color: couleur),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    libelle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: couleur,
+                      fontWeight:
+                          actif ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(Icons.keyboard_arrow_down_rounded,
+                    size: 16, color: couleur),
+              ],
             ),
           ),
         ),
-      ],
+      ),
+    );
+  }
+}
+
+/// Liste vide sous le critère courant : on garde la carte visible et on offre
+/// le retour à « Tous » plutôt que de faire disparaître la section.
+class _ExceptionsVide extends StatelessWidget {
+  final VoidCallback onReinitialiser;
+  const _ExceptionsVide({required this.onReinitialiser});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      child: Row(
+        children: [
+          Icon(Icons.filter_alt_off_outlined,
+              size: 20, color: Colors.grey.shade400),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Aucun véhicule pour ce critère',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+          ),
+          TextButton(
+            onPressed: onReinitialiser,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Tout voir',
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF43A047))),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -466,18 +598,20 @@ class _ExceptionTile extends ConsumerWidget {
   final VehiculeExceptionModel exception;
   const _ExceptionTile({required this.exception});
 
-  /// Icône dérivée du motif d'immobilisation / d'anomalie.
-  static IconData _motifIcon(String? motif) => switch (motif) {
-        'IMMOBILISATION_PENALITE' => Icons.gavel_rounded,
-        'IMMOBILISATION_INDISPONIBILITE' => Icons.no_transfer_rounded,
-        'PANNE_OU_ACCIDENT' => Icons.car_crash_rounded,
-        'MAINTENANCE_EN_COURS' => Icons.build_rounded,
-        'MAINTENANCE_PREVUE' => Icons.event_available_rounded,
-        'SANS_CHAUFFEUR' => Icons.person_off_rounded,
-        'SORTIE_PARC' => Icons.logout_rounded,
-        'DECISION_MANUELLE' => Icons.pan_tool_rounded,
-        _ => Icons.directions_car_rounded,
-      };
+  /// Échéance d'une vidange due : la date si elle est connue, sinon les
+  /// kilomètres restants (négatifs = cible déjà dépassée). Null hors motif
+  /// `VIDANGE_DUE`, ou si la dernière vidange ne porte aucune cible.
+  static String? _echeanceVidange(VehiculeExceptionModel e) {
+    if (e.dateProchaineVidange != null) {
+      return 'À faire le '
+          '${DateFormat('dd MMM yyyy', 'fr_FR').format(e.dateProchaineVidange!)}';
+    }
+    final km = e.kmRestantVidange;
+    if (km == null) return null;
+    return km < 0
+        ? 'Cible dépassée de ${-km} km'
+        : 'Dans $km km';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -508,7 +642,8 @@ class _ExceptionTile extends ConsumerWidget {
                 color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(_motifIcon(exception.motif), size: 19, color: color),
+              child: Icon(iconeMotifException(exception.motif),
+                  size: 19, color: color),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -551,6 +686,16 @@ class _ExceptionTile extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Prévue le ${DateFormat('dd MMM yyyy', 'fr_FR').format(exception.dateMaintenancePrevue!)}',
+                      style: TextStyle(
+                          fontSize: 11.5, color: Colors.grey.shade500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (_echeanceVidange(exception) != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      _echeanceVidange(exception)!,
                       style: TextStyle(
                           fontSize: 11.5, color: Colors.grey.shade500),
                       maxLines: 1,
@@ -612,16 +757,16 @@ class _AlertesSection extends StatelessWidget {
         _AlerteTile(
           icon: Icons.build_outlined,
           color: const Color(0xFFE65100),
-          gras: '${n.maintenancesDuesSous7Jours} maintenance'
+          gras: '${n.maintenancesDuesSous7Jours} véhicule'
               '${s(n.maintenancesDuesSous7Jours)}',
-          reste: 'due${s(n.maintenancesDuesSous7Jours)} sous 7 j',
+          reste: 'à entretenir sous 7 j',
         ),
       if (n.vidangesDues > 0)
         _AlerteTile(
           icon: Icons.oil_barrel_outlined,
           color: const Color(0xFFE65100),
           gras: '${n.vidangesDues} vidange${s(n.vidangesDues)}',
-          reste: 'due${s(n.vidangesDues)} (échéance ou kilométrage)',
+          reste: 'prévue${s(n.vidangesDues)} (échéance ou kilométrage)',
         ),
       if (n.permisExpires > 0)
         _AlerteTile(

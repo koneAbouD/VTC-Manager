@@ -222,7 +222,7 @@ void main() {
 
     // Recette 15 000 + cotisation 5 000 : la ligne accepte jusqu'à 20 000, et
     // c'est ce total qui est prérempli.
-    expect(_texteContenant('+ Épargne · reste 5 000 XOF'), findsOneWidget);
+    expect(_texteContenant('Épargne · reste 5 000 XOF'), findsOneWidget);
     expect(find.text('20 000'), findsOneWidget);
     expect(_montantAffiche('20 000 XOF'), findsOneWidget);
     // La répartition est visible d'emblée, sans rien saisir.
@@ -244,6 +244,45 @@ void main() {
     await tester.enterText(find.byType(TextFormField).first, '21000');
     await tester.pumpAndSettle();
     expect(_montantAffiche('Max 20 000 XOF'), findsOneWidget);
+  });
+
+  testWidgets('la créance du même jour est cochée par défaut et suit le montant',
+      (tester) async {
+    final serveur = _Serveur();
+    await _ouvrirAvecJumelle(tester, serveur);
+
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+
+    // Un montant qui ne dépasse plus la recette : la cotisation se décoche,
+    // elle ne recevrait rien.
+    await tester.enterText(find.byType(TextFormField).first, '15000');
+    await tester.pumpAndSettle();
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
+    expect(_montantAffiche('15 000 XOF'), findsOneWidget);
+
+    // Au-dessus, elle se recoche.
+    await tester.enterText(find.byType(TextFormField).first, '17000');
+    await tester.pumpAndSettle();
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+  });
+
+  testWidgets('décocher la créance du même jour ramène le montant à la recette',
+      (tester) async {
+    final serveur = _Serveur();
+    await _ouvrirAvecJumelle(tester, serveur);
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
+    expect(find.text('15 000'), findsOneWidget);
+
+    // La répartition disparaît : la cotisation ne recevra rien.
+    expect(_texteContenant('Épargne : '), findsNothing);
+
+    // Seule la recette part.
+    await _tapBouton(tester, 'Encaisser (1)');
+    expect(serveur.recu!.lignes.single.montant, 15000);
   });
 
   test('le verdict du serveur se traduit en état de feuille', () {

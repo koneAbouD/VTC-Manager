@@ -110,7 +110,7 @@ class ExecuteurLotJumele {
   }) {
     final reussies = <int>{};
     final echecs = <int, String>{};
-    final restantsAjustes = <int, double>{};
+    final restantsAjustes = <int, RestantsLigne>{};
 
     for (final id in {...partPrincipale.keys, ...partJumelle.keys}) {
       final ligne = _lignes[id]!;
@@ -142,7 +142,10 @@ class ExecuteurLotJumele {
         motifs.add('${ligne.jumelle?.libelle ?? 'Créance du même jour'} : $motif');
       }
       echecs[id] = motifs.join(' · ');
-      restantsAjustes[id] = restants.total;
+      // Décomposé : la feuille doit savoir ce qui reste à chaque créance pour
+      // rouvrir — ou non — la case de la sœur.
+      restantsAjustes[id] =
+          RestantsLigne(principal: restants.principal, jumelle: restants.jumelle);
     }
 
     return IssueLot(

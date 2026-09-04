@@ -19,6 +19,7 @@ import '../../../notification/presentation/providers/notification_providers.dart
 import '../../../partenaire/presentation/pages/partenaires_liste_page.dart';
 import '../../../profil/presentation/pages/mon_profil_page.dart';
 import '../../../profil/presentation/providers/profil_providers.dart';
+import '../../../tableau_bord/presentation/pages/tableau_bord_page.dart';
 import '../widgets/settings_tile.dart';
 import 'parametrage_hub_page.dart';
 import 'parametres_generaux_page.dart';
@@ -136,6 +137,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   },
                 ),
                 children: [
+                  // Entrée directe, sans accordéon : le tableau de bord n'est
+                  // pas un réglage, c'est une lecture — et c'est celle qu'on
+                  // vient chercher le plus souvent. Un volet à déplier la
+                  // mettrait au même rang que le paramétrage.
+                  SettingsCard(
+                    children: [
+                      SettingsTile(
+                        icon: Icons.insights_rounded,
+                        title: 'Tableau de bord',
+                        description: 'Résultat, encaissement, parc et alertes',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                              builder: (_) => const TableauBordPage()),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: _kCardGap),
                   SettingsAccordion(
                     icon: Icons.settings_outlined,
                     title: 'Paramètres',

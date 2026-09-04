@@ -203,6 +203,96 @@ class GetEtatParcUseCaseTest {
     }
 
     @Test
+    void lesMaintenancesPrevuesEntrentDansLesExceptionsSurLeMemeHorizonQueLAlerte() {
+        LocalDate today = LocalDate.now();
+        // 1 : EN_SERVICE, maintenance dans 6 j → entre dans la liste (horizon 7 j)
+        Vehicule v1 = vehicule(1, VehiculeStatus.EN_SERVICE);
+        // 2 : déjà listé au titre de son statut → une seconde ligne, sur son motif
+        // de maintenance prévue (un véhicule porte une ligne par action à mener)
+        Vehicule v2 = vehicule(2, VehiculeStatus.EN_MAINTENANCE);
+        // 3 : HORS_PARC → exclu de la liste comme du compteur
+        Vehicule v3 = vehicule(3, VehiculeStatus.HORS_PARC);
+        when(vehiculeRepository.findAll()).thenReturn(List.of(v1, v2, v3));
+        when(historiqueRepository.findAllEnCours()).thenReturn(List.of(
+                periode(2, VehiculeStatus.EN_MAINTENANCE,
+                        VehiculeStatutMotif.MAINTENANCE_EN_COURS, 2)));
+
+        when(maintenanceRepository.findByDatePrevueLessThanEqualAndStatut(
+                today.plusDays(7), MaintenanceStatus.PLANIFIEE))
+                .thenReturn(List.of(
+                        maintenancePlanifiee(v1, today.plusDays(6)),
+                        // Deuxième échéance proche du même véhicule : une seule
+                        // ligne de maintenance prévue, un seul compte dans l'alerte.
+                        maintenancePlanifiee(v1, today.plusDays(3)),
+                        maintenancePlanifiee(v2, today.plusDays(1)),
+                        maintenancePlanifiee(v3, today.plusDays(2))));
+
+        EtatParcSummaryResponse r = useCase.execute(null, null);
+
+        // v2 (statut), puis les maintenances prévues par échéance croissante :
+        // v2 (+1 j) et v1 (+3 j). v3 HORS_PARC est absent des deux blocs.
+        assertThat(r.exceptions()).hasSize(3);
+        assertThat(r.exceptions().get(0).vehiculeId()).isEqualTo(2L);
+        assertThat(r.exceptions().get(0).motif())
+                .isEqualTo(VehiculeStatutMotif.MAINTENANCE_EN_COURS.name());
+        assertThat(r.exceptions().get(1).vehiculeId()).isEqualTo(2L);
+        assertThat(r.exceptions().get(1).motif())
+                .isEqualTo(VehiculeStatutMotif.MAINTENANCE_PREVUE.name());
+        assertThat(r.exceptions().get(2).vehiculeId()).isEqualTo(1L);
+        assertThat(r.exceptions().get(2).motif())
+                .isEqualTo(VehiculeStatutMotif.MAINTENANCE_PREVUE.name());
+        // La ligne retenue est la plus proche des deux échéances de v1.
+        assertThat(r.exceptions().get(2).dateMaintenancePrevue()).isEqualTo(today.plusDays(3));
+        // Même horizon et même unité côté alerte : 2 véhicules du parc actif
+        // (v1 compté une seule fois malgré ses deux échéances).
+        assertThat(r.alertes().maintenancesDuesSous7Jours()).isEqualTo(2);
+    }
+
+    @Test
+    void lesVidangesDuesEntrentDansLesExceptionsMemeSurUnVehiculeDejaListe() {
+        LocalDate today = LocalDate.now();
+        // 1 : EN_SERVICE, vidange due par date → entre au motif VIDANGE_DUE
+        Vehicule dueDate = vehiculeAvecKm(1, VehiculeStatus.EN_SERVICE, 40_000);
+        // 2 : EN_SERVICE, vidange due par kilométrage (300 km restants)
+        Vehicule dueKm = vehiculeAvecKm(2, VehiculeStatus.EN_SERVICE, 99_700);
+        // 3 : immobilisé ET à vidanger → une ligne par motif
+        Vehicule immobilise = vehiculeAvecKm(3, VehiculeStatus.IMMOBILISE, 99_700);
+        // 4 : HORS_PARC → exclu de la liste comme du compteur
+        Vehicule horsParc = vehiculeAvecKm(4, VehiculeStatus.HORS_PARC, 99_900);
+        when(vehiculeRepository.findAll())
+                .thenReturn(List.of(dueDate, dueKm, immobilise, horsParc));
+        when(historiqueRepository.findAllEnCours()).thenReturn(List.of(
+                periode(3, VehiculeStatus.IMMOBILISE,
+                        VehiculeStatutMotif.PANNE_OU_ACCIDENT, 5)));
+        when(vidangeRepository.findDernieresParVehicule()).thenReturn(List.of(
+                vidange(1, today.plusDays(2), 200_000),
+                vidange(2, null, 100_000),
+                vidange(3, null, 100_000),
+                vidange(4, null, 100_000)));
+
+        EtatParcSummaryResponse r = useCase.execute(null, null);
+
+        // Immobilisé (statut) d'abord, puis les trois vidanges dues — le véhicule
+        // immobilisé y compris : sa vidange reste à faire.
+        assertThat(r.exceptions()).hasSize(4);
+        assertThat(r.exceptions().get(0).vehiculeId()).isEqualTo(3L);
+        assertThat(r.exceptions().get(0).motif())
+                .isEqualTo(VehiculeStatutMotif.PANNE_OU_ACCIDENT.name());
+        // Échéance datée avant celles dues au seul kilométrage.
+        assertThat(r.exceptions().get(1).vehiculeId()).isEqualTo(1L);
+        assertThat(r.exceptions().get(1).motif())
+                .isEqualTo(VehiculeStatutMotif.VIDANGE_DUE.name());
+        assertThat(r.exceptions().get(1).dateProchaineVidange()).isEqualTo(today.plusDays(2));
+        assertThat(r.exceptions().get(2).vehiculeId()).isEqualTo(2L);
+        assertThat(r.exceptions().get(2).kmRestantVidange()).isEqualTo(300);
+        assertThat(r.exceptions().get(3).vehiculeId()).isEqualTo(3L);
+        assertThat(r.exceptions().get(3).motif())
+                .isEqualTo(VehiculeStatutMotif.VIDANGE_DUE.name());
+        // L'alerte recouvre exactement le bloc vidange de la liste.
+        assertThat(r.alertes().vidangesDues()).isEqualTo(3);
+    }
+
+    @Test
     void compteLesVidangesDuesParDateOuKilometrage() {
         LocalDate today = LocalDate.now();
         // 1 : due par kilométrage (200 km restants ≤ 500)
@@ -241,6 +331,12 @@ class GetEtatParcUseCaseTest {
                 .dateProchaineVidange(dateProchaine)
                 .kilometrageProchaineVidange(kmProchaine)
                 .build();
+    }
+
+    private Maintenance maintenancePlanifiee(Vehicule vehicule, LocalDate datePrevue) {
+        return Maintenance.builder()
+                .vehicule(vehicule).datePrevue(datePrevue)
+                .statut(MaintenanceStatus.PLANIFIEE).build();
     }
 
     private VehiculeStatutHistorique periode(long vehiculeId, VehiculeStatus statut,

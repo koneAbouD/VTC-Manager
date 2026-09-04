@@ -149,7 +149,8 @@ void main() {
     expect(premier.reussies, isEmpty);
     expect(premier.echecs[1], contains('Épargne : Caisse déjà comptée'));
     // Il ne reste que la cotisation à imputer : la recette est soldée.
-    expect(premier.restantsAjustes[1], 5000);
+    expect(premier.restantsAjustes[1]!.principal, 0);
+    expect(premier.restantsAjustes[1]!.jumelle, 5000);
 
     // Second envoi sur ce reste : la recette ne repart pas.
     final second = await executeur.executer(_saisie({1: 5000}));
@@ -173,7 +174,8 @@ void main() {
     expect(issue.erreurGlobale, 'Pas de connexion réseau.');
     expect(issue.echecs[1], contains('Pas de connexion réseau.'));
     // La recette est passée : seul le reliquat de cotisation reste dû.
-    expect(issue.restantsAjustes[1], 5000);
+    expect(issue.restantsAjustes[1]!.principal, 0);
+    expect(issue.restantsAjustes[1]!.jumelle, 5000);
   });
 
   test('une recette refusée n\'empêche pas la cotisation du même jour',
@@ -189,6 +191,7 @@ void main() {
 
     expect(issue.echecs[1], contains('Période comptable clôturée'));
     // La cotisation, elle, est encaissée : il ne reste que la recette.
-    expect(issue.restantsAjustes[1], 15000);
+    expect(issue.restantsAjustes[1]!.principal, 15000);
+    expect(issue.restantsAjustes[1]!.jumelle, 0);
   });
 }

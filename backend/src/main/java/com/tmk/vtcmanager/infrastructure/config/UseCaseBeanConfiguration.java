@@ -19,6 +19,7 @@ import com.tmk.vtcmanager.application.usecases.notification.MarquerNotificationL
 import com.tmk.vtcmanager.application.usecases.notification.PousserNotificationUseCase;
 import com.tmk.vtcmanager.application.usecases.notification.RevoquerDeviceTokenUseCase;
 import com.tmk.vtcmanager.application.usecases.etatparc.GetEtatParcUseCase;
+import com.tmk.vtcmanager.application.usecases.tableaubord.GetTableauBordUseCase;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ContraventionRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
@@ -640,6 +641,24 @@ public class UseCaseBeanConfiguration {
                 vehiculeStatutHistoriqueRepository, documentRepository,
                 indisponibiliteVehiculeRepository, vidangeRepository,
                 maintenanceRepository);
+    }
+
+    // ----- Tableau de bord -----
+    @Bean
+    public GetTableauBordUseCase getTableauBordUseCase(
+            GetCompteResultatUseCase getCompteResultatUseCase,
+            GetMargesParVehiculeUseCase getMargesParVehiculeUseCase,
+            GetBalanceAgeeUseCase getBalanceAgeeUseCase,
+            GetProvisionCreancesUseCase getProvisionCreancesUseCase,
+            GetEtatParcUseCase getEtatParcUseCase,
+            CompteTresorerieRepository compteTresorerieRepository,
+            CreanceRepository creanceRepository,
+            FinanceReportingRepository financeReportingRepository,
+            EtatsClotureRepository etatsClotureRepository) {
+        return new GetTableauBordUseCase(getCompteResultatUseCase, getMargesParVehiculeUseCase,
+                getBalanceAgeeUseCase, getProvisionCreancesUseCase, getEtatParcUseCase,
+                compteTresorerieRepository, creanceRepository,
+                financeReportingRepository, etatsClotureRepository);
     }
 
     // ----- ConditionTravail -----
