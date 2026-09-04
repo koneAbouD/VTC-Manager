@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../vehicule/domain/entities/statut_vehicule.dart';
-import '../../../vehicule/presentation/pages/vehicule_detail_page.dart';
 import '../../../vehicule/presentation/providers/referentiel_provider.dart';
 import '../../data/models/etat_parc_summary_model.dart';
 import '../providers/etat_parc_provider.dart';
 import 'etat_parc_exception_filtre_sheet.dart';
+import 'etat_parc_exception_navigation.dart';
 import 'etat_parc_filtre_sheet.dart';
 
 /// Largeur à partir de laquelle on bascule en disposition « large »
@@ -594,9 +594,30 @@ class _ExceptionsVide extends StatelessWidget {
 
 // ── Ligne exception ──────────────────────────────────────────────────────────
 
-class _ExceptionTile extends ConsumerWidget {
+class _ExceptionTile extends ConsumerStatefulWidget {
   final VehiculeExceptionModel exception;
   const _ExceptionTile({required this.exception});
+
+  @override
+  ConsumerState<_ExceptionTile> createState() => _ExceptionTileState();
+}
+
+class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
+  /// Vrai pendant le chargement de la cible : la ligne se grise et refuse un
+  /// second tap, l'ouverture demandant un aller-retour serveur.
+  bool _ouverture = false;
+
+  VehiculeExceptionModel get exception => widget.exception;
+
+  Future<void> _ouvrir() async {
+    if (_ouverture) return;
+    setState(() => _ouverture = true);
+    try {
+      await ouvrirCibleException(context, ref, exception);
+    } finally {
+      if (mounted) setState(() => _ouverture = false);
+    }
+  }
 
   /// Échéance d'une vidange due : la date si elle est connue, sinon les
   /// kilomètres restants (négatifs = cible déjà dépassée). Null hors motif
@@ -614,7 +635,7 @@ class _ExceptionTile extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final statuts = ref.watch(statutsVehiculeResolvedProvider);
     final statut =
         StatutVehicule.resolve(exception.statut ?? '', statuts);
@@ -622,15 +643,7 @@ class _ExceptionTile extends ConsumerWidget {
     final jours = exception.joursDansStatut;
 
     return InkWell(
-      onTap: exception.vehiculeId == null
-          ? null
-          : () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      VehiculeDetailPage(vehiculeId: exception.vehiculeId!),
-                ),
-              ),
+      onTap: exception.vehiculeId == null ? null : _ouvrir,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
@@ -667,8 +680,8 @@ class _ExceptionTile extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     '${statut.libelle} — ${exception.motifLabel}',
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey.shade600),
+                    style:
+                        TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -705,7 +718,15 @@ class _ExceptionTile extends ConsumerWidget {
                 ],
               ),
             ),
-            if (jours != null) ...[
+            if (_ouverture) ...[
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 16,
+                height: 16,
+                child:
+                    CircularProgressIndicator(strokeWidth: 2, color: color),
+              ),
+            ] else if (jours != null) ...[
               const SizedBox(width: 8),
               Container(
                 padding:

@@ -7,7 +7,9 @@ import 'package:vtc_manager/features/etat_parc/data/models/etat_parc_summary_mod
 import 'package:vtc_manager/features/etat_parc/presentation/providers/etat_parc_provider.dart';
 import 'package:vtc_manager/features/etat_parc/presentation/widgets/etat_parc_synthese.dart';
 import 'package:vtc_manager/features/vehicule/domain/entities/statut_vehicule.dart';
+import 'package:vtc_manager/features/vehicule/presentation/pages/vidanges_historique_page.dart';
 import 'package:vtc_manager/features/vehicule/presentation/providers/referentiel_provider.dart';
+import 'package:vtc_manager/features/vehicule/presentation/providers/vidanges_provider.dart';
 
 /// Liste d'exceptions représentative : deux immobilisés de motifs différents,
 /// un disponible sans chauffeur, un véhicule en service dont la maintenance est
@@ -49,7 +51,8 @@ final _exceptions = [
       statut: 'EN_SERVICE',
       motif: 'VIDANGE_DUE',
       joursDansStatut: null,
-      kmRestantVidange: 300),
+      kmRestantVidange: 300,
+      cible: 'VIDANGE'),
 ];
 
 EtatParcSummaryModel _summary(List<VehiculeExceptionModel> exceptions) =>
@@ -77,6 +80,7 @@ Future<void> _pumpSynthese(
   List<VehiculeExceptionModel> exceptions, {
   Size taille = const Size(390, 844),
   ExceptionCritere? critere,
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = taille;
   tester.view.devicePixelRatio = 1.0;
@@ -90,6 +94,7 @@ Future<void> _pumpSynthese(
       etatParcSummaryProvider.overrideWith((ref) async => _summary(exceptions)),
       if (critere != null)
         etatParcExceptionCritereProvider.overrideWith((ref) => critere),
+      ...overrides,
     ],
     child: MaterialApp(
       home: Scaffold(
@@ -193,6 +198,28 @@ void main() {
     expect(find.text('IMM-6'), findsOneWidget);
     expect(find.text('IMM-1'), findsNothing);
     expect(find.text('Immobilisé (indisponibilité)'), findsOneWidget);
+  });
+
+  testWidgets('une ligne de vidange ouvre l\'historique du véhicule',
+      (tester) async {
+    await _pumpSynthese(
+      tester,
+      _exceptions,
+      // La page cible lit les vidanges du véhicule : pas d'appel réseau en test.
+      overrides: [
+        vidangesByVehiculeProvider(5).overrideWith((ref) async => []),
+      ],
+    );
+
+    // La ligne est en bas de la carte, sous la ligne de flottaison.
+    await tester.ensureVisible(find.text('IMM-5'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('IMM-5'));
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<VidangesHistoriquePage>(
+        find.byType(VidangesHistoriquePage));
+    expect(page.vehiculeId, 5);
   });
 
   test('changer le filtre groupe/activité repose le critère sur Tous', () {

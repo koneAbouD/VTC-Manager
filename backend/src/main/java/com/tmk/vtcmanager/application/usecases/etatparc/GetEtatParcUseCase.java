@@ -54,6 +54,13 @@ public class GetEtatParcUseCase {
     /** Km restants sous lesquels une vidange est réputée due (déclenche l'alerte). */
     private static final int SEUIL_ALERTE_VIDANGE_KM = 500;
 
+    /** Écran vers lequel ouvrir une ligne de la liste (voir {@link VehiculeExceptionDto}). */
+    private static final String CIBLE_VEHICULE = "VEHICULE";
+    private static final String CIBLE_MAINTENANCE = "MAINTENANCE";
+    private static final String CIBLE_INDISPONIBILITE = "INDISPONIBILITE_VEHICULE";
+    private static final String CIBLE_PENALITE = "PENALITE";
+    private static final String CIBLE_VIDANGE = "VIDANGE";
+
     private final VehiculeRepository vehiculeRepository;
     private final VehiculeStatutHistoriqueRepository statutHistoriqueRepository;
     private final DocumentRepository documentRepository;
@@ -94,9 +101,18 @@ public class GetEtatParcUseCase {
                 .collect(Collectors.toMap(VehiculeStatutHistorique::getVehiculeId, Function.identity(),
                         (a, b) -> a));
 
-        // Fin prévue des immobilisations planifiées couvrant aujourd'hui (indisponibilité
-        // véhicule). Une seule lecture par statut, sans requête par véhicule (pas de N+1).
-        Map<Long, LocalDate> finsPrevues = finsPrevuesParVehicule(today);
+        // Immobilisation planifiée couvrant aujourd'hui (indisponibilité véhicule) :
+        // elle porte la fin prévue et l'écran vers lequel ouvrir la ligne. Une seule
+        // lecture par statut, sans requête par véhicule (pas de N+1).
+        Map<Long, IndisponibiliteVehicule> immobilisations = immobilisationsDuJour(today);
+
+        // Maintenance en cours par véhicule : la ligne « maintenance en cours » ouvre
+        // sur l'intervention elle-même.
+        Map<Long, Maintenance> maintenancesEnCours = maintenanceRepository
+                .findByStatut(MaintenanceStatus.EN_COURS).stream()
+                .filter(m -> m.getVehicule() != null && m.getVehicule().getId() != null)
+                .collect(Collectors.toMap(m -> m.getVehicule().getId(), Function.identity(),
+                        (a, b) -> a));
 
         // Maintenances planifiées échues ou dues sous l'horizon commun : une seule
         // lecture, partagée par la liste « demandant une action » et l'alerte
@@ -108,7 +124,8 @@ public class GetEtatParcUseCase {
 
         List<VehiculeExceptionDto> exceptionsStatut = vehicules.stream()
                 .filter(v -> demandeUneAction(v.getStatut()))
-                .map(v -> toException(v, periodesEnCours.get(v.getId()), finsPrevues.get(v.getId())))
+                .map(v -> toException(v, periodesEnCours.get(v.getId()),
+                        immobilisations.get(v.getId()), maintenancesEnCours.get(v.getId())))
                 .sorted(Comparator.comparing(VehiculeExceptionDto::joursDansStatut,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
@@ -163,11 +180,27 @@ public class GetEtatParcUseCase {
     }
 
     private VehiculeExceptionDto toException(Vehicule vehicule, VehiculeStatutHistorique periode,
-                                             LocalDate finPrevue) {
+                                             IndisponibiliteVehicule immobilisation,
+                                             Maintenance maintenanceEnCours) {
         VehiculeStatutMotif motif = periode != null && periode.getMotif() != null
                 ? periode.getMotif()
                 : motifParDefaut(vehicule.getStatut());
         Long jours = periode != null ? periode.joursDansStatut() : null;
+
+        // Chaque motif ouvre sur l'objet qui explique l'arrêt, à défaut sur le véhicule.
+        String cible = CIBLE_VEHICULE;
+        Long cibleId = null;
+        if (motif == VehiculeStatutMotif.IMMOBILISATION_INDISPONIBILITE && immobilisation != null) {
+            cible = CIBLE_INDISPONIBILITE;
+            cibleId = immobilisation.getId();
+        } else if (motif == VehiculeStatutMotif.MAINTENANCE_EN_COURS && maintenanceEnCours != null) {
+            cible = CIBLE_MAINTENANCE;
+            cibleId = maintenanceEnCours.getId();
+        } else if (motif == VehiculeStatutMotif.IMMOBILISATION_PENALITE) {
+            // Aucune ligne de pénalité ne porte à elle seule l'immobilisation :
+            // la ligne ouvre sur les pénalités du véhicule.
+            cible = CIBLE_PENALITE;
+        }
 
         return new VehiculeExceptionDto(
                 vehicule.getId(),
@@ -176,8 +209,9 @@ public class GetEtatParcUseCase {
                 vehicule.getStatut() != null ? vehicule.getStatut().name() : null,
                 motif != null ? motif.name() : null,
                 jours,
-                finPrevue,
-                null, null, null);
+                immobilisation != null ? immobilisation.getDateFin() : null,
+                null, null, null,
+                cible, cibleId);
     }
 
     /** « Marque Modèle », vide si le véhicule n'en porte pas. */
@@ -201,19 +235,22 @@ public class GetEtatParcUseCase {
                 .collect(Collectors.toMap(Vehicule::getId, Function.identity(), (a, b) -> a));
         if (parcFiltre.isEmpty()) return List.of();
 
-        // Échéance la plus proche par véhicule éligible.
-        Map<Long, LocalDate> echeances = new java.util.HashMap<>();
+        // Maintenance la plus proche par véhicule éligible : c'est elle que la ligne
+        // affiche et sur laquelle elle ouvre.
+        Map<Long, Maintenance> prochaines = new java.util.HashMap<>();
         maintenancesPlanifiees.forEach(m -> {
             if (m.getVehicule() == null || m.getDatePrevue() == null) return;
             Long vehiculeId = m.getVehicule().getId();
             if (!parcFiltre.containsKey(vehiculeId)) return;
-            echeances.merge(vehiculeId, m.getDatePrevue(), (a, b) -> a.isBefore(b) ? a : b);
+            prochaines.merge(vehiculeId, m,
+                    (a, b) -> a.getDatePrevue().isBefore(b.getDatePrevue()) ? a : b);
         });
 
-        return echeances.entrySet().stream()
-                .sorted(Map.Entry.comparingByValue())
+        return prochaines.entrySet().stream()
+                .sorted(Comparator.comparing(e -> e.getValue().getDatePrevue()))
                 .map(e -> {
                     Vehicule v = parcFiltre.get(e.getKey());
+                    Maintenance m = e.getValue();
                     return new VehiculeExceptionDto(
                             v.getId(),
                             v.getImmatriculation(),
@@ -222,8 +259,9 @@ public class GetEtatParcUseCase {
                             VehiculeStatutMotif.MAINTENANCE_PREVUE.name(),
                             null,
                             null,
-                            e.getValue(),
-                            null, null);
+                            m.getDatePrevue(),
+                            null, null,
+                            CIBLE_MAINTENANCE, m.getId());
                 })
                 .toList();
     }
@@ -269,29 +307,38 @@ public class GetEtatParcUseCase {
                 null,
                 null,
                 derniere.getDateProchaineVidange(),
-                kmRestant);
+                kmRestant,
+                CIBLE_VIDANGE, null);
     }
 
     /**
-     * Fin prévue (date_fin) des indisponibilités véhicule couvrant {@code today},
-     * par véhicule. Si plusieurs se chevauchent, on retient la plus lointaine
-     * (le véhicule reste immobilisé jusqu'à la dernière). Les immobilisations
-     * ouvertes (date_fin null) n'alimentent pas la map.
+     * Indisponibilité véhicule couvrant {@code today}, par véhicule : elle porte la
+     * fin prévue affichée sur la ligne et l'écran sur lequel celle-ci ouvre. Si
+     * plusieurs se chevauchent, on retient celle qui libère le véhicule le plus tard
+     * — une immobilisation ouverte (date_fin null) prime, le véhicule n'ayant alors
+     * aucune fin prévue.
      */
-    private Map<Long, LocalDate> finsPrevuesParVehicule(LocalDate today) {
-        Map<Long, LocalDate> fins = new java.util.HashMap<>();
+    private Map<Long, IndisponibiliteVehicule> immobilisationsDuJour(LocalDate today) {
+        Map<Long, IndisponibiliteVehicule> couvrantes = new java.util.HashMap<>();
         for (IndisponibiliteStatut statut : List.of(IndisponibiliteStatut.EN_COURS,
                 IndisponibiliteStatut.PLANIFIEE)) {
             for (IndisponibiliteVehicule i : indisponibiliteVehiculeRepository.findByStatut(statut)) {
                 if (i.getVehiculeId() == null || i.getDateDebut() == null) continue;
                 if (i.getDateDebut().isAfter(today)) continue;
                 if (i.getDateFin() != null && i.getDateFin().isBefore(today)) continue;
-                if (i.getDateFin() == null) continue; // immobilisation ouverte : pas de fin prévue
-                fins.merge(i.getVehiculeId(), i.getDateFin(),
-                        (a, b) -> a.isAfter(b) ? a : b);
+                couvrantes.merge(i.getVehiculeId(), i, GetEtatParcUseCase::laPlusLointaine);
             }
         }
-        return fins;
+        return couvrantes;
+    }
+
+    /** Des deux immobilisations, celle qui libère le véhicule le plus tard. */
+    private static IndisponibiliteVehicule laPlusLointaine(IndisponibiliteVehicule a,
+                                                           IndisponibiliteVehicule b) {
+        if (a.getDateFin() == null || b.getDateFin() == null) {
+            return a.getDateFin() == null ? a : b;
+        }
+        return a.getDateFin().isAfter(b.getDateFin()) ? a : b;
     }
 
     /** Motif déduit du statut quand la période historisée n'en porte pas (seed initial). */

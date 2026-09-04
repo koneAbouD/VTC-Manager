@@ -5,6 +5,8 @@ import com.tmk.vtcmanager.application.domain.document.Document;
 import com.tmk.vtcmanager.application.domain.document.DocumentStatut;
 import com.tmk.vtcmanager.application.domain.chauffeur.TypePermis;
 import com.tmk.vtcmanager.application.domain.groupe.GroupeVehicule;
+import com.tmk.vtcmanager.application.domain.indisponibilite.IndisponibiliteStatut;
+import com.tmk.vtcmanager.application.domain.indisponibiliteVehicule.IndisponibiliteVehicule;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import com.tmk.vtcmanager.application.domain.vehicule.TypeActivite;
@@ -20,6 +22,7 @@ import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeStatutHistoriqueRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VidangeRepository;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.EtatParcSummaryResponse;
+import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.VehiculeExceptionDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,6 +33,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -290,6 +294,69 @@ class GetEtatParcUseCaseTest {
                 .isEqualTo(VehiculeStatutMotif.VIDANGE_DUE.name());
         // L'alerte recouvre exactement le bloc vidange de la liste.
         assertThat(r.alertes().vidangesDues()).isEqualTo(3);
+    }
+
+    @Test
+    void chaqueLigneOuvreSurLObjetQuiExpliqueLArret() {
+        LocalDate today = LocalDate.now();
+        Vehicule immobilise = vehicule(1, VehiculeStatus.IMMOBILISE);
+        Vehicule enMaintenance = vehicule(2, VehiculeStatus.EN_MAINTENANCE);
+        Vehicule penalise = vehicule(3, VehiculeStatus.IMMOBILISE);
+        Vehicule sansChauffeur = vehicule(4, VehiculeStatus.DISPONIBLE);
+        Vehicule aVidanger = vehiculeAvecKm(5, VehiculeStatus.EN_SERVICE, 99_700);
+        when(vehiculeRepository.findAll()).thenReturn(List.of(
+                immobilise, enMaintenance, penalise, sansChauffeur, aVidanger));
+        when(historiqueRepository.findAllEnCours()).thenReturn(List.of(
+                periode(1, VehiculeStatus.IMMOBILISE,
+                        VehiculeStatutMotif.IMMOBILISATION_INDISPONIBILITE, 3),
+                periode(2, VehiculeStatus.EN_MAINTENANCE,
+                        VehiculeStatutMotif.MAINTENANCE_EN_COURS, 2),
+                periode(3, VehiculeStatus.IMMOBILISE,
+                        VehiculeStatutMotif.IMMOBILISATION_PENALITE, 1),
+                periode(4, VehiculeStatus.DISPONIBLE,
+                        VehiculeStatutMotif.SANS_CHAUFFEUR, 4)));
+        when(indisponibiliteVehiculeRepository.findByStatut(IndisponibiliteStatut.EN_COURS))
+                .thenReturn(List.of(IndisponibiliteVehicule.builder()
+                        .id(77L).vehicule(immobilise)
+                        .dateDebut(today.minusDays(3)).dateFin(today.plusDays(4)).build()));
+        when(maintenanceRepository.findByStatut(MaintenanceStatus.EN_COURS))
+                .thenReturn(List.of(Maintenance.builder()
+                        .id(88L).vehicule(enMaintenance)
+                        .statut(MaintenanceStatus.EN_COURS).build()));
+        when(maintenanceRepository.findByDatePrevueLessThanEqualAndStatut(
+                today.plusDays(7), MaintenanceStatus.PLANIFIEE))
+                .thenReturn(List.of(Maintenance.builder()
+                        .id(99L).vehicule(aVidanger).datePrevue(today.plusDays(2))
+                        .statut(MaintenanceStatus.PLANIFIEE).build()));
+        when(vidangeRepository.findDernieresParVehicule())
+                .thenReturn(List.of(vidange(5, null, 100_000)));
+
+        EtatParcSummaryResponse r = useCase.execute(null, null);
+
+        assertThat(r.exceptions())
+                .extracting(VehiculeExceptionDto::motif, VehiculeExceptionDto::cible,
+                        VehiculeExceptionDto::cibleId)
+                .containsExactlyInAnyOrder(
+                        // L'immobilisation datée ouvre sur elle-même, et porte sa fin.
+                        tuple(VehiculeStatutMotif.IMMOBILISATION_INDISPONIBILITE.name(),
+                                "INDISPONIBILITE_VEHICULE", 77L),
+                        tuple(VehiculeStatutMotif.MAINTENANCE_EN_COURS.name(),
+                                "MAINTENANCE", 88L),
+                        // Aucune ligne de pénalité ne porte seule l'arrêt : le véhicule.
+                        tuple(VehiculeStatutMotif.IMMOBILISATION_PENALITE.name(),
+                                "PENALITE", null),
+                        tuple(VehiculeStatutMotif.SANS_CHAUFFEUR.name(), "VEHICULE", null),
+                        tuple(VehiculeStatutMotif.MAINTENANCE_PREVUE.name(),
+                                "MAINTENANCE", 99L),
+                        // La vidange n'a pas d'écran propre : l'historique du véhicule.
+                        tuple(VehiculeStatutMotif.VIDANGE_DUE.name(), "VIDANGE", null));
+        // L'immobilisation retenue porte aussi la fin affichée sur sa ligne.
+        assertThat(r.exceptions())
+                .filteredOn(e -> VehiculeStatutMotif.IMMOBILISATION_INDISPONIBILITE.name()
+                        .equals(e.motif()))
+                .singleElement()
+                .extracting(VehiculeExceptionDto::finPrevue)
+                .isEqualTo(today.plusDays(4));
     }
 
     @Test

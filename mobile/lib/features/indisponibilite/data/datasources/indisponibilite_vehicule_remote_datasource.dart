@@ -35,6 +35,12 @@ class IndisponibiliteVehiculeRemoteDatasource {
         .toList();
   }
 
+  Future<IndisponibiliteVehiculeModel> getById(int id) async {
+    final data = await _client.get('/indisponibilites-vehicule/$id')
+        as Map<String, dynamic>;
+    return IndisponibiliteVehiculeModel.fromJson(data);
+  }
+
   Future<IndisponibiliteVehiculeModel> create(
       IndisponibiliteVehiculeModel m) async {
     final data = await _client.post('/indisponibilites-vehicule', m.toJson())

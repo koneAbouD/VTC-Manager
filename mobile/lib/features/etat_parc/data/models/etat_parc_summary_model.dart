@@ -75,6 +75,14 @@ class VehiculeExceptionModel {
   /// si la cible est dépassée. Null si la vidange n'est due que par date.
   final int? kmRestantVidange;
 
+  /// Écran sur lequel ouvrir la ligne : `MAINTENANCE`,
+  /// `INDISPONIBILITE_VEHICULE`, `PENALITE`, `VIDANGE` ou `VEHICULE`.
+  final String? cible;
+
+  /// Identifiant de l'objet visé, quand la cible en désigne un (null lorsque
+  /// l'écran se résout sur le véhicule lui-même).
+  final int? cibleId;
+
   const VehiculeExceptionModel({
     required this.vehiculeId,
     required this.immatriculation,
@@ -86,6 +94,8 @@ class VehiculeExceptionModel {
     this.dateMaintenancePrevue,
     this.dateProchaineVidange,
     this.kmRestantVidange,
+    this.cible,
+    this.cibleId,
   });
 
   factory VehiculeExceptionModel.fromJson(Map<String, dynamic> json) =>
@@ -106,6 +116,8 @@ class VehiculeExceptionModel {
             ? DateTime.tryParse(json['dateProchaineVidange'] as String)
             : null,
         kmRestantVidange: (json['kmRestantVidange'] as num?)?.toInt(),
+        cible: json['cible'] as String?,
+        cibleId: (json['cibleId'] as num?)?.toInt(),
       );
 
   /// Libellé français du motif historisé.

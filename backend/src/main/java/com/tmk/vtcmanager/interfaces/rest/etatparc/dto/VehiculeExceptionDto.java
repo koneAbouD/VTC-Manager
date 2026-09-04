@@ -12,6 +12,11 @@ import java.time.LocalDate;
  * et {@code kmRestantVidange} ne sont renseignés que pour le motif
  * {@code VIDANGE_DUE}, et seulement si la dernière vidange porte la cible
  * correspondante (une vidange peut n'être due que par date, ou que par kilométrage).
+ * <p>
+ * {@code cible} dit vers quel écran ouvrir la ligne — {@code MAINTENANCE},
+ * {@code INDISPONIBILITE_VEHICULE}, {@code PENALITE}, {@code VIDANGE} ou
+ * {@code VEHICULE} — et {@code cibleId} identifie l'objet visé quand il en existe
+ * un (null quand la cible se résout sur le véhicule lui-même).
  */
 public record VehiculeExceptionDto(
         Long vehiculeId,
@@ -23,5 +28,7 @@ public record VehiculeExceptionDto(
         LocalDate finPrevue,
         LocalDate dateMaintenancePrevue,
         LocalDate dateProchaineVidange,
-        Integer kmRestantVidange
+        Integer kmRestantVidange,
+        String cible,
+        Long cibleId
 ) {}
