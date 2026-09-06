@@ -51,7 +51,8 @@ public class MaintenanceController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MaintenanceResponse schedule(@Valid @RequestBody MaintenanceRequest request) {
-        Maintenance created = scheduleMaintenanceUseCase.execute(request.vehiculeId(), mapper.toDomain(request));
+        Maintenance created = scheduleMaintenanceUseCase.execute(
+                request.vehiculeId(), mapper.toDomain(request), request.reglement());
         return mapper.toResponse(created);
     }
 

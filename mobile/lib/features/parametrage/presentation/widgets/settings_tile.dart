@@ -5,8 +5,9 @@ import '../../../../core/theme/app_colors.dart';
 /// Briques d'interface de la page Paramètres.
 ///
 /// Même langage visuel que les cartes de `parametrage_hub_page` et de
-/// `detail_premium` : surface blanche, bordure fine, coins arrondis et icône
-/// teintée — seuls les en-têtes d'accordéon posent l'icône sur une pastille.
+/// `detail_premium` : bordure fine, coins arrondis et icône teintée, posée nue.
+/// Les cartes de premier niveau prennent la teinte du bandeau de profil, les
+/// lignes filles d'un volet déplié le fond blanc.
 
 /// Rayon des cartes de réglages.
 const double _kCardRadius = 16;
@@ -19,6 +20,12 @@ const double _kDividerIndent = 70;
 /// chevrons) : assez lente pour rester douce, assez courte pour ne pas faire
 /// attendre.
 const kSettingsTransition = Duration(milliseconds: 240);
+
+/// Fond des cartes de premier niveau de la page Réglages — la teinte du bandeau
+/// de profil, reprise telle quelle. Le bandeau et les cartes qui le suivent
+/// forment ainsi une seule matière, sur laquelle les lignes filles blanches se
+/// détachent une fois un volet déplié.
+const Color kSettingsHeaderFond = AppColors.headerButton;
 
 /// Intercale un filet fin entre chaque ligne d'une carte.
 List<Widget> _separees(List<Widget> lignes) {
@@ -38,18 +45,22 @@ List<Widget> _separees(List<Widget> lignes) {
   return resultat;
 }
 
-/// Enveloppe commune des cartes de réglages : surface blanche, bordure fine,
-/// coins arrondis et clip (pour que l'effet d'appui suive les arrondis).
+/// Enveloppe commune des cartes de réglages : surface, bordure fine, coins
+/// arrondis et clip (pour que l'effet d'appui suive les arrondis).
 class _CarteReglages extends StatelessWidget {
   final Widget child;
 
-  const _CarteReglages({required this.child});
+  /// Fond de la carte. Blanc par défaut ; les cartes de premier niveau de la
+  /// page Réglages prennent la teinte du bandeau de profil ([kSettingsHeaderFond]).
+  final Color fond;
+
+  const _CarteReglages({required this.child, this.fond = AppColors.surface});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: fond,
         borderRadius: BorderRadius.circular(_kCardRadius),
         border: Border.all(color: AppColors.border),
       ),
@@ -73,16 +84,22 @@ class SettingsCard extends StatelessWidget {
   /// la boîte.
   final bool sansFond;
 
+  /// Fond de la carte. Blanc par défaut ; les cartes de premier niveau de la
+  /// page Réglages passent [kSettingsHeaderFond] pour s'accorder au bandeau de
+  /// profil. Ignoré quand [sansFond] est vrai.
+  final Color fond;
+
   const SettingsCard({
     super.key,
     required this.children,
     this.sansFond = false,
+    this.fond = AppColors.surface,
   });
 
   @override
   Widget build(BuildContext context) {
     final contenu = Column(children: _separees(children));
-    return sansFond ? contenu : _CarteReglages(child: contenu);
+    return sansFond ? contenu : _CarteReglages(fond: fond, child: contenu);
   }
 }
 
@@ -92,10 +109,10 @@ class SettingsCard extends StatelessWidget {
 /// L'ouverture est pilotée par le parent ([ouvert] / [onToggle]) : la page peut
 /// ainsi n'en laisser qu'une seule dépliée à la fois.
 ///
-/// **Hiérarchie visuelle** : une fois déplié, l'en-tête se teinte, sa pastille
-/// d'icône devient pleine et son titre passe à la couleur de marque, tandis que
-/// les lignes filles gardent le fond blanc, une icône nue et un léger retrait.
-/// Parent et enfants ne se confondent jamais.
+/// **Hiérarchie visuelle** : l'en-tête porte le fond du bandeau de profil
+/// ([kSettingsHeaderFond]) ; une fois déplié, son icône et son titre passent à
+/// la couleur de marque, tandis que les lignes filles reprennent le fond blanc,
+/// avec un léger retrait. Parent et enfants ne se confondent jamais.
 class SettingsAccordion extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -105,7 +122,7 @@ class SettingsAccordion extends StatelessWidget {
 
   final List<Widget> children;
 
-  /// Teinte de l'en-tête et des pastilles.
+  /// Teinte de l'icône et du titre de l'en-tête.
   final Color accent;
 
   final bool ouvert;
@@ -125,6 +142,7 @@ class SettingsAccordion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CarteReglages(
+      fond: kSettingsHeaderFond,
       child: Column(
         children: [
           _EnteteAccordion(
@@ -146,11 +164,16 @@ class SettingsAccordion extends StatelessWidget {
                       const Divider(
                           height: 1, thickness: 1, color: AppColors.border),
                       // Retrait des lignes filles : la hiérarchie se lit d'un
-                      // coup d'œil, sans surcharge.
-                      Padding(
-                        padding:
-                            const EdgeInsets.only(left: kSettingsChildIndent),
-                        child: Column(children: _separees(children)),
+                      // coup d'œil, sans surcharge. Fond blanc posé ici, la
+                      // carte portant désormais la teinte de l'en-tête : sans
+                      // lui, filles et parent se confondraient.
+                      ColoredBox(
+                        color: AppColors.surface,
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.only(left: kSettingsChildIndent),
+                          child: Column(children: _separees(children)),
+                        ),
                       ),
                     ],
                   )
@@ -168,8 +191,8 @@ class SettingsAccordion extends StatelessWidget {
 /// actions du bandeau de profil, par exemple — s'aligne sur celles des volets.
 const double kSettingsChildIndent = 8;
 
-/// En-tête d'un [SettingsAccordion] : pastille pleine et titre coloré une fois
-/// déplié, retour au repos sinon. Toutes les bascules sont animées.
+/// En-tête d'un [SettingsAccordion] : icône et titre virent au vert soutenu une
+/// fois déplié, retour au repos sinon. Toutes les bascules sont animées.
 class _EnteteAccordion extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -193,25 +216,22 @@ class _EnteteAccordion extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: kSettingsTransition,
-          curve: Curves.easeOutCubic,
-          color: ouvert ? AppColors.primaryTint : AppColors.surface,
+        // Pas de fond propre : l'en-tête laisse voir celui de la carte, repris
+        // du bandeau de profil. L'ouverture reste lisible sans changement de
+        // teinte — icône et titre virent au vert soutenu, chevron retourné.
+        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           child: Row(
             children: [
-              AnimatedContainer(
-                duration: kSettingsTransition,
-                curve: Curves.easeOutCubic,
+              // Icône nue, comme celles des [SettingsTile]. La boîte garde ses
+              // 42 px : c'est elle qui aligne libellés et filets d'un bout à
+              // l'autre de la carte.
+              SizedBox(
                 width: 42,
                 height: 42,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: ouvert ? accent : accent.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
                 child: TweenAnimationBuilder<Color?>(
-                  tween: ColorTween(end: ouvert ? AppColors.surface : accent),
+                  tween: ColorTween(
+                      end: ouvert ? AppColors.primaryDark : accent),
                   duration: kSettingsTransition,
                   curve: Curves.easeOutCubic,
                   builder: (_, couleur, __) =>
@@ -379,9 +399,8 @@ class SettingsTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       child: Row(
         children: [
-          // Icône nue, sans pastille : seul l'en-tête d'accordéon porte un
-          // fond coloré. La boîte garde ses 42 px pour que libellés et filets
-          // séparateurs restent alignés sur ceux de l'en-tête.
+          // La boîte garde ses 42 px pour que libellés et filets séparateurs
+          // restent alignés sur ceux de l'en-tête.
           SizedBox(
             width: 42,
             height: 42,

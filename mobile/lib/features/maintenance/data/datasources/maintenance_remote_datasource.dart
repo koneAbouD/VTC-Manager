@@ -62,8 +62,20 @@ class MaintenanceRemoteDatasource {
     return MaintenanceModel.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<MaintenanceModel> createMaintenance(MaintenanceModel maintenance) async {
-    final data = await _client.post('/maintenances', maintenance.toJson());
+  /// Planifie une intervention. Datée d'avant aujourd'hui, elle est réputée
+  /// déjà faite : le serveur la termine dans la foulée, au comptant ou —
+  /// si [aCredit] — en dette envers ses prestataires, exigible à [dateEcheance].
+  Future<MaintenanceModel> createMaintenance(
+    MaintenanceModel maintenance, {
+    bool aCredit = false,
+    DateTime? dateEcheance,
+  }) async {
+    final data = await _client.post('/maintenances', {
+      ...maintenance.toJson(),
+      if (aCredit) 'aCredit': true,
+      if (aCredit && dateEcheance != null)
+        'dateEcheance': dateEcheance.toIso8601String().split('T').first,
+    });
     return MaintenanceModel.fromJson(data as Map<String, dynamic>);
   }
 

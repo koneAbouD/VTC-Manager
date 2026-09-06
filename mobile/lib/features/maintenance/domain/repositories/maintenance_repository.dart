@@ -24,7 +24,14 @@ abstract interface class MaintenanceRepository {
     String? recherche,
   });
   Future<Either<Failure, Maintenance>> getMaintenanceById(int id);
-  Future<Either<Failure, Maintenance>> createMaintenance(Maintenance maintenance);
+  /// Planifie une intervention. Si sa date prévue est passée, le serveur la
+  /// termine aussitôt : [aCredit] et [dateEcheance] disent alors comment elle
+  /// est réglée — sinon ils n'ont pas d'objet.
+  Future<Either<Failure, Maintenance>> createMaintenance(
+    Maintenance maintenance, {
+    bool aCredit,
+    DateTime? dateEcheance,
+  });
   Future<Either<Failure, Maintenance>> updateMaintenance(int id, Maintenance maintenance);
   Future<Either<Failure, void>> deleteMaintenance(int id);
   /// Annule l'intervention. [motif] est obligatoire : il justifie le retrait

@@ -24,7 +24,9 @@ import java.util.List;
  *
  * <p>Si la date prévue est déjà passée, la maintenance est considérée comme
  * réalisée : elle est immédiatement terminée (date effectuée = date prévue) et
- * l'opération de dépense associée est générée automatiquement.</p>
+ * l'opération de dépense associée est générée automatiquement. Le coût et le
+ * règlement de cette clôture viennent de la saisie quand le client les fournit
+ * — il les demande à l'exploitant au moment d'enregistrer l'intervention.</p>
  */
 @RequiredArgsConstructor
 public class ScheduleMaintenanceUseCase {
@@ -35,8 +37,19 @@ public class ScheduleMaintenanceUseCase {
     private final VehiculeStatutEventPublisher statutEventPublisher;
     private final CompleteMaintenanceUseCase completeMaintenanceUseCase;
 
+    /**
+     * Planification sans précision de règlement : une intervention déjà passée
+     * est réputée réglée sur place. Chemin des planifications automatiques
+     * (vidanges dues), qui n'ont personne à interroger.
+     */
     @Transactional
     public Maintenance execute(Long vehiculeId, Maintenance maintenance) {
+        return execute(vehiculeId, maintenance, ReglementMaintenance.comptant(null));
+    }
+
+    @Transactional
+    public Maintenance execute(Long vehiculeId, Maintenance maintenance,
+                               ReglementMaintenance reglement) {
         validerType(maintenance.getType());
 
         if (vehiculeId != null) {
@@ -60,20 +73,27 @@ public class ScheduleMaintenanceUseCase {
         Maintenance saved = maintenanceRepository.save(maintenance);
 
         // Date prévue déjà passée → maintenance réputée réalisée : on la termine
-        // à la date prévue et on génère automatiquement l'opération de dépense,
-        // dont le montant est la somme des éléments de maintenance.
+        // à la date prévue et on génère automatiquement l'écriture — dépense
+        // payée, ou dette envers les prestataires si l'intervention reste due.
         LocalDate datePrevue = saved.getDatePrevue();
         if (datePrevue != null && datePrevue.isBefore(LocalDate.now())) {
-            // Rattrapage d'une intervention déjà passée : on la suppose réglée
-            // sur place, faute d'échéance connue. Une dette se crée depuis la
-            // fiche, en terminant la maintenance en « à payer ».
-            return completeMaintenanceUseCase.execute(saved.getId(), sommeElements(saved), datePrevue,
-                    ReglementMaintenance.comptant(null), null, null);
+            return completeMaintenanceUseCase.execute(saved.getId(), coutDeCloture(saved), datePrevue,
+                    reglement != null ? reglement : ReglementMaintenance.comptant(null), null, null);
         }
 
         // Recalcul du statut (→ EN_MAINTENANCE si la maintenance est créée EN_COURS).
         statutEventPublisher.publishStatutDirty(vehiculeId);
         return saved;
+    }
+
+    /**
+     * Coût retenu pour la clôture d'office. Le montant saisi fait foi dès qu'il
+     * est transmis — c'est le coût réel, constaté après coup, qui peut s'écarter
+     * des lignes prévues. À défaut, la somme des éléments de l'intervention.
+     */
+    private BigDecimal coutDeCloture(Maintenance maintenance) {
+        BigDecimal saisi = maintenance.getCout();
+        return saisi != null ? saisi : sommeElements(maintenance);
     }
 
     /** Somme des montants des éléments de la maintenance (0 si aucun). */

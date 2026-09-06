@@ -82,10 +82,13 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
 
   @override
   Future<Either<Failure, Maintenance>> createMaintenance(
-      Maintenance maintenance) async {
+      Maintenance maintenance,
+      {bool aCredit = false,
+      DateTime? dateEcheance}) async {
     try {
       final model = MaintenanceModel.fromEntity(maintenance);
-      final result = await _datasource.createMaintenance(model);
+      final result = await _datasource.createMaintenance(model,
+          aCredit: aCredit, dateEcheance: dateEcheance);
       return Right(result);
     } on ApiException catch (e) {
       return Left(_mapApiException(e));

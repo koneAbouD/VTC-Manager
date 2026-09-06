@@ -121,8 +121,10 @@ class MaintenanceNotifier extends StateNotifier<MaintenanceState> {
     );
   }
 
-  Future<String?> createMaintenance(Maintenance maintenance) async {
-    final result = await _createMaintenance.call(maintenance);
+  Future<String?> createMaintenance(Maintenance maintenance,
+      {bool aCredit = false, DateTime? dateEcheance}) async {
+    final result = await _createMaintenance.call(maintenance,
+        aCredit: aCredit, dateEcheance: dateEcheance);
     return result.fold(
       (failure) => failure.message,
       (_) {

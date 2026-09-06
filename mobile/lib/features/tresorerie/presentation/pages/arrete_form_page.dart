@@ -63,13 +63,24 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
 
   bool get _toutLeFonds => _mois == null || _annee == null;
 
-  /// Vrai si le document est daté hors du mois choisi. Toujours faux quand
+  /// Vrai si le document est daté avant le mois choisi. Toujours faux quand
   /// aucun mois n'est sélectionné : il n'y a alors pas de « hors période ».
-  bool _horsPeriode(LigneArrete l) {
+  bool _avantPeriode(LigneArrete l) {
     if (_toutLeFonds || l.dateDocument == null) return false;
-    final d = l.dateDocument!;
-    return d.isBefore(_debut) || d.isAfter(_fin);
+    return l.dateDocument!.isBefore(_debut);
   }
+
+  /// Vrai si le document est daté après le mois choisi. Le cas est courant : le
+  /// serveur rend toutes les créances ouvertes, et une recette impayée
+  /// postérieure au mois filtré reste compensable. La ranger avec les
+  /// antérieures faisait mentir le sous-titre de la liste.
+  bool _apresPeriode(LigneArrete l) {
+    if (_toutLeFonds || l.dateDocument == null) return false;
+    return l.dateDocument!.isAfter(_fin);
+  }
+
+  /// Vrai si le document est daté hors du mois choisi, d'un côté ou de l'autre.
+  bool _horsPeriode(LigneArrete l) => _avantPeriode(l) || _apresPeriode(l);
 
   /// Bornes envoyées au serveur. Sans mois choisi, on ouvre large des deux
   /// côtés : le serveur resserre ensuite la période enregistrée sur les
@@ -327,7 +338,8 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                   Expanded(
                     child: Text(
                         'Le mois ne filtre que le fonds. Toutes les créances '
-                        'ouvertes restent compensables, y compris antérieures.',
+                        'ouvertes restent compensables, antérieures comme '
+                        'postérieures.',
                         style: TextStyle(
                             fontSize: 11.5, color: AppColors.label, height: 1.3)),
                   ),
@@ -540,7 +552,8 @@ class _GroupeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final net = etat._netGroupe(groupe);
     final parts = etat._allocations(groupe);
-    final horsPeriode = groupe.creances.where(etat._horsPeriode).toList();
+    final anterieures = groupe.creances.where(etat._avantPeriode).toList();
+    final posterieures = groupe.creances.where(etat._apresPeriode).toList();
     final dansPeriode =
         groupe.creances.where((l) => !etat._horsPeriode(l)).toList();
     return Container(
@@ -594,8 +607,10 @@ class _GroupeCard extends StatelessWidget {
                 ? 'Créances à compenser'
                 : 'Créances du mois'),
           for (final l in dansPeriode) _tuileCreance(context, l, parts),
-          if (horsPeriode.isNotEmpty) _sousTitre('Créances antérieures'),
-          for (final l in horsPeriode) _tuileCreance(context, l, parts),
+          if (anterieures.isNotEmpty) _sousTitre('Créances antérieures'),
+          for (final l in anterieures) _tuileCreance(context, l, parts),
+          if (posterieures.isNotEmpty) _sousTitre('Créances postérieures'),
+          for (final l in posterieures) _tuileCreance(context, l, parts),
           const SizedBox(height: 6),
         ],
       ),
@@ -603,19 +618,30 @@ class _GroupeCard extends StatelessWidget {
   }
 
   Widget _tuileCreance(
-          BuildContext context, LigneArrete l, Map<String, double> parts) =>
-      _tuile(
-        context,
-        titre: _libellesDoc[l.document] ?? l.document,
-        sousTitre: _repere(l),
-        montant: parts[_ArreteFormPageState._cleCreance(l)] ?? 0,
-        // Le dû n'est rappelé que lorsqu'il dépasse la part éteinte : sinon la
-        // créance est soldée et le répéter n'apprend rien.
-        reste: l.du - (parts[_ArreteFormPageState._cleCreance(l)] ?? 0),
-        couleurMontant: Colors.orange.shade900,
-        coche: etat._creChoisie(l),
-        onChanged: (v) => etat.basculeCreance(l, v),
-      );
+      BuildContext context, LigneArrete l, Map<String, double> parts) {
+    final part = parts[_ArreteFormPageState._cleCreance(l)] ?? 0;
+    final reste = l.du - part;
+    return _tuile(
+      context,
+      titre: _libellesDoc[l.document] ?? l.document,
+      sousTitre: _repere(l),
+      montant: part,
+      // Le montant de droite n'est que la part que cet arrêté éteint. Sans
+      // seconde ligne, une créance couverte en entier ne se distinguait pas
+      // d'une créance dont le reste dû aurait été oublié : chaque créance
+      // annonce donc son sort, y compris quand il ne reste rien.
+      note: part <= 0
+          ? 'non compensée — ${CurrencyFormatter.format(l.du)} dû'
+          : reste > 0
+              ? 'sur ${CurrencyFormatter.format(l.du)} dû — reste '
+                  '${CurrencyFormatter.format(reste)}'
+              : 'soldée par cet arrêté',
+      couleurNote: reste > 0 ? Colors.red.shade900 : Colors.green.shade800,
+      couleurMontant: Colors.orange.shade900,
+      coche: etat._creChoisie(l),
+      onChanged: (v) => etat.basculeCreance(l, v),
+    );
+  }
 
   Widget _sousTitre(String texte) => Padding(
         padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
@@ -634,7 +660,8 @@ class _GroupeCard extends StatelessWidget {
     required Color couleurMontant,
     required bool coche,
     required ValueChanged<bool?> onChanged,
-    double reste = 0,
+    String? note,
+    Color? couleurNote,
   }) {
     return InkWell(
       onTap: () => onChanged(!coche),
@@ -655,10 +682,11 @@ class _GroupeCard extends StatelessWidget {
                   Text('$titre  $sousTitre',
                       style:
                           const TextStyle(fontSize: 13, color: AppColors.dark)),
-                  if (reste > 0)
-                    Text('reste ${CurrencyFormatter.format(reste)} dû',
+                  if (note != null)
+                    Text(note,
                         style: TextStyle(
-                            fontSize: 11, color: Colors.red.shade900)),
+                            fontSize: 11,
+                            color: couleurNote ?? AppColors.hint)),
                 ],
               ),
             ),

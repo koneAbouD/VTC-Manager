@@ -142,11 +142,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   // vient chercher le plus souvent. Un volet à déplier la
                   // mettrait au même rang que le paramétrage.
                   SettingsCard(
+                    fond: kSettingsHeaderFond,
                     children: [
                       SettingsTile(
                         icon: Icons.insights_rounded,
                         title: 'Tableau de bord',
-                        description: 'Résultat, encaissement, parc et alertes',
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
                               builder: (_) => const TableauBordPage()),

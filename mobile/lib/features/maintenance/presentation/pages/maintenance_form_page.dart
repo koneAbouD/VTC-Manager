@@ -16,6 +16,7 @@ import '../../../partenaire/presentation/providers/partenaire_providers.dart';
 import '../../domain/entities/maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import '../providers/type_maintenance_provider.dart';
+import '../widgets/terminer_maintenance_dialog.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import '../../../etat_parc/presentation/providers/etat_parc_provider.dart';
@@ -187,14 +188,42 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       return;
     }
 
-    setState(() => _loading = true);
-
     if (_categorieType == null) {
       _showToast(context, 'Veuillez sélectionner un type de maintenance',
           error: true);
-      setState(() => _loading = false);
       return;
     }
+
+    // Une intervention datée d'avant aujourd'hui n'est pas à planifier : elle a
+    // déjà eu lieu, et le serveur la terminera dès sa création. On demande donc
+    // ici ce que lui seul ne peut pas deviner — le coût réel des travaux, et
+    // s'ils ont été payés sur place ou restent dus au prestataire.
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final estRattrapage = !_isEdit && _datePrevue!.isBefore(today);
+
+    ChoixCloture? cloture;
+    if (estRattrapage) {
+      cloture = await showTerminerMaintenanceDialog(
+        context,
+        titre: 'Intervention déjà réalisée',
+        message: 'Datée du '
+            '${DateFormat('dd MMM yyyy', 'fr_FR').format(_datePrevue!)}, cette '
+            'intervention sera enregistrée comme terminée. Renseignez le coût '
+            'réel des travaux.',
+        typeLabel: _categorieType!.libelle,
+        partenaireNom: _partenaireNom,
+        elements: _elements,
+        coutInitial: _totalElements,
+        validerLabel: 'Enregistrer',
+        icone: Icons.history_rounded,
+      );
+      // Popup refermée sans valider : l'intervention n'est pas enregistrée, le
+      // formulaire reste tel quel — rien n'est perdu.
+      if (cloture == null || !mounted) return;
+    }
+
+    setState(() => _loading = true);
 
     final maintenance = Maintenance(
       id: widget.initial?.id,
@@ -207,6 +236,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       // Champ kilométrage retiré du formulaire : on conserve la valeur
       // existante en édition pour ne pas l'écraser.
       kilometrageAuMoment: widget.initial?.kilometrageAuMoment,
+      // Renseigné pour un rattrapage seulement : c'est le coût validé qui fait
+      // foi à la clôture, quitte à s'écarter de la somme des lignes.
+      cout: cloture?.cout,
       partenaireId: _partenaireId,
       partenaireNom: _partenaireNom,
       vehiculeId: _vehiculeId,
@@ -219,7 +251,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     final notifier = ref.read(maintenanceNotifierProvider.notifier);
     final error = _isEdit
         ? await notifier.updateMaintenance(widget.initial!.id!, maintenance)
-        : await notifier.createMaintenance(maintenance);
+        : await notifier.createMaintenance(maintenance,
+            aCredit: cloture?.aCredit ?? false,
+            dateEcheance: cloture?.echeance);
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -229,12 +263,10 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       _showToast(context, error, error: true);
     } else {
       // Deux raisons de rafraîchir les Finances : une date prévue déjà passée
-      // fait terminer la maintenance côté serveur (dépense générée), et une
-      // modification réaligne les dettes de l'intervention sur son nouveau coût.
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final estPassee = !_isEdit && _datePrevue!.isBefore(today);
-      if (estPassee || _isEdit) refreshFinances(ref);
+      // fait terminer la maintenance côté serveur (dépense ou dette générée),
+      // et une modification réaligne les dettes de l'intervention sur son
+      // nouveau coût.
+      if (estRattrapage || _isEdit) refreshFinances(ref);
 
       // Une maintenance modifie l'état du véhicule (immobilisation, retour en
       // service) : rafraîchir la photo de l'État de parc.

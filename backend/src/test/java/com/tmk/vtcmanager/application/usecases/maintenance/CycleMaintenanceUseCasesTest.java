@@ -11,6 +11,7 @@ import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.SousCategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.operation.TypeOperation;
+import com.tmk.vtcmanager.application.domain.partenaire.FacturePartenaire;
 import com.tmk.vtcmanager.application.domain.partenaire.Partenaire;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.PeriodeClotureeException;
@@ -41,6 +42,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -493,6 +495,51 @@ class CycleMaintenanceUseCasesTest {
             assertThat(resultat.getStatut()).isEqualTo(MaintenanceStatus.TERMINEE);
             // Le montant est la somme des éléments saisis.
             assertThat(depenseEnregistree().getMontant()).isEqualByComparingTo("25000");
+        }
+
+        @Test
+        @DisplayName("Le coût réel validé à l'enregistrement prime la somme des lignes")
+        void date_passee_cout_valide() {
+            when(maintenanceRepository.findById(MAINTENANCE_ID))
+                    .thenReturn(Optional.of(maintenance(MaintenanceStatus.PLANIFIEE)));
+            Maintenance rattrapage = aPlanifier(HIER);
+            rattrapage.setDetailMaintenance(DetailMaintenance.builder()
+                    .elements(new ArrayList<>(List.of(
+                            ElementMaintenance.builder().libelle("Huile")
+                                    .montant(BigDecimal.valueOf(20_000)).build())))
+                    .build());
+            // La facture s'est écartée des lignes prévues : c'est elle qui fait foi.
+            rattrapage.setCout(BigDecimal.valueOf(23_500));
+
+            scheduleUseCase.execute(VEHICULE_ID, rattrapage,
+                    ReglementMaintenance.comptant(ModePaiement.ESPECES));
+
+            assertThat(depenseEnregistree().getMontant()).isEqualByComparingTo("23500");
+        }
+
+        @Test
+        @DisplayName("Une intervention passée laissée à payer crée une dette, sans sortie de caisse")
+        void date_passee_a_credit() {
+            LocalDate echeance = LocalDate.now().plusDays(30);
+            when(maintenanceRepository.findById(MAINTENANCE_ID))
+                    .thenReturn(Optional.of(maintenance(MaintenanceStatus.PLANIFIEE)));
+            when(facturePartenaireRepository.findByMaintenanceId(MAINTENANCE_ID))
+                    .thenReturn(List.of());
+            when(repartitionService.repartir(any()))
+                    .thenReturn(Map.of(4L, BigDecimal.valueOf(90_000)));
+            Maintenance rattrapage = aPlanifier(HIER);
+            rattrapage.setCout(BigDecimal.valueOf(90_000));
+
+            scheduleUseCase.execute(VEHICULE_ID, rattrapage,
+                    ReglementMaintenance.aCredit(echeance));
+
+            ArgumentCaptor<FacturePartenaire> dette =
+                    ArgumentCaptor.forClass(FacturePartenaire.class);
+            verify(enregistrerFactureUseCase).executer(dette.capture());
+            assertThat(dette.getValue().getMontant()).isEqualByComparingTo("90000");
+            assertThat(dette.getValue().getDateEcheance()).isEqualTo(echeance);
+            // Rien n'a été payé : aucune dépense au journal.
+            verify(operationRepository, never()).save(any());
         }
     }
 }
