@@ -162,48 +162,74 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   double _fondsGroupe(_GroupeBeneficiaire g) =>
       g.cotisations.where(_cotChoisie).fold(0.0, (s, l) => s + l.montant);
 
-  /// Tout ce que le chauffeur doit encore, cases cochées ou non : décocher une
-  /// créance la retire de la compensation, pas de sa dette.
-  double _creancesGroupe(_GroupeBeneficiaire g) =>
-      g.creances.fold(0.0, (s, l) => s + l.du);
-
-  /// Ce que le fonds éteint, créance par créance, de la plus ancienne à la plus
-  /// récente — l'ordre dans lequel le serveur les a rendues. Reproduire ici son
-  /// allocation, plutôt qu'un simple min(fonds, créances), est ce qui permet à
-  /// chaque ligne d'annoncer sa propre part : une créance à moitié couverte ne
-  /// doit pas s'afficher comme soldée.
-  Map<String, double> _allocations(_GroupeBeneficiaire g) {
-    var reste = _fondsGroupe(g);
-    final parts = <String, double>{};
-    for (final l in g.creances.where(_creChoisie)) {
-      if (reste <= 0) break;
-      final part = math.min(reste, l.du);
-      if (part > 0) {
-        parts[_cleCreance(l)] = part;
-        reste -= part;
-      }
-    }
-    return parts;
+  /// La plus ancienne dette d'abord ; l'identifiant départage deux documents du
+  /// même jour, pour que l'écran impute dans le même ordre que le serveur.
+  static int _parAnteriorite(LigneArrete a, LigneArrete b) {
+    final da = a.dateDocument;
+    final db = b.dateDocument;
+    if (da == null && db == null) return a.documentId.compareTo(b.documentId);
+    if (da == null) return 1;
+    if (db == null) return -1;
+    final parJour = da.compareTo(db);
+    return parJour != 0 ? parJour : a.documentId.compareTo(b.documentId);
   }
 
-  double _compenseGroupe(_GroupeBeneficiaire g) =>
-      _allocations(g).values.fold(0.0, (s, m) => s + m);
+  /// Refait localement l'allocation du serveur, pour que cocher une case
+  /// réponde tout de suite. Le serveur reste l'autorité : ce calcul ne décide
+  /// de rien, il annonce.
+  ///
+  /// Deux temps, comme lui : chacun éteint d'abord ses propres créances, puis —
+  /// sur un arrêté par véhicule seulement — ce qui lui reste passe aux dettes
+  /// des autres chauffeurs du véhicule, par antériorité. Reproduire un simple
+  /// min(fonds, créances) par chauffeur afficherait un net que l'arrêté ne
+  /// verserait pas.
+  _Decompte _calculer() {
+    final groupes = _groupes;
+    final fonds = <int, double>{};
+    final dispo = <int, double>{};
+    final compense = <int, double>{};
+    final pourAutrui = <int, double>{};
+    final reste = <String, double>{};
+    for (final g in groupes) {
+      fonds[g.chauffeurId] = _fondsGroupe(g);
+      dispo[g.chauffeurId] = fonds[g.chauffeurId]!;
+      compense[g.chauffeurId] = 0;
+      pourAutrui[g.chauffeurId] = 0;
+      for (final l in g.creances) {
+        reste[_cleCreance(l)] = l.du;
+      }
+    }
 
-  double _netGroupe(_GroupeBeneficiaire g) =>
-      _fondsGroupe(g) - _compenseGroupe(g);
+    void imputer(_GroupeBeneficiaire g, List<LigneArrete> creances) {
+      for (final l in creances) {
+        if (dispo[g.chauffeurId]! <= 0) return;
+        if (!_creChoisie(l)) continue;
+        final cle = _cleCreance(l);
+        final du = reste[cle] ?? 0;
+        if (du <= 0) continue;
+        final part = math.min(dispo[g.chauffeurId]!, du);
+        dispo[g.chauffeurId] = dispo[g.chauffeurId]! - part;
+        compense[g.chauffeurId] = compense[g.chauffeurId]! + part;
+        if (l.chauffeurId != g.chauffeurId) {
+          pourAutrui[g.chauffeurId] = pourAutrui[g.chauffeurId]! + part;
+        }
+        reste[cle] = du - part;
+      }
+    }
 
-  /// Ce qui reste dû après cet arrêté, sur l'ensemble des créances ouvertes —
-  /// c'est le chiffre que le serveur consigne dans le règlement et sur le PDF.
-  double _reliquatGroupe(_GroupeBeneficiaire g) =>
-      _creancesGroupe(g) - _compenseGroupe(g);
+    for (final g in groupes) {
+      imputer(g, g.creances);
+    }
+    if (widget.perimetre == 'VEHICULE') {
+      final duVehicule = [for (final g in groupes) ...g.creances]
+        ..sort(_parAnteriorite);
+      for (final g in groupes) {
+        imputer(g, duVehicule);
+      }
+    }
 
-  double get _totalFonds =>
-      _groupes.fold(0.0, (s, g) => s + _fondsGroupe(g));
-  double get _totalCompense =>
-      _groupes.fold(0.0, (s, g) => s + _compenseGroupe(g));
-  double get _totalNet => _groupes.fold(0.0, (s, g) => s + _netGroupe(g));
-  double get _totalReliquat =>
-      _groupes.fold(0.0, (s, g) => s + _reliquatGroupe(g));
+    return _Decompte(groupes, fonds, dispo, compense, pourAutrui, reste);
+  }
 
   bool get _peutValider => _cotisationsChoisies.isNotEmpty;
 
@@ -278,6 +304,7 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   Widget build(BuildContext context) {
     final apercu = _apercu;
     final rien = apercu == null || apercu.lignes.isEmpty;
+    final decompte = _calculer();
 
     return Scaffold(
       appBar: AppHeader(title: 'Arrêté — ${widget.libelle}'),
@@ -362,10 +389,10 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                 AppColors.headerButton)
           else ...[
             _SyntheseCard(
-              fonds: _totalFonds,
-              compense: _totalCompense,
-              net: _totalNet,
-              reliquat: _totalReliquat,
+              fonds: decompte.totalFonds,
+              compense: decompte.totalCompense,
+              net: decompte.totalNet,
+              reliquat: decompte.totalReliquat,
             ),
             const SizedBox(height: 4),
             Row(
@@ -394,9 +421,10 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
               ],
             ),
             const SizedBox(height: 4),
-            for (final g in _groupes) _GroupeCard(groupe: g, etat: this),
+            for (final g in decompte.groupes)
+              _GroupeCard(groupe: g, etat: this, decompte: decompte),
             const SizedBox(height: 8),
-            if (_totalNet > 0) ...[
+            if (decompte.totalNet > 0) ...[
               const Text('Mode de versement',
                   style: TextStyle(
                       fontSize: 12.5,
@@ -438,8 +466,8 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                     ? (_aucuneCotisation
                         ? 'Aucune cotisation à restituer'
                         : 'Sélectionnez au moins une cotisation')
-                    : _totalNet > 0
-                        ? 'Restituer ${CurrencyFormatter.format(_totalNet)}'
+                    : decompte.totalNet > 0
+                        ? 'Restituer ${CurrencyFormatter.format(decompte.totalNet)}'
                         : 'Compenser (aucun versement)'),
                 style:
                     FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
@@ -447,6 +475,44 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
             ),
     );
   }
+}
+
+/// Décompte local d'un arrêté : ce que chaque fonds éteint, ce qu'il reste sur
+/// chaque créance, et les totaux de l'écran. Recalculé d'un bloc à chaque build
+/// par [_ArreteFormPageState._calculer] — la liste est courte, et c'est ce qui
+/// rend les cases à cocher instantanées.
+class _Decompte {
+  final List<_GroupeBeneficiaire> groupes;
+  final Map<int, double> _fonds;
+  /// Fonds encore disponible après imputation : c'est le net à verser.
+  final Map<int, double> _net;
+  /// Ce que son fonds a éteint, chez lui comme chez les autres.
+  final Map<int, double> _compense;
+  final Map<int, double> _pourAutrui;
+  /// Ce qu'il reste dû sur chaque créance, tous financeurs confondus.
+  final Map<String, double> _reste;
+
+  const _Decompte(this.groupes, this._fonds, this._net, this._compense,
+      this._pourAutrui, this._reste);
+
+  double fonds(_GroupeBeneficiaire g) => _fonds[g.chauffeurId] ?? 0;
+  double net(_GroupeBeneficiaire g) => _net[g.chauffeurId] ?? 0;
+  double compense(_GroupeBeneficiaire g) => _compense[g.chauffeurId] ?? 0;
+
+  /// Ce que le fonds de ce chauffeur a mis sur les dettes des AUTRES. Toujours
+  /// nul hors arrêté par véhicule — c'est là que les fonds se mutualisent.
+  double pourAutrui(_GroupeBeneficiaire g) => _pourAutrui[g.chauffeurId] ?? 0;
+
+  /// Ce qui reste dû sur SES créances après l'arrêté, d'où que vienne l'argent
+  /// qui les a entamées : une dette soldée par le chauffeur d'à côté n'est plus
+  /// un reliquat pour celui qui la portait.
+  double reliquat(_GroupeBeneficiaire g) => g.creances.fold(
+      0.0, (s, l) => s + (_reste[_ArreteFormPageState._cleCreance(l)] ?? 0));
+
+  double get totalFonds => groupes.fold(0.0, (s, g) => s + fonds(g));
+  double get totalCompense => groupes.fold(0.0, (s, g) => s + compense(g));
+  double get totalNet => groupes.fold(0.0, (s, g) => s + net(g));
+  double get totalReliquat => groupes.fold(0.0, (s, g) => s + reliquat(g));
 }
 
 /// Un bénéficiaire chauffeur : ses cotisations (crédit) et créances (débit).
@@ -534,7 +600,9 @@ class _SyntheseCard extends StatelessWidget {
 class _GroupeCard extends StatelessWidget {
   final _GroupeBeneficiaire groupe;
   final _ArreteFormPageState etat;
-  const _GroupeCard({required this.groupe, required this.etat});
+  final _Decompte decompte;
+  const _GroupeCard(
+      {required this.groupe, required this.etat, required this.decompte});
 
   static const _libellesDoc = {
     'RECETTE': 'Recette',
@@ -550,8 +618,10 @@ class _GroupeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final net = etat._netGroupe(groupe);
-    final parts = etat._allocations(groupe);
+    final net = decompte.net(groupe);
+    // Ce que son dépôt a mis sur les dettes des autres chauffeurs du véhicule.
+    // Sans ce rappel, son net baisse sans que rien à l'écran ne dise pourquoi.
+    final pourAutrui = decompte.pourAutrui(groupe);
     final anterieures = groupe.creances.where(etat._avantPeriode).toList();
     final posterieures = groupe.creances.where(etat._apresPeriode).toList();
     final dansPeriode =
@@ -586,6 +656,14 @@ class _GroupeCard extends StatelessWidget {
               ],
             ),
           ),
+          if (pourAutrui > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 2),
+              child: Text(
+                  'dont ${CurrencyFormatter.format(pourAutrui)} pour les dettes '
+                  'des autres chauffeurs du véhicule',
+                  style: TextStyle(fontSize: 11, color: Colors.orange.shade900)),
+            ),
           if (groupe.cotisations.isNotEmpty)
             _sousTitre('Cotisations (fonds)'),
           for (final l in groupe.cotisations)
@@ -606,42 +684,36 @@ class _GroupeCard extends StatelessWidget {
             _sousTitre(etat._toutLeFonds
                 ? 'Créances à compenser'
                 : 'Créances du mois'),
-          for (final l in dansPeriode) _tuileCreance(context, l, parts),
+          for (final l in dansPeriode) _tuileCreance(context, l),
           if (anterieures.isNotEmpty) _sousTitre('Créances antérieures'),
-          for (final l in anterieures) _tuileCreance(context, l, parts),
+          for (final l in anterieures) _tuileCreance(context, l),
           if (posterieures.isNotEmpty) _sousTitre('Créances postérieures'),
-          for (final l in posterieures) _tuileCreance(context, l, parts),
+          for (final l in posterieures) _tuileCreance(context, l),
           const SizedBox(height: 6),
         ],
       ),
     );
   }
 
-  Widget _tuileCreance(
-      BuildContext context, LigneArrete l, Map<String, double> parts) {
-    final part = parts[_ArreteFormPageState._cleCreance(l)] ?? 0;
-    final reste = l.du - part;
-    return _tuile(
-      context,
-      titre: _libellesDoc[l.document] ?? l.document,
-      sousTitre: _repere(l),
-      montant: part,
-      // Le montant de droite n'est que la part que cet arrêté éteint. Sans
-      // seconde ligne, une créance couverte en entier ne se distinguait pas
-      // d'une créance dont le reste dû aurait été oublié : chaque créance
-      // annonce donc son sort, y compris quand il ne reste rien.
-      note: part <= 0
-          ? 'non compensée — ${CurrencyFormatter.format(l.du)} dû'
-          : reste > 0
-              ? 'sur ${CurrencyFormatter.format(l.du)} dû — reste '
-                  '${CurrencyFormatter.format(reste)}'
-              : 'soldée par cet arrêté',
-      couleurNote: reste > 0 ? Colors.red.shade900 : Colors.green.shade800,
-      couleurMontant: Colors.orange.shade900,
-      coche: etat._creChoisie(l),
-      onChanged: (v) => etat.basculeCreance(l, v),
-    );
-  }
+  /// Une créance telle qu'elle est due : ce que le document réclamait, et ce
+  /// qu'il en reste aujourd'hui. La part que cet arrêté en éteint ne figure pas
+  /// ici — elle se lisait comme le montant de la créance et faisait passer une
+  /// recette attendue de 21 000 pour une recette de 15 000. Le décompte de la
+  /// compensation est en haut de l'écran, où il porte sur l'ensemble.
+  ///
+  /// La liste ne contient que des créances ouvertes : le serveur ne rend ni les
+  /// documents annulés ni ceux qu'un arrêté a soldés.
+  Widget _tuileCreance(BuildContext context, LigneArrete l) => _tuile(
+        context,
+        titre: _libellesDoc[l.document] ?? l.document,
+        sousTitre: _repere(l),
+        montant: l.origine,
+        note: 'reste ${CurrencyFormatter.format(l.du)}',
+        couleurNote: Colors.red.shade900,
+        couleurMontant: Colors.orange.shade900,
+        coche: etat._creChoisie(l),
+        onChanged: (v) => etat.basculeCreance(l, v),
+      );
 
   Widget _sousTitre(String texte) => Padding(
         padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),

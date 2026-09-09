@@ -18,5 +18,7 @@ public record LigneArreteResponse(
         BigDecimal montant,
         /** Restant dû du document, hors part compensée ici. Null sur un arrêté enregistré. */
         BigDecimal restant,
+        /** Montant d'origine du document (recette attendue, amende). Null sur un arrêté enregistré. */
+        BigDecimal montantDu,
         SensArrete sens
 ) {}

@@ -163,8 +163,8 @@ public class ArreterCompteUseCase {
         List<LigneArrete> lignes = new ArrayList<>();
         List<ReglementArrete> reglements = new ArrayList<>();
 
+        // Snapshot du fonds (cotisations, au crédit) + passage en RESTITUEE.
         for (DecompteBeneficiaire d : decomptes) {
-            // Snapshot du fonds (cotisations, au crédit) + passage en RESTITUEE.
             for (LigneCotisation cot : d.getCotisations()) {
                 // La part rendue est le fonds encore détenu, pas l'encaissement
                 // brut : une ligne déjà entamée par un arrêté précédent ne rend
@@ -182,25 +182,36 @@ public class ArreterCompteUseCase {
                         .build());
                 ligneCotisationRepository.marquerRestituee(cot.getId(), arreteId, partRendue);
             }
+        }
 
-            // Compensation des créances (au débit), par antériorité, cash-neutre.
-            for (DecompteBeneficiaire.Allocation alloc : d.getAllocations()) {
-                LigneCreance creance = alloc.getCreance();
-                Long operationId = compenser(creance, alloc.getMontant(), effetArrete, reference);
-                lignes.add(LigneArrete.builder()
-                        .arreteId(arreteId)
-                        .document(creance.getDocument())
-                        .documentId(creance.getDocumentId())
-                        .chauffeurId(d.getChauffeurId())
-                        .vehiculeId(creance.getVehiculeId())
-                        .dateDocument(creance.getDateReference())
-                        .montant(alloc.getMontant())
-                        .sens(SensArrete.DEBIT)
-                        .operationId(operationId)
-                        .build());
-            }
+        // Compensation des créances (au débit), par antériorité, cash-neutre.
+        //
+        // Cumulée par document, et non prise bénéficiaire par bénéficiaire : sur
+        // un arrêté par véhicule, les fonds de deux chauffeurs peuvent couvrir la
+        // même créance, et deux encaissements pour un seul document se liraient
+        // comme deux versements du chauffeur. La ligne porte le débiteur de la
+        // créance — c'est sa dette qui s'éteint ; ce que chaque fonds y a mis se
+        // lit dans le règlement de son propriétaire, dont le net a baissé
+        // d'autant.
+        for (DecompteBeneficiaire.Allocation alloc
+                : CalculerCompteCourantUseCase.compensationsCumulees(decomptes)) {
+            LigneCreance creance = alloc.getCreance();
+            Long operationId = compenser(creance, alloc.getMontant(), effetArrete, reference);
+            lignes.add(LigneArrete.builder()
+                    .arreteId(arreteId)
+                    .document(creance.getDocument())
+                    .documentId(creance.getDocumentId())
+                    .chauffeurId(creance.getChauffeurId())
+                    .vehiculeId(creance.getVehiculeId())
+                    .dateDocument(creance.getDateReference())
+                    .montant(alloc.getMontant())
+                    .sens(SensArrete.DEBIT)
+                    .operationId(operationId)
+                    .build());
+        }
 
-            // Décaissement du net positif (« prime »).
+        // Décaissement du net positif (« prime ») et règlement par bénéficiaire.
+        for (DecompteBeneficiaire d : decomptes) {
             Long operationDecaissementId = null;
             if (d.getNet().signum() > 0) {
                 operationDecaissementId = decaisserNet(d, perimetre, perimetreId, effetArrete,

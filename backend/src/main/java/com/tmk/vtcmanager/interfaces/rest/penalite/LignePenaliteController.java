@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.domain.penalite.LignePenaliteFiltres;
 import com.tmk.vtcmanager.application.domain.penalite.StatutLignePenalite;
 import com.tmk.vtcmanager.application.usecases.penalite.AnnulerLignePenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.RestaurerLignePenaliteUseCase;
+import com.tmk.vtcmanager.application.services.ModificationDateEncaissementService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.penalite.CreateEncaissementPenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.CreateLignePenaliteUseCase;
@@ -14,8 +15,10 @@ import com.tmk.vtcmanager.application.usecases.penalite.ExecuterBuzzerUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.GenererLignesPenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.GetLignesPenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.LeverImmobilisationUseCase;
+import com.tmk.vtcmanager.application.usecases.penalite.ModifierDateEncaissementPenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.NotifierAvertissementUseCase;
 import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
+import com.tmk.vtcmanager.interfaces.rest.common.ModificationDateEncaissementRequest;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.penalite.dto.request.EncaissementPenaliteRequest;
 import com.tmk.vtcmanager.interfaces.rest.penalite.dto.request.LignePenaliteRequest;
@@ -50,7 +53,9 @@ public class LignePenaliteController {
     private final CreateEncaissementPenaliteUseCase createEncaissementUseCase;
     private final AnnulerLignePenaliteUseCase annulerUseCase;
     private final RestaurerLignePenaliteUseCase restaurerUseCase;
+    private final ModifierDateEncaissementPenaliteUseCase modifierDateEncaissementUseCase;
     private final VerrouArreteService verrouArreteService;
+    private final ModificationDateEncaissementService modificationDateEncaissementService;
     private final ExecuterBuzzerUseCase executerBuzzerUseCase;
     private final NotifierAvertissementUseCase notifierUseCase;
     private final DemarrerImmobilisationUseCase demarrerUseCase;
@@ -98,12 +103,22 @@ public class LignePenaliteController {
 
     @GetMapping("/{id:\\d+}")
     public LignePenaliteResponse getLigneById(@PathVariable Long id) {
-        LignePenalite ligne = getLignesUseCase.findById(id);
-        // Dit au client si l'action « Restaurer » a encore un sens : un arrêté
-        // — période close, caisse comptée — peut l'avoir fermée depuis.
+        return mapper.toResponse(enrichir(getLignesUseCase.findById(id)));
+    }
+
+    /**
+     * Ce que la fiche a le droit de proposer, en un seul endroit : chaque action
+     * dit au client si elle est encore ouverte, plutôt que de le laisser tenter
+     * puis échouer.
+     */
+    private LignePenalite enrichir(LignePenalite ligne) {
+        // « Restaurer » a-t-il encore un sens : un arrêté — période close,
+        // caisse comptée — peut l'avoir fermée depuis.
         ligne.setRestaurable(verrouArreteService.estRestaurable(
                 ligne.getDateFaute() != null ? ligne.getDateFaute() : ligne.getDateGeneration()));
-        return mapper.toResponse(ligne);
+        // Et, versement par versement, si sa date reste corrigeable.
+        modificationDateEncaissementService.marquerVersements(ligne);
+        return ligne;
     }
 
     @PostMapping
@@ -132,6 +147,23 @@ public class LignePenaliteController {
     @GetMapping("/{id}/encaissements")
     public List<EncaissementPenaliteResponse> getEncaissements(@PathVariable Long id) {
         return mapper.toEncaissementResponseList(getLignesUseCase.findById(id).getEncaissements());
+    }
+
+    /**
+     * Corrige le jour d'un versement d'amende déjà enregistré : l'encaissement
+     * et l'écriture qu'il a produite au journal changent de date ensemble.
+     * Aucun montant ne bouge — le solde de trésorerie à date, le résultat du
+     * mois et l'ancienneté de la créance suivent d'eux-mêmes. Refusé si un
+     * arrêté a consigné la pénalité, si la période est close, si la caisse a
+     * été comptée à l'une des deux dates, ou si le versement a été extourné.
+     */
+    @PatchMapping("/{id}/encaissements/{encaissementId}/date")
+    public LignePenaliteResponse modifierDateEncaissement(
+            @PathVariable Long id,
+            @PathVariable Long encaissementId,
+            @Valid @RequestBody ModificationDateEncaissementRequest request) {
+        return mapper.toResponse(enrichir(modifierDateEncaissementUseCase.executer(
+                id, encaissementId, request.dateEncaissement())));
     }
 
     @PatchMapping("/{id}/executer")

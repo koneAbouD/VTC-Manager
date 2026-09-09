@@ -56,7 +56,11 @@ class _ConditionTravailSelectorPageState
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
+      // Le bas est laissé à découvert (edge-to-edge) : la liste défile sous la
+      // barre de navigation Android, et c'est son propre retrait qui dégage la
+      // dernière carte — même rendu que les sélecteurs chauffeur et véhicule.
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             _buildHeader(async),
@@ -182,7 +186,8 @@ class _ConditionTravailSelectorPageState
 
   Widget _buildLoading() {
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(
+          16, 0, 16, MediaQuery.of(context).padding.bottom),
       itemCount: 4,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (_, __) => const _SkeletonCard(),
@@ -251,7 +256,11 @@ class _ConditionTravailSelectorPageState
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      // Retrait bas incluant l'inset de la barre de navigation Android
+      // (gestes / 3 boutons) : sans lui, la dernière condition passe dessous
+      // et devient difficile à toucher.
+      padding: EdgeInsets.fromLTRB(
+          16, 0, 16, 16 + MediaQuery.of(context).padding.bottom),
       itemCount: filtered.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (_, i) => _ConditionCard(

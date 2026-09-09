@@ -66,6 +66,17 @@ abstract interface class LigneRecetteRepository {
     String motif,
   );
 
+  /// Corrige le jour d'un versement déjà enregistré : l'encaissement et
+  /// l'écriture qu'il a produite au journal changent de date ensemble. Aucun
+  /// montant ne bouge. Refusé par le serveur si un arrêté a consigné la ligne,
+  /// si la période est close, si la caisse a été comptée à l'une des deux
+  /// dates, ou si le versement a été extourné.
+  Future<Either<Failure, LigneRecette>> modifierDateEncaissement(
+    int ligneId,
+    int encaissementId,
+    DateTime date,
+  );
+
   Future<Either<Failure, LigneRecette>> restaurer(int id);
 
   Future<Either<Failure, LigneRecette>> confirmerVersement(int id);

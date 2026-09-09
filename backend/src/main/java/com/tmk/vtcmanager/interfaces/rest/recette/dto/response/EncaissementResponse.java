@@ -23,5 +23,11 @@ public record EncaissementResponse(
          */
         LocalDateTime annuleLe,
         String annulePar,
-        String motifAnnulation
+        String motifAnnulation,
+        /**
+         * Renseignés à la lecture : faux si la date de ce versement ne peut
+         * plus être corrigée, et pourquoi. Le client masque alors le geste.
+         */
+        Boolean dateModifiable,
+        String motifDateNonModifiable
 ) {}

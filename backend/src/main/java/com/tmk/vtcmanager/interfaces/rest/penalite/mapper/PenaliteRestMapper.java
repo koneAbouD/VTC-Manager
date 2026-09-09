@@ -46,6 +46,8 @@ public interface PenaliteRestMapper {
     @Mapping(target = "motifAnnulation",       ignore = true)
     @Mapping(target = "annulePar",             ignore = true)
     @Mapping(target = "annuleLe",              ignore = true)
+    @Mapping(target = "dateModifiable",         ignore = true)
+    @Mapping(target = "motifDateNonModifiable", ignore = true)
     EncaissementPenalite toDomain(EncaissementPenaliteRequest request);
 
     @Mapping(target = "montantRestant", expression = "java(computeRestant(ligne))")

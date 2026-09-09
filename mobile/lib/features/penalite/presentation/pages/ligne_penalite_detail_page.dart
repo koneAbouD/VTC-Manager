@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../domain/entities/encaissement_penalite.dart';
 import '../../domain/entities/ligne_penalite.dart';
 import '../providers/penalite_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../../../core/widgets/detail_carte.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/confirmation_restauration_dialog.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
@@ -228,6 +230,9 @@ class _DetailBody extends ConsumerWidget {
           if (ligne.encaissements.isEmpty)
             const PremiumEmpty('Aucun encaissement enregistré.')
           else
+            // Le serveur dit, versement par versement, si sa date bouge encore :
+            // l'écran n'a pas à rejouer la règle des arrêtés, ni à la deviner
+            // du statut de la ligne.
             ...ligne.encaissements.map((e) => PremiumEncaissementTile(
                   montant: fmt.format(e.montant),
                   especes: e.modeEncaissement == 'ESPECES',
@@ -237,6 +242,10 @@ class _DetailBody extends ConsumerWidget {
                   commentaire: e.commentaire,
                   annule: e.estAnnule,
                   motifAnnulation: e.motifAnnulation,
+                  onModifierDate: e.dateModifiable && e.id != null
+                      ? () => _modifierDateEncaissement(context, ref, e)
+                      : null,
+                  motifDateNonModifiable: e.motifDateNonModifiable,
                 )),
         ],
       ],
@@ -296,6 +305,40 @@ class _DetailBody extends ConsumerWidget {
   Future<void> _lever(BuildContext context, WidgetRef ref) =>
       _executeAction(context, ref,
           () => ref.read(lignePenaliteNotifierProvider.notifier).leverDetail(ligneId));
+
+  /// Corrige le jour d'un versement déjà enregistré. Rien d'autre ne bouge :
+  /// c'est la date à laquelle l'argent est réputé entré, donc l'écriture au
+  /// journal, le solde de trésorerie à date et l'ancienneté de la créance.
+  Future<void> _modifierDateEncaissement(BuildContext context, WidgetRef ref,
+      EncaissementPenalite encaissement) async {
+    // Même borne qu'à la saisie : régulariser la veille reste possible,
+    // postdater non — le serveur refuse de toute façon une date à venir.
+    final choisie = await showDialog<DateTime>(
+      context: context,
+      builder: (_) => SingleDatePickerDialog(
+        initialDate: encaissement.dateEncaissement,
+        firstDate: DateTime(2020),
+        lastDate: DateTime.now(),
+      ),
+    );
+    if (choisie == null || !context.mounted) return;
+    if (DateUtils.isSameDay(choisie, encaissement.dateEncaissement)) return;
+
+    final result = await ref
+        .read(penaliteRepositoryProvider)
+        .modifierDateEncaissement(ligneId, encaissement.id!, choisie);
+    if (!context.mounted) return;
+    result.fold(
+      (failure) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(failure.message), backgroundColor: AppColors.error)),
+      (_) {
+        ref.invalidate(lignePenaliteDetailProvider(ligneId));
+        refreshFinances(ref);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Date du versement corrigée')));
+      },
+    );
+  }
 
   Future<void> _annuler(BuildContext context, WidgetRef ref) async {
     final motif = await showMotifAnnulationDialog(context,

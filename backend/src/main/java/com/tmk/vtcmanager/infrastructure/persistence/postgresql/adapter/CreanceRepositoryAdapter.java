@@ -159,8 +159,8 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
         //
         // Les annulations sont datées, documents comme règlements : une ligne
         // annulée en août reste due dans la photo de juillet, où elle figurait
-        // bien à l'actif. Le statut courant ne sert plus que pour les
-        // contraventions, dont l'annulation n'est pas implémentée.
+        // bien à l'actif. Une contravention s'annule par sa seule date — son
+        // statut ne bouge pas —, d'où le test sur annule_le plutôt que sur lui.
         return jdbcTemplate.query("""
                 WITH bornes AS (SELECT CAST(? AS date) AS d),
                 docs AS (

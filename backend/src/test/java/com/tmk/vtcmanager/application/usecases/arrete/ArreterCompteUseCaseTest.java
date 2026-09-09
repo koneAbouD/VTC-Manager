@@ -441,4 +441,68 @@ class ArreterCompteUseCaseTest {
         // celui-là, sans repasser par le résolveur.
         verify(compteTresorerieResolver).resoudre(null, ModePaiement.MOBILE_MONEY);
     }
+
+    @Test
+    @DisplayName("Sur un véhicule, le fonds d'un chauffeur solde la dette d'un autre")
+    void vehicule_mutualise_le_fonds_entre_chauffeurs() {
+        // Ali a déposé 100 et ne doit rien ; Ibrahim doit 30 sans avoir déposé.
+        // L'arrêté du véhicule éteint la dette d'Ibrahim avec le dépôt d'Ali,
+        // qui ne repart qu'avec 70.
+        Long ibrahim = 2L;
+        LigneCreance detteIbrahim = LigneCreance.builder()
+                .document(TypeDocumentCreance.RECETTE).documentId(200L)
+                .vehiculeId(VEHICULE).chauffeurId(ibrahim)
+                .dateReference(LocalDate.of(2026, 6, 10))
+                .montantDu(BigDecimal.valueOf(30)).montantRegle(BigDecimal.ZERO)
+                .restant(BigDecimal.valueOf(30)).build();
+
+        when(chauffeurRepository.findById(ibrahim)).thenReturn(Optional.of(
+                Chauffeur.builder().id(ibrahim).nom("Traoré").prenom("Ibrahim").build()));
+        // Le dépôt filtre par chauffeur : sans quoi Ibrahim hériterait du fonds d'Ali.
+        when(ligneCotisationRepository.findByCriteres(any())).thenAnswer(invocation -> {
+            LigneCotisationFiltres filtres = invocation.getArgument(0);
+            return filtres.getChauffeurId() == null || CHAUFFEUR.equals(filtres.getChauffeurId())
+                    ? List.of(cotisation(BigDecimal.valueOf(100)))
+                    : List.of();
+        });
+        when(creanceRepository.getLignesCreanceParVehicule(VEHICULE)).thenReturn(List.of(detteIbrahim));
+        when(creanceRepository.getLignesCreance(ibrahim)).thenReturn(List.of(detteIbrahim));
+        when(creanceRepository.getLignesCreance(CHAUFFEUR)).thenReturn(List.of());
+        when(compteTresorerieResolver.resoudre(any(), eq(ModePaiement.ESPECES))).thenReturn(5L);
+
+        useCase.executer(PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null);
+
+        ArgumentCaptor<OperationFinanciere> ops = ArgumentCaptor.forClass(OperationFinanciere.class);
+        verify(operationFinanciereRepository, org.mockito.Mockito.times(2)).save(ops.capture());
+
+        // La compensation est imputée au débiteur : c'est SA recette qui rentre,
+        // même si l'argent vient du dépôt d'Ali.
+        OperationFinanciere compensation = ops.getAllValues().stream()
+                .filter(o -> "ENCAISSEMENT_RECETTES".equals(o.getCategorie().getCode()))
+                .findFirst().orElseThrow();
+        assertThat(compensation.getMontant()).isEqualByComparingTo("30");
+        assertThat(compensation.getCompteTresorerieId()).isNull(); // toujours cash-neutre
+        assertThat(compensation.getChauffeur().getId()).isEqualTo(ibrahim);
+
+        // Le versement, lui, va au propriétaire du fonds, amputé de ce qu'il a financé.
+        OperationFinanciere decaissement = ops.getAllValues().stream()
+                .filter(o -> "RESTITUTION_COTISATIONS".equals(o.getCategorie().getCode()))
+                .findFirst().orElseThrow();
+        assertThat(decaissement.getMontant()).isEqualByComparingTo("70");
+        assertThat(decaissement.getChauffeur().getId()).isEqualTo(CHAUFFEUR);
+
+        // Une seule écriture sur la recette : deux se liraient comme deux versements.
+        verify(ligneRecetteRepository, org.mockito.Mockito.times(1))
+                .recalculerDepuisEncaissements(200L);
+
+        ArgumentCaptor<List<ReglementArrete>> reglements = ArgumentCaptor.forClass(List.class);
+        verify(arreteCompteRepository).enregistrerReglements(reglements.capture());
+        assertThat(reglements.getValue()).singleElement().satisfies(r -> {
+            assertThat(r.getChauffeurId()).isEqualTo(CHAUFFEUR);
+            assertThat(r.getTotalCotisations()).isEqualByComparingTo("100");
+            assertThat(r.getTotalCreancesCompensees()).isEqualByComparingTo("30");
+            assertThat(r.getMontantNet()).isEqualByComparingTo("70");
+        });
+    }
 }

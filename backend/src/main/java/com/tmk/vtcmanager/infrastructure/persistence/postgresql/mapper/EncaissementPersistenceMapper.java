@@ -12,6 +12,8 @@ public interface EncaissementPersistenceMapper {
 
     @Mapping(target = "ligneRecetteId", source = "ligneRecette.id")
     @Mapping(target = "operationFinanciereId", source = "operationFinanciere.id")
+    @Mapping(target = "dateModifiable",         ignore = true)
+    @Mapping(target = "motifDateNonModifiable", ignore = true)
     Encaissement toDomain(EncaissementEntity entity);
 
     List<Encaissement> toDomainList(List<EncaissementEntity> entities);

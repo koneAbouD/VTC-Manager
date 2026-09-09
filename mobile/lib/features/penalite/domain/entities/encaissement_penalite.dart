@@ -13,6 +13,13 @@ class EncaissementPenalite {
   final DateTime? annuleLe;
   final String? motifAnnulation;
 
+  /// Renseignés par le serveur : faux si la date de ce versement ne peut plus
+  /// être corrigée — ligne annulée ou arrêtée, versement extourné, période
+  /// close, caisse comptée — et pourquoi. La fiche s'en sert pour ne pas
+  /// proposer un geste voué au refus.
+  final bool dateModifiable;
+  final String? motifDateNonModifiable;
+
   bool get estAnnule => annuleLe != null;
 
   const EncaissementPenalite({
@@ -26,5 +33,7 @@ class EncaissementPenalite {
     this.commentaire,
     this.annuleLe,
     this.motifAnnulation,
+    this.dateModifiable = false,
+    this.motifDateNonModifiable,
   });
 }

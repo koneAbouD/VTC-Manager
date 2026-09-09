@@ -170,8 +170,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import com.tmk.vtcmanager.application.ports.persistence.ReaffectationChauffeurRepository;
 import com.tmk.vtcmanager.application.services.NotificationReaffectationService;
+import com.tmk.vtcmanager.application.services.ModificationDateEncaissementService;
 import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
+import com.tmk.vtcmanager.application.usecases.cotisation.ModifierDateEncaissementCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.ReaffecterChauffeurCotisationUseCase;
+import com.tmk.vtcmanager.application.usecases.recette.ModifierDateEncaissementRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.ReaffecterChauffeurRecetteUseCase;
 import com.tmk.vtcmanager.application.ports.persistence.CoherenceGenerationRepository;
 import com.tmk.vtcmanager.application.services.SignalementCoherenceGenerationService;
@@ -865,6 +868,18 @@ public class UseCaseBeanConfiguration {
         return new RestaurerLigneCotisationUseCase(ligneCotisationRepository, verrouArreteService);
     }
 
+    @Bean
+    public ModifierDateEncaissementCotisationUseCase modifierDateEncaissementCotisationUseCase(
+            LigneCotisationRepository ligneCotisationRepository,
+            EncaissementCotisationRepository encaissementCotisationRepository,
+            OperationFinanciereRepository operationFinanciereRepository,
+            ModificationDateEncaissementService modificationDateEncaissementService,
+            EncaissementFuturGuard encaissementFuturGuard) {
+        return new ModifierDateEncaissementCotisationUseCase(ligneCotisationRepository,
+                encaissementCotisationRepository, operationFinanciereRepository,
+                modificationDateEncaissementService, encaissementFuturGuard);
+    }
+
     // ----- Recette -----
     @Bean
     public GenererLignesRecetteUseCase genererLignesRecetteUseCase(
@@ -927,6 +942,18 @@ public class UseCaseBeanConfiguration {
             LigneRecetteRepository ligneRecetteRepository,
             VerrouArreteService verrouArreteService) {
         return new RestaurerLigneRecetteUseCase(ligneRecetteRepository, verrouArreteService);
+    }
+
+    @Bean
+    public ModifierDateEncaissementRecetteUseCase modifierDateEncaissementRecetteUseCase(
+            LigneRecetteRepository ligneRecetteRepository,
+            EncaissementRepository encaissementRepository,
+            OperationFinanciereRepository operationFinanciereRepository,
+            ModificationDateEncaissementService modificationDateEncaissementService,
+            EncaissementFuturGuard encaissementFuturGuard) {
+        return new ModifierDateEncaissementRecetteUseCase(ligneRecetteRepository,
+                encaissementRepository, operationFinanciereRepository,
+                modificationDateEncaissementService, encaissementFuturGuard);
     }
 
     // ----- OperationFinanciere -----
@@ -1103,6 +1130,18 @@ public class UseCaseBeanConfiguration {
             LignePenaliteRepository lignePenaliteRepository,
             VerrouArreteService verrouArreteService) {
         return new RestaurerLignePenaliteUseCase(lignePenaliteRepository, verrouArreteService);
+    }
+
+    @Bean
+    public ModifierDateEncaissementPenaliteUseCase modifierDateEncaissementPenaliteUseCase(
+            LignePenaliteRepository lignePenaliteRepository,
+            EncaissementPenaliteRepository encaissementPenaliteRepository,
+            OperationFinanciereRepository operationFinanciereRepository,
+            ModificationDateEncaissementService modificationDateEncaissementService,
+            EncaissementFuturGuard encaissementFuturGuard) {
+        return new ModifierDateEncaissementPenaliteUseCase(lignePenaliteRepository,
+                encaissementPenaliteRepository, operationFinanciereRepository,
+                modificationDateEncaissementService, encaissementFuturGuard);
     }
 
     // ----- Import PDF des contraventions de l'État -----
@@ -1852,6 +1891,19 @@ public class UseCaseBeanConfiguration {
      * Les règles d'un changement de débiteur, servies deux fois : au serveur qui
      * refuse, et au client qui n'affiche pas ce qui serait refusé.
      */
+    /**
+     * Les règles d'une correction de date de versement, servies deux fois elles
+     * aussi : au serveur qui refuse, et à la fiche qui n'offre pas le geste.
+     */
+    @Bean
+    public ModificationDateEncaissementService modificationDateEncaissementService(
+            VerrouArreteService verrouArreteService,
+            ArreteCompteRepository arreteCompteRepository,
+            CompteTresorerieResolver compteTresorerieResolver) {
+        return new ModificationDateEncaissementService(verrouArreteService,
+                arreteCompteRepository, compteTresorerieResolver);
+    }
+
     @Bean
     public ReaffectationChauffeurService reaffectationChauffeurService(
             VerrouArreteService verrouArreteService,

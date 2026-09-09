@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'long_press_info_bubble.dart';
 
 /// Briques d'interface « premium » partagées par les pages de détail finance
 /// (recette, cotisation, pénalité, contravention). Même langage visuel que les
@@ -199,6 +200,12 @@ class PremiumListHeader extends StatelessWidget {
 /// Un versement extourné (`annule`) reste affiché — il a bien eu lieu — mais
 /// son montant est barré et son motif rappelé : il ne compte plus dans ce que
 /// la ligne a encaissé, et rien ne doit laisser croire le contraire.
+///
+/// La date du versement peut être corrigée quand le serveur le permet
+/// ([onModifierDate] non nul) : un bouton de date apparaît au bord de la tuile.
+/// Quand il ne le permet plus, un cadenas prend sa place et dit pourquoi sous
+/// un appui long — sauf sur un versement extourné, où le badge « Annulé » a
+/// déjà tout dit.
 class PremiumEncaissementTile extends StatelessWidget {
   final String montant;
   final String meta;
@@ -206,6 +213,15 @@ class PremiumEncaissementTile extends StatelessWidget {
   final bool especes;
   final bool annule;
   final String? motifAnnulation;
+
+  /// Correction de la date du versement. Null : le geste n'est pas offert.
+  final VoidCallback? onModifierDate;
+
+  /// Ce qui ferme la correction, affiché sous le cadenas à l'appui long.
+  final String? motifDateNonModifiable;
+
+  /// Teinte du bouton de date — le seul indice que la date est corrigeable.
+  final Color accent;
 
   const PremiumEncaissementTile({
     super.key,
@@ -215,11 +231,44 @@ class PremiumEncaissementTile extends StatelessWidget {
     required this.especes,
     this.annule = false,
     this.motifAnnulation,
+    this.onModifierDate,
+    this.motifDateNonModifiable,
+    this.accent = AppColors.primaryDark,
   });
+
+  /// Le bord droit de la tuile : rien du tout sur un versement extourné, le
+  /// bouton de date quand elle bouge encore, le cadenas et sa raison sinon.
+  Widget? _actionDate() {
+    if (annule) return null;
+    if (onModifierDate != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onModifierDate,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(Icons.edit_calendar_outlined, size: 18, color: accent),
+          ),
+        ),
+      );
+    }
+    if (motifDateNonModifiable == null) return null;
+    return LongPressInfoBubble(
+      infoText: motifDateNonModifiable!,
+      color: AppColors.warning,
+      child: const Padding(
+        padding: EdgeInsets.all(6),
+        child: Icon(Icons.lock_outline_rounded,
+            size: 14, color: AppColors.hint),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final couleurTexte = annule ? AppColors.hint : AppColors.dark;
+    final actionDate = _actionDate();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -302,6 +351,7 @@ class PremiumEncaissementTile extends StatelessWidget {
               ],
             ),
           ),
+          if (actionDate != null) actionDate,
         ],
       ),
     );

@@ -31,11 +31,23 @@ public class DecompteBeneficiaire {
     private final BigDecimal totalCompense;
     private final BigDecimal net;
     private final BigDecimal reliquat;
+    /**
+     * Ce que cet arrêté éteint sur SES créances, d'où que vienne l'argent.
+     *
+     * <p>Distinct de {@link #totalCompense}, qui dit ce que SON fonds a éteint —
+     * chez lui ou, sur un arrêté par véhicule, chez un autre chauffeur. Un
+     * chauffeur sans dépôt dont la dette est soldée par le fonds d'un collègue a
+     * ici un montant et zéro partout ailleurs : sans ce chiffre, son décompte
+     * passerait pour vide et sa créance disparaîtrait de l'écran au moment même
+     * où l'arrêté s'apprête à l'éteindre.</p>
+     */
+    private final BigDecimal compenseSurSesCreances;
 
     public DecompteBeneficiaire(Long chauffeurId, String chauffeurNom,
                                 List<LigneCotisation> cotisations, BigDecimal fond,
                                 List<LigneCreance> creances, List<Allocation> allocations,
-                                BigDecimal totalCompense, BigDecimal net, BigDecimal reliquat) {
+                                BigDecimal totalCompense, BigDecimal net, BigDecimal reliquat,
+                                BigDecimal compenseSurSesCreances) {
         this.chauffeurId = chauffeurId;
         this.chauffeurNom = chauffeurNom;
         this.cotisations = cotisations;
@@ -45,11 +57,13 @@ public class DecompteBeneficiaire {
         this.totalCompense = totalCompense;
         this.net = net;
         this.reliquat = reliquat;
+        this.compenseSurSesCreances = compenseSurSesCreances;
     }
 
     /** Vrai s'il y a quelque chose à montrer : un fonds, une compensation ou un reste dû. */
     public boolean estNonVide() {
-        return fond.signum() > 0 || !allocations.isEmpty() || reliquat.signum() > 0;
+        return fond.signum() > 0 || !allocations.isEmpty() || reliquat.signum() > 0
+                || compenseSurSesCreances.signum() > 0;
     }
 
     /**

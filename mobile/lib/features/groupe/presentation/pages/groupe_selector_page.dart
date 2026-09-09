@@ -286,11 +286,20 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
+      // Le bas est laissé à découvert (edge-to-edge) : la liste défile sous la
+      // barre de navigation Android, et c'est son propre retrait qui dégage la
+      // dernière carte — même rendu que les sélecteurs chauffeur et véhicule.
       body: SafeArea(
+        bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
+            // La zone sous la barre système n'est pas une place utilisable :
+            // la retirer garde au seuil d'affichage de la recherche la mesure
+            // qu'il avait quand SafeArea bornait encore la hauteur.
+            final hauteurUtile =
+                constraints.maxHeight - MediaQuery.of(context).padding.bottom;
             final showSearch = async.maybeWhen(
-              data: (groupes) => _needsSearchBar(groupes, constraints.maxHeight),
+              data: (groupes) => _needsSearchBar(groupes, hauteurUtile),
               orElse: () => false,
             );
             if (!showSearch && _query.isNotEmpty) {
@@ -435,7 +444,8 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
 
   Widget _buildLoading() {
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(
+          16, 0, 16, MediaQuery.of(context).padding.bottom),
       itemCount: 5,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, __) => const _SkeletonCard(),
@@ -504,7 +514,11 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
     if (filtered.isEmpty) return _buildEmptyState(noData: false);
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      // Retrait bas incluant l'inset de la barre de navigation Android
+      // (gestes / 3 boutons) : sans lui, le dernier groupe passe dessous et
+      // devient difficile à toucher.
+      padding: EdgeInsets.fromLTRB(
+          16, 0, 16, 16 + MediaQuery.of(context).padding.bottom),
       itemCount: filtered.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) => _GroupeCard(

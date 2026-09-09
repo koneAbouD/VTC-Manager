@@ -24,6 +24,8 @@ public interface CotisationRestMapper {
     @Mapping(target = "motifAnnulation",      ignore = true)
     @Mapping(target = "annulePar",            ignore = true)
     @Mapping(target = "annuleLe",             ignore = true)
+    @Mapping(target = "dateModifiable",         ignore = true)
+    @Mapping(target = "motifDateNonModifiable", ignore = true)
     EncaissementCotisation toDomain(EncaissementCotisationRequest request);
 
     EncaissementCotisationResponse toResponse(EncaissementCotisation encaissement);

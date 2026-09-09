@@ -49,6 +49,17 @@ abstract interface class LigneCotisationRepository {
     String motif,
   );
 
+  /// Corrige le jour d'un versement déjà enregistré : l'encaissement et
+  /// l'écriture qu'il a produite au journal changent de date ensemble. Aucun
+  /// montant ne bouge. Refusé par le serveur si un arrêté a consigné la ligne,
+  /// si la période est close, si la caisse a été comptée à l'une des deux
+  /// dates, ou si le versement a été extourné.
+  Future<Either<Failure, LigneCotisation>> modifierDateEncaissement(
+    int ligneId,
+    int encaissementId,
+    DateTime date,
+  );
+
   Future<Either<Failure, LigneCotisation>> restaurer(int id);
   Future<Either<Failure, List<LigneCotisation>>> generer({DateTime? date});
 }

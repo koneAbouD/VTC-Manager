@@ -28,5 +28,7 @@ public interface LignePenalitePersistenceMapper {
 
     @Mapping(target = "lignePenaliteId", source = "lignePenalite.id")
     @Mapping(target = "operationFinanciereId", source = "operationFinanciere.id")
+    @Mapping(target = "dateModifiable",         ignore = true)
+    @Mapping(target = "motifDateNonModifiable", ignore = true)
     EncaissementPenalite toEncaissementDomain(EncaissementPenaliteEntity entity);
 }

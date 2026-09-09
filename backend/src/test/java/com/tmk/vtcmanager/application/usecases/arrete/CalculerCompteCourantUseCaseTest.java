@@ -42,6 +42,9 @@ import static org.mockito.Mockito.when;
 class CalculerCompteCourantUseCaseTest {
 
     private static final Long CHAUFFEUR = 1L;
+    /** Second chauffeur du même véhicule, pour la mutualisation du fonds. */
+    private static final Long AUTRE = 2L;
+    private static final Long TROISIEME = 3L;
     private static final Long VEHICULE = 5L;
     private static final LocalDate DEBUT = LocalDate.of(2026, 3, 1);
     private static final LocalDate FIN = LocalDate.of(2026, 3, 31);
@@ -62,6 +65,10 @@ class CalculerCompteCourantUseCaseTest {
         when(creanceRepository.getLignesCreanceParVehicule(anyLong())).thenReturn(List.of());
         when(chauffeurRepository.findById(CHAUFFEUR)).thenReturn(Optional.of(
                 Chauffeur.builder().id(CHAUFFEUR).prenom("Aya").nom("Kouassi").build()));
+        when(chauffeurRepository.findById(AUTRE)).thenReturn(Optional.of(
+                Chauffeur.builder().id(AUTRE).prenom("Ibrahim").nom("Traoré").build()));
+        when(chauffeurRepository.findById(TROISIEME)).thenReturn(Optional.of(
+                Chauffeur.builder().id(TROISIEME).prenom("Salif").nom("Bamba").build()));
 
         useCase = new CalculerCompteCourantUseCase(
                 ligneCotisationRepository, creanceRepository, chauffeurRepository);
@@ -88,6 +95,71 @@ class CalculerCompteCourantUseCaseTest {
                 .montantRegle(BigDecimal.ZERO)
                 .restant(BigDecimal.valueOf(restant))
                 .build();
+    }
+
+    /** Créance déjà réglée en partie : ce qu'elle réclamait, et ce qu'il en reste. */
+    private LigneCreance creancePartielle(Long id, int du, int regle, LocalDate date) {
+        return LigneCreance.builder()
+                .document(TypeDocumentCreance.RECETTE).documentId(id)
+                .chauffeurId(CHAUFFEUR).vehiculeId(VEHICULE)
+                .dateReference(date)
+                .montantDu(BigDecimal.valueOf(du))
+                .montantRegle(BigDecimal.valueOf(regle))
+                .restant(BigDecimal.valueOf(du - regle))
+                .build();
+    }
+
+    private LigneCotisation cotisationDe(Long chauffeurId, Long id, int encaisse) {
+        return LigneCotisation.builder()
+                .id(id).chauffeurId(chauffeurId).vehiculeId(VEHICULE)
+                .dateCotisation(DEBUT.plusDays(3)).nomCotisation("Épargne")
+                .montantDu(BigDecimal.valueOf(1_000))
+                .montantEncaisse(BigDecimal.valueOf(encaisse))
+                .statut(StatutLigneCotisation.ENCAISSE)
+                .build();
+    }
+
+    private LigneCreance creanceDe(Long chauffeurId, Long id, int restant, LocalDate date) {
+        return LigneCreance.builder()
+                .document(TypeDocumentCreance.RECETTE).documentId(id)
+                .chauffeurId(chauffeurId).vehiculeId(VEHICULE)
+                .dateReference(date)
+                .montantDu(BigDecimal.valueOf(restant))
+                .montantRegle(BigDecimal.ZERO)
+                .restant(BigDecimal.valueOf(restant))
+                .build();
+    }
+
+    /**
+     * Le dépôt filtre les cotisations par chauffeur ; le mock doit le faire
+     * aussi, sans quoi un arrêté par véhicule attribuerait à chacun le fonds de
+     * tous et la mutualisation se testerait sur des chiffres faux.
+     */
+    private void cotisationsDuVehicule(LigneCotisation... lignes) {
+        List<LigneCotisation> toutes = List.of(lignes);
+        when(ligneCotisationRepository.findByCriteres(any())).thenAnswer(invocation -> {
+            LigneCotisationFiltres filtres = invocation.getArgument(0);
+            return toutes.stream()
+                    .filter(l -> filtres.getChauffeurId() == null
+                            || filtres.getChauffeurId().equals(l.getChauffeurId()))
+                    .toList();
+        });
+    }
+
+    /** Les créances du véhicule, servies à leur débiteur comme le fait la vue. */
+    private void creancesDuVehicule(LigneCreance... lignes) {
+        List<LigneCreance> toutes = List.of(lignes);
+        when(creanceRepository.getLignesCreanceParVehicule(VEHICULE)).thenReturn(toutes);
+        when(creanceRepository.getLignesCreance(anyLong())).thenAnswer(invocation -> {
+            Long chauffeurId = invocation.getArgument(0);
+            return toutes.stream().filter(c -> chauffeurId.equals(c.getChauffeurId())).toList();
+        });
+    }
+
+    private DecompteBeneficiaire decompteDe(List<DecompteBeneficiaire> decomptes, Long chauffeurId) {
+        return decomptes.stream().filter(d -> chauffeurId.equals(d.getChauffeurId()))
+                .findFirst().orElseThrow(() ->
+                        new AssertionError("Aucun décompte pour le chauffeur " + chauffeurId));
     }
 
     private void cotisations(LigneCotisation... lignes) {
@@ -339,6 +411,131 @@ class CalculerCompteCourantUseCaseTest {
         assertThat(calculerChauffeur().getChauffeurNom()).isEqualTo("Chauffeur #1");
     }
 
+    // ── Mutualisation du fonds par véhicule ─────────────────────────────────
+
+    @Test
+    @DisplayName("Sur un véhicule, le fonds d'un chauffeur éteint la dette d'un autre")
+    void vehicule_le_fonds_de_lun_eteint_la_dette_de_lautre() {
+        // Aya a déposé 10 000 et ne doit rien ; Ibrahim doit 6 000 et n'a rien
+        // déposé. Le véhicule est une caisse commune : le dépôt d'Aya solde la
+        // dette d'Ibrahim, et Aya ne repart qu'avec les 4 000 qui restent.
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 10_000));
+        creancesDuVehicule(creanceDe(AUTRE, 100L, 6_000, DEBUT.minusDays(30)));
+
+        List<DecompteBeneficiaire> decomptes =
+                useCase.calculer(PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN);
+
+        DecompteBeneficiaire aya = decompteDe(decomptes, CHAUFFEUR);
+        assertThat(aya.getFond()).isEqualByComparingTo("10000");
+        assertThat(aya.getTotalCompense()).isEqualByComparingTo("6000");
+        assertThat(aya.getNet()).isEqualByComparingTo("4000");
+        // Aya ne doit rien : le reliquat ne porte que sur ses propres créances.
+        assertThat(aya.getReliquat()).isEqualByComparingTo("0");
+
+        // Ibrahim reste à l'écran : sa dette est soldée, mais c'est précisément
+        // ce que l'arrêté fait — la faire disparaître le ferait valider à
+        // l'aveugle. Il ne touche rien et ne doit plus rien.
+        DecompteBeneficiaire ibrahim = decompteDe(decomptes, AUTRE);
+        assertThat(ibrahim.getFond()).isEqualByComparingTo("0");
+        assertThat(ibrahim.getNet()).isEqualByComparingTo("0");
+        assertThat(ibrahim.getReliquat()).isEqualByComparingTo("0");
+        assertThat(ibrahim.getCompenseSurSesCreances()).isEqualByComparingTo("6000");
+    }
+
+    @Test
+    @DisplayName("Chacun éteint d'abord ses propres créances, avant de financer celles des autres")
+    void vehicule_ses_creances_avant_celles_des_autres() {
+        // La créance d'Ibrahim est la plus ancienne : sans la règle « chacun
+        // d'abord », l'antériorité la ferait payer avant celle d'Aya, qui
+        // repartirait débitrice tout en ayant déposé de quoi se solder.
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 10_000));
+        creancesDuVehicule(
+                creanceDe(AUTRE, 100L, 5_000, DEBUT.minusDays(30)),
+                creanceDe(CHAUFFEUR, 200L, 8_000, DEBUT.minusDays(5)));
+
+        List<DecompteBeneficiaire> decomptes =
+                useCase.calculer(PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN);
+
+        DecompteBeneficiaire aya = decompteDe(decomptes, CHAUFFEUR);
+        // 8 000 sur sa propre dette, puis les 2 000 restants sur celle d'Ibrahim.
+        assertThat(aya.getTotalCompense()).isEqualByComparingTo("10000");
+        assertThat(aya.getNet()).isEqualByComparingTo("0");
+        assertThat(aya.getReliquat()).isEqualByComparingTo("0");
+
+        DecompteBeneficiaire ibrahim = decompteDe(decomptes, AUTRE);
+        assertThat(ibrahim.getFond()).isEqualByComparingTo("0");
+        assertThat(ibrahim.getTotalCompense()).isEqualByComparingTo("0");
+        assertThat(ibrahim.getReliquat()).isEqualByComparingTo("3000");
+    }
+
+    @Test
+    @DisplayName("Le fonds disponible va d'abord à la plus ancienne dette du véhicule")
+    void vehicule_mutualisation_par_anteriorite() {
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 5_000));
+        creancesDuVehicule(
+                creanceDe(TROISIEME, 300L, 4_000, DEBUT.minusDays(10)),
+                creanceDe(AUTRE, 100L, 4_000, DEBUT.minusDays(30)));
+
+        List<DecompteBeneficiaire> decomptes =
+                useCase.calculer(PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN);
+
+        // La dette d'Ibrahim (J-30) passe avant celle de Salif (J-10), quel que
+        // soit l'ordre dans lequel la vue les a rendues.
+        assertThat(decompteDe(decomptes, AUTRE).getReliquat()).isEqualByComparingTo("0");
+        assertThat(decompteDe(decomptes, TROISIEME).getReliquat()).isEqualByComparingTo("3000");
+        assertThat(decompteDe(decomptes, CHAUFFEUR).getTotalCompense()).isEqualByComparingTo("5000");
+    }
+
+    @Test
+    @DisplayName("Un arrêté par chauffeur ne touche pas au fonds ni aux dettes des autres")
+    void chauffeur_pas_de_mutualisation() {
+        // Mêmes données que la mutualisation, mais l'arrêté porte sur Aya seule :
+        // son dépôt lui revient entier, la dette d'Ibrahim ne la regarde pas.
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 10_000));
+        creancesDuVehicule(creanceDe(AUTRE, 100L, 6_000, DEBUT.minusDays(30)));
+
+        List<DecompteBeneficiaire> decomptes =
+                useCase.calculer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN);
+
+        assertThat(decomptes).hasSize(1);
+        DecompteBeneficiaire aya = decomptes.get(0);
+        assertThat(aya.getTotalCompense()).isEqualByComparingTo("0");
+        assertThat(aya.getNet()).isEqualByComparingTo("10000");
+    }
+
+    @Test
+    @DisplayName("Une créance décochée n'est pas financée par le fonds d'un autre")
+    void vehicule_mutualisation_respecte_la_selection() {
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 10_000));
+        creancesDuVehicule(creanceDe(AUTRE, 100L, 6_000, DEBUT.minusDays(30)));
+
+        List<DecompteBeneficiaire> decomptes = useCase.calculer(
+                PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN,
+                new SelectionArrete(null, Set.of()));
+
+        assertThat(decompteDe(decomptes, CHAUFFEUR).getNet()).isEqualByComparingTo("10000");
+        assertThat(decompteDe(decomptes, AUTRE).getReliquat()).isEqualByComparingTo("6000");
+    }
+
+    @Test
+    @DisplayName("L'aperçu montre la créance couverte par le fonds d'un autre chauffeur")
+    void apercu_creance_couverte_par_un_autre() {
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 10_000));
+        creancesDuVehicule(creanceDe(AUTRE, 100L, 6_000, DEBUT.minusDays(30)));
+
+        ArreteCompte apercu = useCase.construireApercu(
+                PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN);
+
+        // La ligne existe et porte ce qui l'éteint, alors qu'aucun franc ne
+        // vient de son propre titulaire : c'est ce montant, et non l'allocation
+        // du seul débiteur, qui dit à l'écran que la dette est soldée.
+        assertThat(apercu.getLignes()).filteredOn(l -> l.getSens() == SensArrete.DEBIT)
+                .singleElement()
+                .extracting(LigneArrete::getChauffeurId, LigneArrete::getMontant,
+                        LigneArrete::getRestant)
+                .containsExactly(AUTRE, BigDecimal.valueOf(6_000), BigDecimal.valueOf(6_000));
+    }
+
     // ── Aperçu ──────────────────────────────────────────────────────────────
 
     @Test
@@ -425,6 +622,27 @@ class CalculerCompteCourantUseCaseTest {
                         org.assertj.core.api.Assertions.tuple(100L, BigDecimal.valueOf(4_000), BigDecimal.valueOf(4_000)),
                         org.assertj.core.api.Assertions.tuple(101L, BigDecimal.valueOf(1_000), BigDecimal.valueOf(3_000)),
                         org.assertj.core.api.Assertions.tuple(102L, BigDecimal.ZERO, BigDecimal.valueOf(2_000)));
+    }
+
+    @Test
+    @DisplayName("Chaque créance de l'aperçu porte le montant d'origine du document")
+    void apercu_montant_du_des_creances() {
+        // Une recette de 21 000 déjà encaissée à 15 000 : l'écran l'annonce
+        // pour 21 000 et ne réclame que les 6 000 qui restent. Sans ce champ il
+        // ne disposait que de la part compensée, et faisait passer la recette
+        // attendue pour ce que l'arrêté en éteint.
+        cotisations(cotisation(1L, 4_000, StatutLigneCotisation.ENCAISSE));
+        creances(creancePartielle(100L, 21_000, 15_000, DEBUT.minusDays(30)));
+
+        ArreteCompte apercu = useCase.construireApercu(
+                PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN);
+
+        assertThat(apercu.getLignes()).filteredOn(l -> l.getSens() == SensArrete.DEBIT)
+                .singleElement()
+                .extracting(LigneArrete::getMontantDu, LigneArrete::getRestant,
+                        LigneArrete::getMontant)
+                .containsExactly(BigDecimal.valueOf(21_000), BigDecimal.valueOf(6_000),
+                        BigDecimal.valueOf(4_000));
     }
 
     @Test

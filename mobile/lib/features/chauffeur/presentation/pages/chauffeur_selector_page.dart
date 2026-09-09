@@ -101,8 +101,11 @@ class _ChauffeurSelectorPageState
                     ],
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                    // Retrait bas incluant l'inset de la barre de navigation
+                    // Android (gestes / 3 boutons) : sans lui, le dernier
+                    // chauffeur passe dessous et devient difficile à toucher.
+                    padding: EdgeInsets.fromLTRB(
+                        16, 4, 16, 4 + MediaQuery.of(context).padding.bottom),
                     itemCount: filtered.length,
                     itemBuilder: (_, i) {
                       final c = filtered[i];

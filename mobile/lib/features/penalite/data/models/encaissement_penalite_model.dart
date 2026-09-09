@@ -12,6 +12,8 @@ class EncaissementPenaliteModel extends EncaissementPenalite {
     super.commentaire,
     super.annuleLe,
     super.motifAnnulation,
+    super.dateModifiable,
+    super.motifDateNonModifiable,
   });
 
   factory EncaissementPenaliteModel.fromJson(Map<String, dynamic> j) =>
@@ -30,6 +32,10 @@ class EncaissementPenaliteModel extends EncaissementPenalite {
             ? DateTime.tryParse(j['annuleLe'] as String)
             : null,
         motifAnnulation: j['motifAnnulation'] as String?,
+        // Un serveur d'avant la correction de date ne renvoie rien : la fiche
+        // n'offre alors pas le geste, plutôt que de le proposer en vain.
+        dateModifiable: j['dateModifiable'] as bool? ?? false,
+        motifDateNonModifiable: j['motifDateNonModifiable'] as String?,
       );
 
   Map<String, dynamic> toJson() => {

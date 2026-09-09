@@ -48,4 +48,11 @@ public class LigneArrete {
      * fait, pas ce qui restait.
      */
     private BigDecimal restant;
+    /**
+     * Ce que le document réclamait à l'origine — recette attendue, montant de
+     * l'amende. Renseigné à l'aperçu seulement, comme {@link #restant} : c'est
+     * le repère auquel l'utilisateur reconnaît la créance, là où {@code montant}
+     * ne dit que la part qu'un arrêté en éteint.
+     */
+    private BigDecimal montantDu;
 }

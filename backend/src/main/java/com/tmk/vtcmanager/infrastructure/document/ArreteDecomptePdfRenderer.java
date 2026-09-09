@@ -98,8 +98,11 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
                         "Cotisation = depot detenu pour le chauffeur (hors resultat). "
                                 + "Net = fonds - creances compensees.");
                 y = ligne(cs, REGULAR, 9, MARGE, y,
-                        "Reste = solde de compte courant du perimetre a ce jour, "
-                                + "compense chauffeur par chauffeur.");
+                        arrete.getPerimetre() != null
+                                        && arrete.getPerimetre().name().equals("VEHICULE")
+                                ? "Reste = solde de compte courant du vehicule a ce jour. "
+                                        + "Le fonds d'un chauffeur peut solder la dette d'un autre."
+                                : "Reste = solde de compte courant du chauffeur a ce jour.");
             }
 
             document.save(out);

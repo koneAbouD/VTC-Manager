@@ -36,6 +36,17 @@ abstract class PenaliteRepository {
   /// Remet une pénalité annulée en circulation : une amende retrouve le statut
   /// que dictent ses versements, les autres sanctions repartent en attente.
   /// Refusé par le serveur si la période est clôturée.
+  /// Corrige le jour d'un versement déjà enregistré : l'encaissement et
+  /// l'écriture qu'il a produite au journal changent de date ensemble. Aucun
+  /// montant ne bouge. Refusé par le serveur si un arrêté a consigné la
+  /// pénalité, si la période est close, si la caisse a été comptée à l'une des
+  /// deux dates, ou si le versement a été extourné.
+  Future<Either<Failure, LignePenalite>> modifierDateEncaissement(
+    int ligneId,
+    int encaissementId,
+    DateTime date,
+  );
+
   Future<Either<Failure, LignePenalite>> restaurer(int id);
 
   Future<Either<Failure, List<LignePenalite>>> generer({DateTime? date});

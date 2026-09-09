@@ -29,4 +29,14 @@ public class EncaissementCotisation {
     private LocalDateTime annuleLe;
     private String annulePar;
     private String motifAnnulation;
+
+    /**
+     * Renseigné à la lecture seulement : faux si la date de ce versement ne
+     * peut plus être corrigée — ligne annulée ou arrêtée, versement extourné,
+     * période close, caisse comptée. Le client s'en sert pour ne pas proposer
+     * un geste voué au refus.
+     */
+    private Boolean dateModifiable;
+    /** Ce qui ferme la correction de date, en français. Null quand elle est ouverte. */
+    private String motifDateNonModifiable;
 }

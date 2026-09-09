@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.usecases.recette.AnnulerLigneRecetteUseCas
 import com.tmk.vtcmanager.application.usecases.recette.ReaffecterChauffeurRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.RestaurerLigneRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.reaffectation.GetApercuReaffectationUseCase;
+import com.tmk.vtcmanager.application.services.ModificationDateEncaissementService;
 import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.recette.ConfirmerVersementUseCase;
@@ -14,7 +15,9 @@ import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementUseCase
 import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementsLotUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GenererLignesRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GetLignesRecetteUseCase;
+import com.tmk.vtcmanager.application.usecases.recette.ModifierDateEncaissementRecetteUseCase;
 import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
+import com.tmk.vtcmanager.interfaces.rest.common.ModificationDateEncaissementRequest;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.common.ReaffectationChauffeurRequest;
 import com.tmk.vtcmanager.interfaces.rest.reaffectation.dto.ApercuReaffectationResponse;
@@ -52,8 +55,10 @@ public class LigneRecetteController {
     private final AnnulerLigneRecetteUseCase annulerLigneRecetteUseCase;
     private final RestaurerLigneRecetteUseCase restaurerLigneRecetteUseCase;
     private final ReaffecterChauffeurRecetteUseCase reaffecterChauffeurRecetteUseCase;
+    private final ModifierDateEncaissementRecetteUseCase modifierDateEncaissementUseCase;
     private final VerrouArreteService verrouArreteService;
     private final ReaffectationChauffeurService reaffectationChauffeurService;
+    private final ModificationDateEncaissementService modificationDateEncaissementService;
     private final GetApercuReaffectationUseCase getApercuReaffectationUseCase;
     private final ConfirmerVersementUseCase confirmerVersementUseCase;
     private final GenererLignesRecetteUseCase genererLignesRecetteUseCase;
@@ -101,16 +106,25 @@ public class LigneRecetteController {
 
     @GetMapping("/{id:\\d+}")
     public LigneRecetteResponse getLigneById(@PathVariable Long id) {
-        LigneRecette ligne = getLignesRecetteUseCase.findById(id);
-        // Dit au client si l'action « Restaurer » a encore un sens : un arrêté
-        // — période close, caisse comptée — peut l'avoir fermée depuis.
+        return mapper.toResponse(enrichir(getLignesRecetteUseCase.findById(id)));
+    }
+
+    /**
+     * Ce que la fiche a le droit de proposer, en un seul endroit : chaque action
+     * dit au client si elle est encore ouverte, plutôt que de le laisser tenter
+     * puis échouer.
+     */
+    private LigneRecette enrichir(LigneRecette ligne) {
+        // « Restaurer » a-t-il encore un sens : un arrêté — période close,
+        // caisse comptée — peut l'avoir fermée depuis.
         ligne.setRestaurable(verrouArreteService.estRestaurable(ligne.getDateRecette()));
-        // Et si le chauffeur peut encore changer : même principe, la fiche dit au
-        // client ce qu'elle permet plutôt que de le laisser tenter puis échouer.
+        // Le chauffeur peut-il encore changer.
         String blocage = reaffectationChauffeurService.motifBlocage(ligne);
         ligne.setReaffectable(blocage == null);
         ligne.setMotifNonReaffectable(blocage);
-        return mapper.toResponse(ligne);
+        // Et, versement par versement, si sa date reste corrigeable.
+        modificationDateEncaissementService.marquerVersements(ligne);
+        return ligne;
     }
 
     @PostMapping("/{id}/encaissements")
@@ -192,6 +206,23 @@ public class LigneRecetteController {
     @PatchMapping("/{id}/confirmer-versement")
     public LigneRecetteResponse confirmerVersement(@PathVariable Long id) {
         return mapper.toResponse(confirmerVersementUseCase.executer(id));
+    }
+
+    /**
+     * Corrige le jour d'un versement déjà enregistré : l'encaissement et
+     * l'écriture qu'il a produite au journal changent de date ensemble. Aucun
+     * montant ne bouge — le solde de trésorerie à date, le résultat du mois et
+     * l'ancienneté de la créance suivent d'eux-mêmes. Refusé si un arrêté a
+     * consigné la ligne, si la période est close, si la caisse a été comptée à
+     * l'une des deux dates, ou si le versement a été extourné.
+     */
+    @PatchMapping("/{id}/encaissements/{encaissementId}/date")
+    public LigneRecetteResponse modifierDateEncaissement(
+            @PathVariable Long id,
+            @PathVariable Long encaissementId,
+            @Valid @RequestBody ModificationDateEncaissementRequest request) {
+        return mapper.toResponse(enrichir(modifierDateEncaissementUseCase.executer(
+                id, encaissementId, request.dateEncaissement())));
     }
 
     @PostMapping("/generer")

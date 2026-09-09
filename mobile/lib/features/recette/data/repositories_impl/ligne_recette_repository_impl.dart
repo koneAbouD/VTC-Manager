@@ -176,6 +176,24 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
   }
 
   @override
+  Future<Either<Failure, LigneRecette>> modifierDateEncaissement(
+    int ligneId,
+    int encaissementId,
+    DateTime date,
+  ) async {
+    try {
+      return Right(
+          await _datasource.modifierDateEncaissement(ligneId, encaissementId, date));
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, LigneRecette>> restaurer(int id) async {
     try {
       return Right(await _datasource.restaurer(id));

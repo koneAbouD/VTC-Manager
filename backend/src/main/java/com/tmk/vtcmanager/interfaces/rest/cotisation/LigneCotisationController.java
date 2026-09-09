@@ -7,13 +7,16 @@ import com.tmk.vtcmanager.application.usecases.cotisation.AnnulerLigneCotisation
 import com.tmk.vtcmanager.application.usecases.cotisation.ReaffecterChauffeurCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.RestaurerLigneCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.reaffectation.GetApercuReaffectationUseCase;
+import com.tmk.vtcmanager.application.services.ModificationDateEncaissementService;
 import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.cotisation.CreateEncaissementCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.CreateEncaissementsCotisationLotUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GenererLignesCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.GetLignesCotisationUseCase;
+import com.tmk.vtcmanager.application.usecases.cotisation.ModifierDateEncaissementCotisationUseCase;
 import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
+import com.tmk.vtcmanager.interfaces.rest.common.ModificationDateEncaissementRequest;
 import com.tmk.vtcmanager.interfaces.rest.common.ReaffectationChauffeurRequest;
 import com.tmk.vtcmanager.interfaces.rest.reaffectation.dto.ApercuReaffectationResponse;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
@@ -52,8 +55,10 @@ public class LigneCotisationController {
     private final AnnulerLigneCotisationUseCase annulerUseCase;
     private final RestaurerLigneCotisationUseCase restaurerUseCase;
     private final ReaffecterChauffeurCotisationUseCase reaffecterChauffeurUseCase;
+    private final ModifierDateEncaissementCotisationUseCase modifierDateEncaissementUseCase;
     private final VerrouArreteService verrouArreteService;
     private final ReaffectationChauffeurService reaffectationChauffeurService;
+    private final ModificationDateEncaissementService modificationDateEncaissementService;
     private final GetApercuReaffectationUseCase getApercuReaffectationUseCase;
     private final GenererLignesCotisationUseCase genererUseCase;
     private final CotisationRestMapper mapper;
@@ -116,16 +121,25 @@ public class LigneCotisationController {
 
     @GetMapping("/{id:\\d+}")
     public LigneCotisationResponse getLigneById(@PathVariable Long id) {
-        LigneCotisation ligne = getLignesCotisationUseCase.findById(id);
-        // Dit au client si l'action « Restaurer » a encore un sens : un arrêté
-        // — période close, caisse comptée — peut l'avoir fermée depuis.
+        return mapper.toResponse(enrichir(getLignesCotisationUseCase.findById(id)));
+    }
+
+    /**
+     * Ce que la fiche a le droit de proposer, en un seul endroit : chaque action
+     * dit au client si elle est encore ouverte, plutôt que de le laisser tenter
+     * puis échouer.
+     */
+    private LigneCotisation enrichir(LigneCotisation ligne) {
+        // « Restaurer » a-t-il encore un sens : un arrêté — période close,
+        // caisse comptée — peut l'avoir fermée depuis.
         ligne.setRestaurable(verrouArreteService.estRestaurable(ligne.getDateCotisation()));
-        // Et si le titulaire du dépôt peut encore changer : la fiche dit au client
-        // ce qu'elle permet plutôt que de le laisser tenter puis échouer.
+        // Le titulaire du dépôt peut-il encore changer.
         String blocage = reaffectationChauffeurService.motifBlocage(ligne);
         ligne.setReaffectable(blocage == null);
         ligne.setMotifNonReaffectable(blocage);
-        return mapper.toResponse(ligne);
+        // Et, versement par versement, si sa date reste corrigeable.
+        modificationDateEncaissementService.marquerVersements(ligne);
+        return ligne;
     }
 
     @PostMapping("/{id}/encaissements")
@@ -158,6 +172,23 @@ public class LigneCotisationController {
     @GetMapping("/{id}/encaissements")
     public List<EncaissementCotisationResponse> getEncaissements(@PathVariable Long id) {
         return mapper.toEncaissementResponseList(getLignesCotisationUseCase.findById(id).getEncaissements());
+    }
+
+    /**
+     * Corrige le jour d'un versement déjà enregistré : l'encaissement et
+     * l'écriture qu'il a produite au journal changent de date ensemble. Aucun
+     * montant ne bouge — le fonds détenu à date, le résultat du mois et le
+     * décompte d'un futur arrêté suivent d'eux-mêmes. Refusé si un arrêté a
+     * déjà rendu tout ou partie du dépôt, si la période est close, si la caisse
+     * a été comptée à l'une des deux dates, ou si le versement a été extourné.
+     */
+    @PatchMapping("/{id}/encaissements/{encaissementId}/date")
+    public LigneCotisationResponse modifierDateEncaissement(
+            @PathVariable Long id,
+            @PathVariable Long encaissementId,
+            @Valid @RequestBody ModificationDateEncaissementRequest request) {
+        return mapper.toResponse(enrichir(modifierDateEncaissementUseCase.executer(
+                id, encaissementId, request.dateEncaissement())));
     }
 
     @PatchMapping("/{id}/annuler")

@@ -18,5 +18,11 @@ public record EncaissementCotisationResponse(
         /** Renseignés si le versement a été extourné : il ne compte plus. */
         LocalDateTime annuleLe,
         String annulePar,
-        String motifAnnulation
+        String motifAnnulation,
+        /**
+         * Renseignés à la lecture : faux si la date de ce versement ne peut
+         * plus être corrigée, et pourquoi. Le client masque alors le geste.
+         */
+        Boolean dateModifiable,
+        String motifDateNonModifiable
 ) {}

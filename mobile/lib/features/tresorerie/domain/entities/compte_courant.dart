@@ -71,6 +71,11 @@ class LigneArrete {
   /// Ce que le document doit encore, indépendamment de cette part. Servi par
   /// l'aperçu seulement : un arrêté enregistré ne fige que ce qui a été fait.
   final double? restant;
+
+  /// Ce que le document réclamait à l'origine — recette attendue, montant de
+  /// l'amende. Servi par l'aperçu seulement, comme [restant] : c'est à lui que
+  /// l'utilisateur reconnaît la créance.
+  final double? montantDu;
   final String sens; // CREDIT | DEBIT
 
   const LigneArrete({
@@ -82,6 +87,7 @@ class LigneArrete {
     this.dateDocument,
     required this.montant,
     this.restant,
+    this.montantDu,
     required this.sens,
   });
 
@@ -90,6 +96,10 @@ class LigneArrete {
   /// Le dû de la ligne. Hors aperçu le serveur ne l'envoie pas : le montant
   /// figé est alors tout ce qu'on sait du document.
   double get du => restant ?? montant;
+
+  /// Le montant d'origine du document, avec le même repli que [du] : hors
+  /// aperçu, la part figée est tout ce dont on dispose.
+  double get origine => montantDu ?? du;
 
   factory LigneArrete.fromJson(Map<String, dynamic> j) => LigneArrete(
         document: j['document'] ?? '',
@@ -102,6 +112,7 @@ class LigneArrete {
             : null,
         montant: (j['montant'] as num?)?.toDouble() ?? 0,
         restant: (j['restant'] as num?)?.toDouble(),
+        montantDu: (j['montantDu'] as num?)?.toDouble(),
         sens: j['sens'] ?? '',
       );
 }

@@ -138,6 +138,18 @@ class LigneCotisationRemoteDatasource {
     return LigneCotisationModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Corrige le jour d'un versement déjà enregistré. Le serveur déplace
+  /// l'encaissement et l'écriture qu'il a produite, puis renvoie la ligne à
+  /// jour — drapeaux compris.
+  Future<LigneCotisationModel> modifierDateEncaissement(
+      int ligneId, int encaissementId, DateTime date) async {
+    final data = await _client.patch(
+      '/cotisations/lignes/$ligneId/encaissements/$encaissementId/date',
+      {'dateEncaissement': date.toIso8601String().substring(0, 10)},
+    );
+    return LigneCotisationModel.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<LigneCotisationModel> restaurer(int id) async {
     final data = await _client.patch('/cotisations/lignes/$id/restaurer');
     return LigneCotisationModel.fromJson(data as Map<String, dynamic>);

@@ -12,6 +12,8 @@ class EncaissementModel extends Encaissement {
     super.commentaire,
     super.annuleLe,
     super.motifAnnulation,
+    super.dateModifiable,
+    super.motifDateNonModifiable,
   });
 
   factory EncaissementModel.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,10 @@ class EncaissementModel extends Encaissement {
           ? DateTime.tryParse(json['annuleLe'] as String)
           : null,
       motifAnnulation: json['motifAnnulation'] as String?,
+      // Un serveur d'avant la correction de date ne renvoie rien : la fiche
+      // n'offre alors pas le geste, plutôt que de le proposer en vain.
+      dateModifiable: json['dateModifiable'] as bool? ?? false,
+      motifDateNonModifiable: json['motifDateNonModifiable'] as String?,
     );
   }
 

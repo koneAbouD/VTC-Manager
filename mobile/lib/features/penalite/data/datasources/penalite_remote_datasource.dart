@@ -118,6 +118,18 @@ class PenaliteRemoteDatasource {
     return LignePenaliteModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Corrige le jour d'un versement déjà enregistré. Le serveur déplace
+  /// l'encaissement et l'écriture qu'il a produite, puis renvoie la ligne à
+  /// jour — drapeaux compris.
+  Future<LignePenaliteModel> modifierDateEncaissement(
+      int ligneId, int encaissementId, DateTime date) async {
+    final data = await _client.patch(
+      '/penalites/lignes/$ligneId/encaissements/$encaissementId/date',
+      {'dateEncaissement': date.toIso8601String().substring(0, 10)},
+    );
+    return LignePenaliteModel.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<LignePenaliteModel> restaurer(int id) async {
     final data = await _client.patch('/penalites/lignes/$id/restaurer');
     return LignePenaliteModel.fromJson(data as Map<String, dynamic>);
