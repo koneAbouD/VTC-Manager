@@ -12,6 +12,7 @@ import com.tmk.vtcmanager.application.usecases.arrete.GetCompteCourantUseCase;
 import com.tmk.vtcmanager.application.usecases.arrete.SelectionArrete;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.request.ArreterCompteRequest;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.ArreteResponse;
+import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.ChauffeurArreteResponse;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.CompteCourantResponse;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.LigneArreteResponse;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.ReglementArreteResponse;
@@ -134,6 +135,19 @@ public class ArreteCompteController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=decompte_arrete_" + id + ".pdf")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    /**
+     * Chauffeurs concernés par l'arrêté, avec leur téléphone : les destinataires
+     * du décompte envoyé par WhatsApp. Volontairement absent d'{@link ArreteResponse},
+     * que l'application chauffeur reçoit aussi : le numéro d'un chauffeur n'a pas à
+     * parvenir à ses collègues du véhicule.
+     */
+    @GetMapping("/arretes/{id}/chauffeurs")
+    public List<ChauffeurArreteResponse> chauffeurs(@PathVariable Long id) {
+        return getArreteUseCase.chauffeursConcernes(id).stream()
+                .map(c -> new ChauffeurArreteResponse(c.id(), c.nom(), c.telephone()))
+                .toList();
     }
 
     // ── Mapping ──────────────────────────────────────────────────────────────

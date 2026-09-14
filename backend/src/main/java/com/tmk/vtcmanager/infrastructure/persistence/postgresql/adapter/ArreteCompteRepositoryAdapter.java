@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
+import com.tmk.vtcmanager.application.domain.arrete.ChauffeurArrete;
 import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
@@ -232,6 +233,24 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
                     """, REGLEMENT_MAPPER, a.getId()));
         }
         return entetes;
+    }
+
+    @Override
+    public List<ChauffeurArrete> findChauffeursConcernes(Long arreteId) {
+        // Les règlements ne suffisent pas : un chauffeur sans dépôt dont un
+        // collègue solde la dette n'en a pas, il ne figure que dans les lignes
+        // qui portent sa créance.
+        return jdbcTemplate.query("""
+                SELECT ch.id, TRIM(CONCAT(ch.prenom, ' ', ch.nom)) AS chauffeur_nom, ch.telephone
+                FROM chauffeurs ch
+                WHERE ch.id IN (SELECT r.chauffeur_id FROM reglements_arrete r WHERE r.arrete_id = ?
+                                UNION
+                                SELECT la.chauffeur_id FROM lignes_arrete la WHERE la.arrete_id = ?)
+                ORDER BY chauffeur_nom, ch.id
+                """,
+                (rs, i) -> new ChauffeurArrete(rs.getLong("id"), rs.getString("chauffeur_nom"),
+                        rs.getString("telephone")),
+                arreteId, arreteId);
     }
 
     @Override

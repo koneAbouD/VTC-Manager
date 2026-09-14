@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.ports.persistence;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
+import com.tmk.vtcmanager.application.domain.arrete.ChauffeurArrete;
 import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
@@ -46,6 +47,12 @@ public interface ArreteCompteRepository {
 
     /** Arrêtés dont un règlement concerne ce chauffeur (relevé de compte). */
     List<ArreteCompte> findByBeneficiaire(Long chauffeurId);
+
+    /**
+     * Chauffeurs que l'arrêté concerne — bénéficiaires d'un règlement et
+     * débiteurs d'une ligne — avec leur téléphone. Vide si l'arrêté n'existe pas.
+     */
+    List<ChauffeurArrete> findChauffeursConcernes(Long arreteId);
 
     /** Passe l'arrêté en ANNULE avec son motif. */
     void annuler(Long id, String motif);

@@ -100,7 +100,8 @@
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
         </intent>
-        <!-- Reçu PDF adressé directement à WhatsApp (ou WhatsApp Business). -->
+        <!-- Reçu PDF joint et adressé à WhatsApp (ou WhatsApp Business) quand le
+             chauffeur n'a pas de numéro. -->
         <package android:name="com.whatsapp"/>
         <package android:name="com.whatsapp.w4b"/>
     </queries>

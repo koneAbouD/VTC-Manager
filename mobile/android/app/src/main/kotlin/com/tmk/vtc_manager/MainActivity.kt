@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.widget.Toast
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -42,26 +43,33 @@ class MainActivity : FlutterFragmentActivity() {
                 }
             }
 
-        // Reçu PDF partagé dans la conversation WhatsApp du chauffeur.
+        // Reçu PDF : partage vers WhatsApp, et annonce système qui reste lisible
+        // par-dessus WhatsApp quand l'application lui passe la main.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PartageRecu.CHANNEL)
             .setMethodCallHandler { call, result ->
-                if (call.method == "partagerFichier") {
-                    try {
+                when (call.method) {
+                    "partagerFichier" -> try {
                         result.success(
                             PartageRecu.partager(
                                 this,
                                 call.argument<String>("nomFichier")!!,
                                 call.argument<ByteArray>("octets")!!,
                                 call.argument<String>("mime") ?: "application/pdf",
-                                call.argument<String>("telephone"),
                                 call.argument<String>("texte"),
                             )
                         )
                     } catch (e: Exception) {
                         result.error("PARTAGE_IMPOSSIBLE", e.message, null)
                     }
-                } else {
-                    result.notImplemented()
+                    "annoncer" -> {
+                        Toast.makeText(
+                            applicationContext,
+                            call.argument<String>("texte") ?: "",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
                 }
             }
 

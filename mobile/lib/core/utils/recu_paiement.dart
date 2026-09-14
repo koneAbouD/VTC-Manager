@@ -69,7 +69,8 @@ String montantRecu(double montant) => '${_montantFmt.format(montant)} FCFA';
 
 /// Compose le message du reçu.
 ///
-/// [avecPieceJointe] : le message accompagne le reçu PDF, il le signale. Les
+/// [avecPieceJointe] : le message accompagne le reçu PDF — en légende, ou juste
+/// avant lui dans la conversation — et le signale. Les
 /// champs absents sont omis — un reçu qui annonce « Véhicule : null »
 /// décrédibilise le versement qu'il atteste.
 String composerRecu(RecuPaiement recu, {bool avecPieceJointe = false}) {
@@ -111,7 +112,7 @@ String composerRecu(RecuPaiement recu, {bool avecPieceJointe = false}) {
     ['✅ *Paiement reçu — $nomEntrepriseRecu*'],
     corps,
     solde,
-    if (avecPieceJointe) ['📎 Le reçu détaillé est joint en PDF.'],
+    if (avecPieceJointe) ['📎 Le reçu détaillé vous est envoyé en PDF.'],
     ['Merci et bonne route !'],
   ].where((bloc) => bloc.isNotEmpty).map((bloc) => bloc.join('\n')).join('\n\n');
 }

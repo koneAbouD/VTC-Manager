@@ -94,7 +94,7 @@ void main() {
 
   test('joint au PDF, le message le signale ; seul, il n\'en dit rien', () {
     expect(composerRecu(recu(), avecPieceJointe: true),
-        contains('📎 Le reçu détaillé est joint en PDF.'));
+        contains('📎 Le reçu détaillé vous est envoyé en PDF.'));
     expect(composerRecu(recu()), isNot(contains('PDF')));
   });
 }

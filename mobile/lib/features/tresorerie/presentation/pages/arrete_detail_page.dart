@@ -4,15 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/bytes_downloader.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/envoi_pdf_whatsapp.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/detail_premium.dart' show PremiumButton;
+import '../../../../core/widgets/envoi_recus_sheet.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../domain/entities/compte_courant.dart';
+import '../envoi_decompte_arrete.dart';
 import '../providers/tresorerie_providers.dart';
 import 'arretes_history_page.dart' show fmtDate;
 
 /// Détail d'un arrêté : en-tête, synthèse, règlements par bénéficiaire et
 /// lignes snapshot (cotisations créditées, créances compensées). Permet le
-/// téléchargement du décompte PDF et l'annulation (avec motif).
+/// téléchargement du décompte PDF, son envoi par WhatsApp aux chauffeurs que
+/// l'arrêté concerne, et l'annulation (avec motif).
 class ArreteDetailPage extends ConsumerWidget {
   final int id;
   const ArreteDetailPage({super.key, required this.id});
@@ -22,6 +27,9 @@ class ArreteDetailPage extends ConsumerWidget {
     final async = ref.watch(arreteDetailProvider(id));
     final arrete = async.valueOrNull;
     final annulable = arrete != null && arrete.statut == 'VALIDE';
+    // Les destinataires du décompte se chargent avec la page : la feuille
+    // d'envoi s'ouvre alors sans attendre le réseau.
+    ref.watch(chauffeursArreteProvider(id));
 
     return Scaffold(
       appBar: AppHeader(
@@ -52,21 +60,81 @@ class ArreteDetailPage extends ConsumerWidget {
         error: (e, _) => Center(
             child: Text('Impossible de charger l\'arrêté',
                 style: TextStyle(color: Colors.grey.shade600))),
-        data: (a) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-          children: [
-            _Entete(arrete: a),
-            const SizedBox(height: 12),
-            _Synthese(arrete: a),
-            const SizedBox(height: 16),
-            const _Section('Règlements'),
-            for (final r in a.reglements) _ReglementTile(reglement: r),
-            const SizedBox(height: 16),
-            const _Section('Lignes de l\'arrêté'),
-            for (final l in a.lignes) _LigneTile(ligne: l),
-          ],
-        ),
+        data: (a) {
+          final concernes = chauffeursConcernes(a).length;
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+            children: [
+              _Entete(arrete: a),
+              const SizedBox(height: 12),
+              _Synthese(arrete: a),
+              // Un arrêté annulé n'atteste plus rien : son décompte ne part pas.
+              if (!a.estAnnule && concernes > 0) ...[
+                const SizedBox(height: 12),
+                PremiumButton(
+                  label: concernes > 1
+                      ? 'Envoyer le décompte aux chauffeurs'
+                      : 'Envoyer le décompte au chauffeur',
+                  icon: Icons.send_outlined,
+                  color: AppColors.success,
+                  filled: false,
+                  onPressed: () => _envoyerDecompte(context, ref, a),
+                ),
+              ],
+              const SizedBox(height: 16),
+              const _Section('Règlements'),
+              for (final r in a.reglements) _ReglementTile(reglement: r),
+              const SizedBox(height: 16),
+              const _Section('Lignes de l\'arrêté'),
+              for (final l in a.lignes) _LigneTile(ligne: l),
+            ],
+          );
+        },
       ),
+    );
+  }
+
+  /// Fait parvenir le décompte aux chauffeurs que l'arrêté concerne, par
+  /// WhatsApp : une conversation à la fois, depuis une feuille qui retient qui
+  /// a déjà été servi. Rien n'est enregistré côté serveur — c'est le guichetier
+  /// qui envoie, et rien ne revient le confirmer.
+  Future<void> _envoyerDecompte(
+      BuildContext context, WidgetRef ref, ArreteCompte arrete) async {
+    final datasource = ref.read(tresorerieDatasourceProvider);
+    final List<ChauffeurArrete> contacts;
+    try {
+      contacts = await ref.read(chauffeursArreteProvider(id).future);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Chauffeurs de l\'arrêté introuvables : $e'),
+            backgroundColor: AppColors.error));
+      }
+      return;
+    }
+    if (!context.mounted) return;
+
+    final envoi = EnvoiDecompte(
+        arrete: arrete, telecharger: () => datasource.getArretePdf(id));
+    await showEnvoiWhatsAppSheet<DestinataireDecompte>(
+      context,
+      titre: 'Envoyer le décompte',
+      consigne: 'Pour chaque chauffeur, le décompte PDF est enregistré et '
+          'WhatsApp s\'ouvre sur sa conversation, message prêt : '
+          'joignez le PDF avec 📎, puis envoyez.',
+      consigneTerminee:
+          'Le décompte a été ouvert dans WhatsApp pour chaque chauffeur.',
+      preparation: 'Préparation du décompte PDF…',
+      destinataires: destinatairesDecompte(arrete, contacts),
+      envoyer: (destinataire) async {
+        final issue = await envoi.envoyer(destinataire);
+        return switch (issue) {
+          PdfIndisponible(:final motif) => motif,
+          PdfEnregistre(conversationOuverte: false) =>
+            "Décompte enregistré, mais WhatsApp n'a pas pu être ouvert sur cet appareil.",
+          _ => null,
+        };
+      },
     );
   }
 

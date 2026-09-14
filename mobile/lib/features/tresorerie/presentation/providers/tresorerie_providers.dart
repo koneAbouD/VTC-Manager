@@ -108,6 +108,13 @@ final arreteDetailProvider = FutureProvider.family<ArreteCompte, int>(
   (ref, id) => ref.watch(_tresorerieDatasourceProvider).getArrete(id),
 );
 
+/// Destinataires du décompte d'un arrêté, avec leur téléphone. Relus à chaque
+/// ouverture du détail : un numéro ajouté entre-temps à une fiche doit servir.
+final chauffeursArreteProvider =
+    FutureProvider.autoDispose.family<List<ChauffeurArrete>, int>(
+  (ref, id) => ref.watch(_tresorerieDatasourceProvider).getChauffeursArrete(id),
+);
+
 /// Relevé de compte d'un chauffeur : tous les arrêtés où il est bénéficiaire.
 final releveChauffeurProvider =
     FutureProvider.family<List<ArreteCompte>, int>(

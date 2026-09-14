@@ -136,6 +136,16 @@ class TresorerieRemoteDatasource {
     return _client.getBytes('/finances/arretes/$id/pdf');
   }
 
+  /// Chauffeurs concernés par l'arrêté, avec leur téléphone : les destinataires
+  /// du décompte.
+  Future<List<ChauffeurArrete>> getChauffeursArrete(int id) async {
+    final data = await _client.get('/finances/arretes/$id/chauffeurs');
+    if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
+    return data
+        .map((e) => ChauffeurArrete.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<ArreteCompte>> getReleveChauffeur(int chauffeurId) async {
     final data = await _client.get('/finances/arretes/chauffeur/$chauffeurId');
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');

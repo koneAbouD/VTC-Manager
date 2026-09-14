@@ -9,8 +9,8 @@ import 'package:vtc_manager/core/utils/recu_paiement.dart';
 import 'package:vtc_manager/features/recu/domain/repositories/recu_repository.dart';
 import 'package:vtc_manager/features/recu/presentation/envoi_recu.dart';
 
-/// L'envoi du reçu PDF, du serveur jusqu'au canal natif qui l'adresse à
-/// WhatsApp : ce qui part, vers qui, et ce que l'écran apprend en retour.
+/// L'envoi du reçu PDF : avec un numéro, droit à la conversation du chauffeur,
+/// PDF enregistré à joindre ; sans numéro, PDF joint et contact à choisir.
 class _Recus implements RecuRepository {
   final Either<Failure, Uint8List> reponse;
   final List<List<int>> demandes = [];
@@ -28,16 +28,33 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const canal = MethodChannel('vtc/partage');
-  final appels = <MethodCall>[];
-  String? reponseNative;
+  final appelsNatifs = <MethodCall>[];
+  String? reponsePartage;
+
+  final enregistres = <(String, String)>[];
+  final conversations = <(String?, String)>[];
+  var whatsappOuvrable = true;
+
+  Future<String?> enregistrer(Uint8List octets, String nom, String mime) async {
+    enregistres.add((nom, mime));
+    return 'Téléchargements/$nom';
+  }
+
+  Future<bool> ouvrir({String? telephone, required String message}) async {
+    conversations.add((telephone, message));
+    return whatsappOuvrable;
+  }
 
   setUp(() {
-    appels.clear();
-    reponseNative = 'WHATSAPP';
+    appelsNatifs.clear();
+    enregistres.clear();
+    conversations.clear();
+    whatsappOuvrable = true;
+    reponsePartage = 'WHATSAPP';
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(canal, (call) async {
-      appels.add(call);
-      return reponseNative;
+      appelsNatifs.add(call);
+      return call.method == 'partagerFichier' ? reponsePartage : null;
     });
   });
 
@@ -55,67 +72,124 @@ void main() {
   );
   final pdf = Uint8List.fromList([0x25, 0x50, 0x44, 0x46]);
 
-  test('le nom du fichier se lit sans accent, au nom du chauffeur et du jour', () {
-    expect(nomFichierRecu(recu), 'recu_aya_traore_2026-09-11.pdf');
-    expect(nomFichierRecu(RecuPaiement(lignes: const [], date: DateTime(2026, 9, 11))),
-        'recu_chauffeur_2026-09-11.pdf');
+  Future<IssueEnvoiPdf> envoyer({
+    Either<Failure, Uint8List>? reponse,
+    List<int> operationIds = const [501, 502],
+    String? telephone,
+  }) =>
+      envoyerRecuPdf(
+        recus: _Recus(reponse ?? Right(pdf)),
+        operationIds: operationIds,
+        recu: recu,
+        telephone: telephone,
+        ouvrirConversation: ouvrir,
+        enregistrerFichier: enregistrer,
+      );
+
+  group('nom du fichier', () {
+    RecuPaiement pour({String? vehicule, String? chauffeur}) => RecuPaiement(
+        vehicule: vehicule,
+        chauffeur: chauffeur,
+        lignes: const [],
+        date: DateTime(2026, 9, 11));
+
+    test('immatriculation du véhicule, puis date au format français', () {
+      expect(nomFichierRecu(recu), 'recu_1234-AB-01_11-09-2026.pdf');
+    });
+
+    test('la plaque garde ses caractères, reliés par des tirets', () {
+      expect(nomFichierRecu(pour(vehicule: 'AA-123-BB')), 'recu_AA-123-BB_11-09-2026.pdf');
+      expect(nomFichierRecu(pour(vehicule: ' 5678  cd 01 ')), 'recu_5678-CD-01_11-09-2026.pdf');
+    });
+
+    // Un lot sur plusieurs véhicules n'a pas de plaque unique à nommer.
+    test('sans véhicule unique, le chauffeur tient lieu de plaque', () {
+      expect(nomFichierRecu(pour(chauffeur: 'Aya Traoré')), 'recu_aya_traore_11-09-2026.pdf');
+    });
+
+    test('sans véhicule ni chauffeur, la date seule', () {
+      expect(nomFichierRecu(pour()), 'recu_11-09-2026.pdf');
+    });
   });
 
-  test('le PDF part dans la conversation du chauffeur, message joint', () async {
-    final recus = _Recus(Right(pdf));
+  test('avec un numéro : PDF enregistré, conversation du chauffeur ouverte, '
+      'message prêt', () async {
+    final issue = await envoyer(telephone: '07 12 34 56 78');
 
-    final issue = await envoyerRecuPdf(
-      recus: recus,
-      operationIds: const [501, 502],
-      recu: recu,
+    expect(enregistres, [('recu_1234-AB-01_11-09-2026.pdf', 'application/pdf')]);
+    expect(conversations.single.$1, '07 12 34 56 78');
+    expect(conversations.single.$2, contains('Bonjour Aya,'));
+    expect(conversations.single.$2, contains('envoyé en PDF'));
+    // Le toast dit où trouver le fichier, avant que WhatsApp ne prenne la main.
+    final annonce = appelsNatifs.single;
+    expect(annonce.method, 'annoncer');
+    expect((annonce.arguments as Map)['texte'], contains('Téléchargements'));
+    // Pas de partage de fichier : il ouvrirait « Envoyer à… » au lieu du chauffeur.
+    expect(appelsNatifs.where((c) => c.method == 'partagerFichier'), isEmpty);
+    expect(
+        issue,
+        isA<PdfEnregistre>()
+            .having((i) => i.emplacement, 'emplacement',
+                'Téléchargements/recu_1234-AB-01_11-09-2026.pdf')
+            .having((i) => i.conversationOuverte, 'conversationOuverte', isTrue));
+  });
+
+  test('avec un numéro, WhatsApp impossible à ouvrir : le PDF reste enregistré '
+      'et l\'écran le saura', () async {
+    whatsappOuvrable = false;
+
+    final issue = await envoyer(telephone: '07 12 34 56 78');
+
+    expect(enregistres, hasLength(1));
+    expect(issue,
+        isA<PdfEnregistre>().having((i) => i.conversationOuverte, 'ouverte', isFalse));
+  });
+
+  test('sans numéro : le PDF part joint, WhatsApp demande le contact', () async {
+    final issue = await envoyer(telephone: null);
+
+    final partage = appelsNatifs.single;
+    expect(partage.method, 'partagerFichier');
+    final arguments = partage.arguments as Map;
+    expect(arguments['nomFichier'], 'recu_1234-AB-01_11-09-2026.pdf');
+    expect(arguments['octets'], pdf);
+    expect(arguments['texte'], contains('envoyé en PDF'));
+    expect(arguments.containsKey('telephone'), isFalse);
+    expect(enregistres, isEmpty);
+    expect(conversations, isEmpty);
+    expect(issue,
+        isA<PdfPartage>().having((i) => i.dansWhatsApp, 'dansWhatsApp', isTrue));
+  });
+
+  test('sans numéro ni WhatsApp : la feuille de partage prend le relais', () async {
+    reponsePartage = 'PARTAGE';
+
+    final issue = await envoyer(telephone: '');
+
+    expect(issue,
+        isA<PdfPartage>().having((i) => i.dansWhatsApp, 'dansWhatsApp', isFalse));
+  });
+
+  test('PDF refusé par le serveur : rien n\'est enregistré ni ouvert', () async {
+    final issue = await envoyer(
+      reponse: Left(ConflictFailure("L'écriture ENC-2026-000501 a été annulée")),
       telephone: '07 12 34 56 78',
     );
 
-    expect(recus.demandes, [
-      [501, 502]
-    ]);
     expect(issue,
-        isA<RecuPartage>().having((i) => i.dansWhatsApp, 'dansWhatsApp', isTrue));
-    expect(appels.single.method, 'partagerFichier');
-    final arguments = appels.single.arguments as Map;
-    expect(arguments['nomFichier'], 'recu_aya_traore_2026-09-11.pdf');
-    expect(arguments['telephone'], '2250712345678');
-    expect(arguments['mime'], 'application/pdf');
-    expect(arguments['octets'], pdf);
-    expect(arguments['texte'], contains('joint en PDF'));
-    expect(arguments['texte'], contains('Bonjour Aya,'));
-  });
-
-  test('sans WhatsApp, la feuille de partage prend le relais', () async {
-    reponseNative = 'PARTAGE';
-
-    final issue = await envoyerRecuPdf(
-        recus: _Recus(Right(pdf)), operationIds: const [501], recu: recu);
-
-    expect(issue,
-        isA<RecuPartage>().having((i) => i.dansWhatsApp, 'dansWhatsApp', isFalse));
-  });
-
-  test('PDF refusé par le serveur : rien ne part, le motif est rendu', () async {
-    final issue = await envoyerRecuPdf(
-      recus: _Recus(Left(
-          ConflictFailure("L'écriture ENC-2026-000501 a été annulée"))),
-      operationIds: const [501],
-      recu: recu,
-    );
-
-    expect(issue,
-        isA<RecuPdfIndisponible>().having((i) => i.motif, 'motif', contains('a été annulée')));
-    expect(appels, isEmpty);
+        isA<PdfIndisponible>().having((i) => i.motif, 'motif', contains('a été annulée')));
+    expect(enregistres, isEmpty);
+    expect(conversations, isEmpty);
+    expect(appelsNatifs, isEmpty);
   });
 
   test('sans écriture, le serveur n\'est même pas interrogé', () async {
     final recus = _Recus(Right(pdf));
 
-    final issue =
-        await envoyerRecuPdf(recus: recus, operationIds: const [], recu: recu);
+    final issue = await envoyerRecuPdf(
+        recus: recus, operationIds: const [], recu: recu, telephone: '0712345678');
 
-    expect(issue, isA<RecuPdfIndisponible>());
+    expect(issue, isA<PdfIndisponible>());
     expect(recus.demandes, isEmpty);
   });
 }

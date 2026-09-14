@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.usecases.arrete;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
+import com.tmk.vtcmanager.application.domain.arrete.ChauffeurArrete;
 import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
 import com.tmk.vtcmanager.application.domain.finance.CompteCourant;
 import com.tmk.vtcmanager.application.ports.persistence.ArreteCompteRepository;
@@ -48,6 +49,14 @@ public class GetArreteUseCase {
     /** Relevé de compte d'un chauffeur : tous les arrêtés où il est bénéficiaire. */
     public List<ArreteCompte> parBeneficiaire(Long chauffeurId) {
         return arreteCompteRepository.findByBeneficiaire(chauffeurId);
+    }
+
+    /**
+     * Destinataires du décompte : bénéficiaires et débiteurs de l'arrêté, avec
+     * leur téléphone. Hors du détail, que l'application chauffeur lit aussi.
+     */
+    public List<ChauffeurArrete> chauffeursConcernes(Long arreteId) {
+        return arreteCompteRepository.findChauffeursConcernes(arreteId);
     }
 
     /** Détail enrichi du reste à restituer/dû (solde de compte courant courant du périmètre). */

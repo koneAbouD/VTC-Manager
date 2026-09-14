@@ -347,14 +347,18 @@ class _DetailBody extends ConsumerWidget {
     if (!context.mounted) return;
 
     switch (issue) {
-      case RecuPartage():
+      case PdfPartage():
         break;
-      case RecuEnregistre(:final emplacement):
+      case PdfEnregistre(:final emplacement, :final conversationOuverte):
+        final ou = emplacement == null ? '' : ' ($emplacement)';
         messenger.showSnackBar(SnackBar(
-            content: Text('Reçu PDF enregistré'
-                '${emplacement == null ? '' : ' ($emplacement)'} : '
-                'joignez-le au message dans WhatsApp.')));
-      case RecuPdfIndisponible(:final motif):
+          content: Text(conversationOuverte
+              ? 'Reçu PDF enregistré$ou : joignez-le dans la conversation avec 📎.'
+              : 'Reçu PDF enregistré$ou, mais WhatsApp n\'a pas pu être ouvert '
+                  'sur cet appareil.'),
+          backgroundColor: conversationOuverte ? null : AppColors.error,
+        ));
+      case PdfIndisponible(:final motif):
         final message = composerRecu(recu);
         final numero = telephone;
         messenger.showSnackBar(SnackBar(

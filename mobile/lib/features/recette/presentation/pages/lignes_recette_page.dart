@@ -459,7 +459,9 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
           telephone: destinataire.telephone,
         );
         return switch (issue) {
-          RecuPdfIndisponible(:final motif) => motif,
+          PdfIndisponible(:final motif) => motif,
+          PdfEnregistre(conversationOuverte: false) =>
+            "Reçu enregistré, mais WhatsApp n'a pas pu être ouvert sur cet appareil.",
           _ => null,
         };
       },

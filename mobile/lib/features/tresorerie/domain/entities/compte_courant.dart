@@ -154,6 +154,25 @@ class ReglementArrete {
       );
 }
 
+/// Chauffeur que concerne un arrêté, avec son téléphone : un destinataire du
+/// décompte. Servi à part du détail de l'arrêté, que l'application chauffeur
+/// lit aussi — le numéro d'un chauffeur n'a pas à parvenir à ses collègues.
+class ChauffeurArrete {
+  final int id;
+
+  /// Nom complet, prénom en tête. Vide si la fiche n'en porte pas.
+  final String nom;
+  final String? telephone;
+
+  const ChauffeurArrete({required this.id, required this.nom, this.telephone});
+
+  factory ChauffeurArrete.fromJson(Map<String, dynamic> j) => ChauffeurArrete(
+        id: (j['id'] as num).toInt(),
+        nom: (j['nom'] as String?) ?? '',
+        telephone: j['telephone'] as String?,
+      );
+}
+
 /// Arrêté de compte : en-tête + lignes snapshot + règlements. Sert aussi à l'aperçu.
 class ArreteCompte {
   final int? id;

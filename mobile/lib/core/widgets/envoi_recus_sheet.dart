@@ -4,15 +4,31 @@ import '../theme/app_colors.dart';
 import '../utils/recu_paiement.dart';
 import '../utils/whatsapp.dart';
 
-/// Un destinataire, et le reçu déjà préparé pour lui.
-class DestinataireRecu {
-  final String nom;
+/// Ce que la feuille d'envoi sait d'un destinataire : qui il est, où le
+/// joindre, et le message seul, qui part quand le PDF ne peut pas être préparé.
+abstract interface class DestinataireWhatsApp {
+  String get nom;
 
   /// Numéro de sa fiche. Nul : WhatsApp s'ouvrira sur son choix de contact, à
   /// charge pour le guichetier de désigner le chauffeur.
+  String? get telephone;
+
+  /// Ce que le document lui dit, en une ligne — « 3 journées · 45 000 XOF ».
+  String get resume;
+
+  /// Le message seul, sans pièce jointe.
+  String get message;
+}
+
+/// Un destinataire, et le reçu déjà préparé pour lui.
+class DestinataireRecu implements DestinataireWhatsApp {
+  @override
+  final String nom;
+
+  @override
   final String? telephone;
 
-  /// Ce que le reçu couvre, en une ligne — « 3 journées · 45 000 XOF ».
+  @override
   final String resume;
 
   final RecuPaiement recu;
@@ -28,7 +44,7 @@ class DestinataireRecu {
     this.operationIds = const [],
   });
 
-  /// Le message seul, sans pièce jointe.
+  @override
   String get message => composerRecu(recu);
 }
 
@@ -36,19 +52,48 @@ class DestinataireRecu {
 /// afficher sous sa ligne.
 typedef EnvoyerRecu = Future<String?> Function(DestinataireRecu destinataire);
 
-/// Feuille d'envoi des reçus d'un encaissement de masse.
-///
-/// WhatsApp n'ouvre qu'une conversation à la fois : un lot qui touche plusieurs
-/// chauffeurs se solde donc par autant d'allers-retours, et la feuille est ce
-/// qui les rend tenables — elle retient qui a déjà été servi.
-///
-/// La coche dit « WhatsApp a été ouvert », jamais « le message est parti » :
-/// rien ne revient de WhatsApp le confirmer. Quand le reçu PDF ne peut pas être
-/// préparé, la ligne le dit et propose le message seul.
+/// Feuille d'envoi des reçus d'un encaissement de masse : un reçu par chauffeur.
 Future<void> showEnvoiRecusSheet(
   BuildContext context, {
   required List<DestinataireRecu> destinataires,
   required EnvoyerRecu envoyer,
+}) {
+  return showEnvoiWhatsAppSheet<DestinataireRecu>(
+    context,
+    titre: 'Envoyer les reçus',
+    consigne: 'Pour chaque chauffeur, le reçu PDF est enregistré et '
+        'WhatsApp s\'ouvre sur sa conversation, message prêt : '
+        'joignez le PDF avec 📎, puis envoyez.',
+    consigneTerminee: 'Tous les reçus ont été ouverts dans WhatsApp.',
+    preparation: 'Préparation du reçu PDF…',
+    destinataires: destinataires,
+    envoyer: envoyer,
+  );
+}
+
+/// Feuille d'envoi d'un document PDF à plusieurs chauffeurs : les reçus d'un
+/// encaissement de masse, le décompte d'un arrêté par véhicule.
+///
+/// WhatsApp n'ouvre qu'une conversation à la fois : un envoi qui touche
+/// plusieurs chauffeurs se solde donc par autant d'allers-retours, et la
+/// feuille est ce qui les rend tenables — elle retient qui a déjà été servi.
+///
+/// La coche dit « WhatsApp a été ouvert », jamais « le message est parti » :
+/// rien ne revient de WhatsApp le confirmer. [envoyer] rend `null` quand
+/// WhatsApp s'est ouvert, sinon le motif à afficher sous la ligne, qui propose
+/// alors le message seul.
+///
+/// [consigne] s'affiche tant qu'il reste des chauffeurs à servir,
+/// [consigneTerminee] ensuite, et [preparation] sous la ligne dont le PDF se
+/// prépare.
+Future<void> showEnvoiWhatsAppSheet<T extends DestinataireWhatsApp>(
+  BuildContext context, {
+  required String titre,
+  required String consigne,
+  required String consigneTerminee,
+  required String preparation,
+  required List<T> destinataires,
+  required Future<String?> Function(T destinataire) envoyer,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -57,22 +102,40 @@ Future<void> showEnvoiRecusSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) =>
-        _EnvoiRecusSheet(destinataires: destinataires, envoyer: envoyer),
+    builder: (_) => _EnvoiSheet<T>(
+      titre: titre,
+      consigne: consigne,
+      consigneTerminee: consigneTerminee,
+      preparation: preparation,
+      destinataires: destinataires,
+      envoyer: envoyer,
+    ),
   );
 }
 
-class _EnvoiRecusSheet extends StatefulWidget {
-  final List<DestinataireRecu> destinataires;
-  final EnvoyerRecu envoyer;
+class _EnvoiSheet<T extends DestinataireWhatsApp> extends StatefulWidget {
+  final String titre;
+  final String consigne;
+  final String consigneTerminee;
+  final String preparation;
+  final List<T> destinataires;
+  final Future<String?> Function(T destinataire) envoyer;
 
-  const _EnvoiRecusSheet({required this.destinataires, required this.envoyer});
+  const _EnvoiSheet({
+    required this.titre,
+    required this.consigne,
+    required this.consigneTerminee,
+    required this.preparation,
+    required this.destinataires,
+    required this.envoyer,
+  });
 
   @override
-  State<_EnvoiRecusSheet> createState() => _EnvoiRecusSheetState();
+  State<_EnvoiSheet<T>> createState() => _EnvoiSheetState<T>();
 }
 
-class _EnvoiRecusSheetState extends State<_EnvoiRecusSheet> {
+class _EnvoiSheetState<T extends DestinataireWhatsApp>
+    extends State<_EnvoiSheet<T>> {
   final Set<int> _ouverts = {};
   final Set<int> _enCours = {};
   final Map<int, String> _echecs = {};
@@ -83,7 +146,7 @@ class _EnvoiRecusSheetState extends State<_EnvoiRecusSheet> {
       _enCours.add(index);
       _echecs.remove(index);
     });
-    final motif = await widget.envoyer(widget.destinataires[index]);
+    final motif = await _motifEnvoi(index);
     if (!mounted) return;
     setState(() {
       _enCours.remove(index);
@@ -93,6 +156,16 @@ class _EnvoiRecusSheetState extends State<_EnvoiRecusSheet> {
         _echecs[index] = motif;
       }
     });
+  }
+
+  /// Une erreur imprévue devient un motif : sans quoi la ligne tournerait sans
+  /// fin, et le guichetier ne saurait ni pourquoi ni s'il peut réessayer.
+  Future<String?> _motifEnvoi(int index) async {
+    try {
+      return await widget.envoyer(widget.destinataires[index]);
+    } catch (e) {
+      return 'Envoi impossible : $e';
+    }
   }
 
   /// Le PDF n'a pas pu partir : le message seul reste un reçu.
@@ -131,8 +204,8 @@ class _EnvoiRecusSheetState extends State<_EnvoiRecusSheet> {
             ),
           ),
           const SizedBox(height: 14),
-          const Text('Envoyer les reçus',
-              style: TextStyle(
+          Text(widget.titre,
+              style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppColors.dark)),
@@ -140,11 +213,7 @@ class _EnvoiRecusSheetState extends State<_EnvoiRecusSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              reste == 0
-                  ? 'Tous les reçus ont été ouverts dans WhatsApp.'
-                  : 'Chaque reçu part en PDF, joint au message, dans la '
-                      'conversation du chauffeur. C\'est vous qui appuyez sur '
-                      'envoyer.',
+              reste == 0 ? widget.consigneTerminee : widget.consigne,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 12.5, color: AppColors.hint),
             ),
@@ -157,6 +226,7 @@ class _EnvoiRecusSheetState extends State<_EnvoiRecusSheet> {
               itemCount: widget.destinataires.length,
               itemBuilder: (_, i) => _DestinataireTile(
                 destinataire: widget.destinataires[i],
+                preparation: widget.preparation,
                 ouvert: _ouverts.contains(i),
                 enCours: _enCours.contains(i),
                 echec: _echecs[i],
@@ -187,7 +257,8 @@ class _EnvoiRecusSheetState extends State<_EnvoiRecusSheet> {
 }
 
 class _DestinataireTile extends StatelessWidget {
-  final DestinataireRecu destinataire;
+  final DestinataireWhatsApp destinataire;
+  final String preparation;
   final bool ouvert;
   final bool enCours;
   final String? echec;
@@ -196,6 +267,7 @@ class _DestinataireTile extends StatelessWidget {
 
   const _DestinataireTile({
     required this.destinataire,
+    required this.preparation,
     required this.ouvert,
     required this.enCours,
     required this.echec,
@@ -212,7 +284,7 @@ class _DestinataireTile extends StatelessWidget {
 
     final (sousTitre, couleur) = switch ((echec, enCours)) {
       (final String motif, _) => (motif, AppColors.error),
-      (null, true) => ('Préparation du reçu PDF…', AppColors.hint),
+      (null, true) => (preparation, AppColors.hint),
       _ when sansNumero => (
           '${destinataire.resume} · numéro absent de sa fiche',
           AppColors.warning

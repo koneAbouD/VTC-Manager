@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.usecases.arrete;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
+import com.tmk.vtcmanager.application.domain.arrete.ChauffeurArrete;
 import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
 import com.tmk.vtcmanager.application.domain.finance.CompteCourant;
 import com.tmk.vtcmanager.application.ports.persistence.ArreteCompteRepository;
@@ -15,6 +16,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -106,5 +108,21 @@ class GetArreteUseCaseTest {
         ArreteCompte resultat = useCase.detail(8L).orElseThrow();
 
         assertThat(resultat.getResteNet()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void chauffeurs_concernes_gardent_le_debiteur_sans_reglement_et_les_numeros_absents() {
+        // Le débiteur sans règlement — sa dette soldée par le fonds d'un collègue —
+        // est un destinataire comme un autre, et une fiche sans numéro ne l'écarte
+        // pas : WhatsApp demandera le contact au gestionnaire.
+        when(arreteCompteRepository.findChauffeursConcernes(7L)).thenReturn(List.of(
+                new ChauffeurArrete(3L, "Aya Traoré", "0712345678"),
+                new ChauffeurArrete(9L, "Koffi Yao", null)));
+
+        assertThat(useCase.chauffeursConcernes(7L))
+                .extracting(ChauffeurArrete::id, ChauffeurArrete::telephone)
+                .containsExactly(
+                        tuple(3L, "0712345678"),
+                        tuple(9L, null));
     }
 }
