@@ -59,12 +59,15 @@ class RecuPaiementPdfRendererTest {
     }
 
     @Test
-    @DisplayName("un solde nul se dit « à jour »")
-    void aJour() throws Exception {
+    @DisplayName("une créance soldée ne donne lieu à aucune mention de solde")
+    void soldeNulSansMention() throws Exception {
         String texte = texte(renderer.renderRecuPdf(recu("Jean Kouassi",
                 List.of(ligne("Recette", NatureImputation.RECETTE, "15000")), "0")));
 
-        assertThat(texte).contains("le chauffeur est à jour").doesNotContain("Reste à payer");
+        assertThat(texte).contains("15 000 FCFA")
+                .doesNotContain("à jour")
+                .doesNotContain("soldée")
+                .doesNotContain("Reste à payer");
     }
 
     @Test

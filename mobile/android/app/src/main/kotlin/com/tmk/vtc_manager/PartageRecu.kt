@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.core.content.FileProvider
 import java.io.File
 
@@ -13,10 +14,16 @@ import java.io.File
  * chauffeur.
  *
  * Le lien wa.me ne transporte que du texte : une pièce jointe passe forcément
- * par une intention ACTION_SEND. Adressée au paquet de WhatsApp avec l'extra
- * `jid`, elle ouvre directement la conversation du numéro, fichier et message
- * prêts à partir. Cet extra n'est pas documenté par WhatsApp : s'il venait à
- * être ignoré, WhatsApp s'ouvrirait sur son choix de contact — le reçu reste
+ * par une intention ACTION_SEND, que WhatsApp reçoit dans son écran de partage
+ * (`ExternalShareAlias`). Seul, cet écran demande le contact.
+ *
+ * Pour aller droit à la conversation, l'intention porte l'identifiant de
+ * raccourci de partage (`android.intent.extra.shortcut.ID`) : c'est ce que le
+ * système transmet quand on touche une conversation dans la feuille de partage,
+ * et WhatsApp publie ses raccourcis sous l'identifiant `numéro@s.whatsapp.net`.
+ * L'ancien extra `jid` est conservé pour les versions qui le lisent encore —
+ * WhatsApp 2.26 l'ignore, les journaux d'un appareil l'ont montré. Si aucun des
+ * deux n'est lu, WhatsApp retombe sur son choix de contact : le reçu reste
  * joint, seul le destinataire est à désigner.
  *
  * Sans WhatsApp ni WhatsApp Business, la feuille de partage d'Android prend le
@@ -28,6 +35,14 @@ object PartageRecu {
 
     /** WhatsApp d'abord, WhatsApp Business ensuite : le gestionnaire peut avoir les deux. */
     private val PAQUETS_WHATSAPP = listOf("com.whatsapp", "com.whatsapp.w4b")
+
+    private const val TAG = "VtcPartage"
+
+    /**
+     * `Intent.EXTRA_SHORTCUT_ID`, écrit en toutes lettres : la constante n'existe
+     * qu'à partir d'Android 10, la valeur est lue par WhatsApp sur toutes versions.
+     */
+    private const val EXTRA_RACCOURCI_PARTAGE = "android.intent.extra.shortcut.ID"
 
     /** Les reçus servent le temps d'un envoi : au-delà d'un jour, ils encombrent le cache. */
     private const val DUREE_CONSERVATION_MS = 24L * 60 * 60 * 1000
@@ -49,19 +64,27 @@ object PartageRecu {
         val fichier = File(dossier, nomFichier).apply { writeBytes(octets) }
         val uri = FileProvider.getUriForFile(activity, "${activity.packageName}.recus", fichier)
 
+        val destinataire = if (telephone.isNullOrBlank()) null else "$telephone@s.whatsapp.net"
+
         for (paquet in PAQUETS_WHATSAPP) {
             val versWhatsApp = intention(uri, mime, texte).apply {
                 setPackage(paquet)
-                if (!telephone.isNullOrBlank()) putExtra("jid", "$telephone@s.whatsapp.net")
+                if (destinataire != null) {
+                    putExtra(EXTRA_RACCOURCI_PARTAGE, destinataire)
+                    putExtra("jid", destinataire)
+                }
             }
             try {
                 activity.startActivity(versWhatsApp)
+                // Jamais le numéro dans les journaux : seulement ce qui a été tenté.
+                Log.i(TAG, "Reçu adressé à $paquet, destinataire ${if (destinataire != null) "désigné" else "à choisir"}")
                 return "WHATSAPP"
             } catch (_: ActivityNotFoundException) {
                 // Ce paquet n'est pas installé : on tente le suivant.
             }
         }
 
+        Log.i(TAG, "WhatsApp absent : feuille de partage du système")
         activity.startActivity(Intent.createChooser(intention(uri, mime, texte), "Envoyer le reçu"))
         return "PARTAGE"
     }

@@ -164,13 +164,15 @@ public class RecuPaiementPdfRenderer implements RecuDocumentRenderer {
             y -= 24;
         }
 
+        /**
+         * Le reste à payer, quand il y en a un. Une créance soldée ne donne lieu
+         * à aucune mention : le montant reçu suffit à l'attester.
+         */
         void solde() throws IOException {
-            if (recu.resteDu() == null) return;
+            if (recu.resteDu() == null || recu.resteDu().signum() <= 0) return;
             place(18);
-            boolean aJour = recu.resteDu().signum() <= 0;
-            texte(BOLD, 10, MARGE, y, aJour
-                    ? "Créances soldées : le chauffeur est à jour."
-                    : "Reste à payer sur ces créances : " + montant(recu.resteDu()), aJour ? VERT : ENCRE);
+            texte(BOLD, 10, MARGE, y,
+                    "Reste à payer sur ces créances : " + montant(recu.resteDu()), ENCRE);
             y -= 16;
         }
 
