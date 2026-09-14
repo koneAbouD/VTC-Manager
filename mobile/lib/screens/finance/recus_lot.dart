@@ -80,7 +80,7 @@ List<DestinataireRecu> recusDuLot({
       telephone: premiere.chauffeurTelephone,
       resume: '$journees journée${journees > 1 ? 's' : ''} · '
           '${CurrencyFormatter.format(total)}',
-      message: composerRecu(RecuPaiement(
+      recu: RecuPaiement(
         chauffeur: premiere.chauffeurNom,
         vehicule: immatriculations.length == 1 ? immatriculations.first : null,
         lignes: lignesRecu,
@@ -90,7 +90,13 @@ List<DestinataireRecu> recusDuLot({
         date: saisie.date,
         reference: saisie.reference,
         resteDu: resteDu,
-      )),
+      ),
+      // Toutes les écritures du chauffeur dans le lot : son reçu PDF les
+      // atteste ensemble.
+      operationIds: [
+        for (final imputation in imputationsDuChauffeur)
+          ...imputation.operationIds,
+      ],
     ));
   });
 

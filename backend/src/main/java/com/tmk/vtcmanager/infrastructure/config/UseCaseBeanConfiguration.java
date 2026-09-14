@@ -181,6 +181,9 @@ import com.tmk.vtcmanager.application.ports.persistence.CoherenceGenerationRepos
 import com.tmk.vtcmanager.application.services.SignalementCoherenceGenerationService;
 import com.tmk.vtcmanager.application.usecases.reaffectation.GetApercuReaffectationUseCase;
 import com.tmk.vtcmanager.application.usecases.reaffectation.GetConflitsChauffeurUseCase;
+import com.tmk.vtcmanager.application.ports.document.RecuDocumentRenderer;
+import com.tmk.vtcmanager.application.services.LectureImputationService;
+import com.tmk.vtcmanager.application.usecases.recu.GenererRecuPdfUseCase;
 
 @Configuration
 public class UseCaseBeanConfiguration {
@@ -952,15 +955,34 @@ public class UseCaseBeanConfiguration {
         return new EncaisserVersementsLotUseCase(encaisserVersementUseCase);
     }
 
+    /** Lecture d'une écriture du côté de sa créance : pièce de caisse et reçu PDF la partagent. */
+    @Bean
+    public LectureImputationService lectureImputationService(
+            EncaissementRepository encaissementRepository,
+            EncaissementCotisationRepository encaissementCotisationRepository,
+            EncaissementPenaliteRepository encaissementPenaliteRepository,
+            LigneRecetteRepository ligneRecetteRepository,
+            LigneCotisationRepository ligneCotisationRepository,
+            LignePenaliteRepository lignePenaliteRepository) {
+        return new LectureImputationService(encaissementRepository, encaissementCotisationRepository,
+                encaissementPenaliteRepository, ligneRecetteRepository, ligneCotisationRepository,
+                lignePenaliteRepository);
+    }
+
     @Bean
     public GetVersementUseCase getVersementUseCase(
             OperationFinanciereRepository operationFinanciereRepository,
-            EncaissementRepository encaissementRepository,
-            EncaissementCotisationRepository encaissementCotisationRepository,
-            LigneRecetteRepository ligneRecetteRepository,
-            LigneCotisationRepository ligneCotisationRepository) {
-        return new GetVersementUseCase(operationFinanciereRepository, encaissementRepository,
-                encaissementCotisationRepository, ligneRecetteRepository, ligneCotisationRepository);
+            LectureImputationService lectureImputationService) {
+        return new GetVersementUseCase(operationFinanciereRepository, lectureImputationService);
+    }
+
+    @Bean
+    public GenererRecuPdfUseCase genererRecuPdfUseCase(
+            OperationFinanciereRepository operationFinanciereRepository,
+            LectureImputationService lectureImputationService,
+            RecuDocumentRenderer recuDocumentRenderer) {
+        return new GenererRecuPdfUseCase(operationFinanciereRepository, lectureImputationService,
+                recuDocumentRenderer);
     }
 
     @Bean

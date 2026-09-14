@@ -134,6 +134,7 @@ class EncaisserVersementUseCaseTest {
         assertThat(enregistre.versementId()).isEqualTo(versement.getValue());
         assertThat(enregistre.encaissementRecetteId()).isEqualTo(11L);
         assertThat(enregistre.encaissementCotisationId()).isEqualTo(22L);
+        assertThat(enregistre.operationIds()).containsExactly(501L, 502L);
     }
 
     @Test
@@ -164,6 +165,7 @@ class EncaisserVersementUseCaseTest {
         assertThat(enregistre.versementId()).isNull();
         assertThat(enregistre.encaissementRecetteId()).isEqualTo(11L);
         assertThat(enregistre.encaissementCotisationId()).isNull();
+        assertThat(enregistre.operationIds()).containsExactly(501L);
         verify(cotisations, never()).executer(anyLong(), any());
         verify(operationRepository, never()).rattacherAuVersement(any(), any());
         // Rien à apparier : les lignes ne sont même pas relues.

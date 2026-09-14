@@ -50,7 +50,7 @@ class EncaisserVersementsLotUseCaseTest {
     void verdictParVersement() {
         SaisieVersement accepte = versement(1L, 91L);
         SaisieVersement refuse = versement(2L, null);
-        when(unitaire.executer(accepte)).thenReturn(new VersementEnregistre(VERSEMENT, 11L, 22L));
+        when(unitaire.executer(accepte)).thenReturn(new VersementEnregistre(VERSEMENT, 11L, 22L, List.of(501L, 502L)));
         when(unitaire.executer(refuse)).thenThrow(new EcritureFigeeException(
                 "La caisse a été comptée le 10/09/2026 : cette journée est close."));
 
@@ -61,11 +61,13 @@ class EncaisserVersementsLotUseCaseTest {
         assertThat(resultats.get(0).ligneRecetteId()).isEqualTo(1L);
         assertThat(resultats.get(0).ligneCotisationId()).isEqualTo(91L);
         assertThat(resultats.get(0).versementId()).isEqualTo(VERSEMENT);
+        assertThat(resultats.get(0).operationIds()).containsExactly(501L, 502L);
 
         assertThat(resultats.get(1).succes()).isFalse();
         assertThat(resultats.get(1).ligneRecetteId()).isEqualTo(2L);
         assertThat(resultats.get(1).ligneCotisationId()).isNull();
         assertThat(resultats.get(1).message()).contains("cette journée est close");
+        assertThat(resultats.get(1).operationIds()).isEmpty();
     }
 
     @Test

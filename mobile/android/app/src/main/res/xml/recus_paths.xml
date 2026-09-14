@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Seul le dossier des reçus du cache est exposé, et seulement le temps d'un
+     partage : l'autorisation de lecture accompagne l'intention envoyée. -->
+<paths>
+    <cache-path name="recus" path="recus/" />
+</paths>

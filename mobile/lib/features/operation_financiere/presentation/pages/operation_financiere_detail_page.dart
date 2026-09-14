@@ -20,6 +20,8 @@ import '../../../../core/utils/recu_paiement.dart';
 import '../../../../core/utils/whatsapp.dart';
 import '../../../versement/presentation/providers/versement_provider.dart';
 import '../../../versement/presentation/recu_versement.dart';
+import '../../../recu/presentation/envoi_recu.dart';
+import '../../../recu/presentation/providers/recu_provider.dart';
 
 /// Page de détail d'une opération financière.
 ///
@@ -117,8 +119,28 @@ class _DetailBody extends ConsumerWidget {
     // Ce qui compte à l'œil, c'est le sens dans lequel l'argent bouge — pas le
     // type de l'écriture. Une extourne conserve le type de l'origine mais porte
     // un montant opposé : une dépense annulée fait donc rentrer de l'argent.
+    //
+    // Une écriture d'un versement se lit comme le billet entier : la recette et
+    // la cotisation réglées ensemble, « +17 000 XOF » plutôt que la seule part
+    // de l'écriture ouverte. Seulement tant qu'elle tient : une écriture
+    // extournée, ou une extourne, garde son propre montant — c'est lui que la
+    // correction concerne. Le total vient du serveur, qui en retire déjà les
+    // imputations extournées.
+    final ecritureVivante = !op.estUneExtourne &&
+        !op.estExtournee &&
+        op.statut != StatutOperation.ANNULEE;
+    final versementId = ecritureVivante ? op.versementId : null;
+    final versement =
+        versementId == null ? null : ref.watch(versementProvider(versementId));
+    final montant = versement?.valueOrNull?.total ?? op.montant;
+    // Pas de montant partiel le temps de relire la pièce : il contredirait la
+    // ligne du journal qui vient d'être touchée. En cas d'échec, la part de
+    // l'écriture reste le seul montant sûr.
+    final totalEnAttente =
+        versement != null && versement.isLoading && !versement.hasValue;
+
     final isRevenu = op.typeOperation == TypeOperation.REVENU;
-    final effetCaisse = isRevenu ? op.montant : -op.montant;
+    final effetCaisse = isRevenu ? montant : -montant;
     final entreEnCaisse = effetCaisse >= 0;
     final color = entreEnCaisse ? AppColors.success : AppColors.error;
     final sign = entreEnCaisse ? '+' : '-';
@@ -137,7 +159,9 @@ class _DetailBody extends ConsumerWidget {
               ? Icons.trending_up_rounded
               : Icons.trending_down_rounded,
           iconColor: color,
-          titre: '$sign${money.format(effetCaisse.abs())}',
+          titre: totalEnAttente
+              ? '…'
+              : '$sign${money.format(effetCaisse.abs())}',
           statutLabel: op.statut.libelle,
           statutColor: statutColor,
         ),
@@ -261,30 +285,15 @@ class _DetailBody extends ConsumerWidget {
   /// envoie depuis WhatsApp. Rien n'est donc enregistré ici — ni date d'envoi,
   /// ni accusé — puisque rien ne revient le confirmer.
   ///
-  /// Le reçu ne dit pas le reste dû : l'écriture ne porte pas la créance qui
-  /// l'a produite, et un solde deviné serait pire que pas de solde du tout.
+  /// Le reçu part en PDF, joint au message. Sur une écriture d'un versement,
+  /// il couvre le billet entier et dit ce qui reste dû ; si le PDF ne peut pas
+  /// être préparé, l'écran propose d'envoyer le message seul.
   Future<void> _envoyerRecu(BuildContext context, WidgetRef ref) async {
-    // Une écriture d'un versement : le reçu couvre le billet entier — la
-    // recette et la cotisation du jour — et redit ce qui reste dû, que la
-    // pièce de caisse connaît et que l'écriture seule ignore. Si la pièce ne
-    // se lit pas, le reçu de l'écriture seule reste possible.
-    final versementId = op.versementId;
-    if (versementId != null) {
-      final lu =
-          await ref.read(versementRepositoryProvider).getVersement(versementId);
-      if (!context.mounted) return;
-      final versement = lu.fold((_) => null, (v) => v);
-      if (versement != null && versement.actives.isNotEmpty) {
-        await _ouvrirWhatsApp(
-          context,
-          versement.chauffeurTelephone ?? op.chauffeurTelephone,
-          composerRecu(recuDuVersement(versement)),
-        );
-        return;
-      }
-    }
+    final id = op.id;
+    if (id == null) return;
+    final messenger = ScaffoldMessenger.of(context);
 
-    final message = composerRecu(RecuPaiement(
+    var recu = RecuPaiement(
       chauffeur: op.chauffeurNom,
       vehicule: op.vehiculeNom,
       lignes: [
@@ -302,9 +311,63 @@ class _DetailBody extends ConsumerWidget {
       modePaiement: op.modePaiement?.libelle,
       date: op.dateOperation,
       reference: op.reference,
-    ));
+    );
+    var operationIds = [id];
+    var telephone = op.chauffeurTelephone;
 
-    await _ouvrirWhatsApp(context, op.chauffeurTelephone, message);
+    // Une écriture d'un versement : le reçu couvre le billet entier — la
+    // recette et la cotisation du jour — et redit ce qui reste dû, que la
+    // pièce de caisse connaît et que l'écriture seule ignore. Si la pièce ne
+    // se lit pas, le reçu de l'écriture seule reste possible.
+    final versementId = op.versementId;
+    if (versementId != null) {
+      final lu =
+          await ref.read(versementRepositoryProvider).getVersement(versementId);
+      if (!context.mounted) return;
+      final versement = lu.fold((_) => null, (v) => v);
+      if (versement != null && versement.actives.isNotEmpty) {
+        recu = recuDuVersement(versement);
+        operationIds = [for (final i in versement.actives) i.operationId];
+        telephone = versement.chauffeurTelephone ?? telephone;
+      }
+    }
+
+    // Le PDF se prépare au serveur : une seconde ou deux, qu'il faut signaler
+    // pour que le bouton ne paraisse pas inerte.
+    messenger.showSnackBar(const SnackBar(
+        content: Text('Préparation du reçu PDF…'),
+        duration: Duration(seconds: 10)));
+    final issue = await envoyerRecuPdf(
+      recus: ref.read(recuRepositoryProvider),
+      operationIds: operationIds,
+      recu: recu,
+      telephone: telephone,
+    );
+    messenger.hideCurrentSnackBar();
+    if (!context.mounted) return;
+
+    switch (issue) {
+      case RecuPartage():
+        break;
+      case RecuEnregistre(:final emplacement):
+        messenger.showSnackBar(SnackBar(
+            content: Text('Reçu PDF enregistré'
+                '${emplacement == null ? '' : ' ($emplacement)'} : '
+                'joignez-le au message dans WhatsApp.')));
+      case RecuPdfIndisponible(:final motif):
+        final message = composerRecu(recu);
+        final numero = telephone;
+        messenger.showSnackBar(SnackBar(
+          content: Text('Le reçu PDF n\'a pas pu être préparé : $motif'),
+          backgroundColor: AppColors.error,
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: 'Message seul',
+            textColor: Colors.white,
+            onPressed: () => _ouvrirWhatsApp(context, numero, message),
+          ),
+        ));
+    }
   }
 
   Future<void> _ouvrirWhatsApp(

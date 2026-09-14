@@ -39,10 +39,11 @@ SaisieLot _saisie(Map<int, double> montants) => SaisieLot(
 /// Consigne chaque envoi, et répond avec les verdicts qu'on lui donne.
 class _Serveur {
   final List<List<VersementDeLigne>> envois = [];
-  Either<Failure, List<({bool succes, String? message})>> Function(
-      List<VersementDeLigne>) reponse = (versements) => Right([
-        for (final _ in versements) (succes: true, message: null),
-      ]);
+  Either<Failure, List<({bool succes, String? message, List<int> operationIds})>>
+      Function(List<VersementDeLigne>) reponse = (versements) => Right([
+            for (final v in versements)
+              (succes: true, message: null, operationIds: [500 + v.ligneId]),
+          ]);
 
   EnvoiVersements get envoyer => (versements, _) async {
         envois.add(versements);
@@ -102,7 +103,11 @@ void main() {
     final serveur = _Serveur()
       ..reponse = (versements) => Right([
             for (final _ in versements)
-              (succes: false, message: 'La caisse a été comptée le 01/09/2026.'),
+              (
+                succes: false,
+                message: 'La caisse a été comptée le 01/09/2026.',
+                operationIds: const <int>[],
+              ),
           ]);
     final executeur =
         ExecuteurLotJumele(lignes: const [_avecJumelle], envoyer: serveur.envoyer);
@@ -131,6 +136,8 @@ void main() {
     expect(imputation.jumelle, 3000);
     // 5 000 de cotisation dus, 3 000 versés.
     expect(imputation.restant, 2000);
+    // Les écritures produites suivent la journée jusqu'à son reçu PDF.
+    expect(imputation.operationIds, [501]);
   });
 
   test('les verdicts du serveur reviennent à leur journée par leur ordre', () {
@@ -142,8 +149,8 @@ void main() {
     ];
 
     final resultat = verdictsParLigne(versements, [
-      (succes: true, message: null),
-      (succes: false, message: 'Période clôturée'),
+      (succes: true, message: null, operationIds: const [501, 502]),
+      (succes: false, message: 'Période clôturée', operationIds: const <int>[]),
     ]);
 
     expect(resultat.reussis, 1);

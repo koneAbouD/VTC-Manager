@@ -75,9 +75,11 @@ class ApiClient {
         return result.bytes;
       }
       final rawBody = utf8.decode(result.bytes);
+      final parsedBody = _corpsJson(rawBody);
       throw ApiException(
         result.statusCode,
-        _messageErreurHttp(result.statusCode, null, rawBody),
+        _messageErreurHttp(result.statusCode, parsedBody, rawBody),
+        body: parsedBody,
       );
     } on TimeoutException {
       throw const NetworkException(kMsgServeurTimeout);
@@ -121,9 +123,11 @@ class ApiClient {
         return bodyBytes;
       }
       final rawBody = utf8.decode(bodyBytes);
+      final parsedBody = _corpsJson(rawBody);
       throw ApiException(
         streamed.statusCode,
-        _messageErreurHttp(streamed.statusCode, null, rawBody),
+        _messageErreurHttp(streamed.statusCode, parsedBody, rawBody),
+        body: parsedBody,
       );
     } on TimeoutException {
       throw const NetworkException(kMsgServeurTimeout);
@@ -486,13 +490,20 @@ class ApiClient {
       return jsonDecode(utf8.decode(response.bodyBytes));
     }
     final rawBody = utf8.decode(response.bodyBytes);
-    Map<String, dynamic>? parsedBody;
-    try {
-      parsedBody = jsonDecode(rawBody) as Map<String, dynamic>?;
-    } catch (_) {}
-
+    final parsedBody = _corpsJson(rawBody);
     throw ApiException(status, _messageErreurHttp(status, parsedBody, rawBody),
         body: parsedBody);
+  }
+
+  /// Corps d'erreur JSON du backend, ou null s'il n'en est pas un (page HTML
+  /// d'un proxy, corps vide).
+  Map<String, dynamic>? _corpsJson(String rawBody) {
+    try {
+      final decode = jsonDecode(rawBody);
+      return decode is Map<String, dynamic> ? decode : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Construit un message d'erreur lisible : message applicatif du backend s'il

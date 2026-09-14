@@ -88,9 +88,19 @@ public class EncaisserVersementUseCase {
 
         UUID versementId = rattacher(encaissementRecette, encaissementCotisation);
 
+        // Les écritures produites : c'est ce qu'un reçu PDF atteste.
+        List<Long> ecritures = new ArrayList<>();
+        if (encaissementRecette != null && encaissementRecette.getOperationFinanciereId() != null) {
+            ecritures.add(encaissementRecette.getOperationFinanciereId());
+        }
+        if (encaissementCotisation != null && encaissementCotisation.getOperationFinanciereId() != null) {
+            ecritures.add(encaissementCotisation.getOperationFinanciereId());
+        }
+
         return new VersementEnregistre(versementId,
                 encaissementRecette == null ? null : encaissementRecette.getId(),
-                encaissementCotisation == null ? null : encaissementCotisation.getId());
+                encaissementCotisation == null ? null : encaissementCotisation.getId(),
+                List.copyOf(ecritures));
     }
 
     /**

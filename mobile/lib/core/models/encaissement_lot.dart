@@ -23,11 +23,15 @@ class ResultatLigneLot {
   final int?    encaissementId;
   final String? message;
 
+  /// Écritures produites, quand l'envoi les rend : ce que le reçu PDF atteste.
+  final List<int> operationIds;
+
   const ResultatLigneLot({
     required this.ligneId,
     required this.succes,
     this.encaissementId,
     this.message,
+    this.operationIds = const [],
   });
 
   factory ResultatLigneLot.fromJson(Map<String, dynamic> json) =>

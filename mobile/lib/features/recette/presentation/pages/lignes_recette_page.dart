@@ -24,6 +24,8 @@ import '../../../coherence/presentation/widgets/bandeau_conflits_chauffeur.dart'
 import '../../../../features/operation_financiere/domain/enums/mode_paiement.dart';
 import '../../../../features/versement/domain/entities/encaissement_versement.dart';
 import '../../../../features/versement/presentation/providers/versement_provider.dart';
+import '../../../../features/recu/presentation/envoi_recu.dart';
+import '../../../../features/recu/presentation/providers/recu_provider.dart';
 
 // ── Constantes partagées ───────────────────────────────────────────────────
 
@@ -406,7 +408,11 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
         );
         return envoi.map((lot) => verdictsParLigne(versements, [
               for (final r in lot.resultats)
-                (succes: r.succes, message: r.message),
+                (
+                  succes: r.succes,
+                  message: r.message,
+                  operationIds: r.operationIds,
+                ),
             ]));
       },
     );
@@ -443,6 +449,20 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
         imputations: imputations,
         saisie: saisie,
       ),
+      // Le reçu part en PDF, joint au message. Si le serveur ne le produit
+      // pas, la feuille le dit sous la ligne et propose le message seul.
+      envoyer: (destinataire) async {
+        final issue = await envoyerRecuPdf(
+          recus: ref.read(recuRepositoryProvider),
+          operationIds: destinataire.operationIds,
+          recu: destinataire.recu,
+          telephone: destinataire.telephone,
+        );
+        return switch (issue) {
+          RecuPdfIndisponible(:final motif) => motif,
+          _ => null,
+        };
+      },
     );
   }
 

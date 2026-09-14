@@ -47,13 +47,12 @@ void main() {
       () {
     final texte = composerRecu(recuDuVersement(_versement()));
 
-    expect(texte, contains('Recette du 10/09/2026'));
-    expect(texte, contains('Cotisation carburant du 10/09/2026'));
-    expect(texte, contains('Total reçu'));
-    expect(texte, contains('Jean Kouassi'));
-    expect(texte, contains('Mode : Espèces'));
-    expect(texte, contains('Date : 11/09/2026'));
-    expect(texte, contains('Reste dû'));
+    expect(texte, contains('• Recette du 10/09/2026 : ${montantRecu(15000)}'));
+    expect(texte,
+        contains('• Cotisation carburant du 10/09/2026 : ${montantRecu(2000)}'));
+    expect(texte, contains('*${montantRecu(17000)}* le 11/09/2026 en espèces'));
+    expect(texte, contains('Bonjour Jean,'));
+    expect(texte, contains('Reste à payer'));
   });
 
   test('le reste dû cumule les deux créances', () {
@@ -65,7 +64,7 @@ void main() {
   test('un reste inconnu sur une créance rend le solde inconnu', () {
     expect(_versement(resteRecette: null).resteDu, isNull);
     expect(composerRecu(recuDuVersement(_versement(resteRecette: null))),
-        isNot(contains('Reste dû')));
+        isNot(contains('Reste à payer')));
   });
 
   test('une imputation extournée ne figure plus au reçu', () {
@@ -73,6 +72,6 @@ void main() {
         composerRecu(recuDuVersement(_versement(cotisationAnnulee: true)));
 
     expect(texte, isNot(contains('Cotisation carburant')));
-    expect(texte, contains('Montant reçu'));
+    expect(texte, contains('nous avons bien reçu *${montantRecu(15000)}*'));
   });
 }

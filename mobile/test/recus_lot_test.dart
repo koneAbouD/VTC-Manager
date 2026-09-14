@@ -64,7 +64,7 @@ void main() {
     expect(recus.single.message, contains('Recette du 08/09/2026'));
     expect(recus.single.message, contains('Recette du 09/09/2026'));
     expect(recus.single.message, contains('Recette du 10/09/2026'));
-    expect(recus.single.message, contains('Reste dû'));
+    expect(recus.single.message, contains('Reste à payer'));
   });
 
   test('chaque chauffeur a son propre reçu', () {
@@ -101,7 +101,7 @@ void main() {
 
     expect(recus.single.message, contains('Recette du 10/09/2026'));
     expect(recus.single.message, contains('Cotisation carburant du 10/09/2026'));
-    expect(recus.single.message, contains('Total reçu'));
+    expect(recus.single.message, contains('• Cotisation carburant du 10/09/2026 : '));
   });
 
   // Une période close ou une caisse comptée fait refuser la ligne : rien n'a
@@ -164,7 +164,7 @@ void main() {
       ],
       saisie: saisie,
     );
-    expect(deux.single.message, isNot(contains('Véhicule :')));
+    expect(deux.single.message, isNot(contains('Véhicule')));
   });
 
   test('une fiche sans numéro produit quand même le reçu', () {
@@ -179,5 +179,32 @@ void main() {
 
     expect(recus, hasLength(1));
     expect(recus.single.telephone, isNull);
+  });
+
+  test('le reçu PDF d\'un chauffeur atteste toutes ses écritures du lot', () {
+    final recus = recusDuLot(
+      lignes: [
+        ligne(id: 1, chauffeurId: 7, jour: 8),
+        ligne(id: 2, chauffeurId: 7, jour: 9),
+        ligne(id: 3, chauffeurId: 8, nom: 'Traoré Awa'),
+      ],
+      jumelles: const {},
+      imputations: const [
+        ImputationLot(
+            ligneId: 1, principal: 15000, jumelle: 2000, restant: 0,
+            operationIds: [501, 502]),
+        ImputationLot(
+            ligneId: 2, principal: 15000, jumelle: 0, restant: 0,
+            operationIds: [503]),
+        ImputationLot(
+            ligneId: 3, principal: 12000, jumelle: 0, restant: 0,
+            operationIds: [504]),
+      ],
+      saisie: saisie,
+    );
+
+    expect(recus.firstWhere((r) => r.nom == 'Kouassi Jean').operationIds,
+        [501, 502, 503]);
+    expect(recus.firstWhere((r) => r.nom == 'Traoré Awa').operationIds, [504]);
   });
 }

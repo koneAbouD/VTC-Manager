@@ -31,7 +31,7 @@ public class EncaisserVersementsLotUseCase {
         for (SaisieVersement saisie : versements) {
             try {
                 VersementEnregistre enregistre = encaisserVersementUseCase.executer(saisie);
-                resultats.add(ResultatVersementLot.reussi(saisie, enregistre.versementId()));
+                resultats.add(ResultatVersementLot.reussi(saisie, enregistre));
             } catch (RuntimeException e) {
                 // Le message des exceptions métier est déjà rédigé pour l'écran ;
                 // pour le reste, on ne remonte pas une trace technique au guichet.

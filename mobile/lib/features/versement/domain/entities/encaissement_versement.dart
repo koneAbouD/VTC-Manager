@@ -47,12 +47,16 @@ class VerdictVersementLot {
   final String? versementId;
   final String? message;
 
+  /// Écritures produites par un versement accepté : ce que le reçu PDF atteste.
+  final List<int> operationIds;
+
   const VerdictVersementLot({
     this.ligneRecetteId,
     this.ligneCotisationId,
     required this.succes,
     this.versementId,
     this.message,
+    this.operationIds = const [],
   });
 
   factory VerdictVersementLot.fromJson(Map<String, dynamic> json) =>
@@ -62,6 +66,9 @@ class VerdictVersementLot {
         succes: json['succes'] as bool? ?? false,
         versementId: json['versementId'] as String?,
         message: json['message'] as String?,
+        operationIds: ((json['operationIds'] as List?) ?? const [])
+            .map((e) => (e as num).toInt())
+            .toList(),
       );
 }
 

@@ -33,6 +33,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import com.tmk.vtcmanager.application.services.LectureImputationService;
+import com.tmk.vtcmanager.application.ports.persistence.EncaissementPenaliteRepository;
+import com.tmk.vtcmanager.application.ports.persistence.LignePenaliteRepository;
 
 /**
  * Lecture d'une pièce de caisse : chaque écriture est rendue du côté de la
@@ -82,8 +85,10 @@ class GetVersementUseCaseTest {
                 .id(91L).nomCotisation("Cotisation carburant")
                 .montantDu(new BigDecimal("2000")).montantEncaisse(new BigDecimal("2000")).build()));
 
-        useCase = new GetVersementUseCase(operationRepository, encaissementRepository,
-                encaissementCotisationRepository, ligneRecetteRepository, ligneCotisationRepository);
+        useCase = new GetVersementUseCase(operationRepository, new LectureImputationService(
+                encaissementRepository, encaissementCotisationRepository,
+                mock(EncaissementPenaliteRepository.class), ligneRecetteRepository,
+                ligneCotisationRepository, mock(LignePenaliteRepository.class)));
     }
 
     private static OperationFinanciere ecriture(Long id, String reference, String montant) {

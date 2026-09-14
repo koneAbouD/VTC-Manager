@@ -42,6 +42,29 @@ class MainActivity : FlutterFragmentActivity() {
                 }
             }
 
+        // Reçu PDF partagé dans la conversation WhatsApp du chauffeur.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PartageRecu.CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "partagerFichier") {
+                    try {
+                        result.success(
+                            PartageRecu.partager(
+                                this,
+                                call.argument<String>("nomFichier")!!,
+                                call.argument<ByteArray>("octets")!!,
+                                call.argument<String>("mime") ?: "application/pdf",
+                                call.argument<String>("telephone"),
+                                call.argument<String>("texte"),
+                            )
+                        )
+                    } catch (e: Exception) {
+                        result.error("PARTAGE_IMPOSSIBLE", e.message, null)
+                    }
+                } else {
+                    result.notImplemented()
+                }
+            }
+
         // Verrouillage de l'appareil → verrouillage de l'application.
         EventChannel(
             flutterEngine.dartExecutor.binaryMessenger,

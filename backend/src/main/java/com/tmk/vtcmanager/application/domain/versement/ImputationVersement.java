@@ -4,14 +4,17 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Une écriture du versement, lue du côté de la créance qu'elle solde.
+ * Une écriture d'encaissement, lue du côté de la créance qu'elle solde.
  *
- * @param libelle   ce qui est nommé au chauffeur : « Recette », ou le nom de
- *                  la cotisation (« Cotisation carburant »)
- * @param annulee   écriture extournée : elle reste au versement — le billet a
- *                  été remis — mais ne compte plus dans son total
- * @param resteDu   ce qu'il reste à devoir sur la créance ; nul pour une
- *                  recette au montant réel, qui n'a pas de dû d'avance
+ * @param libelle           ce qui est nommé au chauffeur : « Recette », le nom
+ *                          de la cotisation, « Pénalité (recette non versée) »
+ * @param annulee           écriture extournée : le billet a été remis, mais
+ *                          elle ne compte plus
+ * @param resteDu           ce qu'il reste à devoir sur la créance ; nul pour
+ *                          une recette au montant réel, qui n'a pas de dû d'avance
+ * @param referencePaiement référence saisie au guichet — le numéro de
+ *                          transaction Mobile Money — distincte de la
+ *                          référence de l'écriture au journal
  */
 public record ImputationVersement(
         Long operationId,
@@ -22,5 +25,6 @@ public record ImputationVersement(
         LocalDate dateReference,
         BigDecimal montant,
         boolean annulee,
-        BigDecimal resteDu
+        BigDecimal resteDu,
+        String referencePaiement
 ) {}

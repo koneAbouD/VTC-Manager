@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.tmk.vtcmanager.application.exception.RecuImpossibleException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -302,6 +303,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleVersementIncoherent(
             VersementIncoherentException ex, HttpServletRequest request) {
         return respond(HttpStatus.CONFLICT, "VERSEMENT_INCOHERENT", ex.getMessage(), request, ex);
+    }
+
+    /** Écritures qui ne peuvent pas faire l'objet d'un reçu ; le message dit laquelle. */
+    @ExceptionHandler(RecuImpossibleException.class)
+    public ResponseEntity<ApiError> handleRecuImpossible(
+            RecuImpossibleException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "RECU_IMPOSSIBLE", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(CaisseClotureeException.class)

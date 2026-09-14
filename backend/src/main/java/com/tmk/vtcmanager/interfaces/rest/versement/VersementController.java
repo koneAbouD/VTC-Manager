@@ -51,7 +51,8 @@ public class VersementController {
                 request.modeEncaissement(), request.dateEncaissement(),
                 request.reference(), request.commentaire()));
         return new VersementEnregistreResponse(enregistre.versementId(),
-                enregistre.encaissementRecetteId(), enregistre.encaissementCotisationId());
+                enregistre.encaissementRecetteId(), enregistre.encaissementCotisationId(),
+                enregistre.operationIds());
     }
 
     /**
@@ -71,7 +72,8 @@ public class VersementController {
         return new VersementLotResponse(reussis, resultats.size() - reussis,
                 resultats.stream()
                         .map(r -> new VersementLotResponse.ResultatResponse(r.ligneRecetteId(),
-                                r.ligneCotisationId(), r.succes(), r.versementId(), r.message()))
+                                r.ligneCotisationId(), r.succes(), r.versementId(), r.message(),
+                                r.operationIds()))
                         .toList());
     }
 

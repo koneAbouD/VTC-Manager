@@ -1,20 +1,20 @@
 /// Le reçu qu'un chauffeur reçoit après avoir versé : ce qu'il a payé, pour
 /// quelles journées, et ce qu'il doit encore.
 ///
-/// Le reçu voyage en **texte** : WhatsApp n'accepte pas de pièce jointe par
-/// lien, et un message lisible d'un coup d'œil vaut mieux, sur le terrain,
-/// qu'un PDF à ouvrir. La mise en forme suit celle de WhatsApp — `*gras*`.
+/// Rédigé pour être lu d'un coup d'œil sur un téléphone : le montant reçu en
+/// premier et en gras, la ventilation ensuite, le solde pour finir. Les
+/// montants sont en FCFA — la monnaie que le chauffeur lit sur ses billets, et
+/// celle des documents PDF de l'application. La mise en forme suit celle de
+/// WhatsApp (`*gras*`).
 ///
 /// Ce fichier ne fait que composer une chaîne : aucun accès réseau, aucun
-/// contexte Flutter. L'envoi proprement dit est dans `whatsapp.dart`.
+/// contexte Flutter.
 library;
 
 import 'package:intl/intl.dart';
 
-import 'currency_formatter.dart';
-
-/// Nom qui coiffe le reçu. Seul endroit à changer si l'entreprise change de
-/// nom ou si l'application sert un autre exploitant.
+/// Nom qui signe le reçu. Seul endroit à changer si l'entreprise change de
+/// nom ; le PDF, rendu par le serveur, porte la même signature.
 const String nomEntrepriseRecu = 'TMK';
 
 /// Une créance soldée par le versement — une journée de recette, la cotisation
@@ -29,11 +29,12 @@ class LigneRecu {
 /// De quoi rédiger le reçu d'un versement, qu'il solde une seule journée ou
 /// plusieurs d'un même geste de caisse.
 class RecuPaiement {
+  /// Nom complet, prénom en tête : c'est lui qui salue le chauffeur.
   final String? chauffeur;
   final String? vehicule;
 
-  /// Ce que le versement a soldé. Une seule ligne : le reçu annonce un
-  /// montant ; plusieurs : il les détaille puis en donne le total.
+  /// Ce que le versement a soldé. Une seule ligne : le reçu la nomme ;
+  /// plusieurs : il les détaille, montant par montant.
   final List<LigneRecu> lignes;
 
   /// Null quand l'écriture n'en porte pas : le reçu se tait plutôt que
@@ -61,56 +62,71 @@ class RecuPaiement {
 }
 
 final _dateFmt = DateFormat('dd/MM/yyyy');
+final _montantFmt = NumberFormat('#,##0', 'fr_FR');
 
-/// Compose le message du reçu. Les champs vides sont omis : un reçu qui
-/// annonce « Véhicule : null » décrédibilise le versement qu'il atteste.
-String composerRecu(RecuPaiement recu) {
-  final lignes = <String>[
-    '*REÇU DE PAIEMENT*',
-    nomEntrepriseRecu,
-    '',
+/// Un montant tel que le reçu l'écrit : « 15 000 FCFA ».
+String montantRecu(double montant) => '${_montantFmt.format(montant)} FCFA';
+
+/// Compose le message du reçu.
+///
+/// [avecPieceJointe] : le message accompagne le reçu PDF, il le signale. Les
+/// champs absents sont omis — un reçu qui annonce « Véhicule : null »
+/// décrédibilise le versement qu'il atteste.
+String composerRecu(RecuPaiement recu, {bool avecPieceJointe = false}) {
+  final prenom = _prenom(recu.chauffeur);
+  final mode = _modeEnPhrase(recu.modePaiement);
+  final reception = [
+    'nous avons bien reçu *${montantRecu(recu.total)}*',
+    'le ${_dateFmt.format(recu.date)}',
+    if (mode != null) mode,
+  ].join(' ');
+
+  // Une seule créance : le montant est déjà dit, on la nomme. Plusieurs : le
+  // chauffeur doit voir quelles journées sont couvertes, et pour combien.
+  final corps = <String>[
+    prenom == null ? 'Bonjour,' : 'Bonjour $prenom,',
+    if (recu.lignes.length == 1) ...[
+      '$reception.',
+      '• ${recu.lignes.single.libelle}',
+    ] else ...[
+      '$reception :',
+      for (final ligne in recu.lignes)
+        '• ${ligne.libelle} : ${montantRecu(ligne.montant)}',
+    ],
   ];
 
-  if (recu.chauffeur != null && recu.chauffeur!.trim().isNotEmpty) {
-    lignes.add('Chauffeur : ${recu.chauffeur!.trim()}');
-  }
-  if (recu.vehicule != null && recu.vehicule!.trim().isNotEmpty) {
-    lignes.add('Véhicule : ${recu.vehicule!.trim()}');
-  }
-  if (lignes.last.isNotEmpty) lignes.add('');
+  final solde = <String>[
+    if (recu.resteDu != null)
+      recu.resteDu! <= 0
+          ? 'Vous êtes à jour.'
+          : 'Reste à payer : *${montantRecu(recu.resteDu!)}*',
+    if (_renseigne(recu.vehicule) || _renseigne(recu.reference))
+      [
+        if (_renseigne(recu.vehicule)) 'Véhicule ${recu.vehicule!.trim()}',
+        if (_renseigne(recu.reference)) 'Réf. ${recu.reference!.trim()}',
+      ].join(' · '),
+  ];
 
-  // Une seule créance soldée se lit mieux en une ligne ; plusieurs méritent le
-  // détail, sans quoi le chauffeur ne sait pas quelles journées sont couvertes.
-  if (recu.lignes.length == 1) {
-    lignes.add(recu.lignes.single.libelle);
-    lignes.add('*Montant reçu : ${CurrencyFormatter.format(recu.total)}*');
-  } else {
-    for (final l in recu.lignes) {
-      lignes.add('• ${l.libelle} : ${CurrencyFormatter.format(l.montant)}');
-    }
-    lignes.add('*Total reçu : ${CurrencyFormatter.format(recu.total)}*');
-  }
+  return [
+    ['✅ *Paiement reçu — $nomEntrepriseRecu*'],
+    corps,
+    solde,
+    if (avecPieceJointe) ['📎 Le reçu détaillé est joint en PDF.'],
+    ['Merci et bonne route !'],
+  ].where((bloc) => bloc.isNotEmpty).map((bloc) => bloc.join('\n')).join('\n\n');
+}
 
-  lignes.add('');
-  if (recu.modePaiement != null && recu.modePaiement!.trim().isNotEmpty) {
-    lignes.add('Mode : ${recu.modePaiement!.trim()}');
-  }
-  lignes.add('Date : ${_dateFmt.format(recu.date)}');
+bool _renseigne(String? valeur) => valeur != null && valeur.trim().isNotEmpty;
 
-  if (recu.reference != null && recu.reference!.trim().isNotEmpty) {
-    lignes.add('Réf. : ${recu.reference!.trim()}');
-  }
+/// Le prénom, premier mot du nom complet (« Jean Kouassi » → « Jean »).
+String? _prenom(String? nomComplet) {
+  if (!_renseigne(nomComplet)) return null;
+  return nomComplet!.trim().split(RegExp(r'\s+')).first;
+}
 
-  if (recu.resteDu != null) {
-    lignes.add('');
-    lignes.add(recu.resteDu! <= 0
-        ? 'Solde : à jour'
-        : 'Reste dû : ${CurrencyFormatter.format(recu.resteDu!)}');
-  }
-
-  lignes
-    ..add('')
-    ..add('Merci.');
-
-  return lignes.join('\n');
+/// « en espèces », « par Mobile Money » : le mode lu dans la phrase.
+String? _modeEnPhrase(String? mode) {
+  if (!_renseigne(mode)) return null;
+  final m = mode!.trim();
+  return m.toLowerCase().contains('esp') ? 'en espèces' : 'par $m';
 }

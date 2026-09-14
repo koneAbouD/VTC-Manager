@@ -46,11 +46,15 @@ class ImputationLot {
   final double jumelle;
   final double restant;
 
+  /// Écritures produites pour cette journée : ce que le reçu PDF atteste.
+  final List<int> operationIds;
+
   const ImputationLot({
     required this.ligneId,
     required this.principal,
     required this.jumelle,
     required this.restant,
+    this.operationIds = const [],
   });
 
   double get total => principal + jumelle;
@@ -82,6 +86,7 @@ class ExecuteurLotJumele {
             principal: e.value.principal,
             jumelle: e.value.jumelle,
             restant: _restants[e.key]?.total ?? 0,
+            operationIds: List.unmodifiable(e.value.operationIds),
           ),
       ];
 
@@ -143,6 +148,7 @@ class ExecuteurLotJumele {
         final cumul = _imputees.putIfAbsent(v.ligneId, () => _Impute());
         cumul.principal += v.principal;
         cumul.jumelle += v.jumelle;
+        cumul.operationIds.addAll(verdict!.operationIds);
         reussies.add(v.ligneId);
       } else {
         echecs[v.ligneId] = verdict?.message ?? 'Encaissement refusé.';
@@ -161,7 +167,7 @@ class ExecuteurLotJumele {
 /// son verdict.
 ResultatEncaissementLot verdictsParLigne(
   List<VersementDeLigne> versements,
-  List<({bool succes, String? message})> verdicts,
+  List<({bool succes, String? message, List<int> operationIds})> verdicts,
 ) {
   final resultats = [
     for (var i = 0; i < versements.length && i < verdicts.length; i++)
@@ -169,6 +175,7 @@ ResultatEncaissementLot verdictsParLigne(
         ligneId: versements[i].ligneId,
         succes: verdicts[i].succes,
         message: verdicts[i].message,
+        operationIds: verdicts[i].operationIds,
       ),
   ];
   final reussis = resultats.where((r) => r.succes).length;
@@ -182,6 +189,7 @@ ResultatEncaissementLot verdictsParLigne(
 class _Impute {
   double principal = 0;
   double jumelle = 0;
+  final List<int> operationIds = [];
 }
 
 class _Restants {

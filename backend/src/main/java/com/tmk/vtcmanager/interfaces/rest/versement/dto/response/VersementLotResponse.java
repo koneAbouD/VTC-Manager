@@ -17,6 +17,8 @@ public record VersementLotResponse(
             Long ligneCotisationId,
             boolean succes,
             UUID versementId,
-            String message
+            String message,
+            /** Écritures produites par un versement accepté, pour le reçu PDF. */
+            List<Long> operationIds
     ) {}
 }
