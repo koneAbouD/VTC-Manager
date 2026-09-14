@@ -4,14 +4,15 @@ import 'package:intl/intl.dart';
 
 import '../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../core/widgets/encaissement_lot_dialog.dart';
-import 'encaissement_lot_jumele.dart';
-import '../../features/cotisation/domain/entities/encaissement_cotisation.dart';
 import '../../features/cotisation/domain/entities/ligne_cotisation.dart';
 import '../../features/cotisation/domain/entities/ligne_cotisation_filtres.dart';
 import '../../features/cotisation/presentation/providers/ligne_cotisation_provider.dart';
-import '../../features/recette/domain/entities/encaissement.dart';
 import '../../features/recette/domain/entities/ligne_recette.dart';
 import '../../features/recette/presentation/providers/ligne_recette_provider.dart';
+import '../../features/operation_financiere/domain/enums/mode_paiement.dart';
+import '../../features/versement/domain/entities/encaissement_versement.dart';
+import '../../features/versement/domain/repositories/versement_repository.dart';
+import '../../features/versement/presentation/providers/versement_provider.dart';
 
 // ── Palette des deux natures de ligne (identique aux fiches détail) ───────────
 
@@ -44,6 +45,9 @@ Future<LigneJumelleEncaissement?> chercherCotisationDuMemeJour(
     dateFin:     jour,
   ));
 
+  // Pris maintenant : la feuille s'ouvre ensuite, et le versement part plus tard.
+  final versements = ref.read(versementRepositoryProvider);
+
   return resultat.fold((_) => null, (lignes) {
     for (final c in lignes) {
       if (!c.estActive || c.id == null) continue;
@@ -59,20 +63,14 @@ Future<LigneJumelleEncaissement?> chercherCotisationDuMemeJour(
         montantRestant: restant,
         couleur:        _kOrangeCotisation,
         icone:          Icons.analytics_outlined,
-        onEncaisser: (saisie) async {
-          final enc = EncaissementCotisation(
-            ligneCotisationId: c.id!,
-            montant:           saisie.montant,
-            modeEncaissement:  saisie.mode == ModeEncaissementSaisie.mobileMoney
-                ? ModePaiementCotisation.mobileMoney
-                : ModePaiementCotisation.especes,
-            dateEncaissement:  saisie.date,
-            reference:         saisie.reference,
-            commentaire:       saisie.commentaire,
-          );
-          final r = await repo.createEncaissement(c.id!, enc);
-          return r.fold((f) => f.message, (_) => null);
-        },
+        encaisserEnsemble: (principale, jumelle) => _encaisserVersement(
+          versements,
+          recette: principale == null
+              ? null
+              : PartVersement(ligneId: ligne.id!, montant: principale.montant),
+          cotisation: PartVersement(ligneId: c.id!, montant: jumelle.montant),
+          saisie: jumelle,
+        ),
       );
     }
     return null;
@@ -94,6 +92,8 @@ Future<LigneJumelleEncaissement?> chercherRecetteDuMemeJour(
     dateFin:     jour,
   );
 
+  final versements = ref.read(versementRepositoryProvider);
+
   return resultat.fold((_) => null, (lignes) {
     for (final r in lignes) {
       if (!r.estActive || r.id == null) continue;
@@ -110,20 +110,14 @@ Future<LigneJumelleEncaissement?> chercherRecetteDuMemeJour(
         montantRestant: restant,
         couleur:        _kVertRecette,
         icone:          Icons.account_balance_wallet_outlined,
-        onEncaisser: (saisie) async {
-          final enc = Encaissement(
-            ligneRecetteId:   r.id!,
-            montant:          saisie.montant,
-            modeEncaissement: saisie.mode == ModeEncaissementSaisie.mobileMoney
-                ? ModeEncaissement.mobileMoney
-                : ModeEncaissement.especes,
-            dateEncaissement: saisie.date,
-            reference:        saisie.reference,
-            commentaire:      saisie.commentaire,
-          );
-          final res = await repo.createEncaissement(r.id!, enc);
-          return res.fold((f) => f.message, (_) => null);
-        },
+        encaisserEnsemble: (principale, jumelle) => _encaisserVersement(
+          versements,
+          recette: PartVersement(ligneId: r.id!, montant: jumelle.montant),
+          cotisation: principale == null
+              ? null
+              : PartVersement(ligneId: ligne.id!, montant: principale.montant),
+          saisie: jumelle,
+        ),
       );
     }
     return null;
@@ -194,20 +188,26 @@ Future<Map<int, JumelleLot>> chercherCotisationsDuMemeJour(
 String _cle(int vehiculeId, int chauffeurId, DateTime jour) =>
     '$vehiculeId/$chauffeurId/${DateUtils.dateOnly(jour).toIso8601String()}';
 
-// ── Envoi du lot des créances sœurs ───────────────────────────────────────────
+// ── Un billet pour deux créances ──────────────────────────────────────────────
 
-/// Les deux natures ont leur endpoint : cette fabrique donne à la liste des
-/// recettes l'envoi des cotisations, sans qu'elle ait à connaître la feature
-/// voisine.
-
-/// Pour un lot de recettes : le lot des cotisations du même jour.
-EnvoiLot envoiLotCotisations(WidgetRef ref) => (imputations, saisie) =>
-    ref.read(ligneCotisationRepositoryProvider).createEncaissementsLot(
-          lignes: imputations,
-          modeEncaissement: saisie.mode == ModeEncaissementSaisie.mobileMoney
-              ? ModePaiementCotisation.mobileMoney
-              : ModePaiementCotisation.especes,
-          dateEncaissement: saisie.date,
-          reference: saisie.reference,
-          commentaire: saisie.commentaire,
-        );
+/// Encaisse la recette et la cotisation du jour d'un seul versement : le serveur
+/// les rattache à la même pièce de caisse, et refuse les deux si l'une l'est.
+/// La saisie commune — mode, date, référence — vient de la feuille.
+Future<String?> _encaisserVersement(
+  VersementRepository versements, {
+  PartVersement? recette,
+  PartVersement? cotisation,
+  required SaisieEncaissement saisie,
+}) async {
+  final resultat = await versements.encaisser(
+    recette: recette,
+    cotisation: cotisation,
+    mode: saisie.mode == ModeEncaissementSaisie.mobileMoney
+        ? ModePaiement.MOBILE_MONEY
+        : ModePaiement.ESPECES,
+    date: saisie.date,
+    reference: saisie.reference,
+    commentaire: saisie.commentaire,
+  );
+  return resultat.fold((f) => f.message, (_) => null);
+}

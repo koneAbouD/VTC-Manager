@@ -97,16 +97,10 @@ class IssueLot {
   final Set<int> reussies;
   final Map<int, String> echecs;
 
-  /// Nouveau reste à imputer, pour une ligne dont une moitié seulement est
-  /// passée : la créance sœur a été réglée mais pas la principale, ou
-  /// l'inverse. Sans cela, réessayer rejouerait la part déjà encaissée.
-  final Map<int, RestantsLigne> restantsAjustes;
-
   const IssueLot({
     this.erreurGlobale,
     this.reussies = const {},
     this.echecs = const {},
-    this.restantsAjustes = const {},
   });
 
   factory IssueLot.erreur(String message) => IssueLot(erreurGlobale: message);
@@ -121,18 +115,6 @@ class IssueLot {
             r.ligneId: r.message ?? 'Encaissement refusé.',
         },
       );
-}
-
-/// Ce qu'il reste à imputer sur une ligne, créance par créance. La feuille en
-/// a besoin décomposé : la case de la créance sœur ne doit rouvrir que ce qui
-/// lui revient encore.
-class RestantsLigne {
-  final double principal;
-  final double jumelle;
-
-  const RestantsLigne({required this.principal, required this.jumelle});
-
-  double get total => principal + jumelle;
 }
 
 /// Ouvre la feuille d'encaissement de masse.
@@ -213,10 +195,6 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
   /// Motif de refus par ligne, affiché sous la créance concernée.
   final Map<int, String> _echecs = {};
 
-  /// Reste à imputer révisé, quand une moitié du versement est déjà passée :
-  /// la créance sœur a été réglée mais pas la principale, ou l'inverse.
-  final Map<int, RestantsLigne> _restantsRevises = {};
-
   /// Créances sœurs écartées du versement. Cochées par défaut : le chauffeur
   /// règle le plus souvent la journée entière d'un seul coup.
   final Set<int> _jumellesExclues = {};
@@ -225,10 +203,10 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
       ligne.jumelle != null && !_jumellesExclues.contains(ligne.id);
 
   double _restantPrincipal(LigneLotEncaissable ligne) =>
-      _restantsRevises[ligne.id]?.principal ?? ligne.restant;
+      ligne.restant;
 
   double _restantJumelle(LigneLotEncaissable ligne) =>
-      _restantsRevises[ligne.id]?.jumelle ?? ligne.jumelle?.restant ?? 0;
+      ligne.jumelle?.restant ?? 0;
 
   /// Ce qu'une ligne peut encore recevoir : sa créance, plus celle du même
   /// jour tant qu'elle est cochée.
@@ -372,21 +350,6 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
       _erreurGlobale = issue.erreurGlobale;
       _reussies.addAll(issue.reussies);
       _echecs.addAll(issue.echecs);
-
-      // Une ligne dont une moitié est passée ne doit plus proposer que le
-      // reste : sans cela, réessayer rejouerait la part déjà encaissée.
-      issue.restantsAjustes.forEach((ligneId, restants) {
-        if (restants.total <= 0) {
-          _reussies.add(ligneId);
-          _echecs.remove(ligneId);
-          return;
-        }
-        _restantsRevises[ligneId] = restants;
-        // La créance sœur ne se recoche que s'il lui reste quelque chose.
-        if (restants.jumelle <= 0) _jumellesExclues.add(ligneId);
-        _montants[ligneId]?.text = formatMontantSaisie(
-            restants.jumelle > 0 ? restants.total : restants.principal);
-      });
     });
 
     // Rien à corriger : la feuille se referme et la liste se rafraîchit.

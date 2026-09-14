@@ -16,6 +16,8 @@ import 'operation_financiere_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../screens/home_nav_provider.dart';
 import '../../../../screens/finance/finance_refresh.dart';
+import '../widgets/ligne_journal.dart';
+import '../widgets/versement_card.dart';
 
 enum _FiltreMode { mois, semaine, jour, periode }
 
@@ -326,6 +328,9 @@ class _OperationsFinancieresPageState
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
     final state = ref.watch(operationsListeProvider);
     final ops = state.items;
+    // Les écritures d'un même billet se lisent en une ligne ; les chips et les
+    // filtres, eux, continuent de compter chaque écriture pour ce qu'elle est.
+    final lignes = regrouperParVersement(ops);
 
     // Montant par catégorie calculé côté backend (mêmes filtres hors catégorie) :
     // chaque chip affiche toujours son propre montant, même filtre catégorie actif.
@@ -428,33 +433,48 @@ class _OperationsFinancieresPageState
                               sliver: SliverList(
                                 delegate: SliverChildBuilderDelegate(
                                   (_, i) {
-                                    if (i >= ops.length) {
+                                    if (i >= lignes.length) {
                                       return const _LoadMoreTile();
                                     }
-                                    final op = ops[i];
-                                    return _OpCard(
-                                      op: op,
-                                      money: money,
-                                      onTap: () async {
-                                        await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                OperationFinanciereDetailPage(
-                                              operation: op,
-                                            ),
+                                    final ligne = lignes[i];
+                                    // Un versement s'ouvre sur son écriture de
+                                    // tête : le détail montre la sœur.
+                                    final op = switch (ligne) {
+                                      EcritureSeule(:final operation) =>
+                                        operation,
+                                      VersementRegroupe(:final tete) => tete,
+                                    };
+                                    Future<void> ouvrir() async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              OperationFinanciereDetailPage(
+                                            operation: op,
                                           ),
-                                        );
-                                        if (!mounted) return;
-                                        ref
-                                            .read(operationsListeProvider
-                                                .notifier)
-                                            .refresh();
-                                      },
-                                    );
+                                        ),
+                                      );
+                                      if (!mounted) return;
+                                      ref
+                                          .read(operationsListeProvider
+                                              .notifier)
+                                          .refresh();
+                                    }
+
+                                    return switch (ligne) {
+                                      EcritureSeule() => _OpCard(
+                                          op: op,
+                                          money: money,
+                                          onTap: ouvrir,
+                                        ),
+                                      VersementRegroupe() => VersementCard(
+                                          versement: ligne,
+                                          onTap: ouvrir,
+                                        ),
+                                    };
                                   },
                                   childCount:
-                                      ops.length + (state.hasMore ? 1 : 0),
+                                      lignes.length + (state.hasMore ? 1 : 0),
                                 ),
                               ),
                             ),

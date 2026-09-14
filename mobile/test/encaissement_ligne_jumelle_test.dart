@@ -4,11 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vtc_manager/core/widgets/encaissement_ligne_dialog.dart';
 
 /// Recette de 15 000 restants, avec la cotisation du même jour (5 000) offerte
-/// à cocher. Les deux callbacks consignent le montant qui leur est adressé.
+/// à cocher. La ligne seule part par `onEncaisser` ; avec sa jumelle, les deux
+/// partent ensemble par `encaisserEnsemble` — un billet, un appel.
 class _Appels {
   final List<double> principal = [];
-  final List<double> jumelle = [];
-  String? erreurJumelle;
+  final List<(double?, double)> ensemble = [];
+  String? erreurEnsemble;
 }
 
 Future<bool?> _resultat = Future.value();
@@ -36,9 +37,9 @@ Future<void> _ouvrir(WidgetTester tester, _Appels appels) async {
                   montantRestant: 5000,
                   couleur: const Color(0xFFE65100),
                   icone: Icons.analytics_outlined,
-                  onEncaisser: (saisie) async {
-                    appels.jumelle.add(saisie.montant);
-                    return appels.erreurJumelle;
+                  encaisserEnsemble: (principale, jumelle) async {
+                    appels.ensemble.add((principale?.montant, jumelle.montant));
+                    return appels.erreurEnsemble;
                   },
                 ),
               );
@@ -112,40 +113,51 @@ void main() {
     expect(_caseJumelle(tester).value, isTrue);
   });
 
-  testWidgets('la soumission répartit le versement sur les deux lignes',
+  testWidgets('avec la jumelle, le versement part en un seul appel réparti',
       (tester) async {
     final appels = _Appels();
     await _ouvrir(tester, appels);
 
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
+    await _tapBouton(tester, 'Encaisser');
+
+    // Un billet, un appel : les deux parts voyagent ensemble.
+    expect(appels.ensemble, [(15000.0, 5000.0)]);
+    expect(appels.principal, isEmpty);
+    expect(await _resultat, isTrue);
+  });
+
+  testWidgets('sans la jumelle, la ligne ouverte part seule', (tester) async {
+    final appels = _Appels();
+    await _ouvrir(tester, appels);
 
     await _tapBouton(tester, 'Encaisser');
 
     expect(appels.principal, [15000]);
-    expect(appels.jumelle, [5000]);
+    expect(appels.ensemble, isEmpty);
     expect(await _resultat, isTrue);
   });
 
-  testWidgets('jumelle en échec : le versement passé n\'est pas rejoué',
-      (tester) async {
-    final appels = _Appels()..erreurJumelle = 'Caisse clôturée';
+  testWidgets(
+      'versement refusé : rien n\'est enregistré, la feuille reste ouverte '
+      'et le même versement peut repartir', (tester) async {
+    final appels = _Appels()..erreurEnsemble = 'Caisse clôturée';
     await _ouvrir(tester, appels);
 
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
     await _tapBouton(tester, 'Encaisser');
 
-    // La recette est passée, la cotisation non : la feuille reste ouverte, le
-    // dit, et ne propose plus que de fermer.
-    expect(appels.principal, [15000]);
-    expect(appels.jumelle, [5000]);
+    // Tout ou rien : le refus est affiché, et le bouton reste « Encaisser » —
+    // aucune moitié n'étant passée, il n'y a rien à protéger d'un rejeu.
     expect(find.textContaining('Caisse clôturée'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Encaisser'), findsOneWidget);
 
-    await _tapBouton(tester, 'Fermer');
+    appels.erreurEnsemble = null;
+    await _tapBouton(tester, 'Encaisser');
 
-    // Aucun second appel : le versement déjà enregistré n'est pas rejoué.
-    expect(appels.principal, [15000]);
+    expect(appels.ensemble, [(15000.0, 5000.0), (15000.0, 5000.0)]);
     expect(await _resultat, isTrue);
   });
 }

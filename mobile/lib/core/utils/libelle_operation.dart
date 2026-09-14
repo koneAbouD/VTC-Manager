@@ -14,6 +14,28 @@ const kCodesCategorieEncaissement = {
 bool estCategorieEncaissement(String? categorieCode) =>
     kCodesCategorieEncaissement.contains(categorieCode?.toUpperCase());
 
+/// Ce qu'un encaissement a soldé, dit au chauffeur : « Recette du 10/09/2026 ».
+///
+/// Le libellé comptable de la catégorie — « Encaissement recettes » — nomme le
+/// geste du guichet, pas la dette du chauffeur : sur un reçu qui lui est
+/// destiné, c'est la créance qu'il faut nommer. Une catégorie inconnue retombe
+/// sur [categorieLibelle], qui reste préférable à un reçu muet.
+String libelleCreanceEncaissee({
+  required String? categorieCode,
+  required String? categorieLibelle,
+  required DateTime date,
+}) {
+  String deux(int n) => n.toString().padLeft(2, '0');
+  final jour = '${deux(date.day)}/${deux(date.month)}/${date.year}';
+  final nature = switch (categorieCode?.toUpperCase()) {
+    'ENCAISSEMENT_RECETTES' => 'Recette',
+    'ENCAISSEMENT_COTISATIONS' => 'Cotisation',
+    'ENCAISSEMENT_PENALITES' => 'Pénalité',
+    _ => categorieLibelle,
+  };
+  return nature == null ? 'Versement du $jour' : '$nature du $jour';
+}
+
 /// Connecteur de date relatif, recalculé à CHAQUE affichage (donc « hier »
 /// devient « avant-hier » le lendemain, etc.) — aucune tâche planifiée requise :
 ///   aujourd'hui   → "d'aujourd'hui"

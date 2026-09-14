@@ -1,10 +1,14 @@
 package com.tmk.vtcmanager.application.usecases.recette;
 
+import com.tmk.vtcmanager.application.domain.cotisation.EncaissementCotisation;
+import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
+import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.domain.recette.Encaissement;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.exception.LigneRecetteDejaSoldeeException;
 import com.tmk.vtcmanager.application.exception.LigneRecetteNotFoundException;
+import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -12,6 +16,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,14 +45,17 @@ class LigneRecetteCycleDeVieTest {
     private static final Long LIGNE_ID = 77L;
 
     private LigneRecetteRepository ligneRecetteRepository;
+    private LigneCotisationRepository ligneCotisationRepository;
     private AnnulerLigneRecetteUseCase annulerUseCase;
     private ConfirmerVersementUseCase confirmerUseCase;
 
     @BeforeEach
     void setUp() {
         ligneRecetteRepository = mock(LigneRecetteRepository.class);
+        ligneCotisationRepository = mock(LigneCotisationRepository.class);
         when(ligneRecetteRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        annulerUseCase = new AnnulerLigneRecetteUseCase(ligneRecetteRepository);
+        when(ligneCotisationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        annulerUseCase = new AnnulerLigneRecetteUseCase(ligneRecetteRepository, ligneCotisationRepository);
         confirmerUseCase = new ConfirmerVersementUseCase(ligneRecetteRepository);
     }
 
@@ -162,6 +171,136 @@ class LigneRecetteCycleDeVieTest {
 
             assertThatThrownBy(() -> annulerUseCase.executer(LIGNE_ID, "erreur"))
                     .isInstanceOf(LigneRecetteNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Annulation des cotisations de la même journée")
+    class AnnulationEnCascade {
+
+        private static final LocalDate JOUR = LocalDate.of(2026, 4, 6);
+
+        private LigneCotisation cotisation(Long id, String nom, int encaisse, StatutLigneCotisation statut) {
+            return LigneCotisation.builder()
+                    .id(id).vehiculeId(5L).chauffeurId(1L).dateCotisation(JOUR)
+                    .nomCotisation(nom)
+                    .montantDu(BigDecimal.valueOf(1_000))
+                    .montantEncaisse(BigDecimal.valueOf(encaisse))
+                    .statut(statut).encaissements(new ArrayList<>())
+                    .build();
+        }
+
+        private void cotisationsDuJour(LigneCotisation... lignes) {
+            when(ligneCotisationRepository.findByVehiculeIdAndDateCotisation(5L, JOUR))
+                    .thenReturn(List.of(lignes));
+        }
+
+        @Test
+        @DisplayName("Sans la demande, les cotisations du jour restent dues")
+        void cascade_non_demandee() {
+            enBase(ligne(StatutLigneRecette.EN_ATTENTE, 0));
+            cotisationsDuJour(cotisation(1L, "Entretien", 0, StatutLigneCotisation.EN_ATTENTE));
+
+            annulerUseCase.executer(LIGNE_ID, "véhicule non sorti");
+
+            verify(ligneCotisationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Toutes les cotisations dues du jour tombent avec la recette, même motif")
+        void cascade_nominale() {
+            enBase(ligne(StatutLigneRecette.EN_ATTENTE, 0));
+            cotisationsDuJour(
+                    cotisation(1L, "Entretien", 0, StatutLigneCotisation.EN_ATTENTE),
+                    cotisation(2L, "Assurance", 0, StatutLigneCotisation.EN_ATTENTE));
+
+            annulerUseCase.executer(LIGNE_ID, "  véhicule non sorti  ", true);
+
+            ArgumentCaptor<LigneCotisation> captor = ArgumentCaptor.forClass(LigneCotisation.class);
+            verify(ligneCotisationRepository, times(2)).save(captor.capture());
+            assertThat(captor.getAllValues()).allSatisfy(c -> {
+                assertThat(c.getStatut()).isEqualTo(StatutLigneCotisation.ANNULEE);
+                assertThat(c.getMotifAnnulation()).isEqualTo("véhicule non sorti");
+                assertThat(c.getAnnuleLe()).isNotNull();
+            });
+        }
+
+        @Test
+        @DisplayName("Une cotisation d'un autre chauffeur du même véhicule est épargnée")
+        void autre_chauffeur() {
+            enBase(ligne(StatutLigneRecette.EN_ATTENTE, 0));
+            LigneCotisation autre = cotisation(9L, "Entretien", 0, StatutLigneCotisation.EN_ATTENTE);
+            autre.setChauffeurId(2L);
+            cotisationsDuJour(autre);
+
+            annulerUseCase.executer(LIGNE_ID, "véhicule non sorti", true);
+
+            verify(ligneCotisationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Une cotisation déjà servie est écartée sans faire échouer l'annulation")
+        void cotisation_avec_versement() {
+            // Elle touche la trésorerie : il faut d'abord contre-passer ses
+            // versements. La recette, elle, doit tout de même être annulée.
+            enBase(ligne(StatutLigneRecette.EN_ATTENTE, 0));
+            LigneCotisation servie = cotisation(3L, "Entretien", 1_000, StatutLigneCotisation.ENCAISSE);
+            cotisationsDuJour(servie, cotisation(4L, "Assurance", 0, StatutLigneCotisation.EN_ATTENTE));
+
+            LigneRecette annulee = annulerUseCase.executer(LIGNE_ID, "véhicule non sorti", true);
+
+            assertThat(annulee.getStatut()).isEqualTo(StatutLigneRecette.ANNULEE);
+            ArgumentCaptor<LigneCotisation> captor = ArgumentCaptor.forClass(LigneCotisation.class);
+            verify(ligneCotisationRepository).save(captor.capture());
+            assertThat(captor.getValue().getId()).isEqualTo(4L);
+        }
+
+        @Test
+        @DisplayName("Une cotisation portant un encaissement qui tient est écartée")
+        void cotisation_avec_encaissement_attache() {
+            enBase(ligne(StatutLigneRecette.EN_ATTENTE, 0));
+            LigneCotisation avecEncaissement =
+                    cotisation(5L, "Entretien", 0, StatutLigneCotisation.EN_ATTENTE);
+            avecEncaissement.setEncaissements(new ArrayList<>(List.of(
+                    EncaissementCotisation.builder().id(1L).montant(BigDecimal.ZERO).build())));
+            cotisationsDuJour(avecEncaissement);
+
+            annulerUseCase.executer(LIGNE_ID, "véhicule non sorti", true);
+
+            verify(ligneCotisationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Une cotisation déjà annulée ou restituée n'est pas retouchée")
+        void cotisation_hors_jeu() {
+            enBase(ligne(StatutLigneRecette.EN_ATTENTE, 0));
+            cotisationsDuJour(
+                    cotisation(6L, "Entretien", 0, StatutLigneCotisation.ANNULEE),
+                    cotisation(7L, "Assurance", 0, StatutLigneCotisation.RESTITUEE));
+
+            annulerUseCase.executer(LIGNE_ID, "véhicule non sorti", true);
+
+            verify(ligneCotisationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Une recette déjà annulée n'entraîne rien")
+        void recette_deja_annulee() {
+            enBase(ligne(StatutLigneRecette.ANNULEE, 0));
+
+            annulerUseCase.executer(LIGNE_ID, "second motif", true);
+
+            verify(ligneCotisationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Une recette refusée laisse les cotisations intactes")
+        void recette_refusee() {
+            enBase(ligne(StatutLigneRecette.PARTIELLEMENT_ENCAISSE, 5_000));
+
+            assertThatThrownBy(() -> annulerUseCase.executer(LIGNE_ID, "erreur", true))
+                    .isInstanceOf(IllegalStateException.class);
+            verify(ligneCotisationRepository, never()).save(any());
         }
     }
 

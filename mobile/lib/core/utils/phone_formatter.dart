@@ -67,6 +67,35 @@ class PhoneFormatter {
   /// et servir aux comparaisons.
   static String chiffres(String? raw) =>
       (raw ?? '').replaceAll(_nonChiffre, '');
+
+  /// Nombre de chiffres en dessous duquel un numéro ne désigne plus personne :
+  /// une fiche à moitié remplie ne doit pas ouvrir une conversation au hasard.
+  static const _minimumJoignable = 8;
+
+  /// Le numéro sous la forme qu'attendent les liens WhatsApp — que des
+  /// chiffres, indicatif compris, sans « + ». Null si la fiche ne porte rien
+  /// d'exploitable : l'appelant s'abstient alors plutôt que d'écrire à un
+  /// numéro inventé.
+  ///
+  /// Les fiches chauffeur portent indifféremment « 07 12 34 56 78 »,
+  /// « +225 07 12 34 56 78 » ou « 00225 07... » : ce qui est déjà international
+  /// est conservé, le reste reçoit l'indicatif du pays.
+  static String? international(String? raw, {String indicatif = _indicatifCI}) {
+    final s = (raw ?? '').trim();
+    final d = s.replaceAll(_nonChiffre, '');
+    if (d.length < _minimumJoignable) return null;
+
+    // Formes qui annoncent elles-mêmes leur indicatif.
+    if (s.startsWith('+')) return d;
+    if (d.startsWith('00')) return d.substring(2);
+
+    // Même garde-fou qu'à l'affichage : « 22 51 23 45 67 » est un numéro local
+    // qui commence par 225 sans être préfixé — le préfixer à nouveau serait
+    // aussi faux que de le prendre pour un international.
+    if (d.startsWith(indicatif) && d.length > _longueurLocaleCI) return d;
+
+    return '$indicatif$d';
+  }
 }
 
 /// Insère les espaces séparateurs pendant la saisie du numéro d'abonné, sans

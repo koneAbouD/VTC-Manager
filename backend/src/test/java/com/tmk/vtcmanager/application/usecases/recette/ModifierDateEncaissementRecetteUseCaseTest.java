@@ -35,6 +35,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.util.UUID;
 
 /**
  * Correction de la date d'un versement de recette.
@@ -250,5 +251,26 @@ class ModifierDateEncaissementRecetteUseCaseTest {
                 .isInstanceOf(EcritureFigeeException.class);
 
         verify(modificationDateService).verifierVersement(SAISIE_LE, CAISSE, true);
+    }
+
+    @Test
+    @DisplayName("Redater une moitié de versement le défait : ses écritures redeviennent isolées")
+    void defait_le_versement() {
+        UUID versement = UUID.randomUUID();
+        OperationFinanciere ecriture = operation();
+        ecriture.setVersementId(versement);
+        when(operationFinanciereRepository.findById(OPERATION_ID)).thenReturn(Optional.of(ecriture));
+
+        useCase.executer(LIGNE_ID, ENCAISSEMENT_ID, REELLEMENT_LE);
+
+        verify(operationFinanciereRepository).detacherVersement(versement);
+    }
+
+    @Test
+    @DisplayName("Une écriture isolée n'a aucun versement à défaire")
+    void rien_a_defaire() {
+        useCase.executer(LIGNE_ID, ENCAISSEMENT_ID, REELLEMENT_LE);
+
+        verify(operationFinanciereRepository, never()).detacherVersement(any());
     }
 }

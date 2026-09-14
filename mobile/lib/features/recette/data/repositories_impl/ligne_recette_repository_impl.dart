@@ -136,9 +136,11 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
   }
 
   @override
-  Future<Either<Failure, LigneRecette>> annuler(int id, String motif) async {
+  Future<Either<Failure, LigneRecette>> annuler(int id, String motif,
+      {bool annulerCotisationsLiees = false}) async {
     try {
-      return Right(await _datasource.annuler(id, motif));
+      return Right(await _datasource.annuler(id, motif,
+          annulerCotisationsLiees: annulerCotisationsLiees));
     } on ApiException catch (e) {
       return Left(_mapApiException(e));
     } on NetworkException catch (e) {

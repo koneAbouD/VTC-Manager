@@ -70,6 +70,12 @@ public class ModifierDateEncaissementCotisationUseCase {
         if (operation != null) {
             operation.setDateOperation(nouvelleDate);
             operationFinanciereRepository.save(operation);
+            // Un versement se lit à un seul jour. Déplacer l'une de ses
+            // écritures sans sa sœur ferait mentir la pièce de caisse : elles
+            // redeviennent deux encaissements, chacun à sa date.
+            if (operation.getVersementId() != null) {
+                operationFinanciereRepository.detacherVersement(operation.getVersementId());
+            }
         }
 
         return ligneCotisationRepository.findById(ligneCotisationId)

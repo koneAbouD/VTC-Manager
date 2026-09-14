@@ -15,6 +15,11 @@ import '../providers/operation_financiere_state.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import 'operation_financiere_form_page.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
+import '../../../../core/utils/libelle_operation.dart';
+import '../../../../core/utils/recu_paiement.dart';
+import '../../../../core/utils/whatsapp.dart';
+import '../../../versement/presentation/providers/versement_provider.dart';
+import '../../../versement/presentation/recu_versement.dart';
 
 /// Page de détail d'une opération financière.
 ///
@@ -173,7 +178,33 @@ class _DetailBody extends ConsumerWidget {
           ]),
         ],
 
+        // ── Versement (pièce de caisse) ───────────────────────────────────
+        //
+        // L'écriture fait partie d'un billet qui en a produit une autre : la
+        // ventilation montre les deux, ce que le billet vaut encore et ce qui
+        // reste dû. Chaque écriture garde, elle, ses propres actions.
+        if (op.versementId != null)
+          _VersementSection(versementId: op.versementId!, operationId: op.id),
+
         const SizedBox(height: 8),
+
+        // ── Reçu au chauffeur ─────────────────────────────────────────────
+        //
+        // Seulement sur ce que le chauffeur a versé — recette, cotisation,
+        // pénalité — et seulement si l'écriture tient encore : une extourne,
+        // ou l'écriture qu'elle a neutralisée, n'atteste plus aucun paiement.
+        // Une dépense de garage ne se « reçoit » pas davantage.
+        if (op.estEncaissement &&
+            !op.estUneExtourne &&
+            !op.estExtournee &&
+            op.statut != StatutOperation.ANNULEE)
+          PremiumButton(
+            label: 'Envoyer le reçu',
+            icon: Icons.send_outlined,
+            color: AppColors.success,
+            filled: false,
+            onPressed: () => _envoyerRecu(context, ref),
+          ),
 
         // ── Actions ───────────────────────────────────────────────────────
         //
@@ -224,6 +255,70 @@ class _DetailBody extends ConsumerWidget {
     );
   }
 
+  /// Fait parvenir au chauffeur le reçu de son versement, par WhatsApp.
+  ///
+  /// L'application ne fait que rédiger et rediriger : c'est le guichetier qui
+  /// envoie depuis WhatsApp. Rien n'est donc enregistré ici — ni date d'envoi,
+  /// ni accusé — puisque rien ne revient le confirmer.
+  ///
+  /// Le reçu ne dit pas le reste dû : l'écriture ne porte pas la créance qui
+  /// l'a produite, et un solde deviné serait pire que pas de solde du tout.
+  Future<void> _envoyerRecu(BuildContext context, WidgetRef ref) async {
+    // Une écriture d'un versement : le reçu couvre le billet entier — la
+    // recette et la cotisation du jour — et redit ce qui reste dû, que la
+    // pièce de caisse connaît et que l'écriture seule ignore. Si la pièce ne
+    // se lit pas, le reçu de l'écriture seule reste possible.
+    final versementId = op.versementId;
+    if (versementId != null) {
+      final lu =
+          await ref.read(versementRepositoryProvider).getVersement(versementId);
+      if (!context.mounted) return;
+      final versement = lu.fold((_) => null, (v) => v);
+      if (versement != null && versement.actives.isNotEmpty) {
+        await _ouvrirWhatsApp(
+          context,
+          versement.chauffeurTelephone ?? op.chauffeurTelephone,
+          composerRecu(recuDuVersement(versement)),
+        );
+        return;
+      }
+    }
+
+    final message = composerRecu(RecuPaiement(
+      chauffeur: op.chauffeurNom,
+      vehicule: op.vehiculeNom,
+      lignes: [
+        LigneRecu(
+          libelle: libelleCreanceEncaissee(
+            categorieCode: op.categorieCode,
+            categorieLibelle: op.categorieLibelle,
+            // La date métier : c'est la journée réglée qui parle au chauffeur,
+            // pas le jour où l'écriture a été passée.
+            date: op.dateAffichee,
+          ),
+          montant: op.montant,
+        ),
+      ],
+      modePaiement: op.modePaiement?.libelle,
+      date: op.dateOperation,
+      reference: op.reference,
+    ));
+
+    await _ouvrirWhatsApp(context, op.chauffeurTelephone, message);
+  }
+
+  Future<void> _ouvrirWhatsApp(
+      BuildContext context, String? telephone, String message) async {
+    try {
+      await ouvrirWhatsApp(telephone: telephone, message: message);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("WhatsApp n'a pas pu être ouvert sur cet appareil."),
+          backgroundColor: AppColors.error));
+    }
+  }
+
   Future<void> _supprimer(BuildContext context, WidgetRef ref) async {
     final id = op.id;
     if (id == null) return;
@@ -260,3 +355,56 @@ class _DetailBody extends ConsumerWidget {
   }
 }
 
+// ── Versement ──────────────────────────────────────────────────────────────
+
+/// La pièce de caisse dont l'écriture fait partie : ses imputations, ce que le
+/// billet vaut encore, ce qui reste dû. Relue au serveur — l'écriture ouverte
+/// ne connaît ni sa sœur ni les créances qu'elles soldent.
+class _VersementSection extends ConsumerWidget {
+  final String versementId;
+  final int? operationId;
+
+  const _VersementSection({required this.versementId, required this.operationId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final money =
+        NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
+    final jour = DateFormat('dd/MM/yyyy', 'fr_FR');
+
+    return ref.watch(versementProvider(versementId)).when(
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: LinearProgressIndicator(minHeight: 2),
+          ),
+          // Un complément : son absence ne doit pas masquer l'écriture.
+          error: (_, __) => const SizedBox.shrink(),
+          data: (v) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 2),
+              DetailLabel(Icons.receipt_long_outlined,
+                  'Versement du ${jour.format(v.dateEncaissement)}'),
+              DetailInfoCard(children: [
+                for (final i in v.imputations)
+                  DetailInfoRow(
+                    // L'écriture ouverte se distingue de sa sœur.
+                    i.operationId == operationId
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    '${i.libelle ?? 'Imputation'}'
+                    '${i.dateReference != null ? ' du ${jour.format(i.dateReference!)}' : ''}',
+                    i.annulee
+                        ? '${money.format(i.montant)} · annulée'
+                        : money.format(i.montant),
+                  ),
+                DetailInfoRow(Icons.functions_rounded, 'Total du billet',
+                    money.format(v.total)),
+                DetailInfoRow(Icons.schedule_outlined, 'Reste dû',
+                    v.resteDu == null ? null : money.format(v.resteDu)),
+              ]),
+            ],
+          ),
+        );
+  }
+}

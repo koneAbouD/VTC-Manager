@@ -16,6 +16,7 @@ import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../core/widgets/reaffectation_chauffeur_sheet.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import '../../../../screens/finance/ligne_jumelle_encaissement.dart';
+import '../../../../screens/finance/ligne_jumelle_annulation.dart';
 
 class LigneRecetteDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -330,12 +331,35 @@ class _DetailBody extends ConsumerWidget {
   }
 
   Future<void> _annuler(BuildContext context, WidgetRef ref) async {
-    final motif = await showMotifAnnulationDialog(context);
-    if (motif == null || !context.mounted) return;
+    // La journée qui tombe emporte le plus souvent ses cotisations : si elles
+    // sont encore dues, le dialog les propose à cocher. Celles déjà servies
+    // n'y figurent pas — le serveur les refuserait tant que leurs versements
+    // n'ont pas été contre-passés.
+    final cotisations = await chercherCotisationsAnnulablesDuMemeJour(ref, ligne);
+    if (!context.mounted) return;
+
+    final fmt =
+        NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
+    final total = cotisations.fold<double>(0, (t, c) => t + c.montantDu);
+
+    final saisie = await showSaisieAnnulationDialog(
+      context,
+      optionLabel: cotisations.isEmpty
+          ? null
+          : cotisations.length == 1
+              ? 'Annuler aussi la cotisation du jour'
+              : 'Annuler aussi les ${cotisations.length} cotisations du jour',
+      optionDetail: cotisations.isEmpty
+          ? null
+          : '${cotisations.map((c) => c.nomCotisation).join(' · ')} — '
+              '${fmt.format(total)}, même motif',
+    );
+    if (saisie == null || !context.mounted) return;
 
     final error = await ref
         .read(ligneRecetteNotifierProvider.notifier)
-        .annuler(ligneId, motif);
+        .annuler(ligneId, saisie.motif,
+            annulerCotisationsLiees: saisie.optionCochee);
     if (!context.mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -344,8 +368,11 @@ class _DetailBody extends ConsumerWidget {
       // Actualise immédiatement le détail + toutes les pages du module Finances.
       ref.invalidate(ligneRecetteDetailProvider(ligneId));
       refreshFinances(ref);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Ligne annulée')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(saisie.optionCochee
+              ? 'Recette et cotisation${cotisations.length > 1 ? 's' : ''} '
+                  'du jour annulées'
+              : 'Ligne annulée')));
     }
   }
 

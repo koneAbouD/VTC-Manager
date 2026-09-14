@@ -47,7 +47,11 @@ abstract interface class LigneRecetteRepository {
     String? commentaire,
   });
 
-  Future<Either<Failure, LigneRecette>> annuler(int id, String motif);
+  /// Annule la recette. Avec [annulerCotisationsLiees], le serveur emporte
+  /// aussi les cotisations encore dues de la même journée (même véhicule, même
+  /// chauffeur) ; celles déjà servies restent en place.
+  Future<Either<Failure, LigneRecette>> annuler(int id, String motif,
+      {bool annulerCotisationsLiees});
 
   /// Remet une ligne annulée en circulation : elle retrouve le statut que
   /// dictent ses versements. Refusé par le serveur si la période est clôturée.

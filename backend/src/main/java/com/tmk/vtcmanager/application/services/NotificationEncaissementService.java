@@ -120,8 +120,8 @@ public class NotificationEncaissementService {
     private void emettre(TypeNotification type, String entiteType, Long entiteId, Long chauffeurId,
                          LocalDate dateEncaissement, Textes pourChauffeur, Textes pourGestion) {
         try {
-            // Un versement réparti entre recette et cotisation arrive en deux
-            // requêtes : la clé les rassemble pour n'en faire sonner qu'une.
+            // Un versement réparti entre recette et cotisation produit deux
+            // encaissements : la clé les rassemble pour n'en faire sonner qu'un.
             String cle = cleGroupe(chauffeurId, dateEncaissement);
 
             destinataireChauffeur(chauffeurId).ifPresent(sub ->

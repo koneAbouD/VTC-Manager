@@ -44,6 +44,8 @@ public interface OperationFinanciereRestMapper {
     @Mapping(target = "facturePartenaireId", ignore = true)
     // Extourne et annulation : posées par les use cases, jamais par une saisie.
     @Mapping(target = "extourneDeId", ignore = true)
+    // Le versement naît de l'encaissement, jamais d'une saisie d'opération.
+    @Mapping(target = "versementId", ignore = true)
     @Mapping(target = "motifAnnulation", ignore = true)
     @Mapping(target = "annulePar", ignore = true)
     @Mapping(target = "annuleLe", ignore = true)

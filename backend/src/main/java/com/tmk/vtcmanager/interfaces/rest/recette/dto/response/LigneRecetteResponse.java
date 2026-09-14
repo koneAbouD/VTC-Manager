@@ -12,6 +12,8 @@ public record LigneRecetteResponse(
         String vehiculeImmatriculation,
         Long chauffeurId,
         String chauffeurNom,
+        /** Numéro du chauffeur : l'écran s'en sert pour lui envoyer son reçu. */
+        String chauffeurTelephone,
         LocalDate dateRecette,
         BigDecimal montantAttendu,
         BigDecimal montantEncaisse,

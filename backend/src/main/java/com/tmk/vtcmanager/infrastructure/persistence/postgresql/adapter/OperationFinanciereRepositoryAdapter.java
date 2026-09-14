@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -120,5 +121,35 @@ public class OperationFinanciereRepositoryAdapter implements OperationFinanciere
             // leurs versements suivent leur propre ligne, pas celle-ci.
             case PENALITE, CONTRAVENTION -> 0;
         };
+    }
+
+    @Override
+    @Transactional
+    public void rattacherAuVersement(List<Long> operationIds, UUID versementId) {
+        if (operationIds == null || operationIds.isEmpty()) return;
+        jpaRepository.rattacherAuVersement(operationIds, versementId);
+    }
+
+    @Override
+    @Transactional
+    public void detacherVersement(UUID versementId) {
+        if (versementId == null) return;
+        jpaRepository.detacherVersement(versementId);
+    }
+
+    @Override
+    @Transactional
+    public void detacherVersementsDesEncaissements(TypeDocumentCreance typeLigne, Long ligneId) {
+        switch (typeLigne) {
+            case RECETTE -> jpaRepository.detacherVersementsEncaissementsRecette(ligneId);
+            case COTISATION -> jpaRepository.detacherVersementsEncaissementsCotisation(ligneId);
+            // Pénalités et contraventions n'entrent dans aucun versement.
+            case PENALITE, CONTRAVENTION -> { }
+        }
+    }
+
+    @Override
+    public List<OperationFinanciere> findByVersementId(UUID versementId) {
+        return mapper.toDomainList(jpaRepository.findByVersementIdOrderByIdAsc(versementId));
     }
 }

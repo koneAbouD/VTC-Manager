@@ -16,6 +16,10 @@ class OperationFinanciere {
   final String? sousCategorieCode;
   final int? chauffeurId;
   final String? chauffeurNom;
+
+  /// Numéro du chauffeur, tel que porte sa fiche. Sert à lui faire parvenir le
+  /// reçu d'un encaissement ; nul quand la fiche n'en porte pas.
+  final String? chauffeurTelephone;
   final int? vehiculeId;
   final String? vehiculeNom;
 
@@ -37,6 +41,11 @@ class OperationFinanciere {
   /// Écriture contre-passée par celle-ci : non nul sur une extourne, dont le
   /// montant est l'opposé de l'origine.
   final int? extourneDeId;
+
+  /// Pièce de caisse partagée avec l'écriture sœur du même billet — la recette
+  /// et la cotisation du jour réglées ensemble. Le serveur garantit qu'elle
+  /// désigne encore un seul versement : on rassemble sur elle, et sur elle seule.
+  final String? versementId;
 
   /// Renseignés sur une écriture qui a été extournée.
   final DateTime? annuleLe;
@@ -76,6 +85,7 @@ class OperationFinanciere {
     this.sousCategorieCode,
     this.chauffeurId,
     this.chauffeurNom,
+    this.chauffeurTelephone,
     this.vehiculeId,
     this.vehiculeNom,
     this.partenaireId,
@@ -88,6 +98,7 @@ class OperationFinanciere {
     this.statut = StatutOperation.ENCAISSE,
     this.detailMaintenance,
     this.extourneDeId,
+    this.versementId,
     this.annuleLe,
     this.motifAnnulation,
     this.modifiable = false,

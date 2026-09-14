@@ -17,6 +17,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface OperationFinanciereJpaRepository
@@ -111,4 +112,56 @@ public interface OperationFinanciereJpaRepository
     int reaffecterChauffeurEncaissementsCotisation(@Param("ligneId") Long ligneId,
                                                    @Param("chauffeurId") Long chauffeurId,
                                                    @Param("auteur") String auteur);
+
+    // ── Versement (pièce de caisse) ─────────────────────────────────────────
+
+    @EntityGraph(attributePaths = {
+            "categorie", "sousCategorie", "chauffeur", "vehicule", "partenaire"})
+    List<OperationFinanciereEntity> findByVersementIdOrderByIdAsc(UUID versementId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE operations_financieres
+            SET versement_id = :versementId
+            WHERE id IN (:ids)
+            """, nativeQuery = true)
+    int rattacherAuVersement(@Param("ids") List<Long> ids,
+                             @Param("versementId") UUID versementId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE operations_financieres
+            SET versement_id = NULL,
+                updated_at   = now()
+            WHERE versement_id = :versementId
+            """, nativeQuery = true)
+    int detacherVersement(@Param("versementId") UUID versementId);
+
+    /** Versements touchés par les encaissements d'une recette, défaits d'un coup. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE operations_financieres
+            SET versement_id = NULL,
+                updated_at   = now()
+            WHERE versement_id IN (SELECT o.versement_id
+                                   FROM operations_financieres o
+                                   JOIN encaissements e ON e.operation_financiere_id = o.id
+                                   WHERE e.ligne_recette_id = :ligneId
+                                     AND o.versement_id IS NOT NULL)
+            """, nativeQuery = true)
+    int detacherVersementsEncaissementsRecette(@Param("ligneId") Long ligneId);
+
+    /** Cf. {@link #detacherVersementsEncaissementsRecette}, côté cotisation. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE operations_financieres
+            SET versement_id = NULL,
+                updated_at   = now()
+            WHERE versement_id IN (SELECT o.versement_id
+                                   FROM operations_financieres o
+                                   JOIN encaissements_cotisation e ON e.operation_financiere_id = o.id
+                                   WHERE e.ligne_cotisation_id = :ligneId
+                                     AND o.versement_id IS NOT NULL)
+            """, nativeQuery = true)
+    int detacherVersementsEncaissementsCotisation(@Param("ligneId") Long ligneId);
 }

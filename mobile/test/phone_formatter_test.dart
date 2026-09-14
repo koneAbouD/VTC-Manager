@@ -48,6 +48,37 @@ void main() {
     });
   });
 
+  group('international', () {
+    test('un numéro local reçoit l\'indicatif du pays', () {
+      expect(PhoneFormatter.international('07 12 34 56 78'), '2250712345678');
+      expect(PhoneFormatter.international('0712345678'), '2250712345678');
+    });
+
+    test('ce qui est déjà international est conservé', () {
+      expect(PhoneFormatter.international('+225 07 12 34 56 78'),
+          '2250712345678');
+      expect(PhoneFormatter.international('00225 0712345678'), '2250712345678');
+      expect(PhoneFormatter.international('2250712345678'), '2250712345678');
+    });
+
+    test('un indicatif étranger est respecté', () {
+      expect(PhoneFormatter.international('+33 6 12 34 56 78'), '33612345678');
+    });
+
+    // Même garde-fou qu'à l'affichage : « 22 51 23 45 67 » est un numéro local
+    // qui commence par 225 sans être préfixé.
+    test('un local commençant par 225 est préfixé, pas tronqué', () {
+      expect(PhoneFormatter.international('2251234567'), '2252251234567');
+    });
+
+    test('rien d\'exploitable ne donne aucun numéro', () {
+      expect(PhoneFormatter.international(null), isNull);
+      expect(PhoneFormatter.international(''), isNull);
+      expect(PhoneFormatter.international('07 12'), isNull);
+      expect(PhoneFormatter.international('à renseigner'), isNull);
+    });
+  });
+
   group('formatEditUpdate', () {
     const f = PhoneInputFormatter();
 

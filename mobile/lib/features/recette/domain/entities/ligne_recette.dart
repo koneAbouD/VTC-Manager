@@ -28,6 +28,10 @@ class LigneRecette {
   final String? vehiculeImmatriculation;
   final int chauffeurId;
   final String? chauffeurNom;
+
+  /// Numéro du chauffeur, tel que porte sa fiche. Sert à lui faire parvenir le
+  /// reçu de son versement ; nul quand la fiche n'en porte pas.
+  final String? chauffeurTelephone;
   final DateTime dateRecette;
   final double? montantAttendu;
   final double montantEncaisse;
@@ -56,6 +60,7 @@ class LigneRecette {
     this.vehiculeImmatriculation,
     required this.chauffeurId,
     this.chauffeurNom,
+    this.chauffeurTelephone,
     required this.dateRecette,
     this.montantAttendu,
     required this.montantEncaisse,

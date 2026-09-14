@@ -161,6 +161,7 @@ import com.tmk.vtcmanager.application.usecases.penalite.*;
 import com.tmk.vtcmanager.application.ports.extraction.ContraventionExtractorPort;
 import com.tmk.vtcmanager.application.ports.extraction.QuittanceReversementExtractorPort;
 import com.tmk.vtcmanager.application.usecases.recette.*;
+import com.tmk.vtcmanager.application.usecases.versement.*;
 import com.tmk.vtcmanager.application.usecases.payment.*;
 import com.tmk.vtcmanager.application.ports.payment.PaymentGatewayPort;
 import com.tmk.vtcmanager.application.ports.persistence.PaiementRepository;
@@ -927,14 +928,51 @@ public class UseCaseBeanConfiguration {
         return new CreateEncaissementsLotUseCase(createEncaissementUseCase);
     }
 
+    /**
+     * La recette et la cotisation du jour réglées d'un seul billet. Les deux
+     * use cases unitaires rejoignent la transaction de celui-ci : l'un refusé,
+     * l'autre ne passe pas.
+     */
+    @Bean
+    public EncaisserVersementUseCase encaisserVersementUseCase(
+            CreateEncaissementUseCase createEncaissementUseCase,
+            CreateEncaissementCotisationUseCase createEncaissementCotisationUseCase,
+            LigneRecetteRepository ligneRecetteRepository,
+            LigneCotisationRepository ligneCotisationRepository,
+            OperationFinanciereRepository operationFinanciereRepository) {
+        return new EncaisserVersementUseCase(createEncaissementUseCase,
+                createEncaissementCotisationUseCase, ligneRecetteRepository,
+                ligneCotisationRepository, operationFinanciereRepository);
+    }
+
+    /** Voir {@link #createEncaissementsCotisationLotUseCase} : une transaction par versement. */
+    @Bean
+    public EncaisserVersementsLotUseCase encaisserVersementsLotUseCase(
+            EncaisserVersementUseCase encaisserVersementUseCase) {
+        return new EncaisserVersementsLotUseCase(encaisserVersementUseCase);
+    }
+
+    @Bean
+    public GetVersementUseCase getVersementUseCase(
+            OperationFinanciereRepository operationFinanciereRepository,
+            EncaissementRepository encaissementRepository,
+            EncaissementCotisationRepository encaissementCotisationRepository,
+            LigneRecetteRepository ligneRecetteRepository,
+            LigneCotisationRepository ligneCotisationRepository) {
+        return new GetVersementUseCase(operationFinanciereRepository, encaissementRepository,
+                encaissementCotisationRepository, ligneRecetteRepository, ligneCotisationRepository);
+    }
+
     @Bean
     public ConfirmerVersementUseCase confirmerVersementUseCase(LigneRecetteRepository ligneRecetteRepository) {
         return new ConfirmerVersementUseCase(ligneRecetteRepository);
     }
 
     @Bean
-    public AnnulerLigneRecetteUseCase annulerLigneRecetteUseCase(LigneRecetteRepository ligneRecetteRepository) {
-        return new AnnulerLigneRecetteUseCase(ligneRecetteRepository);
+    public AnnulerLigneRecetteUseCase annulerLigneRecetteUseCase(
+            LigneRecetteRepository ligneRecetteRepository,
+            LigneCotisationRepository ligneCotisationRepository) {
+        return new AnnulerLigneRecetteUseCase(ligneRecetteRepository, ligneCotisationRepository);
     }
 
     @Bean

@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -72,6 +73,18 @@ public class OperationFinanciere {
      * agrégats sans qu'aucune écriture ne disparaisse.
      */
     private Long extourneDeId;
+
+    /**
+     * Pièce de caisse : partagé par les écritures nées d'un même versement —
+     * la recette et la cotisation du jour réglées d'un seul billet. Chacune
+     * garde sa catégorie et sa nature de résultat ; seul l'affichage les
+     * rassemble.
+     *
+     * <p>Null pour une écriture isolée. Jamais recopié sur une extourne, et
+     * retiré dès qu'une correction — date, chauffeur — fait que les écritures
+     * ne décrivent plus le même billet.
+     */
+    private UUID versementId;
 
     /**
      * Renseigné à la lecture seulement : {@link #estAnnulable()} — ce que l'état

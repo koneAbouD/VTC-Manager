@@ -39,6 +39,7 @@ import com.tmk.vtcmanager.application.exception.RoleInsufficientException;
 import com.tmk.vtcmanager.application.exception.SessionExpiredException;
 import com.tmk.vtcmanager.application.exception.VehiculeOuChauffeurSansLigneCotisationActiveException;
 import com.tmk.vtcmanager.application.exception.VehiculeOuChauffeurSansLigneActiveException;
+import com.tmk.vtcmanager.application.exception.VersementIncoherentException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -294,6 +295,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EcritureFigeeException.class)
     public ResponseEntity<ApiError> handleEcritureFigee(EcritureFigeeException ex, HttpServletRequest request) {
         return respond(HttpStatus.CONFLICT, "ECRITURE_FIGEE", ex.getMessage(), request, ex);
+    }
+
+    /** Recette et cotisation présentées comme un seul billet sans être sœurs. */
+    @ExceptionHandler(VersementIncoherentException.class)
+    public ResponseEntity<ApiError> handleVersementIncoherent(
+            VersementIncoherentException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "VERSEMENT_INCOHERENT", ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(CaisseClotureeException.class)

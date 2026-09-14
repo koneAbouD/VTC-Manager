@@ -20,6 +20,8 @@ import '../../features/recette/presentation/pages/lignes_recette_page.dart';
 import '../home_nav_provider.dart';
 import '../../features/indisponibilite/presentation/pages/indisponibilites_page.dart';
 import '../../core/widgets/date_filter_dialogs.dart';
+import '../../features/operation_financiere/presentation/widgets/ligne_journal.dart';
+import '../../features/operation_financiere/presentation/widgets/versement_card.dart';
 
 class AccueilScreen extends ConsumerStatefulWidget {
   const AccueilScreen({super.key});
@@ -112,7 +114,9 @@ class _AccueilScreenState extends ConsumerState<AccueilScreen> {
     // opérations d'un même jour sont à égalité et le tri non stable de Dart peut
     // éjecter du top 10 une opération pourtant récente (ex. une dépense saisie
     // le matin, noyée parmi les encaissements du jour).
-    final dernieres = (List<OperationFinanciere>.from(allOps)
+    // Les écritures d'un même versement se lisent en une ligne : le top 10
+    // compte des versements, pas des écritures.
+    final dernieres = regrouperParVersement(List<OperationFinanciere>.from(allOps)
           ..sort((a, b) {
             final parDate = b.dateOperation.compareTo(a.dateOperation);
             if (parDate != 0) return parDate;
@@ -142,14 +146,23 @@ class _AccueilScreenState extends ConsumerState<AccueilScreen> {
 
           // ── Dernières opérations ────────────────────────────────────────
           if (dernieres.isNotEmpty) ...[
-            ...dernieres.map((op) => _DerniereOpTile(
-                  op: op,
-                  money: money,
-                  onTap: () => _push(
-                    context,
-                    OperationFinanciereDetailPage(operation: op),
-                  ),
-                )),
+            ...dernieres.map((ligne) => switch (ligne) {
+                  EcritureSeule(:final operation) => _DerniereOpTile(
+                      op: operation,
+                      money: money,
+                      onTap: () => _push(
+                        context,
+                        OperationFinanciereDetailPage(operation: operation),
+                      ),
+                    ),
+                  VersementRegroupe(:final tete) => VersementCard(
+                      versement: ligne,
+                      onTap: () => _push(
+                        context,
+                        OperationFinanciereDetailPage(operation: tete),
+                      ),
+                    ),
+                }),
             const SizedBox(height: 8),
             Center(
               child: TextButton.icon(

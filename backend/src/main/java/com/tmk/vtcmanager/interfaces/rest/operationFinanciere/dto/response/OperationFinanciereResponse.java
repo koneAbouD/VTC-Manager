@@ -9,6 +9,7 @@ import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.response.VehiculeResponse
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record OperationFinanciereResponse(
         Long id,
@@ -43,6 +44,12 @@ public record OperationFinanciereResponse(
         Boolean annulable,
         /** Écriture contre-passée par celle-ci : non nul sur une extourne. */
         Long extourneDeId,
+        /**
+         * Versement dont l'écriture fait partie, partagé avec sa sœur du même
+         * billet. Le client rassemble sur cette clé, et sur elle seule : le
+         * serveur garantit qu'elle désigne encore un seul versement.
+         */
+        UUID versementId,
         /** Renseignés sur une écriture qui a été extournée. */
         String motifAnnulation,
         String annulePar,

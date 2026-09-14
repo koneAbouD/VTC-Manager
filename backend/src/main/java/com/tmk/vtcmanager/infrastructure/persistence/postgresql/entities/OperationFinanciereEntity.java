@@ -9,6 +9,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = OperationFinanciereEntity.TABLE_NAME)
@@ -95,6 +96,10 @@ public class OperationFinanciereEntity extends AbstractEcritureAuditEntity {
      */
     @Column(name = "extourne_de_id")
     private Long extourneDeId;
+
+    /** Versement commun à plusieurs écritures (recette + cotisation du jour). */
+    @Column(name = "versement_id")
+    private UUID versementId;
 
     /** Facture fournisseur soldée par cette écriture (règlement). */
     @Column(name = "facture_partenaire_id")

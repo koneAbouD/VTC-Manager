@@ -140,6 +140,9 @@ class ReaffecterChauffeurCotisationUseCaseTest {
 
         useCase.executer(LIGNE_ID, NOUVEAU, MOTIF);
 
+        // Une moitié de versement qui change de payeur défait la pièce de caisse.
+        verify(operationRepository).detacherVersementsDesEncaissements(TypeDocumentCreance.COTISATION, LIGNE_ID);
+
         verify(ligneCotisationRepository).reaffecterChauffeur(LIGNE_ID, NOUVEAU);
         ArgumentCaptor<ReaffectationChauffeur> trace =
                 ArgumentCaptor.forClass(ReaffectationChauffeur.class);

@@ -22,6 +22,11 @@ public class LigneRecette {
     private String vehiculeImmatriculation;
     private Long chauffeurId;
     private String chauffeurNom;
+    /**
+     * Numéro du chauffeur, tel que saisi sur sa fiche. Sert au guichet à lui
+     * faire parvenir le reçu de son versement ; jamais aux traitements.
+     */
+    private String chauffeurTelephone;
     private LocalDate dateRecette;
     /** Null si typeRecette == MONTANT_REEL */
     private BigDecimal montantAttendu;

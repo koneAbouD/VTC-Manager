@@ -93,6 +93,10 @@ public class ReaffecterChauffeurRecetteUseCase {
         String auteur = auteurCourant.nom();
 
         ligneRecetteRepository.reaffecterChauffeur(ligneId, chauffeurCibleId);
+        // Un versement a un seul payeur : si l'une de ses créances change de
+        // débiteur, ses écritures ne décrivent plus le même billet.
+        operationFinanciereRepository.detacherVersementsDesEncaissements(
+                TypeDocumentCreance.RECETTE, ligneId);
         int operations = operationFinanciereRepository.reaffecterChauffeurDesEncaissements(
                 TypeDocumentCreance.RECETTE, ligneId, chauffeurCibleId, auteur);
         penalitesASuivre.forEach(p ->

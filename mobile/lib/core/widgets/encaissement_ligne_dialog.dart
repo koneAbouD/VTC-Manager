@@ -114,9 +114,14 @@ class LigneJumelleEncaissement {
   final Color    couleur;
   final IconData icone;
 
-  /// Même contrat que `onEncaisser` : `null` si l'appel a réussi, sinon le
-  /// message d'erreur. Reçoit la saisie avec la part revenant à cette ligne.
-  final Future<String?> Function(SaisieEncaissement saisie) onEncaisser;
+  /// Encaisse la ligne ouverte et celle-ci **d'un seul versement** : `null` si
+  /// l'appel a réussi, sinon le message d'erreur. Les deux créances passent
+  /// ensemble ou pas du tout — un billet ne se coupe pas en deux au guichet.
+  ///
+  /// [principale] porte la part de la ligne ouverte, nulle quand le montant ne
+  /// lui laisse rien ; [jumelle], celle de cette ligne.
+  final Future<String?> Function(
+      SaisieEncaissement? principale, SaisieEncaissement jumelle) encaisserEnsemble;
 
   const LigneJumelleEncaissement({
     required this.libelle,
@@ -125,7 +130,7 @@ class LigneJumelleEncaissement {
     required this.montantRestant,
     required this.couleur,
     required this.icone,
-    required this.onEncaisser,
+    required this.encaisserEnsemble,
   });
 }
 
@@ -211,11 +216,6 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
   /// Ligne du même jour encaissée dans la foulée. Décochée à l'ouverture : la
   /// feuille sert d'abord la ligne sur laquelle l'utilisateur a cliqué.
   bool _inclureJumelle = false;
-
-  /// Vrai quand la ligne principale est passée mais que la jumelle a échoué :
-  /// le versement est en partie enregistré, il ne faut surtout pas le rejouer.
-  /// La feuille ne propose plus que de se fermer.
-  bool _principaleReglee = false;
 
   @override
   void initState() {
@@ -324,13 +324,6 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
   }
 
   Future<void> _submit() async {
-    // Versement déjà passé côté ligne principale : le bouton ne fait plus que
-    // refermer, rejouer l'appel encaisserait deux fois.
-    if (_principaleReglee) {
-      Navigator.pop(context, true);
-      return;
-    }
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -357,27 +350,18 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
           date:        _date,
         );
 
-    String? error;
-    if (parts.principal > 0) {
-      error = await widget.onEncaisser(saisiePour(parts.principal));
-    }
-
-    // La jumelle ne part qu'une fois la principale acceptée : deux écritures
-    // pour un seul versement, dans l'ordre où l'utilisateur les voit.
+    // Un billet, un appel : la ligne ouverte et sa jumelle partent ensemble, et
+    // le refus de l'une n'enregistre pas l'autre. Sans jumelle retenue, la
+    // ligne ouverte part seule, par son propre chemin.
     final jumelle = widget.jumelle;
-    var principaleReglee = false;
-    if (error == null && jumelle != null && parts.jumelle > 0) {
-      principaleReglee = parts.principal > 0;
-      final erreurJumelle = await jumelle.onEncaisser(saisiePour(parts.jumelle));
-      if (erreurJumelle != null) {
-        error = principaleReglee
-            ? '${widget.titre} : versement enregistré. En revanche '
-                '« ${jumelle.titre} » n\'a pas pu être encaissée — '
-                '$erreurJumelle'
-            : erreurJumelle;
-      } else {
-        principaleReglee = false;
-      }
+    String? error;
+    if (jumelle != null && parts.jumelle > 0) {
+      error = await jumelle.encaisserEnsemble(
+        parts.principal > 0 ? saisiePour(parts.principal) : null,
+        saisiePour(parts.jumelle),
+      );
+    } else if (parts.principal > 0) {
+      error = await widget.onEncaisser(saisiePour(parts.principal));
     }
 
     if (!mounted) return;
@@ -386,7 +370,6 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
       // L'erreur s'affiche dans la feuille (bandeau inline) : un SnackBar
       // resterait masqué sous le bottom sheet tant qu'il est ouvert.
       _submitError = error;
-      _principaleReglee = error != null && principaleReglee;
     });
 
     if (error == null) {
@@ -457,7 +440,7 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
               _JumelleCard(
                 jumelle:     widget.jumelle!,
                 selectionne: _inclureJumelle,
-                onChanged:   _principaleReglee ? null : _basculerJumelle,
+                onChanged:   _basculerJumelle,
                 fmt:         fmt,
               ),
               const SizedBox(height: 12),
@@ -588,15 +571,9 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : Icon(
-                        _principaleReglee
-                            ? Icons.close_rounded
-                            : Icons.check_rounded,
-                        size: 18),
+                    : const Icon(Icons.check_rounded, size: 18),
                 label: Text(
-                  _submitting
-                      ? 'Encaissement en cours…'
-                      : (_principaleReglee ? 'Fermer' : 'Encaisser'),
+                  _submitting ? 'Encaissement en cours…' : 'Encaisser',
                   style: const TextStyle(
                       fontSize: 15, fontWeight: FontWeight.w700),
                 ),
@@ -669,8 +646,7 @@ class _JumelleCard extends StatelessWidget {
   final LigneJumelleEncaissement jumelle;
   final bool                     selectionne;
 
-  /// `null` fige la case : le versement est déjà parti côté ligne principale.
-  final ValueChanged<bool?>?     onChanged;
+  final ValueChanged<bool?>      onChanged;
   final NumberFormat             fmt;
 
   const _JumelleCard({
@@ -687,7 +663,7 @@ class _JumelleCard extends StatelessWidget {
     final teinte = selectionne ? jumelle.couleur : _kHint;
 
     return InkWell(
-      onTap: onChanged == null ? null : () => onChanged!(!selectionne),
+      onTap: () => onChanged(!selectionne),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.fromLTRB(8, 12, 14, 12),

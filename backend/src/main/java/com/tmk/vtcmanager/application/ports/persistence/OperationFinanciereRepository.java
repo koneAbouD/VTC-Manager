@@ -9,6 +9,7 @@ import com.tmk.vtcmanager.application.domain.operation.SoldePeriode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface OperationFinanciereRepository {
 
@@ -46,6 +47,26 @@ public interface OperationFinanciereRepository {
      */
     int reaffecterChauffeurDesEncaissements(TypeDocumentCreance typeLigne, Long ligneId,
                                             Long chauffeurId, String auteur);
+
+    /** Rassemble ces écritures sous un même versement. */
+    void rattacherAuVersement(List<Long> operationIds, UUID versementId);
+
+    /**
+     * Défait un versement : ses écritures redeviennent isolées. Appelé quand
+     * une correction fait qu'elles ne décrivent plus le même billet.
+     */
+    void detacherVersement(UUID versementId);
+
+    /**
+     * Défait les versements auxquels appartiennent les écritures d'une ligne —
+     * celle dont le chauffeur va changer.
+     *
+     * @param typeLigne RECETTE ou COTISATION : dit quelle table d'encaissements lire
+     */
+    void detacherVersementsDesEncaissements(TypeDocumentCreance typeLigne, Long ligneId);
+
+    /** Écritures d'un versement, dans l'ordre de leur création. */
+    List<OperationFinanciere> findByVersementId(UUID versementId);
 
     boolean existsByReference(String reference);
 

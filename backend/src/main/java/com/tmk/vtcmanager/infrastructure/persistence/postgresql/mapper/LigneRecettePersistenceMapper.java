@@ -18,6 +18,7 @@ public interface LigneRecettePersistenceMapper {
     @Mapping(target = "vehiculeImmatriculation", source = "vehicule.immatriculation")
     @Mapping(target = "chauffeurId", source = "chauffeur.id")
     @Mapping(target = "chauffeurNom", source = "chauffeur", qualifiedByName = "chauffeurNomComplet")
+    @Mapping(target = "chauffeurTelephone", source = "chauffeur.telephone")
     @Mapping(target = "encaissements", source = "encaissements")
     // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
     @Mapping(target = "restaurable", ignore = true)

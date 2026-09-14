@@ -6,14 +6,15 @@ import '../../../core/widgets/montant_field.dart';
 import '../../../features/vehicule/domain/entities/vehicule.dart';
 import '../../../features/vehicule/presentation/providers/vehicule_provider.dart';
 import '../../../features/vehicule/presentation/providers/vehicule_state.dart';
-import '../../../features/cotisation/domain/entities/encaissement_cotisation.dart';
 import '../../../features/cotisation/domain/entities/ligne_cotisation.dart';
 import '../../../features/cotisation/domain/entities/ligne_cotisation_filtres.dart';
 import '../../../features/cotisation/presentation/providers/ligne_cotisation_provider.dart';
 import '../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
-import '../../../features/recette/domain/entities/encaissement.dart';
 import '../../../features/recette/domain/entities/ligne_recette.dart';
 import '../../../features/recette/presentation/providers/ligne_recette_provider.dart';
+import '../../../features/operation_financiere/domain/enums/mode_paiement.dart';
+import '../../../features/versement/domain/entities/encaissement_versement.dart';
+import '../../../features/versement/presentation/providers/versement_provider.dart';
 
 // ── Palette (cohérente avec MaintenanceFormPage) ──────────────────────────────
 
@@ -288,17 +289,21 @@ class _EncaissementRapideSheetState
     final commentaire = _commentCtrl.text.trim().isEmpty
         ? null
         : _commentCtrl.text.trim();
-    final now = DateTime.now();
-
-    String? error;
-
-    if (dist.recette > 0 && _ligneRecette != null) {
-      error = await _encaisserRecette(dist.recette, commentaire, now);
-    }
-
-    if (error == null && dist.cotisation > 0 && _ligneCotisation != null) {
-      error = await _encaisserCotisation(dist.cotisation, commentaire, now);
-    }
+    // Un billet, un appel : la recette et la cotisation du jour passent
+    // ensemble ou pas du tout, rattachées à la même pièce de caisse.
+    final resultat = await ref.read(versementRepositoryProvider).encaisser(
+          recette: dist.recette > 0 && _ligneRecette != null
+              ? PartVersement(ligneId: _ligneRecette!.id!, montant: dist.recette)
+              : null,
+          cotisation: dist.cotisation > 0 && _ligneCotisation != null
+              ? PartVersement(
+                  ligneId: _ligneCotisation!.id!, montant: dist.cotisation)
+              : null,
+          mode: ModePaiement.ESPECES,
+          date: DateTime.now(),
+          commentaire: commentaire,
+        );
+    final error = resultat.fold((f) => f.message, (_) => null);
 
     if (!mounted) return;
     setState(() {
@@ -313,34 +318,6 @@ class _EncaissementRapideSheetState
 
     ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
     Navigator.pop(context, true);
-  }
-
-  Future<String?> _encaisserRecette(
-      double montant, String? commentaire, DateTime date) async {
-    final repo = ref.read(ligneRecetteRepositoryProvider);
-    final enc  = Encaissement(
-      ligneRecetteId:   _ligneRecette!.id!,
-      montant:          montant,
-      modeEncaissement: ModeEncaissement.especes,
-      dateEncaissement: date,
-      commentaire:      commentaire,
-    );
-    final r = await repo.createEncaissement(_ligneRecette!.id!, enc);
-    return r.fold((f) => f.message, (_) => null);
-  }
-
-  Future<String?> _encaisserCotisation(
-      double montant, String? commentaire, DateTime date) async {
-    final repo = ref.read(ligneCotisationRepositoryProvider);
-    final enc  = EncaissementCotisation(
-      ligneCotisationId: _ligneCotisation!.id!,
-      montant:           montant,
-      modeEncaissement:  ModePaiementCotisation.especes,
-      dateEncaissement:  date,
-      commentaire:       commentaire,
-    );
-    final r = await repo.createEncaissement(_ligneCotisation!.id!, enc);
-    return r.fold((f) => f.message, (_) => null);
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

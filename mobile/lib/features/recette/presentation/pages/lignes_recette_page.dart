@@ -14,11 +14,16 @@ import '../../../../core/widgets/encaissement_lot_dialog.dart';
 import '../../../../core/widgets/selection_lot_bar.dart';
 import '../../../../screens/finance/encaissement_lot_jumele.dart';
 import '../../../../screens/finance/ligne_jumelle_encaissement.dart';
+import '../../../../screens/finance/recus_lot.dart';
+import '../../../../core/widgets/envoi_recus_sheet.dart';
 import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'ligne_recette_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
 import '../../../coherence/presentation/widgets/bandeau_conflits_chauffeur.dart';
+import '../../../../features/operation_financiere/domain/enums/mode_paiement.dart';
+import '../../../../features/versement/domain/entities/encaissement_versement.dart';
+import '../../../../features/versement/presentation/providers/versement_provider.dart';
 
 // ── Constantes partagées ───────────────────────────────────────────────────
 
@@ -355,7 +360,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
   Future<void> _encaisserSelection(List<LigneRecette> selection) async {
     if (selection.isEmpty) return;
 
-    final repoRecette = ref.read(ligneRecetteRepositoryProvider);
+    final repoVersement = ref.read(versementRepositoryProvider);
     final dateFmt = DateFormat('dd/MM/yyyy');
 
     // Une seule requête pour tout le lot : les cotisations ouvertes du même
@@ -376,19 +381,34 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
 
     final executeur = ExecuteurLotJumele(
       lignes: lignes,
-      envoyerPrincipal: (imputations, saisie) =>
-          repoRecette.createEncaissementsLot(
-        lignes: imputations,
-        modeEncaissement: saisie.mode == ModeEncaissementSaisie.mobileMoney
-            ? ModeEncaissement.mobileMoney
-            : ModeEncaissement.especes,
-        dateEncaissement: saisie.date,
-        reference: saisie.reference,
-        commentaire: saisie.commentaire,
-      ),
-      // Le surplus d'une ligne va à la cotisation du même jour, par son
-      // propre endpoint.
-      envoyerJumelle: envoiLotCotisations(ref),
+      // Une journée, un versement : sa recette et le surplus imputé à la
+      // cotisation du même jour partent ensemble, et passent ou échouent
+      // ensemble. Le serveur rend les verdicts dans l'ordre des versements.
+      envoyer: (versements, saisie) async {
+        final envoi = await repoVersement.encaisserLot(
+          versements: [
+            for (final v in versements)
+              ElementVersementLot(
+                recette: v.principal > 0
+                    ? PartVersement(ligneId: v.ligneId, montant: v.principal)
+                    : null,
+                cotisation: v.jumelleId != null && v.jumelle > 0
+                    ? PartVersement(ligneId: v.jumelleId!, montant: v.jumelle)
+                    : null,
+              ),
+          ],
+          mode: saisie.mode == ModeEncaissementSaisie.mobileMoney
+              ? ModePaiement.MOBILE_MONEY
+              : ModePaiement.ESPECES,
+          date: saisie.date,
+          reference: saisie.reference,
+          commentaire: saisie.commentaire,
+        );
+        return envoi.map((lot) => verdictsParLigne(versements, [
+              for (final r in lot.resultats)
+                (succes: r.succes, message: r.message),
+            ]));
+      },
     );
 
     final ok = await showEncaissementLotDialog(
@@ -407,6 +427,23 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     });
     _load();
     ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+
+    // Le versement enregistré, reste à en donner quittance. Les reçus sont
+    // tirés de ce que le lot a réellement encaissé : une créance refusée n'y
+    // figure pas. Rien n'est proposé si tout a été refusé.
+    final saisie = executeur.derniereSaisie;
+    final imputations = executeur.imputationsReussies;
+    if (saisie == null || imputations.isEmpty) return;
+
+    await showEnvoiRecusSheet(
+      context,
+      destinataires: recusDuLot(
+        lignes: selection,
+        jumelles: jumelles,
+        imputations: imputations,
+        saisie: saisie,
+      ),
+    );
   }
 
   Future<void> _openEncaisserDialog(LigneRecette ligne) async {

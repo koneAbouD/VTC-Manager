@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/premium_select_field.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import '../../domain/entities/facture_partenaire.dart';
@@ -22,6 +23,7 @@ Future<void> showReglementFactureDialog(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _ReglementSheet(facture: facture),
   );
@@ -84,15 +86,19 @@ class _ReglementSheetState extends ConsumerState<_ReglementSheet> {
   @override
   Widget build(BuildContext context) {
     final f = widget.facture;
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
+    // useSafeArea n'immunise pas le bas : la barre de navigation d'Android
+    // recouvrirait le bouton de validation. On ajoute donc son inset — nul
+    // quand le clavier est ouvert, celui-ci consommant déjà la zone.
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: keyboardHeight),
       child: Container(
         decoration: const BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         ),
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+        padding: EdgeInsets.fromLTRB(20, 14, 20, 20 + bottomSafe),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -230,12 +236,13 @@ class _ChampDate extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () async {
-        final choix = await showDatePicker(
+        final choix = await showDialog<DateTime>(
           context: context,
-          initialDate: date,
-          firstDate: DateTime(2020),
-          lastDate: DateTime.now(),
-          locale: const Locale('fr', 'FR'),
+          builder: (_) => SingleDatePickerDialog(
+            initialDate: date,
+            firstDate: DateTime(2020),
+            lastDate: DateTime.now(),
+          ),
         );
         if (choix != null) onChanged(choix);
       },

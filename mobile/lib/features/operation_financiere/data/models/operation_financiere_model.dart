@@ -17,6 +17,7 @@ class OperationFinanciereModel extends OperationFinanciere {
     super.sousCategorieCode,
     super.chauffeurId,
     super.chauffeurNom,
+    super.chauffeurTelephone,
     super.vehiculeId,
     super.vehiculeNom,
     super.partenaireId,
@@ -29,6 +30,7 @@ class OperationFinanciereModel extends OperationFinanciere {
     super.statut,
     super.detailMaintenance,
     super.extourneDeId,
+    super.versementId,
     super.annuleLe,
     super.motifAnnulation,
     super.modifiable,
@@ -72,6 +74,7 @@ class OperationFinanciereModel extends OperationFinanciere {
       sousCategorieCode: sousCat?['code'] as String?,
       chauffeurId: (chauffeur?['id'] as num?)?.toInt(),
       chauffeurNom: chauffeurNom.isEmpty ? null : chauffeurNom,
+      chauffeurTelephone: chauffeur?['telephone'] as String?,
       vehiculeId: (vehicule?['id'] as num?)?.toInt(),
       vehiculeNom: vehiculeNom?.isEmpty == true ? null : vehiculeNom,
       partenaireId: (json['partenaireId'] as num?)?.toInt(),
@@ -88,6 +91,7 @@ class OperationFinanciereModel extends OperationFinanciere {
       detailMaintenance:
           dm != null ? DetailMaintenanceModel.fromJson(dm) : null,
       extourneDeId: (json['extourneDeId'] as num?)?.toInt(),
+      versementId: json['versementId'] as String?,
       annuleLe: json['annuleLe'] != null
           ? DateTime.tryParse(json['annuleLe'] as String)
           : null,

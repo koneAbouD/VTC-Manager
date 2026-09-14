@@ -158,6 +158,7 @@ class ReaffecterChauffeurRecetteUseCaseTest {
     }
 
     private void aucuneEcriture() {
+        verify(operationRepository, never()).detacherVersementsDesEncaissements(any(), anyLong());
         verify(ligneRecetteRepository, never()).reaffecterChauffeur(anyLong(), anyLong());
         verifyNoInteractions(journalRepository);
     }
@@ -182,6 +183,8 @@ class ReaffecterChauffeurRecetteUseCaseTest {
             verify(ligneRecetteRepository).reaffecterChauffeur(LIGNE_ID, NOUVEAU);
             verify(operationRepository).reaffecterChauffeurDesEncaissements(
                     TypeDocumentCreance.RECETTE, LIGNE_ID, NOUVEAU, "akone");
+            // Une moitié de versement qui change de payeur défait la pièce de caisse.
+            verify(operationRepository).detacherVersementsDesEncaissements(TypeDocumentCreance.RECETTE, LIGNE_ID);
 
             ArgumentCaptor<ReaffectationChauffeur> trace =
                     ArgumentCaptor.forClass(ReaffectationChauffeur.class);

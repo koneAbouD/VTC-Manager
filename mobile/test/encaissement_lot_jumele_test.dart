@@ -36,162 +36,119 @@ SaisieLot _saisie(Map<int, double> montants) => SaisieLot(
       commentaire: null,
     );
 
-ResultatEncaissementLot _succes(List<MontantLigne> imputations) =>
-    ResultatEncaissementLot(
-      reussis: imputations.length,
-      echecs: 0,
-      resultats: [
-        for (final i in imputations)
-          ResultatLigneLot(ligneId: i.ligneId, succes: true, encaissementId: 1),
-      ],
-    );
+/// Consigne chaque envoi, et répond avec les verdicts qu'on lui donne.
+class _Serveur {
+  final List<List<VersementDeLigne>> envois = [];
+  Either<Failure, List<({bool succes, String? message})>> Function(
+      List<VersementDeLigne>) reponse = (versements) => Right([
+        for (final _ in versements) (succes: true, message: null),
+      ]);
 
-ResultatEncaissementLot _refus(List<MontantLigne> imputations, String motif) =>
-    ResultatEncaissementLot(
-      reussis: 0,
-      echecs: imputations.length,
-      resultats: [
-        for (final i in imputations)
-          ResultatLigneLot(ligneId: i.ligneId, succes: false, message: motif),
-      ],
-    );
-
-/// Consigne ce que chaque endpoint a reçu.
-class _Envois {
-  final List<List<MontantLigne>> principal = [];
-  final List<List<MontantLigne>> jumelle = [];
+  EnvoiVersements get envoyer => (versements, _) async {
+        envois.add(versements);
+        return reponse(versements).map((v) => verdictsParLigne(versements, v));
+      };
 }
 
 void main() {
-  test('sans créance du même jour, tout part dans le lot de la nature affichée',
+  test('sans créance du même jour, la journée part seule dans son versement',
       () async {
-    final envois = _Envois();
-    final executeur = ExecuteurLotJumele(
-      lignes: const [_sansJumelle],
-      envoyerPrincipal: (imputations, _) async {
-        envois.principal.add(imputations);
-        return Right(_succes(imputations));
-      },
-      envoyerJumelle: (imputations, _) async {
-        envois.jumelle.add(imputations);
-        return Right(_succes(imputations));
-      },
-    );
+    final serveur = _Serveur();
+    final executeur =
+        ExecuteurLotJumele(lignes: const [_sansJumelle], envoyer: serveur.envoyer);
 
     final issue = await executeur.executer(_saisie({2: 8000}));
 
-    expect(envois.principal.single.single.montant, 8000);
-    expect(envois.jumelle, isEmpty);
+    final versement = serveur.envois.single.single;
+    expect(versement.ligneId, 2);
+    expect(versement.principal, 8000);
+    expect(versement.jumelleId, isNull);
     expect(issue.reussies, {2});
     expect(issue.echecs, isEmpty);
   });
 
-  test('le surplus au-delà de la recette part sur la cotisation du jour',
+  test('le surplus au-delà de la recette voyage avec elle, dans le même versement',
       () async {
-    final envois = _Envois();
-    final executeur = ExecuteurLotJumele(
-      lignes: const [_avecJumelle],
-      envoyerPrincipal: (imputations, _) async {
-        envois.principal.add(imputations);
-        return Right(_succes(imputations));
-      },
-      envoyerJumelle: (imputations, _) async {
-        envois.jumelle.add(imputations);
-        return Right(_succes(imputations));
-      },
-    );
+    final serveur = _Serveur();
+    final executeur =
+        ExecuteurLotJumele(lignes: const [_avecJumelle], envoyer: serveur.envoyer);
 
     // 18 000 : la recette prend ses 15 000, la cotisation les 3 000 restants.
     final issue = await executeur.executer(_saisie({1: 18000}));
 
-    expect(envois.principal.single.single.montant, 15000);
-    expect(envois.jumelle.single.single.ligneId, 91);
-    expect(envois.jumelle.single.single.montant, 3000);
+    // Un seul envoi, une seule entrée : pas de second lot pour la sœur.
+    final versement = serveur.envois.single.single;
+    expect(versement.principal, 15000);
+    expect(versement.jumelleId, 91);
+    expect(versement.jumelle, 3000);
     expect(issue.reussies, {1});
   });
 
-  test('le lot principal en panne n\'envoie rien sur la créance sœur',
-      () async {
-    final envois = _Envois();
-    final executeur = ExecuteurLotJumele(
-      lignes: const [_avecJumelle],
-      envoyerPrincipal: (_, __) async =>
-          const Left(NetworkFailure('Pas de connexion réseau.')),
-      envoyerJumelle: (imputations, _) async {
-        envois.jumelle.add(imputations);
-        return Right(_succes(imputations));
-      },
-    );
+  test('panne réseau : rien n\'est parti, la feuille garde la saisie', () async {
+    final serveur = _Serveur()
+      ..reponse = (_) => const Left(NetworkFailure('Pas de connexion réseau.'));
+    final executeur =
+        ExecuteurLotJumele(lignes: const [_avecJumelle], envoyer: serveur.envoyer);
 
     final issue = await executeur.executer(_saisie({1: 18000}));
 
-    expect(envois.jumelle, isEmpty);
     expect(issue.erreurGlobale, 'Pas de connexion réseau.');
     expect(issue.reussies, isEmpty);
+    expect(executeur.imputationsReussies, isEmpty);
   });
 
-  test('cotisation refusée : la recette passée n\'est pas rejouée', () async {
-    final envois = _Envois();
-    final executeur = ExecuteurLotJumele(
-      lignes: const [_avecJumelle],
-      envoyerPrincipal: (imputations, _) async {
-        envois.principal.add(imputations);
-        return Right(_succes(imputations));
-      },
-      envoyerJumelle: (imputations, _) async {
-        envois.jumelle.add(imputations);
-        return Right(_refus(imputations, 'Caisse déjà comptée'));
-      },
-    );
+  test('versement refusé : ni la recette ni la cotisation ne sont retenues, '
+      'et il repart entier', () async {
+    final serveur = _Serveur()
+      ..reponse = (versements) => Right([
+            for (final _ in versements)
+              (succes: false, message: 'La caisse a été comptée le 01/09/2026.'),
+          ]);
+    final executeur =
+        ExecuteurLotJumele(lignes: const [_avecJumelle], envoyer: serveur.envoyer);
 
     final premier = await executeur.executer(_saisie({1: 18000}));
 
     expect(premier.reussies, isEmpty);
-    expect(premier.echecs[1], contains('Épargne : Caisse déjà comptée'));
-    // Il ne reste que la cotisation à imputer : la recette est soldée.
-    expect(premier.restantsAjustes[1]!.principal, 0);
-    expect(premier.restantsAjustes[1]!.jumelle, 5000);
+    expect(premier.echecs[1], contains('caisse a été comptée'));
+    expect(executeur.imputationsReussies, isEmpty);
 
-    // Second envoi sur ce reste : la recette ne repart pas.
-    final second = await executeur.executer(_saisie({1: 5000}));
-
-    expect(envois.principal, hasLength(1));
-    expect(envois.jumelle.last.single.montant, 5000);
-    expect(second.echecs[1], isNotNull);
+    // Rien n'étant passé, le second envoi reprend la journée en entier.
+    await executeur.executer(_saisie({1: 18000}));
+    expect(serveur.envois.last.single.principal, 15000);
+    expect(serveur.envois.last.single.jumelle, 3000);
   });
 
-  test('panne sur le lot des créances sœurs : le motif suit la ligne',
-      () async {
-    final executeur = ExecuteurLotJumele(
-      lignes: const [_avecJumelle],
-      envoyerPrincipal: (imputations, _) async => Right(_succes(imputations)),
-      envoyerJumelle: (_, __) async =>
-          const Left(NetworkFailure('Pas de connexion réseau.')),
-    );
+  test('un versement accepté alimente le reçu, reste dû compris', () async {
+    final serveur = _Serveur();
+    final executeur =
+        ExecuteurLotJumele(lignes: const [_avecJumelle], envoyer: serveur.envoyer);
 
-    final issue = await executeur.executer(_saisie({1: 20000}));
+    await executeur.executer(_saisie({1: 18000}));
 
-    expect(issue.erreurGlobale, 'Pas de connexion réseau.');
-    expect(issue.echecs[1], contains('Pas de connexion réseau.'));
-    // La recette est passée : seul le reliquat de cotisation reste dû.
-    expect(issue.restantsAjustes[1]!.principal, 0);
-    expect(issue.restantsAjustes[1]!.jumelle, 5000);
+    final imputation = executeur.imputationsReussies.single;
+    expect(imputation.principal, 15000);
+    expect(imputation.jumelle, 3000);
+    // 5 000 de cotisation dus, 3 000 versés.
+    expect(imputation.restant, 2000);
   });
 
-  test('une recette refusée n\'empêche pas la cotisation du même jour',
-      () async {
-    final executeur = ExecuteurLotJumele(
-      lignes: const [_avecJumelle],
-      envoyerPrincipal: (imputations, _) async =>
-          Right(_refus(imputations, 'Période comptable clôturée')),
-      envoyerJumelle: (imputations, _) async => Right(_succes(imputations)),
-    );
+  test('les verdicts du serveur reviennent à leur journée par leur ordre', () {
+    const versements = [
+      VersementDeLigne(ligneId: 1, principal: 15000, jumelleId: 91, jumelle: 3000),
+      // Recette sans rien : tout est allé à la cotisation, le serveur ne
+      // nomme donc pas la recette — seul l'ordre fait le lien.
+      VersementDeLigne(ligneId: 2, principal: 0, jumelleId: 92, jumelle: 2000),
+    ];
 
-    final issue = await executeur.executer(_saisie({1: 20000}));
+    final resultat = verdictsParLigne(versements, [
+      (succes: true, message: null),
+      (succes: false, message: 'Période clôturée'),
+    ]);
 
-    expect(issue.echecs[1], contains('Période comptable clôturée'));
-    // La cotisation, elle, est encaissée : il ne reste que la recette.
-    expect(issue.restantsAjustes[1]!.principal, 15000);
-    expect(issue.restantsAjustes[1]!.jumelle, 0);
+    expect(resultat.reussis, 1);
+    expect(resultat.echecs, 1);
+    expect(resultat.resultats[1].ligneId, 2);
+    expect(resultat.resultats[1].message, 'Période clôturée');
   });
 }
