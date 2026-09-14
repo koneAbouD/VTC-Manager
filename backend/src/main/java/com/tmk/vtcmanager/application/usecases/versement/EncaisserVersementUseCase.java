@@ -18,6 +18,9 @@ import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementUseCase
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -42,6 +45,8 @@ import java.util.UUID;
  */
 @RequiredArgsConstructor
 public class EncaisserVersementUseCase {
+
+    private static final DateTimeFormatter JOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final CreateEncaissementUseCase createEncaissementUseCase;
     private final CreateEncaissementCotisationUseCase createEncaissementCotisationUseCase;
@@ -99,15 +104,45 @@ public class EncaisserVersementUseCase {
         LigneCotisation ligneCotisation = ligneCotisationRepository.findById(ligneCotisationId)
                 .orElseThrow(() -> new LigneCotisationNotFoundException(ligneCotisationId));
 
-        boolean soeurs = Objects.equals(ligneRecette.getVehiculeId(), ligneCotisation.getVehiculeId())
-                && Objects.equals(ligneRecette.getChauffeurId(), ligneCotisation.getChauffeurId())
-                && Objects.equals(ligneRecette.getDateRecette(), ligneCotisation.getDateCotisation());
-        if (!soeurs) {
-            throw new VersementIncoherentException(
-                    "Cette recette et cette cotisation ne portent pas le même véhicule, le même"
-                            + " chauffeur et le même jour : elles ne peuvent pas être réglées par un"
-                            + " seul versement. Encaissez-les séparément.");
+        // Chaque écart est nommé, valeurs à l'appui : « pas sœurs » ne dit pas
+        // au guichet ce qu'il doit corriger, « Jour différent : recette du
+        // 10/09, cotisation du 09/09 » le lui dit.
+        List<String> ecarts = new ArrayList<>();
+        if (!Objects.equals(ligneRecette.getVehiculeId(), ligneCotisation.getVehiculeId())) {
+            ecarts.add("Véhicule différent : "
+                    + vehicule(ligneRecette.getVehiculeImmatriculation(), ligneRecette.getVehiculeId())
+                    + " pour la recette, "
+                    + vehicule(ligneCotisation.getVehiculeImmatriculation(), ligneCotisation.getVehiculeId())
+                    + " pour la cotisation.");
         }
+        if (!Objects.equals(ligneRecette.getChauffeurId(), ligneCotisation.getChauffeurId())) {
+            ecarts.add("Chauffeur différent : "
+                    + chauffeur(ligneRecette.getChauffeurNom(), ligneRecette.getChauffeurId())
+                    + " pour la recette, "
+                    + chauffeur(ligneCotisation.getChauffeurNom(), ligneCotisation.getChauffeurId())
+                    + " pour la cotisation.");
+        }
+        if (!Objects.equals(ligneRecette.getDateRecette(), ligneCotisation.getDateCotisation())) {
+            ecarts.add("Jour différent : recette du " + jour(ligneRecette.getDateRecette())
+                    + ", cotisation du " + jour(ligneCotisation.getDateCotisation()) + ".");
+        }
+        if (!ecarts.isEmpty()) {
+            throw new VersementIncoherentException(
+                    "Cette recette et cette cotisation ne peuvent pas être réglées par un seul versement. "
+                            + String.join(" ", ecarts) + " Encaissez-les séparément.");
+        }
+    }
+
+    private static String vehicule(String immatriculation, Long id) {
+        return immatriculation != null && !immatriculation.isBlank() ? immatriculation : "véhicule #" + id;
+    }
+
+    private static String chauffeur(String nom, Long id) {
+        return nom != null && !nom.isBlank() ? nom : "chauffeur #" + id;
+    }
+
+    private static String jour(LocalDate date) {
+        return date == null ? "date inconnue" : date.format(JOUR);
     }
 
     /** Pose l'identifiant commun, quand il y a bien deux écritures à rassembler. */

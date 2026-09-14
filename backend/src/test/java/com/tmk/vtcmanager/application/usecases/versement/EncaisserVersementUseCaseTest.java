@@ -89,12 +89,24 @@ class EncaisserVersementUseCaseTest {
 
     private static LigneRecette recette(Long vehicule, Long chauffeur, LocalDate jour) {
         return LigneRecette.builder().id(RECETTE_ID)
-                .vehiculeId(vehicule).chauffeurId(chauffeur).dateRecette(jour).build();
+                .vehiculeId(vehicule).vehiculeImmatriculation(immatriculation(vehicule))
+                .chauffeurId(chauffeur).chauffeurNom(nom(chauffeur))
+                .dateRecette(jour).build();
     }
 
     private static LigneCotisation cotisation(Long vehicule, Long chauffeur, LocalDate jour) {
         return LigneCotisation.builder().id(COTISATION_ID)
-                .vehiculeId(vehicule).chauffeurId(chauffeur).dateCotisation(jour).build();
+                .vehiculeId(vehicule).vehiculeImmatriculation(immatriculation(vehicule))
+                .chauffeurId(chauffeur).chauffeurNom(nom(chauffeur))
+                .dateCotisation(jour).build();
+    }
+
+    private static String immatriculation(Long vehicule) {
+        return vehicule.equals(VEHICULE) ? "1234 AB 01" : "5678 CD 01";
+    }
+
+    private static String nom(Long chauffeur) {
+        return chauffeur.equals(CHAUFFEUR) ? "Jean Kouassi" : "Awa Traoré";
     }
 
     private static PartVersement part(Long ligneId, String montant) {
@@ -178,7 +190,7 @@ class EncaisserVersementUseCaseTest {
     }
 
     @Test
-    @DisplayName("un autre chauffeur : la recette et la cotisation ne forment pas un versement")
+    @DisplayName("un autre chauffeur : le refus nomme les deux chauffeurs, et rien d'autre")
     void autreChauffeur() {
         when(ligneCotisationRepository.findById(COTISATION_ID))
                 .thenReturn(Optional.of(cotisation(VEHICULE, 4L, LA_JOURNEE)));
@@ -186,22 +198,59 @@ class EncaisserVersementUseCaseTest {
         assertThatThrownBy(() -> useCase.executer(
                 saisie(part(RECETTE_ID, "15000"), part(COTISATION_ID, "2000"))))
                 .isInstanceOf(VersementIncoherentException.class)
-                .hasMessageContaining("Encaissez-les séparément");
+                .hasMessageContaining("Chauffeur différent : Jean Kouassi pour la recette,"
+                        + " Awa Traoré pour la cotisation.")
+                .hasMessageNotContaining("Véhicule différent")
+                .hasMessageNotContaining("Jour différent")
+                .hasMessageEndingWith("Encaissez-les séparément.");
 
         verifyNoInteractions(recettes, cotisations, operationRepository);
     }
 
     @Test
-    @DisplayName("une autre journée ne forme pas davantage un versement")
+    @DisplayName("une autre journée : le refus donne les deux dates")
     void autreJour() {
         when(ligneCotisationRepository.findById(COTISATION_ID))
                 .thenReturn(Optional.of(cotisation(VEHICULE, CHAUFFEUR, LA_JOURNEE.minusDays(1))));
 
         assertThatThrownBy(() -> useCase.executer(
                 saisie(part(RECETTE_ID, "15000"), part(COTISATION_ID, "2000"))))
-                .isInstanceOf(VersementIncoherentException.class);
+                .isInstanceOf(VersementIncoherentException.class)
+                .hasMessageContaining("Jour différent : recette du 10/09/2026, cotisation du 09/09/2026.")
+                .hasMessageNotContaining("Chauffeur différent")
+                .hasMessageNotContaining("Véhicule différent");
 
         verifyNoInteractions(recettes, cotisations);
+    }
+
+    @Test
+    @DisplayName("un autre véhicule : le refus donne les deux immatriculations")
+    void autreVehicule() {
+        when(ligneCotisationRepository.findById(COTISATION_ID))
+                .thenReturn(Optional.of(cotisation(8L, CHAUFFEUR, LA_JOURNEE)));
+
+        assertThatThrownBy(() -> useCase.executer(
+                saisie(part(RECETTE_ID, "15000"), part(COTISATION_ID, "2000"))))
+                .isInstanceOf(VersementIncoherentException.class)
+                .hasMessageContaining("Véhicule différent : 1234 AB 01 pour la recette,"
+                        + " 5678 CD 01 pour la cotisation.")
+                .hasMessageNotContaining("Chauffeur différent")
+                .hasMessageNotContaining("Jour différent");
+    }
+
+    @Test
+    @DisplayName("plusieurs écarts : chacun est nommé, dans l'ordre véhicule, chauffeur, jour")
+    void plusieursEcarts() {
+        when(ligneCotisationRepository.findById(COTISATION_ID))
+                .thenReturn(Optional.of(cotisation(VEHICULE, 4L, LA_JOURNEE.plusDays(1))));
+
+        assertThatThrownBy(() -> useCase.executer(
+                saisie(part(RECETTE_ID, "15000"), part(COTISATION_ID, "2000"))))
+                .isInstanceOf(VersementIncoherentException.class)
+                .hasMessage("Cette recette et cette cotisation ne peuvent pas être réglées par un"
+                        + " seul versement. Chauffeur différent : Jean Kouassi pour la recette,"
+                        + " Awa Traoré pour la cotisation. Jour différent : recette du 10/09/2026,"
+                        + " cotisation du 11/09/2026. Encaissez-les séparément.");
     }
 
     @Test

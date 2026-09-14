@@ -289,35 +289,90 @@ class _EncaissementRapideSheetState
     final commentaire = _commentCtrl.text.trim().isEmpty
         ? null
         : _commentCtrl.text.trim();
-    // Un billet, un appel : la recette et la cotisation du jour passent
-    // ensemble ou pas du tout, rattachées à la même pièce de caisse.
-    final resultat = await ref.read(versementRepositoryProvider).encaisser(
-          recette: dist.recette > 0 && _ligneRecette != null
-              ? PartVersement(ligneId: _ligneRecette!.id!, montant: dist.recette)
-              : null,
-          cotisation: dist.cotisation > 0 && _ligneCotisation != null
-              ? PartVersement(
-                  ligneId: _ligneCotisation!.id!, montant: dist.cotisation)
-              : null,
-          mode: ModePaiement.ESPECES,
-          date: DateTime.now(),
-          commentaire: commentaire,
-        );
-    final error = resultat.fold((f) => f.message, (_) => null);
+    final recette = dist.recette > 0 && _ligneRecette != null
+        ? PartVersement(ligneId: _ligneRecette!.id!, montant: dist.recette)
+        : null;
+    final cotisation = dist.cotisation > 0 && _ligneCotisation != null
+        ? PartVersement(ligneId: _ligneCotisation!.id!, montant: dist.cotisation)
+        : null;
+
+    String? error;
+    var recettePassee = false;
+    if (recette != null && cotisation != null && !_lignesSoeurs) {
+      // Les lignes retenues sont les plus anciennes de chaque nature pour ce
+      // véhicule : rien ne garantit qu'elles soient du même jour ni du même
+      // chauffeur. Elles ne forment alors pas un billet — le serveur refuserait
+      // de les rassembler — et partent chacune par son propre versement, la
+      // recette d'abord.
+      error = await _encaisser(recette: recette, commentaire: commentaire);
+      recettePassee = error == null;
+      if (recettePassee) {
+        final erreurCotisation =
+            await _encaisser(cotisation: cotisation, commentaire: commentaire);
+        if (erreurCotisation != null) {
+          error = 'Recette encaissée. La cotisation, elle, ne l\'a pas été : '
+              '$erreurCotisation';
+        }
+      }
+    } else {
+      // Un billet, un appel : la recette et la cotisation du jour passent
+      // ensemble ou pas du tout, rattachées à la même pièce de caisse.
+      error = await _encaisser(
+          recette: recette, cotisation: cotisation, commentaire: commentaire);
+    }
 
     if (!mounted) return;
+    final recetteSeulePassee = error != null && recettePassee;
     setState(() {
       _submitting = false;
       // L'erreur est affichée dans la feuille (bandeau inline) plutôt qu'en
       // SnackBar : la feuille reste ouverte, donc un SnackBar flottant
       // s'afficherait masqué sous le bottom sheet.
       _submitError = error;
+      // Recette passée, cotisation refusée : la recette quitte la feuille pour
+      // qu'un nouvel essai ne l'encaisse pas une seconde fois.
+      if (recetteSeulePassee) {
+        _ligneRecette = null;
+        _inclureRecette = false;
+      }
     });
+    if (recetteSeulePassee) {
+      _appliquerMontantSelection();
+      ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+    }
 
     if (error != null) return;
 
     ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
     Navigator.pop(context, true);
+  }
+
+  /// Une recette et une cotisation ne forment un seul billet que si elles sont
+  /// sœurs : même véhicule, même chauffeur, même jour. La règle est celle du
+  /// serveur, qui reste seul juge ; elle sert ici à choisir le chemin, pas à
+  /// autoriser quoi que ce soit.
+  bool get _lignesSoeurs {
+    final r = _ligneRecette;
+    final c = _ligneCotisation;
+    if (r == null || c == null) return false;
+    return r.vehiculeId == c.vehiculeId &&
+        r.chauffeurId == c.chauffeurId &&
+        DateUtils.isSameDay(r.dateRecette, c.dateCotisation);
+  }
+
+  Future<String?> _encaisser({
+    PartVersement? recette,
+    PartVersement? cotisation,
+    String? commentaire,
+  }) async {
+    final resultat = await ref.read(versementRepositoryProvider).encaisser(
+          recette: recette,
+          cotisation: cotisation,
+          mode: ModePaiement.ESPECES,
+          date: DateTime.now(),
+          commentaire: commentaire,
+        );
+    return resultat.fold((f) => f.message, (_) => null);
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

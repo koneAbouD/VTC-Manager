@@ -16,6 +16,10 @@ import 'package:vtc_manager/features/vehicule/domain/entities/vehicule.dart';
 import 'package:vtc_manager/features/vehicule/domain/repositories/vehicule_repository.dart';
 import 'package:vtc_manager/features/vehicule/presentation/providers/vehicule_provider.dart';
 import 'package:vtc_manager/screens/accueil/widgets/encaissement_rapide_dialog.dart';
+import 'package:vtc_manager/features/operation_financiere/domain/enums/mode_paiement.dart';
+import 'package:vtc_manager/features/versement/domain/entities/encaissement_versement.dart';
+import 'package:vtc_manager/features/versement/domain/repositories/versement_repository.dart';
+import 'package:vtc_manager/features/versement/presentation/providers/versement_provider.dart';
 
 /// Un seul véhicule, une recette de 15 000 restants et une cotisation de 5 000.
 class _FakeVehiculeRepo implements VehiculeRepository {
@@ -59,6 +63,12 @@ class _FakeRecetteRepo implements LigneRecetteRepository {
 }
 
 class _FakeCotisationRepo implements LigneCotisationRepository {
+  /// Le 02/09 par défaut : la recette est du 01/09, les deux lignes les plus
+  /// anciennes du véhicule ne sont donc pas sœurs.
+  final DateTime jour;
+
+  _FakeCotisationRepo([DateTime? jour]) : jour = jour ?? DateTime(2026, 9, 2);
+
   @override
   Future<Either<Failure, List<LigneCotisation>>> getLignes(
           LigneCotisationFiltres filtres) async =>
@@ -67,7 +77,7 @@ class _FakeCotisationRepo implements LigneCotisationRepository {
           id: 2,
           vehiculeId: 7,
           chauffeurId: 3,
-          dateCotisation: DateTime(2026, 9, 2),
+          dateCotisation: jour,
           nomCotisation: 'Épargne',
           montantDu: 5000,
           montantEncaisse: 0,
@@ -80,14 +90,49 @@ class _FakeCotisationRepo implements LigneCotisationRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Consigne chaque versement envoyé : (ligne de recette, ligne de cotisation).
+class _FakeVersementRepo implements VersementRepository {
+  final List<(int?, int?)> appels = [];
+
+  /// Refus opposé à une cotisation envoyée seule — la caisse comptée entre les
+  /// deux appels, par exemple.
+  String? refusCotisationSeule;
+
+  @override
+  Future<Either<Failure, VersementEnregistre>> encaisser({
+    PartVersement? recette,
+    PartVersement? cotisation,
+    required ModePaiement mode,
+    required DateTime date,
+    String? reference,
+    String? commentaire,
+  }) async {
+    appels.add((recette?.ligneId, cotisation?.ligneId));
+    if (recette == null && cotisation != null && refusCotisationSeule != null) {
+      return Left(ConflictFailure(refusCotisationSeule!));
+    }
+    return const Right(VersementEnregistre());
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 /// Ouvre la feuille et sélectionne le véhicule : les deux lignes sont alors
 /// chargées et le montant prérempli.
-Future<void> _ouvrirEtSelectionner(WidgetTester tester) async {
+Future<void> _ouvrirEtSelectionner(
+  WidgetTester tester, {
+  DateTime? jourCotisation,
+  _FakeVersementRepo? versements,
+}) async {
   await tester.pumpWidget(ProviderScope(
     overrides: [
       vehiculeRepositoryProvider.overrideWithValue(_FakeVehiculeRepo()),
       ligneRecetteRepositoryProvider.overrideWithValue(_FakeRecetteRepo()),
-      ligneCotisationRepositoryProvider.overrideWithValue(_FakeCotisationRepo()),
+      ligneCotisationRepositoryProvider
+          .overrideWithValue(_FakeCotisationRepo(jourCotisation)),
+      versementRepositoryProvider
+          .overrideWithValue(versements ?? _FakeVersementRepo()),
     ],
     child: MaterialApp(
       home: Builder(
@@ -178,4 +223,63 @@ void main() {
     final bouton = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(bouton.onPressed, isNull);
   });
+
+  // ── Soumission ────────────────────────────────────────────────────────────
+
+  testWidgets(
+      'recette et cotisation de jours différents : deux versements, '
+      'la recette d\'abord', (tester) async {
+    final versements = _FakeVersementRepo();
+    await _ouvrirEtSelectionner(tester, versements: versements);
+
+    await _encaisser(tester);
+
+    // Pas de pièce de caisse commune : le serveur la refuserait.
+    expect(versements.appels, [(1, null), (null, 2)]);
+  });
+
+  testWidgets('lignes du même jour et du même chauffeur : un seul versement',
+      (tester) async {
+    final versements = _FakeVersementRepo();
+    await _ouvrirEtSelectionner(tester,
+        jourCotisation: DateTime(2026, 9, 1), versements: versements);
+
+    await _encaisser(tester);
+
+    expect(versements.appels, [(1, 2)]);
+  });
+
+  testWidgets(
+      'cotisation refusée après la recette : la recette quitte la feuille '
+      'et un nouvel essai ne la rejoue pas', (tester) async {
+    final versements = _FakeVersementRepo()
+      ..refusCotisationSeule = 'La caisse a été comptée le 02/09/2026.';
+    await _ouvrirEtSelectionner(tester, versements: versements);
+
+    await _encaisser(tester);
+
+    expect(versements.appels, [(1, null), (null, 2)]);
+    expect(find.textContaining('Recette encaissée'), findsOneWidget);
+    expect(find.textContaining('caisse a été comptée'), findsOneWidget);
+    // Seule la cotisation reste à régler, montant réaligné sur elle.
+    expect(_cases(tester), hasLength(1));
+    expect(find.text('5 000'), findsOneWidget);
+
+    versements.refusCotisationSeule = null;
+    await _encaisser(tester);
+
+    expect(versements.appels.last, (null, 2));
+    expect(versements.appels.where((a) => a.$1 == 1), hasLength(1));
+  });
 }
+
+/// La feuille dépasse la surface de test : le bouton est amené à l'écran avant
+/// d'être touché.
+Future<void> _encaisser(WidgetTester tester) async {
+  final bouton = find.widgetWithText(FilledButton, 'Encaisser');
+  await tester.ensureVisible(bouton);
+  await tester.pumpAndSettle();
+  await tester.tap(bouton);
+  await tester.pumpAndSettle();
+}
+
