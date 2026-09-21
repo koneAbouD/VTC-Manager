@@ -63,10 +63,19 @@ class MargeVehiculeData {
   final double chargesVariables;
   final double marge;
 
+  /// Charges fixes payées pour ce véhicule : assurance, vignette, patente,
+  /// visite technique, carte de stationnement. Elles ne varient pas avec le
+  /// roulage, mais elles sont bien à sa charge — les laisser hors du calcul
+  /// mettait un véhicule assuré au même rang qu'un véhicule sans frais.
+  final double chargesDirectes;
+
+  /// Marge sur coûts variables − charges directes.
+  final double margeApresChargesDirectes;
+
   /// Dotation d'amortissement du véhicule sur la période (prix d'achat / durée).
   final double dotationAmortissement;
 
-  /// Marge nette = marge sur coûts variables − dotation d'amortissement.
+  /// Marge nette = marge après charges directes − dotation d'amortissement.
   final double margeNette;
 
   /// Nombre de jours d'immobilisation (indisponibilité véhicule) sur la période.
@@ -78,6 +87,8 @@ class MargeVehiculeData {
     required this.produits,
     required this.chargesVariables,
     required this.marge,
+    this.chargesDirectes = 0,
+    this.margeApresChargesDirectes = 0,
     this.dotationAmortissement = 0,
     this.margeNette = 0,
     this.joursImmobilisation = 0,
@@ -90,6 +101,9 @@ class MargeVehiculeData {
         produits: (j['produits'] as num?)?.toDouble() ?? 0,
         chargesVariables: (j['chargesVariables'] as num?)?.toDouble() ?? 0,
         marge: (j['marge'] as num?)?.toDouble() ?? 0,
+        chargesDirectes: (j['chargesDirectes'] as num?)?.toDouble() ?? 0,
+        margeApresChargesDirectes:
+            (j['margeApresChargesDirectes'] as num?)?.toDouble() ?? 0,
         dotationAmortissement:
             (j['dotationAmortissement'] as num?)?.toDouble() ?? 0,
         margeNette: (j['margeNette'] as num?)?.toDouble() ?? 0,

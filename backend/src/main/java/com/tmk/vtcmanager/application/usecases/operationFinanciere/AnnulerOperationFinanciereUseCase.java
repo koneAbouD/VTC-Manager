@@ -12,10 +12,14 @@ import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Annulation d'une écriture par contre-passation.
@@ -26,7 +30,13 @@ import java.time.LocalDateTime;
  * datée du jour de l'annulation, ou du jour que l'appelant impose. Le couple
  * s'annule dans les soldes comme dans la cascade du compte de résultat, sans
  * qu'aucune requête d'agrégat n'ait à connaître la notion d'extourne.
+ *
+ * <p>Une écriture née d'un versement — la recette et la cotisation du jour
+ * réglées d'un seul billet — n'est jamais annulée seule : c'est le billet
+ * entier qui est rendu. Les deux écritures sont contre-passées ensemble, dans
+ * la même transaction, et les deux créances redeviennent dues.
  */
+@Slf4j
 @RequiredArgsConstructor
 public class AnnulerOperationFinanciereUseCase {
 
@@ -101,27 +111,63 @@ public class AnnulerOperationFinanciereUseCase {
         // ce jour-là : sinon le procès-verbal de comptage deviendrait faux.
         caisseClotureeGuard.verifier(origine.getCompteTresorerieId(), date);
 
-        String auteur = auteurCourant.nom();
-        origine.setMotifAnnulation(motif);
-        origine.setAnnulePar(auteur);
-        origine.setAnnuleLe(LocalDateTime.now());
-        OperationFinanciere origineSauvee = operationRepository.save(origine);
+        // Le reste du billet, s'il y en a un. Les verrous sont éprouvés avant
+        // le premier enregistrement : un versement s'annule en entier ou pas du
+        // tout, jamais par moitié.
+        List<OperationFinanciere> soeurs = soeursDuVersement(origine);
+        for (OperationFinanciere soeur : soeurs) {
+            caisseClotureeGuard.verifier(soeur.getCompteTresorerieId(), date);
+        }
 
-        operationRepository.save(construireExtourne(origineSauvee, date, motif));
+        String auteur = auteurCourant.nom();
+        OperationFinanciere origineSauvee = contrePasser(origine, date, motif, auteur);
+        for (OperationFinanciere soeur : soeurs) {
+            contrePasser(soeur, date, motif, auteur);
+            log.info("Écriture {} extournée avec le versement {} de l'écriture {}",
+                    soeur.getId(), origine.getVersementId(), origine.getId());
+        }
+        return origineSauvee;
+    }
+
+    /**
+     * Les autres écritures du même billet, celles qu'il reste à rendre. Une
+     * sœur déjà extournée — la cotisation annulée seule la veille — est
+     * écartée sans bruit : le billet se rend de ce qu'il en reste.
+     */
+    private List<OperationFinanciere> soeursDuVersement(OperationFinanciere origine) {
+        UUID versementId = origine.getVersementId();
+        if (versementId == null) {
+            return List.of();
+        }
+        return operationRepository.findByVersementId(versementId).stream()
+                .filter(e -> !Objects.equals(e.getId(), origine.getId()))
+                .filter(OperationFinanciere::estAnnulable)
+                .toList();
+    }
+
+    /** Marque l'écriture annulée, lui oppose son extourne, repositionne sa source. */
+    private OperationFinanciere contrePasser(OperationFinanciere operation, LocalDate date,
+                                             String motif, String auteur) {
+        operation.setMotifAnnulation(motif);
+        operation.setAnnulePar(auteur);
+        operation.setAnnuleLe(LocalDateTime.now());
+        OperationFinanciere sauvee = operationRepository.save(operation);
+
+        operationRepository.save(construireExtourne(sauvee, date, motif));
 
         // L'encaissement sous-jacent (recette / cotisation / pénalité) est marqué
         // annulé — jamais supprimé — et la ligne recalculée sans lui : elle
         // retrouve son statut EN_ATTENTE ou PARTIELLEMENT_ENCAISSE.
-        annulationEncaissementService.annulerEncaissementLie(origineSauvee, auteur, motif);
+        annulationEncaissementService.annulerEncaissementLie(sauvee, auteur, motif);
 
         // Même principe pour une contravention réglée : le montant versé
         // redescend et la créance redevient due.
-        annulationContraventionService.annulerPaiementLie(origineSauvee);
+        annulationContraventionService.annulerPaiementLie(sauvee);
 
         // Une dépense issue d'une maintenance la rouvre : elle repart PLANIFIEE.
-        annulationMaintenanceService.reouvrirMaintenanceLiee(origineSauvee);
+        annulationMaintenanceService.reouvrirMaintenanceLiee(sauvee);
 
-        return origineSauvee;
+        return sauvee;
     }
 
     private OperationFinanciere construireExtourne(OperationFinanciere origine,

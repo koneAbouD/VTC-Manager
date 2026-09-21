@@ -24,6 +24,7 @@ public class UpdateCategorieOperationUseCase {
         existing.setTypeOperation(data.getTypeOperation());
         existing.setNatureResultat(data.getNatureResultat());
         existing.setActif(data.isActif());
+        existing.verifierSensCoherent();
         return categorieRepository.save(existing);
     }
 }

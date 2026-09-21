@@ -79,8 +79,9 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
           // la même marge selon qu'on lit le dû ou l'encaissé.
           Text(
             '${_base == 'ENGAGEMENT' ? 'Produits dus' : 'Produits encaissés'} '
-            '− charges variables${_amorti ? ' − amortissement' : ''}, '
-            'sans imputation des charges fixes',
+            '− charges variables − charges directes'
+            '${_amorti ? ' − amortissement' : ''}, '
+            'sans imputation des charges de structure',
             style: const TextStyle(fontSize: 12, color: AppColors.label),
           ),
           const SizedBox(height: 8),
@@ -97,9 +98,54 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
                   )
                 : Column(
                     children: [
-                      for (final m in marges) _MargeTile(m, amorti: _amorti)
+                      for (final m in _triees(marges))
+                        _MargeTile(m, amorti: _amorti),
+                      _nonImpute(asyncCr.valueOrNull, marges),
                     ],
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Rentabilité affichée d'un véhicule : celle que porte la tuile, pour que
+  /// l'ordre de la liste corresponde aux montants qu'on y lit. Trier sur la
+  /// marge nette alors que la bascule affiche la marge avant amortissement
+  /// donnait une liste dont l'ordre ne s'expliquait par aucune colonne.
+  double _valeurAffichee(MargeVehiculeData m) =>
+      _amorti && m.dotationAmortissement > 0
+          ? m.margeNette
+          : m.margeApresChargesDirectes;
+
+  List<MargeVehiculeData> _triees(List<MargeVehiculeData> marges) {
+    final copie = [...marges];
+    copie.sort((a, b) => _valeurAffichee(b).compareTo(_valeurAffichee(a)));
+    return copie;
+  }
+
+  /// Charges variables que la cascade porte mais qu'aucun véhicule ne supporte :
+  /// une dépense saisie sans véhicule. Sans ce rappel, la somme des marges
+  /// dépassait silencieusement celle du compte de résultat affiché au-dessus,
+  /// et la flotte paraissait plus rentable qu'elle ne l'est.
+  Widget _nonImpute(CompteResultatData? cr, List<MargeVehiculeData> marges) {
+    if (cr == null) return const SizedBox.shrink();
+    final imputees =
+        marges.fold<double>(0, (t, m) => t + m.chargesVariables);
+    final ecart = cr.chargesVariables - imputees;
+    if (ecart.abs() < 1) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 14, color: Colors.orange.shade800),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '${CurrencyFormatter.format(ecart)} de charges variables '
+              'sans véhicule : comptées dans la cascade, dans aucune marge',
+              style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
+            ),
           ),
         ],
       ),
@@ -367,10 +413,11 @@ class _MargeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Rentabilité affichée = marge nette (après amortissement) quand la bascule
-    // est active et qu'un amortissement s'applique ; sinon la marge sur coûts
-    // variables. Les deux montants viennent du backend, rien n'est recalculé ici.
+    // est active et qu'un amortissement s'applique ; sinon la marge après
+    // charges directes. Les montants viennent du backend, rien n'est recalculé.
     final aAmortissement = amorti && marge.dotationAmortissement > 0;
-    final valeurPrincipale = aAmortissement ? marge.margeNette : marge.marge;
+    final valeurPrincipale =
+        aAmortissement ? marge.margeNette : marge.margeApresChargesDirectes;
     final negative = valeurPrincipale < 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -397,6 +444,13 @@ class _MargeTile extends StatelessWidget {
                   '${CurrencyFormatter.format(marge.chargesVariables)}',
                   style: const TextStyle(fontSize: 11, color: AppColors.label),
                 ),
+                if (marge.chargesDirectes > 0)
+                  Text(
+                    '− Assurance et documents '
+                    '${CurrencyFormatter.format(marge.chargesDirectes)}',
+                    style:
+                        const TextStyle(fontSize: 11, color: AppColors.label),
+                  ),
                 if (aAmortissement)
                   Text(
                     '− Amortissement '

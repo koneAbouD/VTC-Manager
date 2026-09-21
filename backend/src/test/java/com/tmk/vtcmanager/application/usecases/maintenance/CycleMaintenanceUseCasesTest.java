@@ -115,6 +115,10 @@ class CycleMaintenanceUseCasesTest {
         });
         when(operationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(categorieRepository.findByCode(any())).thenReturn(Optional.empty());
+        // La catégorie de repli existe en base : sans elle, la complétion refuse
+        // désormais de créer une dépense sans catégorie (cf. categorie_de_repli_absente).
+        when(categorieRepository.findByCode("MECANIQUE")).thenReturn(
+                Optional.of(CategorieOperation.builder().id(9L).code("MECANIQUE").build()));
         when(categorieRepository.findById(anyLong())).thenReturn(Optional.empty());
         when(sousCategorieRepository.findByCategorieId(anyLong())).thenReturn(Optional.empty());
         when(sousCategorieRepository.findById(anyLong())).thenReturn(Optional.empty());
@@ -222,18 +226,32 @@ class CycleMaintenanceUseCasesTest {
         }
 
         @Test
-        @DisplayName("Aucune dépense ne reste sans catégorie : repli sur Réparation")
+        @DisplayName("Aucune dépense ne reste sans catégorie : repli sur Mécanique")
         void categorie_de_repli() {
             when(maintenanceRepository.findById(MAINTENANCE_ID))
                     .thenReturn(Optional.of(maintenance(MaintenanceStatus.EN_COURS)));
-            when(categorieRepository.findByCode("REPARATION"))
-                    .thenReturn(Optional.of(CategorieOperation.builder().id(9L).code("REPARATION").build()));
 
             completeUseCase.execute(MAINTENANCE_ID, BigDecimal.valueOf(85_000), HIER,
                     ReglementMaintenance.comptant(null), null, null);
 
             // Sans ce repli, la dépense retomberait dans la bulle « Autres ».
-            assertThat(depenseEnregistree().getCategorie().getCode()).isEqualTo("REPARATION");
+            assertThat(depenseEnregistree().getCategorie().getCode()).isEqualTo("MECANIQUE");
+        }
+
+        @Test
+        @DisplayName("Repli introuvable : la complétion refuse plutôt que de perdre la charge")
+        void categorie_de_repli_absente() {
+            when(maintenanceRepository.findById(MAINTENANCE_ID))
+                    .thenReturn(Optional.of(maintenance(MaintenanceStatus.EN_COURS)));
+            when(categorieRepository.findByCode("MECANIQUE")).thenReturn(Optional.empty());
+
+            // Une dépense sans catégorie sort des agrégats du compte de résultat
+            // (jointure interne) : le véhicule paraîtrait plus rentable qu'il ne l'est.
+            assertThatThrownBy(() -> completeUseCase.execute(MAINTENANCE_ID,
+                    BigDecimal.valueOf(85_000), HIER,
+                    ReglementMaintenance.comptant(null), null, null))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("MECANIQUE");
         }
 
         @Test

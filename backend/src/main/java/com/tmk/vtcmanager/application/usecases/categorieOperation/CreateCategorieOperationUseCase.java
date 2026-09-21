@@ -15,6 +15,7 @@ public class CreateCategorieOperationUseCase {
 
     @Transactional
     public CategorieOperation execute(CategorieOperation categorie) {
+        categorie.verifierSensCoherent();
         // Le code n'est plus saisi : on le dérive du libellé (majuscules, sans
         // accents) en garantissant l'unicité. Si un code est fourni (compat), on
         // conserve la vérification d'unicité classique.

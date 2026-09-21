@@ -42,7 +42,7 @@ public class CompleteMaintenanceUseCase {
     /** Catégorie de dépense par défaut si le type de maintenance n'est pas
      *  résolu en catégorie (garantit qu'aucune dépense ne reste sans catégorie
      *  — évite la bulle « Autres » de la répartition). */
-    private static final String CODE_CATEGORIE_MAINTENANCE_DEFAUT = "REPARATION";
+    private static final String CODE_CATEGORIE_MAINTENANCE_DEFAUT = "MECANIQUE";
 
     private final MaintenanceRepository maintenanceRepository;
     private final OperationFinanciereRepository operationRepository;
@@ -95,7 +95,16 @@ public class CompleteMaintenanceUseCase {
                 categorie = categorieRepository.findByCode(saved.getType()).orElse(null);
             }
             if (categorie == null) {
-                categorie = categorieRepository.findByCode(CODE_CATEGORIE_MAINTENANCE_DEFAUT).orElse(null);
+                // Le repli lui-même doit exister : une dépense sans catégorie
+                // sort des agrégats du compte de résultat (jointure interne sur
+                // categories_operation) et le véhicule paraît plus rentable
+                // qu'il ne l'est. Mieux vaut refuser la saisie que la perdre.
+                categorie = categorieRepository.findByCode(CODE_CATEGORIE_MAINTENANCE_DEFAUT)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Aucune catégorie de dépense ne correspond à cette intervention, "
+                                        + "et la catégorie de repli « "
+                                        + CODE_CATEGORIE_MAINTENANCE_DEFAUT
+                                        + " » est introuvable : choisissez une catégorie."));
             }
 
             // La sous-catégorie n'est jamais chargée avec la catégorie

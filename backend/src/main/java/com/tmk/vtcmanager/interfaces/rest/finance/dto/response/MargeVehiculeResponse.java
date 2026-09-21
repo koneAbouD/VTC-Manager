@@ -8,6 +8,8 @@ public record MargeVehiculeResponse(
         BigDecimal produits,
         BigDecimal chargesVariables,
         BigDecimal marge,
+        BigDecimal chargesDirectes,
+        BigDecimal margeApresChargesDirectes,
         BigDecimal dotationAmortissement,
         BigDecimal margeNette,
         long joursImmobilisation

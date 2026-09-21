@@ -117,6 +117,7 @@ public class FinanceController {
         return getMargesParVehiculeUseCase.executer(annee, mois, base).stream()
                 .map(m -> new MargeVehiculeResponse(m.getVehiculeId(), m.getImmatriculation(),
                         m.getProduits(), m.getChargesVariables(), m.getMarge(),
+                        m.getChargesDirectes(), m.getMargeApresChargesDirectes(),
                         m.getDotationAmortissement(), m.getMargeNette(), m.getJoursImmobilisation()))
                 .toList();
     }

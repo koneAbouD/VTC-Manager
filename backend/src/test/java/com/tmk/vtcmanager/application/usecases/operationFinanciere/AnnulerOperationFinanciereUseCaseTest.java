@@ -21,10 +21,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -45,14 +48,14 @@ class AnnulerOperationFinanciereUseCaseTest {
 
     private OperationFinanciereRepository operationRepository;
     private PeriodeClotureeGuard periodeClotureeGuard;
+    private AnnulationEncaissementService annulationEncaissement;
     private AnnulerOperationFinanciereUseCase useCase;
 
     @BeforeEach
     void setUp() {
         operationRepository = mock(OperationFinanciereRepository.class);
         periodeClotureeGuard = mock(PeriodeClotureeGuard.class);
-        AnnulationEncaissementService annulationEncaissement =
-                mock(AnnulationEncaissementService.class);
+        annulationEncaissement = mock(AnnulationEncaissementService.class);
         AnnulationContraventionService annulationContravention =
                 mock(AnnulationContraventionService.class);
         AnnulationMaintenanceService annulationMaintenance =
@@ -136,5 +139,68 @@ class AnnulerOperationFinanciereUseCaseTest {
 
         assertThatThrownBy(() -> useCase.execute(1L, "erreur de saisie"))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    // ── Versement : le billet se rend en entier ────────────────────────────
+
+    private static final UUID VERSEMENT = UUID.randomUUID();
+
+    private OperationFinanciere ecritureDuVersement(Long id, String reference,
+                                                    String montant) {
+        return OperationFinanciere.builder()
+                .id(id)
+                .reference(reference)
+                .typeOperation(TypeOperation.REVENU)
+                .montant(new BigDecimal(montant))
+                .dateOperation(MOIS_CLOS)
+                .versementId(VERSEMENT)
+                .build();
+    }
+
+    @Test
+    @DisplayName("Annuler la recette d'un versement extourne aussi la cotisation du billet")
+    void versement_extourne_en_entier() {
+        OperationFinanciere recette = ecritureDuVersement(1L, "ENC-2026-000010", "20000");
+        OperationFinanciere cotisation = ecritureDuVersement(2L, "ENC-2026-000011", "1000");
+        when(operationRepository.findById(1L)).thenReturn(Optional.of(recette));
+        when(operationRepository.findByVersementId(VERSEMENT))
+                .thenReturn(List.of(recette, cotisation));
+
+        useCase.execute(1L, "billet rendu");
+
+        // Deux origines marquées, deux extournes : quatre enregistrements.
+        ArgumentCaptor<OperationFinanciere> captor =
+                ArgumentCaptor.forClass(OperationFinanciere.class);
+        verify(operationRepository, times(4)).save(captor.capture());
+        List<OperationFinanciere> sauvees = captor.getAllValues();
+        assertThat(sauvees.get(1).getExtourneDeId()).isEqualTo(1L);
+        assertThat(sauvees.get(1).getMontant()).isEqualByComparingTo("-20000");
+        assertThat(sauvees.get(2).getMotifAnnulation()).isEqualTo("billet rendu");
+        assertThat(sauvees.get(3).getExtourneDeId()).isEqualTo(2L);
+        assertThat(sauvees.get(3).getMontant()).isEqualByComparingTo("-1000");
+        // L'extourne ne rejoint jamais le versement : elle n'est pas un billet.
+        assertThat(sauvees.get(3).getVersementId()).isNull();
+
+        // Les deux créances redeviennent dues.
+        verify(annulationEncaissement)
+                .annulerEncaissementLie(eq(recette), anyString(), eq("billet rendu"));
+        verify(annulationEncaissement)
+                .annulerEncaissementLie(eq(cotisation), anyString(), eq("billet rendu"));
+    }
+
+    @Test
+    @DisplayName("Une sœur déjà extournée n'est pas contre-passée une seconde fois")
+    void versement_soeur_deja_extournee_ignoree() {
+        OperationFinanciere recette = ecritureDuVersement(1L, "ENC-2026-000010", "20000");
+        OperationFinanciere cotisation = ecritureDuVersement(2L, "ENC-2026-000011", "1000");
+        cotisation.setAnnuleLe(java.time.LocalDateTime.now());
+        when(operationRepository.findById(1L)).thenReturn(Optional.of(recette));
+        when(operationRepository.findByVersementId(VERSEMENT))
+                .thenReturn(List.of(recette, cotisation));
+
+        useCase.execute(1L, "erreur de montant");
+
+        // La recette seule : son marquage et son extourne.
+        verify(operationRepository, times(2)).save(any());
     }
 }

@@ -111,6 +111,27 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
         return totaux;
     }
 
+    /**
+     * Produits d'exploitation encaissés qui ne soldent aucune créance — vente de
+     * pièces, indemnisation, commission, soutien, excédent de caisse. Ils n'ont
+     * pas de « montant dû » à lire ailleurs : leur seule trace est l'écriture.
+     * Sans eux, la base engagement ne retenait que les recettes et les amendes,
+     * alors qu'elle portait la totalité des charges — le véhicule indemnisé
+     * après un sinistre affichait la réparation sans l'indemnité.
+     *
+     * <p>Le lien vers l'encaissement écarte ce qui est déjà compté par sa
+     * créance, et l'extourne d'un tel encaissement avec lui : la ligne de
+     * recette annulée reprend son montant dû, la contre-passation ne doit pas
+     * le diminuer une seconde fois. Alias {@code o} attendu.
+     */
+    private static final String PRODUIT_SANS_CREANCE = """
+            o.statut IN ('ENCAISSE', 'PAYE')
+              AND NOT EXISTS (SELECT 1 FROM encaissements e
+                               WHERE e.operation_financiere_id IN (o.id, o.extourne_de_id))
+              AND NOT EXISTS (SELECT 1 FROM encaissements_penalite ep
+                               WHERE ep.operation_financiere_id IN (o.id, o.extourne_de_id))
+            """;
+
     @Override
     public BigDecimal produitsEngagement(LocalDate debut, LocalDate fin) {
         // Les cotisations ne sont PAS un produit (dépôt HORS_RESULTAT, restitué en
@@ -130,7 +151,13 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                      + COALESCE((SELECT SUM(lp.montant) FROM lignes_penalite lp
                                  WHERE lp.statut <> 'ANNULEE' AND lp.type_sanction = 'AMENDE'
                                    AND COALESCE(lp.date_faute, lp.date_generation) BETWEEN ? AND ?), 0)
-                """, BigDecimal.class, debut, fin, debut, fin);
+                     + COALESCE((SELECT SUM(o.montant) FROM operations_financieres o
+                                 JOIN categories_operation c ON c.id = o.categorie_id
+                                 WHERE c.nature_resultat = 'PRODUIT_EXPLOITATION'
+                                   AND o.date_operation BETWEEN ? AND ?
+                                   AND {{SANS_CREANCE}}), 0)
+                """.replace("{{SANS_CREANCE}}", PRODUIT_SANS_CREANCE),
+                BigDecimal.class, debut, fin, debut, fin, debut, fin);
         return total == null ? BigDecimal.ZERO : total;
     }
 
@@ -212,18 +239,25 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
     }
 
     /**
-     * Produits et charges variables d'un véhicule (alias {@code v}) en base
-     * CAISSE : les opérations encaissées ou payées de la période. Deux
-     * paramètres : <b>début</b> puis <b>fin</b>.
+     * Produits, charges variables et charges directes d'un véhicule (alias
+     * {@code v}) en base CAISSE : les opérations encaissées ou payées de la
+     * période. Deux paramètres : <b>début</b> puis <b>fin</b>.
+     *
+     * <p>Une charge fixe n'entre ici que si sa catégorie est marquée imputable
+     * au véhicule — assurance, vignette, patente, visite technique. Le reste des
+     * charges fixes est de la structure : l'imputer véhicule par véhicule
+     * reviendrait à inventer une clé de répartition.
      */
     private static final String AGREGAT_VEHICULE_CAISSE = """
             SELECT COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'PRODUIT_EXPLOITATION'), 0) AS produits,
                    COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'CHARGE_VARIABLE'), 0)      AS charges,
+                   COALESCE(SUM(o.montant) FILTER (WHERE c.nature_resultat = 'CHARGE_FIXE'), 0)          AS charges_directes,
                    COUNT(*)                                                                              AS nb_ops
             FROM operations_financieres o
             JOIN categories_operation c
                    ON c.id = o.categorie_id
-                  AND c.nature_resultat IN ('PRODUIT_EXPLOITATION', 'CHARGE_VARIABLE')
+                  AND (c.nature_resultat IN ('PRODUIT_EXPLOITATION', 'CHARGE_VARIABLE')
+                       OR (c.nature_resultat = 'CHARGE_FIXE' AND c.imputable_vehicule))
             WHERE o.vehicule_id = v.id
               AND o.statut IN ('ENCAISSE', 'PAYE')
               AND o.date_operation BETWEEN ? AND ?
@@ -232,17 +266,19 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
     /**
      * Même agrégat en base ENGAGEMENT, aux mêmes sources que la cascade : produits
      * dus (recettes attendues — ou versées pour les recettes au réel — plus les
-     * amendes, cotisations exclues car hors résultat) et charges engagées
-     * (factures partenaires reçues + dépenses réglées sans facture, pour ne pas
-     * compter deux fois une charge déjà facturée). Le traitement du réel suit
-     * celui de {@code produitsEngagement} : la somme des marges par véhicule doit
-     * rester celle de la cascade. Huit paramètres, quatre couples
-     * <b>début, fin</b> dans l'ordre des blocs.
+     * amendes et les produits encaissés sans créance ; cotisations exclues car
+     * hors résultat) et charges engagées (factures partenaires reçues + dépenses
+     * réglées sans facture, pour ne pas compter deux fois une charge déjà
+     * facturée). Le traitement du réel suit celui de {@code produitsEngagement} :
+     * la somme des marges par véhicule doit rester celle de la cascade. Quatorze
+     * paramètres, sept couples <b>début, fin</b> dans l'ordre des blocs.
      */
     private static final String AGREGAT_VEHICULE_ENGAGEMENT = """
-            SELECT rec.montant + amende.montant AS produits,
-                   fact.montant + hors.montant  AS charges,
-                   rec.nb + amende.nb + fact.nb + hors.nb AS nb_ops
+            SELECT rec.montant + amende.montant + autres.montant AS produits,
+                   fact.montant + hors.montant                   AS charges,
+                   factdir.montant + horsdir.montant             AS charges_directes,
+                   rec.nb + amende.nb + autres.nb
+                       + fact.nb + hors.nb + factdir.nb + horsdir.nb AS nb_ops
             FROM (SELECT COALESCE(SUM(COALESCE(lr.montant_attendu, lr.montant_encaisse)), 0) AS montant,
                          COUNT(*) AS nb
                   FROM lignes_recette lr
@@ -255,6 +291,13 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                     AND lp.statut <> 'ANNULEE'
                     AND lp.type_sanction = 'AMENDE'
                     AND COALESCE(lp.date_faute, lp.date_generation) BETWEEN ? AND ?) amende,
+                 (SELECT COALESCE(SUM(o.montant), 0) AS montant, COUNT(*) AS nb
+                  FROM operations_financieres o
+                  JOIN categories_operation c ON c.id = o.categorie_id
+                  WHERE o.vehicule_id = v.id
+                    AND c.nature_resultat = 'PRODUIT_EXPLOITATION'
+                    AND o.date_operation BETWEEN ? AND ?
+                    AND {{SANS_CREANCE}}) autres,
                  (SELECT COALESCE(SUM(f.montant), 0) AS montant, COUNT(*) AS nb
                   FROM factures_partenaire f
                   JOIN categories_operation c ON c.id = f.categorie_id
@@ -269,8 +312,25 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                     AND o.statut IN ('ENCAISSE', 'PAYE')
                     AND o.facture_partenaire_id IS NULL
                     AND c.nature_resultat = 'CHARGE_VARIABLE'
-                    AND o.date_operation BETWEEN ? AND ?) hors
-            """;
+                    AND o.date_operation BETWEEN ? AND ?) hors,
+                 (SELECT COALESCE(SUM(f.montant), 0) AS montant, COUNT(*) AS nb
+                  FROM factures_partenaire f
+                  JOIN categories_operation c ON c.id = f.categorie_id
+                  WHERE f.vehicule_id = v.id
+                    AND f.statut <> 'ANNULEE'
+                    AND c.nature_resultat = 'CHARGE_FIXE'
+                    AND c.imputable_vehicule
+                    AND f.date_facture BETWEEN ? AND ?) factdir,
+                 (SELECT COALESCE(SUM(o.montant), 0) AS montant, COUNT(*) AS nb
+                  FROM operations_financieres o
+                  JOIN categories_operation c ON c.id = o.categorie_id
+                  WHERE o.vehicule_id = v.id
+                    AND o.statut IN ('ENCAISSE', 'PAYE')
+                    AND o.facture_partenaire_id IS NULL
+                    AND c.nature_resultat = 'CHARGE_FIXE'
+                    AND c.imputable_vehicule
+                    AND o.date_operation BETWEEN ? AND ?) horsdir
+            """.replace("{{SANS_CREANCE}}", PRODUIT_SANS_CREANCE);
 
     @Override
     public List<MargeVehicule> margesParVehicule(LocalDate debut, LocalDate fin, BaseComptable base) {
@@ -280,12 +340,14 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
         // ligne dès qu'il y a un mouvement produit/charge OU des jours d'immobilisation.
         // Les véhicules sans activité ni immobilisation sont exclus.
         return jdbcTemplate.query("""
-                SELECT t.id, t.immatriculation, t.produits, t.charges, t.jours_immo, t.dotation
+                SELECT t.id, t.immatriculation, t.produits, t.charges,
+                       t.charges_directes, t.jours_immo, t.dotation
                 FROM (
                     SELECT v.id AS id, v.immatriculation AS immatriculation,
-                           agg.produits AS produits,
-                           agg.charges  AS charges,
-                           agg.nb_ops   AS nb_ops,
+                           agg.produits         AS produits,
+                           agg.charges          AS charges,
+                           agg.charges_directes AS charges_directes,
+                           agg.nb_ops           AS nb_ops,
                            COALESCE((
                                SELECT SUM(GREATEST(0,
                                           (LEAST(COALESCE(iv.date_fin, ?), ?) - GREATEST(iv.date_debut, ?)) + 1))
@@ -311,7 +373,7 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                     CROSS JOIN LATERAL ({{AGREGAT}}) agg
                 ) t
                 WHERE t.nb_ops > 0 OR t.jours_immo > 0
-                ORDER BY (t.produits - t.charges - t.dotation) DESC
+                ORDER BY (t.produits - t.charges - t.charges_directes - t.dotation) DESC
                 """
                 .replace("{{JOURS}}", JOURS_AMORTIS_PERIODE)
                 .replace("{{PLAN}}", PLAN_AMORTISSEMENT)
@@ -321,8 +383,10 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                 (rs, i) -> {
                     BigDecimal produits = rs.getBigDecimal("produits");
                     BigDecimal charges = rs.getBigDecimal("charges");
+                    BigDecimal chargesDirectes = rs.getBigDecimal("charges_directes");
                     BigDecimal dotation = rs.getBigDecimal("dotation");
                     BigDecimal marge = produits.subtract(charges);
+                    BigDecimal margeDirecte = marge.subtract(chargesDirectes);
                     return MargeVehicule.builder()
                             .vehiculeId(rs.getLong("id"))
                             .immatriculation(rs.getString("immatriculation"))
@@ -330,8 +394,10 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
                             .produits(produits)
                             .chargesVariables(charges)
                             .marge(marge)
+                            .chargesDirectes(chargesDirectes)
+                            .margeApresChargesDirectes(margeDirecte)
                             .dotationAmortissement(dotation)
-                            .margeNette(marge.subtract(dotation))
+                            .margeNette(margeDirecte.subtract(dotation))
                             .build();
                 },
                 parametresMargesParVehicule(debut, fin, engagement));
@@ -341,14 +407,15 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
      * Paramètres de {@link #margesParVehicule}, dans l'ordre d'apparition :
      * jours_immo (fin, fin, debut, fin, debut), dotation (fin, debut puis jours
      * amortis fin, debut), enfin l'agrégat — un couple debut/fin en base caisse,
-     * quatre en base engagement.
+     * sept en base engagement (recettes, amendes, autres produits, factures et
+     * dépenses variables, factures et dépenses directes).
      */
     private static Object[] parametresMargesParVehicule(
             LocalDate debut, LocalDate fin, boolean engagement) {
         List<Object> params = new java.util.ArrayList<>(List.of(
                 fin, fin, debut, fin, debut,
                 fin, debut, fin, debut));
-        for (int i = 0; i < (engagement ? 4 : 1); i++) {
+        for (int i = 0; i < (engagement ? 7 : 1); i++) {
             params.add(debut);
             params.add(fin);
         }

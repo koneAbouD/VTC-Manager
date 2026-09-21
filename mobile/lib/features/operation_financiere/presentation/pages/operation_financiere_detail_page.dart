@@ -390,13 +390,22 @@ class _DetailBody extends ConsumerWidget {
     final id = op.id;
     if (id == null) return;
 
+    // Un billet se rend en entier : annuler l'écriture d'un versement extourne
+    // aussi sa sœur — recette et cotisation redeviennent dues ensemble. Le
+    // serveur s'en charge ; l'écran l'annonce avant de demander le motif.
+    final billet = op.versementId != null;
+
     // L'écriture n'est pas effacée : elle est contre-passée par une extourne
     // datée du jour, qui porte ce motif. Il est donc obligatoire.
     final motif = await showMotifAnnulationDialog(
       context,
-      titre: 'Annuler l\'opération ?',
-      message: "L'opération sera contre-passée par une écriture d'extourne "
-          'datée du jour. Indiquez le motif.',
+      titre: billet ? 'Annuler le versement ?' : 'Annuler l\'opération ?',
+      message: billet
+          ? "Toutes les écritures de ce versement seront contre-passées par "
+              "des extournes datées du jour, et chaque créance qu'il soldait "
+              'redeviendra due. Indiquez le motif.'
+          : "L'opération sera contre-passée par une écriture d'extourne "
+              'datée du jour. Indiquez le motif.',
     );
     if (motif == null) return;
     if (!context.mounted) return;
@@ -415,7 +424,9 @@ class _DetailBody extends ConsumerWidget {
       // rafraîchit tout le module Finances.
       refreshFinances(ref);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Opération extournée')),
+        SnackBar(
+            content:
+                Text(billet ? 'Versement extourné' : 'Opération extournée')),
       );
       Navigator.pop(context);
     }
