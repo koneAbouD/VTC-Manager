@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.tresorerie.ClotureCaisse;
 import com.tmk.vtcmanager.application.domain.tresorerie.CompteAvecSolde;
 import com.tmk.vtcmanager.application.domain.tresorerie.CompteTresorerie;
 import com.tmk.vtcmanager.application.domain.tresorerie.TransfertTresorerie;
+import com.tmk.vtcmanager.application.usecases.finance.GetDepotsCotisationsUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetMontantAReverserEtatUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.AnnulerClotureCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.AnnulerImputationEcartUseCase;
@@ -46,6 +47,7 @@ public class CompteTresorerieController {
     private final CreateCompteTresorerieUseCase createUseCase;
     private final UpdateCompteTresorerieUseCase updateUseCase;
     private final GetMontantAReverserEtatUseCase getMontantAReverserEtatUseCase;
+    private final GetDepotsCotisationsUseCase getDepotsCotisationsUseCase;
     private final CreateTransfertUseCase createTransfertUseCase;
     private final GetTransfertsUseCase getTransfertsUseCase;
     private final CloturerCaisseUseCase cloturerCaisseUseCase;
@@ -68,8 +70,10 @@ public class CompteTresorerieController {
                 .map(CompteAvecSolde::getSolde)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return new TresorerieSummaryResponse(responses, total,
-                getMontantAReverserEtatUseCase.executer());
+        BigDecimal aReverserEtat = getMontantAReverserEtatUseCase.executer();
+        BigDecimal depotsCotisations = getDepotsCotisationsUseCase.executer();
+        return new TresorerieSummaryResponse(responses, total, aReverserEtat, depotsCotisations,
+                total.subtract(depotsCotisations).subtract(aReverserEtat));
     }
 
     @PostMapping

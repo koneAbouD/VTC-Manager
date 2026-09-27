@@ -184,16 +184,20 @@ public class CompteCourantRepositoryAdapter implements CompteCourantRepository {
      * lisent sur les lignes d'arrêté et non sur {@code arrete_id} : une ligne
      * partiellement restituée en garde le fonds résiduel, et cet identifiant
      * unique ne dirait rien du montant rendu.
+     *
+     * <p>Le statut de la ligne n'est volontairement <b>pas</b> filtré : une
+     * cotisation partielle peut être annulée après qu'un arrêté a rendu son
+     * versé (abandon du reste impayé). Écarter son encaissement tout en gardant
+     * sa restitution ferait baisser le dépôt à tort. Un versement extourné sort
+     * déjà par sa propre date d'annulation.
      */
     @Override
     public BigDecimal fondsCotisationsALaDate(LocalDate date) {
         BigDecimal encaisse = jdbcTemplate.queryForObject("""
                 SELECT COALESCE(SUM(ec.montant), 0)
                 FROM encaissements_cotisation ec
-                JOIN lignes_cotisation lc ON lc.id = ec.ligne_cotisation_id
                 WHERE ec.annule_le IS NULL
                   AND ec.date_encaissement <= ?
-                  AND lc.statut <> 'ANNULEE'
                 """, BigDecimal.class, date);
         BigDecimal restitue = jdbcTemplate.queryForObject("""
                 SELECT COALESCE(SUM(la.montant), 0)

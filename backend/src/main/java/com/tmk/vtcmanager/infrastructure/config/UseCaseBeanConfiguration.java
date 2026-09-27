@@ -107,6 +107,7 @@ import com.tmk.vtcmanager.application.usecases.finance.GetAmortissementVehiculeU
 import com.tmk.vtcmanager.application.usecases.finance.GetMargesParVehiculeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetProvisionCreancesUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetRapportFinancierUseCase;
+import com.tmk.vtcmanager.application.usecases.finance.GetDepotsCotisationsUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetMontantAReverserEtatUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.AnnulerClotureCaisseUseCase;
 import com.tmk.vtcmanager.application.usecases.tresorerie.AnnulerImputationEcartUseCase;
@@ -1554,6 +1555,12 @@ public class UseCaseBeanConfiguration {
     @Bean
     public GetMontantAReverserEtatUseCase getMontantAReverserEtatUseCase(CreanceRepository repo) {
         return new GetMontantAReverserEtatUseCase(repo);
+    }
+
+    @Bean
+    public GetDepotsCotisationsUseCase getDepotsCotisationsUseCase(
+            CompteCourantRepository compteCourantRepository) {
+        return new GetDepotsCotisationsUseCase(compteCourantRepository);
     }
 
     // ----- Arrêté de compte (restitution des cotisations) -----

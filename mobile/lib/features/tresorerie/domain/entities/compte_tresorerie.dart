@@ -46,18 +46,38 @@ class TresorerieSummary {
   /// Contraventions encaissées auprès des chauffeurs, non reversées à l'État.
   final double aReverserEtat;
 
+  /// Cotisations encaissées pas encore rendues : argent que la trésorerie
+  /// détient pour le compte des chauffeurs.
+  final double depotsCotisations;
+
+  /// Total − dépôts − à reverser à l'État : ce qui appartient réellement à
+  /// l'entreprise. Négatif, la trésorerie ne couvre plus ce qu'elle doit.
+  final double disponibleReel;
+
+  bool get couvertureInsuffisante => disponibleReel < 0;
+
   const TresorerieSummary({
     required this.comptes,
     required this.totalTresorerie,
     required this.aReverserEtat,
+    this.depotsCotisations = 0,
+    required this.disponibleReel,
   });
 
-  factory TresorerieSummary.fromJson(Map<String, dynamic> j) =>
-      TresorerieSummary(
-        comptes: (j['comptes'] as List? ?? [])
-            .map((e) => CompteTresorerie.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        totalTresorerie: (j['totalTresorerie'] as num?)?.toDouble() ?? 0,
-        aReverserEtat: (j['aReverserEtat'] as num?)?.toDouble() ?? 0,
-      );
+  factory TresorerieSummary.fromJson(Map<String, dynamic> j) {
+    final total = (j['totalTresorerie'] as num?)?.toDouble() ?? 0;
+    final aReverser = (j['aReverserEtat'] as num?)?.toDouble() ?? 0;
+    final depots = (j['depotsCotisations'] as num?)?.toDouble() ?? 0;
+    return TresorerieSummary(
+      comptes: (j['comptes'] as List? ?? [])
+          .map((e) => CompteTresorerie.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      totalTresorerie: total,
+      aReverserEtat: aReverser,
+      depotsCotisations: depots,
+      // Un serveur antérieur ne renvoie pas le disponible : même formule.
+      disponibleReel: (j['disponibleReel'] as num?)?.toDouble() ??
+          total - depots - aReverser,
+    );
+  }
 }
