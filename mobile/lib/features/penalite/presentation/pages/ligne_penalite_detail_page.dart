@@ -236,9 +236,11 @@ class _DetailBody extends ConsumerWidget {
             ...ligne.encaissements.map((e) => PremiumEncaissementTile(
                   montant: fmt.format(e.montant),
                   especes: e.modeEncaissement == 'ESPECES',
-                  meta:
-                      '${e.modeEncaissement} · ${dateFmt.format(e.dateEncaissement)}'
-                      '${e.reference != null ? ' · ${e.reference}' : ''}',
+                  meta: e.estCompensation
+                      ? 'Arrêté ${e.arreteCompensation} · ${dateFmt.format(e.dateEncaissement)}'
+                      : '${e.modeEncaissement} · ${dateFmt.format(e.dateEncaissement)}'
+                          '${e.reference != null ? ' · ${e.reference}' : ''}',
+                  arreteCompensation: e.arreteCompensation,
                   commentaire: e.commentaire,
                   annule: e.estAnnule,
                   motifAnnulation: e.motifAnnulation,

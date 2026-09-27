@@ -22,5 +22,11 @@ public record EncaissementPenaliteResponse(
          * plus être corrigée, et pourquoi. Le client masque alors le geste.
          */
         Boolean dateModifiable,
-        String motifDateNonModifiable
+        String motifDateNonModifiable,
+        /**
+         * Référence de l'arrêté de compte si ce versement est une compensation
+         * (créance éteinte par le dépôt de cotisations, aucun argent reçu) ;
+         * null pour un versement de guichet.
+         */
+        String arreteCompensation
 ) {}

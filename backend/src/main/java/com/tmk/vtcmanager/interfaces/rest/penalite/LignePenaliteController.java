@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.domain.penalite.LignePenaliteFiltres;
 import com.tmk.vtcmanager.application.domain.penalite.StatutLignePenalite;
 import com.tmk.vtcmanager.application.usecases.penalite.AnnulerLignePenaliteUseCase;
 import com.tmk.vtcmanager.application.usecases.penalite.RestaurerLignePenaliteUseCase;
+import com.tmk.vtcmanager.application.services.CompensationArreteService;
 import com.tmk.vtcmanager.application.services.ModificationDateEncaissementService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.penalite.CreateEncaissementPenaliteUseCase;
@@ -56,6 +57,7 @@ public class LignePenaliteController {
     private final ModifierDateEncaissementPenaliteUseCase modifierDateEncaissementUseCase;
     private final VerrouArreteService verrouArreteService;
     private final ModificationDateEncaissementService modificationDateEncaissementService;
+    private final CompensationArreteService compensationArreteService;
     private final ExecuterBuzzerUseCase executerBuzzerUseCase;
     private final NotifierAvertissementUseCase notifierUseCase;
     private final DemarrerImmobilisationUseCase demarrerUseCase;
@@ -118,6 +120,8 @@ public class LignePenaliteController {
                 ligne.getDateFaute() != null ? ligne.getDateFaute() : ligne.getDateGeneration()));
         // Et, versement par versement, si sa date reste corrigeable.
         modificationDateEncaissementService.marquerVersements(ligne);
+        // Et lequel n'est pas un argent reçu, mais une compensation d'arrêté.
+        compensationArreteService.marquer(ligne);
         return ligne;
     }
 

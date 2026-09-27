@@ -171,6 +171,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import com.tmk.vtcmanager.application.ports.persistence.ReaffectationChauffeurRepository;
 import com.tmk.vtcmanager.application.services.NotificationReaffectationService;
+import com.tmk.vtcmanager.application.services.CompensationArreteService;
 import com.tmk.vtcmanager.application.services.ModificationDateEncaissementService;
 import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
 import com.tmk.vtcmanager.application.usecases.cotisation.ModifierDateEncaissementCotisationUseCase;
@@ -1856,8 +1857,10 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
-    public ExportComptableUseCase exportComptableUseCase(OperationFinanciereRepository repo) {
-        return new ExportComptableUseCase(repo);
+    public ExportComptableUseCase exportComptableUseCase(
+            OperationFinanciereRepository repo,
+            CategorieOperationRepository categorieOperationRepository) {
+        return new ExportComptableUseCase(repo, categorieOperationRepository);
     }
 
     @Bean
@@ -1965,6 +1968,12 @@ public class UseCaseBeanConfiguration {
      * Les règles d'une correction de date de versement, servies deux fois elles
      * aussi : au serveur qui refuse, et à la fiche qui n'offre pas le geste.
      */
+    @Bean
+    public CompensationArreteService compensationArreteService(
+            ArreteCompteRepository arreteCompteRepository) {
+        return new CompensationArreteService(arreteCompteRepository);
+    }
+
     @Bean
     public ModificationDateEncaissementService modificationDateEncaissementService(
             VerrouArreteService verrouArreteService,

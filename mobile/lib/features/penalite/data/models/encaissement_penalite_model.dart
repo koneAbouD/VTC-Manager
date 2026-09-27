@@ -14,6 +14,7 @@ class EncaissementPenaliteModel extends EncaissementPenalite {
     super.motifAnnulation,
     super.dateModifiable,
     super.motifDateNonModifiable,
+    super.arreteCompensation,
   });
 
   factory EncaissementPenaliteModel.fromJson(Map<String, dynamic> j) =>
@@ -36,6 +37,7 @@ class EncaissementPenaliteModel extends EncaissementPenalite {
         // n'offre alors pas le geste, plutôt que de le proposer en vain.
         dateModifiable: j['dateModifiable'] as bool? ?? false,
         motifDateNonModifiable: j['motifDateNonModifiable'] as String?,
+        arreteCompensation: j['arreteCompensation'] as String?,
       );
 
   Map<String, dynamic> toJson() => {

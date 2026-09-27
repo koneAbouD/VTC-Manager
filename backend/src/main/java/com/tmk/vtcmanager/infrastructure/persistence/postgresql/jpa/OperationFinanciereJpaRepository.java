@@ -52,6 +52,14 @@ public interface OperationFinanciereJpaRepository
      * quand la période est ouverte) : on évite ainsi tout test « :param IS NULL »
      * en JPQL, que PostgreSQL refuse sur un paramètre nu (42P18 « could not
      * determine data type of parameter »).
+     *
+     * <p>Les <b>compensations d'arrêté</b> sont écartées (même règle que
+     * {@code OperationFinanciere.estUneCompensation()} : sans caisse, référence
+     * {@code COMP-}). Elles éteignent une créance avec le dépôt de cotisations :
+     * aucun argent n'entre, l'argent est déjà compté avec la cotisation. Les
+     * compter en revenus gonflerait la carte d'accueil d'une recette que le
+     * chauffeur n'a jamais versée. Le versement du net, lui, sort bien de la
+     * caisse et reste une dépense.
      */
     @Query("""
             SELECT COALESCE(SUM(o.montant), 0)
@@ -60,6 +68,9 @@ public interface OperationFinanciereJpaRepository
               AND o.statut <> :statutExclu
               AND o.dateOperation >= :debut
               AND o.dateOperation <= :fin
+              AND NOT (o.compteTresorerieId IS NULL
+                       AND o.reference IS NOT NULL
+                       AND o.reference LIKE 'COMP-%')
             """)
     BigDecimal sommeMontantParType(@Param("type") TypeOperation type,
                                    @Param("statutExclu") StatutOperation statutExclu,

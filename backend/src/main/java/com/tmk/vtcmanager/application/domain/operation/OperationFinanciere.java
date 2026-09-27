@@ -115,6 +115,20 @@ public class OperationFinanciere {
         return extourneDeId != null;
     }
 
+    /** Préfixe des références du journal COMPENSATION (cf. SequenceReferenceService). */
+    private static final String PREFIXE_COMPENSATION = "COMP-";
+
+    /**
+     * Vrai si l'écriture est une compensation d'arrêté de compte : une créance
+     * éteinte par le dépôt de cotisations du chauffeur. Aucun argent ne circule
+     * (pas de compte de trésorerie) : c'est un reclassement du dépôt en produit,
+     * pas un encaissement.
+     */
+    public boolean estUneCompensation() {
+        return compteTresorerieId == null
+                && reference != null && reference.startsWith(PREFIXE_COMPENSATION);
+    }
+
     /**
      * Catégories dont l'écriture solde une créance tenue ailleurs : ligne de
      * recette, de cotisation, de pénalité, ou contravention. Leur montant et

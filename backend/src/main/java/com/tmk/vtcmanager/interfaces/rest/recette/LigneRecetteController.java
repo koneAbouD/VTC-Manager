@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.usecases.recette.AnnulerLigneRecetteUseCas
 import com.tmk.vtcmanager.application.usecases.recette.ReaffecterChauffeurRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.RestaurerLigneRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.reaffectation.GetApercuReaffectationUseCase;
+import com.tmk.vtcmanager.application.services.CompensationArreteService;
 import com.tmk.vtcmanager.application.services.ModificationDateEncaissementService;
 import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
@@ -59,6 +60,7 @@ public class LigneRecetteController {
     private final VerrouArreteService verrouArreteService;
     private final ReaffectationChauffeurService reaffectationChauffeurService;
     private final ModificationDateEncaissementService modificationDateEncaissementService;
+    private final CompensationArreteService compensationArreteService;
     private final GetApercuReaffectationUseCase getApercuReaffectationUseCase;
     private final ConfirmerVersementUseCase confirmerVersementUseCase;
     private final GenererLignesRecetteUseCase genererLignesRecetteUseCase;
@@ -124,6 +126,8 @@ public class LigneRecetteController {
         ligne.setMotifNonReaffectable(blocage);
         // Et, versement par versement, si sa date reste corrigeable.
         modificationDateEncaissementService.marquerVersements(ligne);
+        // Et lequel n'est pas un argent reçu, mais une compensation d'arrêté.
+        compensationArreteService.marquer(ligne);
         return ligne;
     }
 

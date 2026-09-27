@@ -20,6 +20,13 @@ class EncaissementPenalite {
   final bool dateModifiable;
   final String? motifDateNonModifiable;
 
+  /// Référence de l'arrêté de compte quand ce versement est une compensation :
+  /// la créance a été éteinte par le dépôt de cotisations, aucun argent n'a
+  /// été reçu. Null pour un versement de guichet.
+  final String? arreteCompensation;
+
+  bool get estCompensation => arreteCompensation != null;
+
   bool get estAnnule => annuleLe != null;
 
   const EncaissementPenalite({
@@ -35,5 +42,6 @@ class EncaissementPenalite {
     this.motifAnnulation,
     this.dateModifiable = false,
     this.motifDateNonModifiable,
+    this.arreteCompensation,
   });
 }

@@ -17,7 +17,10 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
@@ -286,5 +289,25 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
                       AND a.statut = 'VALIDE')
                 """, Boolean.class, document.name(), documentId);
         return Boolean.TRUE.equals(existe);
+    }
+
+    @Override
+    public Map<Long, String> referencesArreteParOperationCompensation(Collection<Long> operationIds) {
+        Map<Long, String> references = new HashMap<>();
+        List<Long> ids = operationIds == null ? List.of()
+                : operationIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) return references;
+        String marqueurs = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
+        jdbcTemplate.query("""
+                SELECT la.operation_id, a.reference
+                FROM lignes_arrete la
+                JOIN arretes_compte a ON a.id = la.arrete_id
+                WHERE la.operation_id IN (%s)
+                  AND la.sens = 'DEBIT'
+                  AND a.statut = 'VALIDE'
+                """.formatted(marqueurs),
+                rs -> { references.put(rs.getLong("operation_id"), rs.getString("reference")); },
+                ids.toArray());
+        return references;
     }
 }

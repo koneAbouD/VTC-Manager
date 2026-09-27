@@ -223,6 +223,11 @@ class PremiumEncaissementTile extends StatelessWidget {
   /// Teinte du bouton de date — le seul indice que la date est corrigeable.
   final Color accent;
 
+  /// Référence de l'arrêté si le versement est une compensation : la tuile
+  /// porte alors le badge « Compensé » au lieu d'un mode de paiement, et
+  /// n'offre aucun geste — elle ne se défait qu'en annulant l'arrêté.
+  final String? arreteCompensation;
+
   const PremiumEncaissementTile({
     super.key,
     required this.montant,
@@ -234,12 +239,16 @@ class PremiumEncaissementTile extends StatelessWidget {
     this.onModifierDate,
     this.motifDateNonModifiable,
     this.accent = AppColors.primaryDark,
+    this.arreteCompensation,
   });
+
+  bool get _compensation => arreteCompensation != null;
 
   /// Le bord droit de la tuile : rien du tout sur un versement extourné, le
   /// bouton de date quand elle bouge encore, le cadenas et sa raison sinon.
   Widget? _actionDate() {
-    if (annule) return null;
+    // Le badge « Compensé » dit déjà pourquoi rien ne bouge.
+    if (annule || _compensation) return null;
     if (onModifierDate != null) {
       return Material(
         color: Colors.transparent,
@@ -291,7 +300,9 @@ class PremiumEncaissementTile extends StatelessWidget {
             child: Icon(
                 annule
                     ? Icons.cancel_outlined
-                    : (especes ? Icons.payments_outlined : Icons.smartphone),
+                    : _compensation
+                        ? Icons.swap_horiz_rounded
+                        : (especes ? Icons.payments_outlined : Icons.smartphone),
                 size: 21,
                 color: annule ? AppColors.error : AppColors.primaryDark),
           ),
@@ -324,6 +335,22 @@ class PremiumEncaissementTile extends StatelessWidget {
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: AppColors.error)),
+                    ),
+                  ],
+                  if (_compensation && !annule) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text('Compensé',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryDark)),
                     ),
                   ],
                 ]),

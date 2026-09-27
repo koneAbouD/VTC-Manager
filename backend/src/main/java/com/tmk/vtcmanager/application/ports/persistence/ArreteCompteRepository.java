@@ -7,7 +7,9 @@ import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /** Persistance des arrêtés de compte (en-tête + lignes snapshot + règlements). */
@@ -63,6 +65,13 @@ public interface ArreteCompteRepository {
      * créance ne peut plus changer de débiteur tant que l'arrêté tient.
      */
     boolean existeLigneValidePourDocument(TypeDocumentCreance document, Long documentId);
+
+    /**
+     * Référence de l'arrêté (valide) dont chaque écriture est la compensation,
+     * indexée par id d'opération. Les opérations qui ne compensent rien sont
+     * absentes de la map.
+     */
+    Map<Long, String> referencesArreteParOperationCompensation(Collection<Long> operationIds);
 
     boolean existsByReference(String reference);
 }

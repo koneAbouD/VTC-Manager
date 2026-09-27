@@ -173,9 +173,13 @@ class _DetailBody extends ConsumerWidget {
           ...ligne.encaissements.map((e) => PremiumEncaissementTile(
                 montant: fmt.format(e.montant),
                 especes: e.modeEncaissement == ModeEncaissement.especes,
-                meta:
-                    '${e.modeEncaissement.label} · ${dateFmt.format(e.dateEncaissement)}'
-                    '${e.reference != null ? ' · ${e.reference}' : ''}',
+                // Une compensation n'a pas de mode : aucun argent n'a circulé,
+                // le dépôt de cotisations a éteint la créance.
+                meta: e.estCompensation
+                    ? 'Arrêté ${e.arreteCompensation} · ${dateFmt.format(e.dateEncaissement)}'
+                    : '${e.modeEncaissement.label} · ${dateFmt.format(e.dateEncaissement)}'
+                        '${e.reference != null ? ' · ${e.reference}' : ''}',
+                arreteCompensation: e.arreteCompensation,
                 commentaire: e.commentaire,
                 annule: e.estAnnule,
                 motifAnnulation: e.motifAnnulation,

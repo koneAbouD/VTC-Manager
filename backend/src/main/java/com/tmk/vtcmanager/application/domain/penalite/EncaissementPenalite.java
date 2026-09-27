@@ -38,4 +38,10 @@ public class EncaissementPenalite {
     private Boolean dateModifiable;
     /** Ce qui ferme la correction de date, en français. Null quand elle est ouverte. */
     private String motifDateNonModifiable;
+    /**
+     * Renseigné à la lecture seulement : référence de l'arrêté de compte dont
+     * ce versement est la compensation (créance éteinte par le dépôt de
+     * cotisations, aucun argent reçu). Null pour un versement de guichet.
+     */
+    private String arreteCompensation;
 }
