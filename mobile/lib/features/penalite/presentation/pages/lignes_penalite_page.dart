@@ -11,9 +11,9 @@ import '../providers/penalite_provider.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
-import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'ligne_penalite_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 // ── Constantes partagées ───────────────────────────────────────────────────
 
@@ -307,7 +307,7 @@ class _LignesPenaliteListPageState
     );
     if (result == true && mounted) {
       _load();
-      ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+      refreshFinances(ref);
     }
   }
 

@@ -6,6 +6,7 @@ import 'package:fpdart/fpdart.dart';
 
 import 'package:vtc_manager/core/error/failure.dart';
 import 'package:vtc_manager/core/utils/recu_paiement.dart';
+import 'package:vtc_manager/features/recu/domain/entities/recu_ecritures.dart';
 import 'package:vtc_manager/features/recu/domain/repositories/recu_repository.dart';
 import 'package:vtc_manager/features/recu/presentation/envoi_recu.dart';
 
@@ -22,6 +23,10 @@ class _Recus implements RecuRepository {
     demandes.add(operationIds);
     return reponse;
   }
+
+  @override
+  Future<Either<Failure, RecuEcritures>> getRecu(List<int> operationIds) =>
+      throw UnimplementedError();
 }
 
 void main() {

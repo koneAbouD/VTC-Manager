@@ -262,11 +262,12 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       setState(() => _submitError = error);
       _showToast(context, error, error: true);
     } else {
-      // Deux raisons de rafraîchir les Finances : une date prévue déjà passée
-      // fait terminer la maintenance côté serveur (dépense ou dette générée),
-      // et une modification réaligne les dettes de l'intervention sur son
-      // nouveau coût.
-      if (estRattrapage || _isEdit) refreshFinances(ref);
+      // Une date prévue déjà passée fait terminer la maintenance côté serveur
+      // (dépense ou dette générée), et une modification réaligne les dettes
+      // sur le nouveau coût. Le rafraîchissement étant silencieux, on le fait
+      // à chaque enregistrement plutôt que de deviner ce que le serveur a
+      // produit.
+      refreshFinances(ref);
 
       // Une maintenance modifie l'état du véhicule (immobilisation, retour en
       // service) : rafraîchir la photo de l'État de parc.

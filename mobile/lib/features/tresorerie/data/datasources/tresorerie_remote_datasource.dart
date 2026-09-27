@@ -23,32 +23,40 @@ class TresorerieRemoteDatasource {
     return TresorerieSummary.fromJson(data);
   }
 
-  Future<List<CreanceChauffeur>> getBalanceAgee() async {
-    final data = await _client.get('/finances/balance-agee');
+  Future<List<CreanceChauffeur>> getBalanceAgee(
+      [FiltreCreances filtre = FiltreCreances.aucun]) async {
+    final data =
+        await _client.get('/finances/balance-agee', query: filtre.toQuery());
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => CreanceChauffeur.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  Future<List<LigneCreance>> getCreancesChauffeur(int chauffeurId) async {
-    final data = await _client.get('/finances/balance-agee/$chauffeurId');
+  Future<List<LigneCreance>> getCreancesChauffeur(int chauffeurId,
+      [FiltreCreances filtre = FiltreCreances.aucun]) async {
+    final data = await _client.get('/finances/balance-agee/$chauffeurId',
+        query: filtre.toQuery());
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => LigneCreance.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  Future<List<CreanceVehicule>> getBalanceAgeeParVehicule() async {
-    final data = await _client.get('/finances/balance-agee-vehicule');
+  Future<List<CreanceVehicule>> getBalanceAgeeParVehicule(
+      [FiltreCreances filtre = FiltreCreances.aucun]) async {
+    final data = await _client.get('/finances/balance-agee-vehicule',
+        query: filtre.toQuery());
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => CreanceVehicule.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  Future<List<LigneCreance>> getCreancesVehicule(int vehiculeId) async {
-    final data = await _client.get('/finances/balance-agee-vehicule/$vehiculeId');
+  Future<List<LigneCreance>> getCreancesVehicule(int vehiculeId,
+      [FiltreCreances filtre = FiltreCreances.aucun]) async {
+    final data = await _client.get('/finances/balance-agee-vehicule/$vehiculeId',
+        query: filtre.toQuery());
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => LigneCreance.fromJson(e as Map<String, dynamic>))

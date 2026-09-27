@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.interfaces.rest.recu;
 
 import com.tmk.vtcmanager.application.usecases.recu.GenererRecuPdfUseCase;
+import com.tmk.vtcmanager.interfaces.rest.recu.dto.RecuResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -24,6 +25,11 @@ public class RecuController {
      * Reçu PDF des écritures données : celles d'un versement, ou toutes celles
      * qu'un chauffeur a réglées d'un même geste — {@code /api/recus/501,502/pdf}.
      */
+    @GetMapping("/{operationIds}")
+    public RecuResponse lire(@PathVariable List<Long> operationIds) {
+        return RecuResponse.depuis(genererRecuPdfUseCase.lire(operationIds));
+    }
+
     @GetMapping("/{operationIds}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable List<Long> operationIds) {
         byte[] pdf = genererRecuPdfUseCase.executer(operationIds);

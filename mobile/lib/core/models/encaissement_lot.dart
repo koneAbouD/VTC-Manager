@@ -40,6 +40,9 @@ class ResultatLigneLot {
         succes:         json['succes'] as bool? ?? false,
         encaissementId: json['encaissementId'] as int?,
         message:        json['message'] as String?,
+        operationIds: [
+          if (json['operationId'] != null) (json['operationId'] as num).toInt(),
+        ],
       );
 }
 
@@ -66,4 +69,8 @@ class ResultatEncaissementLot {
   /// Les lignes refusées, avec leur motif — celles qu'il reste à traiter.
   List<ResultatLigneLot> get lignesEnEchec =>
       resultats.where((r) => !r.succes).toList();
+
+  /// Écritures passées par les lignes acceptées : ce que les reçus attestent.
+  List<int> get operationIds =>
+      [for (final r in resultats) if (r.succes) ...r.operationIds];
 }

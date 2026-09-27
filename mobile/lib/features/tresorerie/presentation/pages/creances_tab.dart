@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/widgets/month_filter_pill.dart';
 import '../../domain/entities/creance.dart';
 import '../providers/tresorerie_providers.dart';
 import 'creances_chauffeur_page.dart';
@@ -10,7 +13,8 @@ import 'creances_vehicule_page.dart';
 
 /// Onglet Créances : balance âgée (qui doit quoi, depuis quand), au choix
 /// **par chauffeur** ou **par véhicule** via le sélecteur intégré à la carte
-/// « Total dû ».
+/// « Total dû ». Une barre de filtres restreint les deux vues au mois de
+/// naissance des documents et à un mot-clé (immatriculation ou chauffeur).
 class CreancesTab extends ConsumerStatefulWidget {
   const CreancesTab({super.key});
 
@@ -22,15 +26,139 @@ class _CreancesTabState extends ConsumerState<CreancesTab> {
   /// false = par chauffeur, true = par véhicule.
   bool _parVehicule = false;
 
+  late final TextEditingController _searchController;
+
+  /// La recherche part au serveur : on attend une pause de frappe pour ne pas
+  /// lancer une requête par caractère.
+  Timer? _debounceRecherche;
+
+  @override
+  void initState() {
+    super.initState();
+    // Le filtre survit à un changement d'onglet : le champ repart de lui.
+    _searchController =
+        TextEditingController(text: ref.read(creancesFiltreProvider).recherche);
+  }
+
+  @override
+  void dispose() {
+    _debounceRecherche?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _toggle() => setState(() => _parVehicule = !_parVehicule);
+
+  void _onRechercheChanged(String valeur) {
+    _debounceRecherche?.cancel();
+    _debounceRecherche = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      final filtre = ref.read(creancesFiltreProvider.notifier);
+      filtre.state = filtre.state.avecRecherche(valeur);
+    });
+  }
+
+  void _setMois(DateTime? mois) {
+    final filtre = ref.read(creancesFiltreProvider.notifier);
+    filtre.state = filtre.state.avecMois(mois);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final mois = ref.watch(creancesFiltreProvider).mois;
+
     // Le sélecteur chauffeur/véhicule est intégré à la carte rouge « Total dû »
     // de chaque vue (voir _TotalDuCard).
-    return _parVehicule
-        ? _VehiculesView(parVehicule: _parVehicule, onToggle: _toggle)
-        : _ChauffeursView(parVehicule: _parVehicule, onToggle: _toggle);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: _SearchField(
+                  controller: _searchController,
+                  hint: _parVehicule
+                      ? 'Immatriculation, chauffeur…'
+                      : 'Chauffeur, immatriculation…',
+                  onChanged: _onRechercheChanged,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 142,
+                child: MonthFilterPill(
+                  mois: mois?.month,
+                  annee: mois?.year,
+                  onChanged: (m, a) => _setMois(DateTime(a, m)),
+                  onEfface: () => _setMois(null),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _parVehicule
+              ? _VehiculesView(parVehicule: _parVehicule, onToggle: _toggle)
+              : _ChauffeursView(parVehicule: _parVehicule, onToggle: _toggle),
+        ),
+      ],
+    );
+  }
+}
+
+/// Champ de recherche au style des listes recettes/cotisations : fond gris,
+/// croix d'effacement dès qu'un mot-clé est saisi.
+class _SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final void Function(String) onChanged;
+
+  const _SearchField(
+      {required this.controller, required this.hint, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F3F5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(children: [
+        const Icon(Icons.search, color: Color(0xFF8A8A8E), size: 18),
+        const SizedBox(width: 6),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            onChanged: onChanged,
+            textInputAction: TextInputAction.search,
+            style: const TextStyle(fontSize: 13.5),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle:
+                  const TextStyle(color: Color(0xFF8A8A8E), fontSize: 13.5),
+              border: InputBorder.none,
+              isDense: true,
+            ),
+          ),
+        ),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (_, value, __) => value.text.isEmpty
+              ? const SizedBox.shrink()
+              : GestureDetector(
+                  onTap: () {
+                    controller.clear();
+                    onChanged('');
+                  },
+                  child: const Icon(Icons.close_rounded,
+                      size: 18, color: Color(0xFF8A8A8E)),
+                ),
+        ),
+      ]),
+    );
   }
 }
 
@@ -52,7 +180,10 @@ class _ChauffeursView extends ConsumerWidget {
         error: (e, _) =>
             _ErrorList(onRetry: () => ref.invalidate(balanceAgeeProvider)),
         data: (creances) {
-          if (creances.isEmpty) return const _EmptyList();
+          if (creances.isEmpty) {
+            return _EmptyList(
+                filtre: ref.watch(creancesFiltreProvider).estActif);
+          }
 
           final total = creances.fold<double>(0, (s, c) => s + c.total);
           final totalPlus30 =
@@ -107,7 +238,10 @@ class _VehiculesView extends ConsumerWidget {
         error: (e, _) => _ErrorList(
             onRetry: () => ref.invalidate(balanceAgeeVehiculeProvider)),
         data: (creances) {
-          if (creances.isEmpty) return const _EmptyList();
+          if (creances.isEmpty) {
+            return _EmptyList(
+                filtre: ref.watch(creancesFiltreProvider).estActif);
+          }
 
           final total = creances.fold<double>(0, (s, c) => s + c.total);
           final totalPlus30 =
@@ -147,7 +281,9 @@ class _VehiculesView extends ConsumerWidget {
 // ── Vues d'état partagées ──────────────────────────────────────────────────────
 
 class _EmptyList extends StatelessWidget {
-  const _EmptyList();
+  /// Vrai si la liste est vide à cause du filtre, et non parce que tout est payé.
+  final bool filtre;
+  const _EmptyList({required this.filtre});
 
   @override
   Widget build(BuildContext context) {
@@ -158,7 +294,10 @@ class _EmptyList extends StatelessWidget {
             size: 56, color: Colors.green.shade200),
         const SizedBox(height: 12),
         Center(
-          child: Text('Aucune créance en cours',
+          child: Text(
+              filtre
+                  ? 'Aucune créance pour ce filtre'
+                  : 'Aucune créance en cours',
               style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
         ),
       ],
@@ -223,8 +362,8 @@ class _TotalDuCard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(label,
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.red.shade900)),
+                      style:
+                          TextStyle(fontSize: 13, color: Colors.red.shade900)),
                 ),
               ),
               const SizedBox(width: 8),

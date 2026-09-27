@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.usecases.finance;
 
+import com.tmk.vtcmanager.application.domain.finance.FiltreCreances;
 import com.tmk.vtcmanager.application.domain.finance.LigneCreance;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,7 @@ public class GetCreancesChauffeurUseCase {
     private final CreanceRepository creanceRepository;
 
     @Transactional(readOnly = true)
-    public List<LigneCreance> executer(Long chauffeurId) {
-        return creanceRepository.getLignesCreance(chauffeurId);
+    public List<LigneCreance> executer(Long chauffeurId, FiltreCreances filtre) {
+        return creanceRepository.getLignesCreance(chauffeurId, filtre);
     }
 }

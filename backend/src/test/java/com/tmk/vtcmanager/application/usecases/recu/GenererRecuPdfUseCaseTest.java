@@ -115,6 +115,26 @@ class GenererRecuPdfUseCaseTest {
     }
 
     @Test
+    @DisplayName("lire rend le reçu en données, sans produire de PDF")
+    void lireSansPdf() {
+        lu(ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3), NatureImputation.RECETTE, "Recette", 1, "5000");
+
+        RecuPaiement recu = useCase.lire(List.of(501L));
+
+        assertThat(recu.chauffeurNom()).isEqualTo("Jean Kouassi");
+        assertThat(recu.total()).isEqualByComparingTo("15000");
+        assertThat(recu.resteDu()).isEqualByComparingTo("5000");
+        verify(renderer, never()).renderRecuPdf(any());
+    }
+
+    @Test
+    @DisplayName("lire oppose les mêmes refus que le PDF")
+    void lireMemesRefus() {
+        assertThatThrownBy(() -> useCase.lire(List.of()))
+                .isInstanceOf(RecuImpossibleException.class);
+    }
+
+    @Test
     @DisplayName("deux versements partiels d'une même recette : son reste ne compte qu'une fois")
     void memeCreanceUneFois() {
         lu(ecriture(501, "ENCAISSEMENT_RECETTES", "5000", 3), NatureImputation.RECETTE, "Recette", 1, "3000");

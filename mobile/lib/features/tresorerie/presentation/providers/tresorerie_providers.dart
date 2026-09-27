@@ -33,28 +33,40 @@ final ecartsEnAttenteProvider = FutureProvider<List<ClotureCaisseData>>(
   (ref) => ref.watch(_tresorerieDatasourceProvider).getEcartsEnAttente(),
 );
 
+/// Filtre de l'onglet Créances (mois + recherche), partagé par les deux vues
+/// et par les pages de détail : le total d'une ligne et son détail restent
+/// ainsi calculés sur le même périmètre.
+final creancesFiltreProvider =
+    StateProvider<FiltreCreances>((ref) => FiltreCreances.aucun);
+
 /// Balance âgée par chauffeur, triée par total décroissant (côté backend).
 final balanceAgeeProvider = FutureProvider<List<CreanceChauffeur>>(
-  (ref) => ref.watch(_tresorerieDatasourceProvider).getBalanceAgee(),
+  (ref) => ref
+      .watch(_tresorerieDatasourceProvider)
+      .getBalanceAgee(ref.watch(creancesFiltreProvider)),
 );
 
 /// Documents ouverts d'un chauffeur, du plus ancien au plus récent.
 final creancesChauffeurProvider =
     FutureProvider.family<List<LigneCreance>, int>(
-  (ref, chauffeurId) =>
-      ref.watch(_tresorerieDatasourceProvider).getCreancesChauffeur(chauffeurId),
+  (ref, chauffeurId) => ref
+      .watch(_tresorerieDatasourceProvider)
+      .getCreancesChauffeur(chauffeurId, ref.watch(creancesFiltreProvider)),
 );
 
 /// Balance âgée agrégée par véhicule (qui doit quoi, par véhicule).
 final balanceAgeeVehiculeProvider = FutureProvider<List<CreanceVehicule>>(
-  (ref) => ref.watch(_tresorerieDatasourceProvider).getBalanceAgeeParVehicule(),
+  (ref) => ref
+      .watch(_tresorerieDatasourceProvider)
+      .getBalanceAgeeParVehicule(ref.watch(creancesFiltreProvider)),
 );
 
 /// Documents ouverts rattachés à un véhicule, du plus ancien au plus récent.
 final creancesVehiculeProvider =
     FutureProvider.family<List<LigneCreance>, int>(
-  (ref, vehiculeId) =>
-      ref.watch(_tresorerieDatasourceProvider).getCreancesVehicule(vehiculeId),
+  (ref, vehiculeId) => ref
+      .watch(_tresorerieDatasourceProvider)
+      .getCreancesVehicule(vehiculeId, ref.watch(creancesFiltreProvider)),
 );
 
 /// Compte de résultat en cascade pour (mois, annee, base CAISSE|ENGAGEMENT).

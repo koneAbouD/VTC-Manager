@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.interfaces.rest.finance;
 
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat;
 import com.tmk.vtcmanager.application.domain.finance.CompteResultat.BaseComptable;
+import com.tmk.vtcmanager.application.domain.finance.FiltreCreances;
 import com.tmk.vtcmanager.application.usecases.finance.CloturerPeriodeUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.GetSoldesClotureUseCase;
 import com.tmk.vtcmanager.application.usecases.finance.ExportComptableUseCase;
@@ -29,9 +30,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 
@@ -54,8 +57,10 @@ public class FinanceController {
     private final GetCloturesPeriodeUseCase getCloturesPeriodeUseCase;
 
     @GetMapping("/balance-agee")
-    public List<CreanceChauffeurResponse> getBalanceAgee() {
-        return getBalanceAgeeUseCase.executer().stream()
+    public List<CreanceChauffeurResponse> getBalanceAgee(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth mois,
+            @RequestParam(required = false) String q) {
+        return getBalanceAgeeUseCase.executer(new FiltreCreances(mois, q)).stream()
                 .map(c -> new CreanceChauffeurResponse(c.getChauffeurId(),
                         c.getChauffeurNom(), c.getChauffeurPrenom(), c.getNbLignes(),
                         c.getDu0a7Jours(), c.getDu8a30Jours(), c.getDuPlus30Jours(),
@@ -64,15 +69,20 @@ public class FinanceController {
     }
 
     @GetMapping("/balance-agee/{chauffeurId}")
-    public List<LigneCreanceResponse> getCreancesChauffeur(@PathVariable Long chauffeurId) {
-        return getCreancesChauffeurUseCase.executer(chauffeurId).stream()
+    public List<LigneCreanceResponse> getCreancesChauffeur(
+            @PathVariable Long chauffeurId,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth mois,
+            @RequestParam(required = false) String q) {
+        return getCreancesChauffeurUseCase.executer(chauffeurId, new FiltreCreances(mois, q)).stream()
                 .map(FinanceController::toLigneResponse)
                 .toList();
     }
 
     @GetMapping("/balance-agee-vehicule")
-    public List<CreanceVehiculeResponse> getBalanceAgeeParVehicule() {
-        return getBalanceAgeeParVehiculeUseCase.executer().stream()
+    public List<CreanceVehiculeResponse> getBalanceAgeeParVehicule(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth mois,
+            @RequestParam(required = false) String q) {
+        return getBalanceAgeeParVehiculeUseCase.executer(new FiltreCreances(mois, q)).stream()
                 .map(c -> new CreanceVehiculeResponse(c.getVehiculeId(),
                         c.getImmatriculation(), c.getMarque(), c.getModele(), c.getNbLignes(),
                         c.getDu0a7Jours(), c.getDu8a30Jours(), c.getDuPlus30Jours(),
@@ -81,8 +91,11 @@ public class FinanceController {
     }
 
     @GetMapping("/balance-agee-vehicule/{vehiculeId}")
-    public List<LigneCreanceResponse> getCreancesVehicule(@PathVariable Long vehiculeId) {
-        return getCreancesVehiculeUseCase.executer(vehiculeId).stream()
+    public List<LigneCreanceResponse> getCreancesVehicule(
+            @PathVariable Long vehiculeId,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth mois,
+            @RequestParam(required = false) String q) {
+        return getCreancesVehiculeUseCase.executer(vehiculeId, new FiltreCreances(mois, q)).stream()
                 .map(FinanceController::toLigneResponse)
                 .toList();
     }

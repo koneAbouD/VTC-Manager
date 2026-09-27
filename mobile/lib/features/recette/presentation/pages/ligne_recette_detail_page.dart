@@ -17,6 +17,7 @@ import '../../../../core/widgets/reaffectation_chauffeur_sheet.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import '../../../../screens/finance/ligne_jumelle_encaissement.dart';
 import '../../../../screens/finance/ligne_jumelle_annulation.dart';
+import '../../../recu/presentation/proposer_recu.dart';
 
 class LigneRecetteDetailPage extends ConsumerWidget {
   final int ligneId;
@@ -194,7 +195,11 @@ class _DetailBody extends ConsumerWidget {
 
     // Le même versement solde souvent la cotisation du jour : si elle est
     // encore ouverte, la feuille la propose à cocher.
-    final jumelle = await chercherCotisationDuMemeJour(ref, ligne);
+    // Écritures passées par l'encaissement, quel que soit le chemin : la
+    // ligne seule, ou le versement qui solde aussi la cotisation.
+    var ecritures = <int>[];
+    final jumelle = await chercherCotisationDuMemeJour(ref, ligne,
+        onEnregistre: (ids) => ecritures = ids);
     if (!context.mounted) return;
 
     final refreshed = await showEncaissementLigneDialog(
@@ -217,12 +222,16 @@ class _DetailBody extends ConsumerWidget {
           commentaire:      saisie.commentaire,
         );
         final r = await repo.createEncaissement(ligne.id!, enc);
-        return r.fold((f) => f.message, (_) => null);
+        return r.fold((f) => f.message, (e) {
+          ecritures = [if (e.operationFinanciereId != null) e.operationFinanciereId!];
+          return null;
+        });
       },
     );
     if (refreshed == true) {
       ref.invalidate(ligneRecetteDetailProvider(ligneId));
       refreshFinances(ref);
+      if (context.mounted) await proposerEnvoiRecu(context, ref, ecritures);
     }
   }
 

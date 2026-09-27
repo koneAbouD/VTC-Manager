@@ -9,12 +9,13 @@ import '../../../features/vehicule/presentation/providers/vehicule_state.dart';
 import '../../../features/cotisation/domain/entities/ligne_cotisation.dart';
 import '../../../features/cotisation/domain/entities/ligne_cotisation_filtres.dart';
 import '../../../features/cotisation/presentation/providers/ligne_cotisation_provider.dart';
-import '../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import '../../../features/recette/domain/entities/ligne_recette.dart';
 import '../../../features/recette/presentation/providers/ligne_recette_provider.dart';
 import '../../../features/operation_financiere/domain/enums/mode_paiement.dart';
 import '../../../features/versement/domain/entities/encaissement_versement.dart';
+import '../../../features/recu/presentation/proposer_recu.dart';
 import '../../../features/versement/presentation/providers/versement_provider.dart';
+import '../../finance/finance_refresh.dart';
 
 // ── Palette (cohérente avec MaintenanceFormPage) ──────────────────────────────
 
@@ -30,8 +31,13 @@ const _kError     = Color(0xFFE03131);
 
 // ── Entrée du bottom sheet ────────────────────────────────────────────────────
 
-Future<bool?> showEncaissementRapideDialog(BuildContext context) {
-  return showModalBottomSheet<bool>(
+/// Ouvre la feuille d'encaissement rapide, puis — le versement passé —
+/// propose d'en envoyer le reçu au chauffeur.
+///
+/// Retourne `true` si un encaissement a été enregistré.
+Future<bool> showEncaissementRapideDialog(
+    BuildContext context, WidgetRef ref) async {
+  final ecritures = await showModalBottomSheet<List<int>>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -41,6 +47,9 @@ Future<bool?> showEncaissementRapideDialog(BuildContext context) {
     ),
     builder: (_) => const _EncaissementRapideSheet(),
   );
+  if (ecritures == null) return false;
+  if (context.mounted) await proposerEnvoiRecu(context, ref, ecritures);
+  return true;
 }
 
 // ── État de chargement des lignes ─────────────────────────────────────────────
@@ -270,6 +279,10 @@ class _EncaissementRapideSheetState
 
   // ── Soumission ─────────────────────────────────────────────────────────────
 
+  /// Écritures passées par les versements de la feuille : le reçu les atteste.
+  /// Une recette passée avant le refus de sa cotisation y reste.
+  final List<int> _ecritures = [];
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -338,13 +351,13 @@ class _EncaissementRapideSheetState
     });
     if (recetteSeulePassee) {
       _appliquerMontantSelection();
-      ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+      refreshFinances(ref);
     }
 
     if (error != null) return;
 
-    ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
-    Navigator.pop(context, true);
+    refreshFinances(ref);
+    Navigator.pop(context, _ecritures);
   }
 
   /// Une recette et une cotisation ne forment un seul billet que si elles sont
@@ -372,7 +385,10 @@ class _EncaissementRapideSheetState
           date: DateTime.now(),
           commentaire: commentaire,
         );
-    return resultat.fold((f) => f.message, (_) => null);
+    return resultat.fold((f) => f.message, (v) {
+      _ecritures.addAll(v.operationIds);
+      return null;
+    });
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

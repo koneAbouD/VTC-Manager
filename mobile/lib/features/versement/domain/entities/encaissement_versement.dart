@@ -20,10 +20,18 @@ class PartVersement {
 class VersementEnregistre {
   final String? versementId;
 
-  const VersementEnregistre({this.versementId});
+  /// Écritures passées au journal : ce que le reçu PDF atteste.
+  final List<int> operationIds;
+
+  const VersementEnregistre({this.versementId, this.operationIds = const []});
 
   factory VersementEnregistre.fromJson(Map<String, dynamic> json) =>
-      VersementEnregistre(versementId: json['versementId'] as String?);
+      VersementEnregistre(
+        versementId: json['versementId'] as String?,
+        operationIds: ((json['operationIds'] as List?) ?? const [])
+            .map((e) => (e as num).toInt())
+            .toList(),
+      );
 }
 
 /// Un versement d'un lot : la journée de recette et sa cotisation du jour.

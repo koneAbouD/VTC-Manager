@@ -12,14 +12,16 @@ public record ResultatEncaissementLot(
         Long ligneId,
         boolean succes,
         Long encaissementId,
+        /* Écriture passée au journal : ce que le reçu du lot atteste. */
+        Long operationId,
         String message
 ) {
 
-    public static ResultatEncaissementLot reussi(Long ligneId, Long encaissementId) {
-        return new ResultatEncaissementLot(ligneId, true, encaissementId, null);
+    public static ResultatEncaissementLot reussi(Long ligneId, Long encaissementId, Long operationId) {
+        return new ResultatEncaissementLot(ligneId, true, encaissementId, operationId, null);
     }
 
     public static ResultatEncaissementLot echec(Long ligneId, String message) {
-        return new ResultatEncaissementLot(ligneId, false, null, message);
+        return new ResultatEncaissementLot(ligneId, false, null, null, message);
     }
 }

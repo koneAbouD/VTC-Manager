@@ -54,7 +54,8 @@ public class CreateEncaissementsLotUseCase {
                         .build();
 
                 Encaissement saved = createEncaissementUseCase.executer(ligne.ligneId(), encaissement);
-                resultats.add(ResultatEncaissementLot.reussi(ligne.ligneId(), saved.getId()));
+                resultats.add(ResultatEncaissementLot.reussi(
+                        ligne.ligneId(), saved.getId(), saved.getOperationFinanciereId()));
             } catch (RuntimeException e) {
                 // Le message des exceptions métier est déjà rédigé pour l'écran ;
                 // pour le reste, on ne remonte pas une trace technique au guichet.

@@ -9,7 +9,6 @@ import '../../domain/entities/maintenance.dart';
 import '../../../operation_financiere/domain/entities/element_maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import '../widgets/terminer_maintenance_dialog.dart';
-import '../../../operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import '../../../partenaire/presentation/providers/partenaire_providers.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import 'maintenance_form_page.dart';
@@ -183,7 +182,6 @@ class _MaintenanceDetailPageState
     if (error != null) {
       _showToast(error, error: true);
     } else {
-      ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
       // Une clôture à crédit vient de créer des dettes : l'échéancier et le
       // passif doivent les refléter sans attendre.
       refreshFinances(ref);

@@ -301,7 +301,7 @@ class EncaisserHeaderButton extends ConsumerWidget {
       child: visible
           ? GestureDetector(
               key: const ValueKey('encaisser'),
-              onTap: () => showEncaissementRapideDialog(context),
+              onTap: () => showEncaissementRapideDialog(context, ref),
               child: Container(
                 // Même gabarit que les boutons d'en-tête (AppHeaderAction),
                 // en vert : c'est la même action que sur la carte.
@@ -734,7 +734,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                     alignment: Alignment.centerRight,
                     child: FilledButton.icon(
                       onPressed: () =>
-                          showEncaissementRapideDialog(context),
+                          showEncaissementRapideDialog(context, ref),
                       icon: const Icon(Icons.add, size: 14),
                       label: const Text('Encaisser'),
                       style: FilledButton.styleFrom(

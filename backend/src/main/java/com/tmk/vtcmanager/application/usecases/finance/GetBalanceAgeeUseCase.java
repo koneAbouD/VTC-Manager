@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.usecases.finance;
 
 import com.tmk.vtcmanager.application.domain.finance.CreanceChauffeur;
+import com.tmk.vtcmanager.application.domain.finance.FiltreCreances;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,11 @@ public class GetBalanceAgeeUseCase {
 
     @Transactional(readOnly = true)
     public List<CreanceChauffeur> executer() {
-        return creanceRepository.getBalanceAgee();
+        return executer(FiltreCreances.AUCUN);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CreanceChauffeur> executer(FiltreCreances filtre) {
+        return creanceRepository.getBalanceAgee(filtre);
     }
 }

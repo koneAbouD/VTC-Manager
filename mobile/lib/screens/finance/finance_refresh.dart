@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/cotisation/presentation/providers/ligne_cotisation_provider.dart';
+import '../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import '../../features/penalite/presentation/providers/penalite_provider.dart';
 import '../../features/recette/presentation/providers/ligne_recette_provider.dart';
 import '../../features/tresorerie/presentation/providers/tresorerie_providers.dart';
@@ -23,7 +24,13 @@ final financeRefreshTickProvider = StateProvider<int>((ref) => 0);
 ///   à leur réaffichage) ;
 /// - invalide les fiches détail recette/cotisation/pénalité, dont le drapeau
 ///   « restaurable » dépend des arrêtés que la clôture vient de déplacer ;
-/// - incrémente le tick pour l'onglet Opérations (liste paginée).
+/// - incrémente le tick pour l'onglet Opérations (liste paginée) ;
+/// - recharge les dernières opérations de l'accueil (et, avec elles, le solde
+///   de sa carte).
+///
+/// Les deux listes d'opérations se rafraîchissent **en silence** : elles
+/// restent affichées pendant l'appel, sans roue, et se mettent à jour sur
+/// place. À appeler après tout encaissement et toute dépense.
 void refreshFinances(WidgetRef ref) {
   ref.invalidate(tresorerieSummaryProvider);
   ref.invalidate(balanceAgeeProvider);
@@ -48,4 +55,5 @@ void refreshFinances(WidgetRef ref) {
   ref.invalidate(ligneCotisationDetailProvider);
   ref.invalidate(lignePenaliteDetailProvider);
   ref.read(financeRefreshTickProvider.notifier).state++;
+  ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
 }

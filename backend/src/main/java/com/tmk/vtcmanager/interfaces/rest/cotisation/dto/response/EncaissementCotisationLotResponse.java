@@ -16,6 +16,7 @@ public record EncaissementCotisationLotResponse(
             Long ligneId,
             boolean succes,
             Long encaissementId,
+            Long operationId,
             String message
     ) {}
 }

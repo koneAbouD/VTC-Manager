@@ -31,10 +31,14 @@ final _jourFmt = DateFormat('dd/MM/yyyy');
 /// que l'utilisateur a ouverte.
 
 /// Cotisation du même jour, à proposer depuis une fiche recette.
+///
+/// [onEnregistre] reçoit les écritures du versement, une fois passé : de quoi
+/// en proposer le reçu.
 Future<LigneJumelleEncaissement?> chercherCotisationDuMemeJour(
   WidgetRef ref,
-  LigneRecette ligne,
-) async {
+  LigneRecette ligne, {
+  void Function(List<int> operationIds)? onEnregistre,
+}) async {
   final jour = DateUtils.dateOnly(ligne.dateRecette);
   final repo = ref.read(ligneCotisationRepositoryProvider);
 
@@ -70,6 +74,7 @@ Future<LigneJumelleEncaissement?> chercherCotisationDuMemeJour(
               : PartVersement(ligneId: ligne.id!, montant: principale.montant),
           cotisation: PartVersement(ligneId: c.id!, montant: jumelle.montant),
           saisie: jumelle,
+          onEnregistre: onEnregistre,
         ),
       );
     }
@@ -78,10 +83,14 @@ Future<LigneJumelleEncaissement?> chercherCotisationDuMemeJour(
 }
 
 /// Recette du même jour, à proposer depuis une fiche cotisation.
+///
+/// [onEnregistre] reçoit les écritures du versement, une fois passé : de quoi
+/// en proposer le reçu.
 Future<LigneJumelleEncaissement?> chercherRecetteDuMemeJour(
   WidgetRef ref,
-  LigneCotisation ligne,
-) async {
+  LigneCotisation ligne, {
+  void Function(List<int> operationIds)? onEnregistre,
+}) async {
   final jour = DateUtils.dateOnly(ligne.dateCotisation);
   final repo = ref.read(ligneRecetteRepositoryProvider);
 
@@ -117,6 +126,7 @@ Future<LigneJumelleEncaissement?> chercherRecetteDuMemeJour(
               ? null
               : PartVersement(ligneId: ligne.id!, montant: principale.montant),
           saisie: jumelle,
+          onEnregistre: onEnregistre,
         ),
       );
     }
@@ -198,6 +208,7 @@ Future<String?> _encaisserVersement(
   PartVersement? recette,
   PartVersement? cotisation,
   required SaisieEncaissement saisie,
+  void Function(List<int> operationIds)? onEnregistre,
 }) async {
   final resultat = await versements.encaisser(
     recette: recette,
@@ -209,5 +220,8 @@ Future<String?> _encaisserVersement(
     reference: saisie.reference,
     commentaire: saisie.commentaire,
   );
-  return resultat.fold((f) => f.message, (_) => null);
+  return resultat.fold((f) => f.message, (v) {
+    onEnregistre?.call(v.operationIds);
+    return null;
+  });
 }

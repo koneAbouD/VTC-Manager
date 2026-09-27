@@ -16,7 +16,6 @@ import '../../../../screens/finance/encaissement_lot_jumele.dart';
 import '../../../../screens/finance/ligne_jumelle_encaissement.dart';
 import '../../../../screens/finance/recus_lot.dart';
 import '../../../../core/widgets/envoi_recus_sheet.dart';
-import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'ligne_recette_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
@@ -24,8 +23,8 @@ import '../../../coherence/presentation/widgets/bandeau_conflits_chauffeur.dart'
 import '../../../../features/operation_financiere/domain/enums/mode_paiement.dart';
 import '../../../../features/versement/domain/entities/encaissement_versement.dart';
 import '../../../../features/versement/presentation/providers/versement_provider.dart';
-import '../../../../features/recu/presentation/envoi_recu.dart';
-import '../../../../features/recu/presentation/providers/recu_provider.dart';
+import '../../../../features/recu/presentation/proposer_recu.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 // ── Constantes partagées ───────────────────────────────────────────────────
 
@@ -432,7 +431,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
       _selectionMode = false;
     });
     _load();
-    ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+    refreshFinances(ref);
 
     // Le versement enregistré, reste à en donner quittance. Les reçus sont
     // tirés de ce que le lot a réellement encaissé : une créance refusée n'y
@@ -451,25 +450,13 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
       ),
       // Le reçu part en PDF, joint au message. Si le serveur ne le produit
       // pas, la feuille le dit sous la ligne et propose le message seul.
-      envoyer: (destinataire) async {
-        final issue = await envoyerRecuPdf(
-          recus: ref.read(recuRepositoryProvider),
-          operationIds: destinataire.operationIds,
-          recu: destinataire.recu,
-          telephone: destinataire.telephone,
-        );
-        return switch (issue) {
-          PdfIndisponible(:final motif) => motif,
-          PdfEnregistre(conversationOuverte: false) =>
-            "Reçu enregistré, mais WhatsApp n'a pas pu être ouvert sur cet appareil.",
-          _ => null,
-        };
-      },
+      envoyer: (destinataire) => envoyerRecuDestinataire(ref, destinataire),
     );
   }
 
   Future<void> _openEncaisserDialog(LigneRecette ligne) async {
     final repo = ref.read(ligneRecetteRepositoryProvider);
+    var ecritures = <int>[];
     final result = await showEncaissementLigneDialog(
       context,
       titre: 'Recette',
@@ -489,12 +476,16 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
           commentaire: saisie.commentaire,
         );
         final r = await repo.createEncaissement(ligne.id!, enc);
-        return r.fold((f) => f.message, (_) => null);
+        return r.fold((f) => f.message, (e) {
+          ecritures = [if (e.operationFinanciereId != null) e.operationFinanciereId!];
+          return null;
+        });
       },
     );
     if (result == true && mounted) {
       _load();
-      ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+      refreshFinances(ref);
+      await proposerEnvoiRecu(context, ref, ecritures);
     }
   }
 

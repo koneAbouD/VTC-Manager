@@ -52,19 +52,27 @@ class DestinataireRecu implements DestinataireWhatsApp {
 /// afficher sous sa ligne.
 typedef EnvoyerRecu = Future<String?> Function(DestinataireRecu destinataire);
 
-/// Feuille d'envoi des reçus d'un encaissement de masse : un reçu par chauffeur.
+/// Feuille d'envoi des reçus : un reçu par chauffeur. Un seul destinataire —
+/// l'encaissement d'une ligne ou d'un versement — la met au singulier.
 Future<void> showEnvoiRecusSheet(
   BuildContext context, {
   required List<DestinataireRecu> destinataires,
   required EnvoyerRecu envoyer,
 }) {
+  final seul = destinataires.length == 1;
   return showEnvoiWhatsAppSheet<DestinataireRecu>(
     context,
-    titre: 'Envoyer les reçus',
-    consigne: 'Pour chaque chauffeur, le reçu PDF est enregistré et '
-        'WhatsApp s\'ouvre sur sa conversation, message prêt : '
-        'joignez le PDF avec 📎, puis envoyez.',
-    consigneTerminee: 'Tous les reçus ont été ouverts dans WhatsApp.',
+    titre: seul ? 'Envoyer le reçu' : 'Envoyer les reçus',
+    consigne: seul
+        ? 'Le reçu PDF est enregistré et WhatsApp s\'ouvre sur la '
+            'conversation du chauffeur, message prêt : joignez le PDF avec '
+            '📎, puis envoyez.'
+        : 'Pour chaque chauffeur, le reçu PDF est enregistré et '
+            'WhatsApp s\'ouvre sur sa conversation, message prêt : '
+            'joignez le PDF avec 📎, puis envoyez.',
+    consigneTerminee: seul
+        ? 'Le reçu a été ouvert dans WhatsApp.'
+        : 'Tous les reçus ont été ouverts dans WhatsApp.',
     preparation: 'Préparation du reçu PDF…',
     destinataires: destinataires,
     envoyer: envoyer,

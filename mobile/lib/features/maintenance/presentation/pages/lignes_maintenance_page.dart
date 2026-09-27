@@ -9,10 +9,10 @@ import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../domain/entities/maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
-import '../../../operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'maintenance_detail_page.dart';
 import 'maintenance_form_page.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -413,7 +413,7 @@ class _LignesMaintenancePageState
                                         );
                                         if (result == true && mounted) {
                                           _load();
-                                          ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+                                          refreshFinances(ref);
                                         }
                                       },
                                     );

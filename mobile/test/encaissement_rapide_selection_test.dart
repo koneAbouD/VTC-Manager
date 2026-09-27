@@ -135,11 +135,11 @@ Future<void> _ouvrirEtSelectionner(
           .overrideWithValue(versements ?? _FakeVersementRepo()),
     ],
     child: MaterialApp(
-      home: Builder(
-        builder: (ctx) => Scaffold(
+      home: Consumer(
+        builder: (ctx, ref, _) => Scaffold(
           body: Center(
             child: ElevatedButton(
-              onPressed: () => showEncaissementRapideDialog(ctx),
+              onPressed: () => showEncaissementRapideDialog(ctx, ref),
               child: const Text('ouvrir'),
             ),
           ),

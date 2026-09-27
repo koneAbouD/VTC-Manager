@@ -82,6 +82,24 @@ class OperationFinanciereNotifier
         _annuler = annuler,
         super(const OperationFinanciereInitial());
 
+  /// Numéro du dernier chargement lancé : seule la réponse la plus récente
+  /// s'affiche, quand plusieurs rafraîchissements se chevauchent.
+  int _generation = 0;
+
+  /// Liste déjà affichée, s'il y en a une.
+  List<OperationFinanciere>? get _affichees => switch (state) {
+        OperationFinanciereLoaded(:final operations) => operations,
+        OperationFinanciereActionSuccess(:final operations) => operations,
+        _ => null,
+      };
+
+  /// Charge les opérations.
+  ///
+  /// Le rechargement est **silencieux** dès qu'une liste est affichée : elle
+  /// reste à l'écran pendant l'appel et n'est remplacée qu'à l'arrivée de la
+  /// nouvelle — pas de liste vidée, pas de roue. Un échec la laisse en place :
+  /// une erreur passagère ne doit pas effacer ce que le guichet vient de voir.
+  /// Seul le tout premier chargement montre l'attente et l'erreur.
   Future<void> loadAll({
     String? typeOperation,
     String? categorieCode,
@@ -89,7 +107,9 @@ class OperationFinanciereNotifier
     String? fin,
     String? statut,
   }) async {
-    state = const OperationFinanciereLoading();
+    final generation = ++_generation;
+    final silencieux = _affichees != null;
+    if (!silencieux) state = const OperationFinanciereLoading();
     final result = await _getAll(
       typeOperation: typeOperation,
       categorieCode: categorieCode,
@@ -97,8 +117,11 @@ class OperationFinanciereNotifier
       fin:    fin,
       statut: statut,
     );
+    if (!mounted || generation != _generation) return;
     result.fold(
-      (f) => state = OperationFinanciereError(f.message),
+      (f) {
+        if (!silencieux) state = OperationFinanciereError(f.message);
+      },
       (ops) => state = OperationFinanciereLoaded(ops),
     );
   }

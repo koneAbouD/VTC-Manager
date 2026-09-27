@@ -85,7 +85,59 @@ class OperationsListeNotifier extends StateNotifier<OperationsListeState> {
   /// Recharge avec les filtres déjà en place (pull-to-refresh, retour d'écran).
   Future<void> refresh() => _reload();
 
+  /// Plafond d'un rechargement silencieux : au-delà, on se contente des
+  /// premières pages plutôt que de rapatrier tout un historique d'un coup.
+  static const int _maxRafraichissement = 200;
+
+  /// Numéro du dernier (re)chargement lancé : une réponse plus ancienne,
+  /// arrivée après, n'écrase pas la plus récente.
+  int _generation = 0;
+
+  /// Rafraîchit **sans rien montrer** : la liste reste affichée pendant
+  /// l'appel, sans roue, et n'est remplacée qu'à l'arrivée de la nouvelle.
+  ///
+  /// Filtres inchangés, et autant d'opérations qu'il en était chargé : un
+  /// guichetier qui a fait défiler trois pages ne se retrouve pas renvoyé à la
+  /// première. Un échec laisse la liste telle quelle.
+  Future<void> rafraichir() async {
+    if (state.initialLoading) return;
+    if (state.items.isEmpty) return _reload();
+
+    final generation = ++_generation;
+    final pages = (state.items.length / _pageSize).ceil();
+    final taille = (pages * _pageSize)
+        .clamp(_pageSize, _maxRafraichissement)
+        .toInt();
+    final res = await _getPage(
+      page: 0,
+      size: taille,
+      typeOperation: _typeOperation,
+      debut: _debut,
+      fin: _fin,
+      statut: _statut,
+      categorieCode: _categorieCode,
+      sousCategorieLibelle: _sousCategorieLibelle,
+      vehiculeId: _vehiculeId,
+      chauffeurId: _chauffeurId,
+      recherche: _recherche,
+    );
+    if (!mounted || generation != _generation) return;
+    res.fold(
+      (_) {},
+      (p) {
+        // La page suivante reprend là où ce rechargement s'arrête.
+        _page = taille ~/ _pageSize - 1;
+        state = state.copyWith(
+          items: p.content,
+          hasMore: p.hasMore,
+          clearError: true,
+        );
+      },
+    );
+  }
+
   Future<void> _reload() async {
+    final generation = ++_generation;
     _page = 0;
     state = state.copyWith(initialLoading: true, clearError: true);
     final res = await _getPage(
@@ -101,6 +153,7 @@ class OperationsListeNotifier extends StateNotifier<OperationsListeState> {
       chauffeurId: _chauffeurId,
       recherche: _recherche,
     );
+    if (!mounted || generation != _generation) return;
     res.fold(
       (f) => state = const OperationsListeState().copyWith(error: f.message),
       (p) => state = OperationsListeState(

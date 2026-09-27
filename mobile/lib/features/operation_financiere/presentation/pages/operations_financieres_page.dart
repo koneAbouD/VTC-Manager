@@ -130,19 +130,26 @@ class _OperationsFinancieresPageState
 
   // ── Rechargement backend avec dates ──────────────────────────────────────
 
-  void _loadWithFilters() {
+  /// [silencieux] : filtres inchangés, la liste affichée reste en place
+  /// pendant l'appel (opération faite ailleurs dans l'application).
+  void _loadWithFilters({bool silencieux = false}) {
     final (debut, fin) = _plageActive();
     final debutStr = debut != null ? DateFormat('yyyy-MM-dd').format(debut) : null;
     final finStr = fin != null ? DateFormat('yyyy-MM-dd').format(fin) : null;
     final recherche = _recherche.isEmpty ? null : _recherche;
-    ref.read(operationsListeProvider.notifier).load(
-          typeOperation: ref.read(operationsTypeFiltreProvider),
-          debut: debutStr,
-          fin: finStr,
-          categorieCode: _categorieFiltre?.categorieCodeParam,
-          sousCategorieLibelle: _categorieFiltre?.sousCategorieLibelleParam,
-          recherche: recherche,
-        );
+    final liste = ref.read(operationsListeProvider.notifier);
+    if (silencieux) {
+      liste.rafraichir();
+    } else {
+      liste.load(
+        typeOperation: ref.read(operationsTypeFiltreProvider),
+        debut: debutStr,
+        fin: finStr,
+        categorieCode: _categorieFiltre?.categorieCodeParam,
+        sousCategorieLibelle: _categorieFiltre?.sousCategorieLibelleParam,
+        recherche: recherche,
+      );
+    }
     // Montants par catégorie : mêmes filtres SANS le filtre catégorie, pour que
     // chaque chip garde son propre montant même quand une catégorie est active.
     ref.read(montantsCategoriesProvider.notifier).charger(
@@ -352,8 +359,9 @@ class _OperationsFinancieresPageState
     });
     // Rafraîchissement global du module Finances : recharge la liste (filtres
     // conservés) quand une opération est faite ailleurs (encaissement, annulation…).
+    // Silencieux : la liste reste affichée et se met à jour sur place.
     ref.listen<int>(financeRefreshTickProvider, (prev, next) {
-      if (mounted) _loadWithFilters();
+      if (mounted) _loadWithFilters(silencieux: true);
     });
     final typeFiltre = ref.watch(operationsTypeFiltreProvider);
 

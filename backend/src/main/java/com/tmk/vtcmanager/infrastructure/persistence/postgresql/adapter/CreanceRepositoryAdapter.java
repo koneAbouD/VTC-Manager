@@ -2,9 +2,11 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
 import com.tmk.vtcmanager.application.domain.finance.CreanceChauffeur;
 import com.tmk.vtcmanager.application.domain.finance.CreanceVehicule;
+import com.tmk.vtcmanager.application.domain.finance.FiltreCreances;
 import com.tmk.vtcmanager.application.domain.finance.LigneCreance;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -33,8 +36,47 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
             .restant(rs.getBigDecimal("restant"))
             .build();
 
+    /**
+     * Restriction commune aux quatre lectures de la balance : le mois de
+     * naissance du document et le mot-clé, confronté à l'immatriculation (avec
+     * ou sans tirets ni espaces) comme au nom du chauffeur dans les deux ordres.
+     * Suppose les alias {@code v} (vue), {@code ch} (chauffeur) et {@code veh}
+     * (véhicule, joint en LEFT : une contravention peut ne pas en avoir).
+     */
+    private record Clause(String sql, List<Object> params) {
+
+        static Clause de(FiltreCreances filtre) {
+            StringBuilder sql = new StringBuilder();
+            List<Object> params = new ArrayList<>();
+            if (filtre.mois() != null) {
+                sql.append(" AND v.date_reference >= ? AND v.date_reference < ?");
+                params.add(filtre.mois().atDay(1));
+                params.add(filtre.mois().plusMonths(1).atDay(1));
+            }
+            if (filtre.aUneRecherche()) {
+                sql.append(" AND (LOWER(veh.immatriculation) LIKE ?")
+                        .append(" OR REPLACE(REPLACE(LOWER(veh.immatriculation), '-', ''), ' ', '') LIKE ?")
+                        .append(" OR LOWER(ch.nom) LIKE ?")
+                        .append(" OR LOWER(ch.prenom) LIKE ?")
+                        .append(" OR LOWER(CONCAT(ch.prenom, ' ', ch.nom)) LIKE ?")
+                        .append(" OR LOWER(CONCAT(ch.nom, ' ', ch.prenom)) LIKE ?)");
+                String motif = RechercheVehiculeChauffeur.motif(filtre.recherche());
+                String motifCompact = motif.replace("-", "").replace(" ", "");
+                params.addAll(List.of(motif, motifCompact, motif, motif, motif, motif));
+            }
+            return new Clause(sql.toString(), params);
+        }
+
+        Object[] avant(Object... premiers) {
+            List<Object> tous = new ArrayList<>(List.of(premiers));
+            tous.addAll(params);
+            return tous.toArray();
+        }
+    }
+
     @Override
-    public List<CreanceChauffeur> getBalanceAgee() {
+    public List<CreanceChauffeur> getBalanceAgee(FiltreCreances filtre) {
+        Clause clause = Clause.de(filtre);
         return jdbcTemplate.query("""
                 SELECT v.tiers_id AS chauffeur_id,
                        ch.nom, ch.prenom,
@@ -46,10 +88,11 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
                        SUM(v.restant) AS total
                 FROM v_creances_chauffeurs v
                 JOIN chauffeurs ch ON ch.id = v.tiers_id
-                WHERE v.tiers_type = 'CHAUFFEUR' AND v.sens = 'ILS_ME_DOIVENT'
+                LEFT JOIN vehicules veh ON veh.id = v.vehicule_id
+                WHERE v.tiers_type = 'CHAUFFEUR' AND v.sens = 'ILS_ME_DOIVENT'%s
                 GROUP BY v.tiers_id, ch.nom, ch.prenom
                 ORDER BY total DESC
-                """,
+                """.formatted(clause.sql()),
                 (rs, i) -> CreanceChauffeur.builder()
                         .chauffeurId(rs.getLong("chauffeur_id"))
                         .chauffeurNom(rs.getString("nom"))
@@ -59,11 +102,13 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
                         .du8a30Jours(rs.getBigDecimal("du_8_30"))
                         .duPlus30Jours(rs.getBigDecimal("du_plus_30"))
                         .total(rs.getBigDecimal("total"))
-                        .build());
+                        .build(),
+                clause.avant());
     }
 
     @Override
-    public List<LigneCreance> getLignesCreance(Long chauffeurId) {
+    public List<LigneCreance> getLignesCreance(Long chauffeurId, FiltreCreances filtre) {
+        Clause clause = Clause.de(filtre);
         return jdbcTemplate.query("""
                 SELECT v.document, v.document_id, v.vehicule_id,
                        v.tiers_id AS chauffeur_id,
@@ -71,14 +116,16 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
                        v.date_reference, v.montant_du, v.montant_regle, v.restant
                 FROM v_creances_chauffeurs v
                 JOIN chauffeurs ch ON ch.id = v.tiers_id
+                LEFT JOIN vehicules veh ON veh.id = v.vehicule_id
                 WHERE v.tiers_type = 'CHAUFFEUR' AND v.sens = 'ILS_ME_DOIVENT'
-                  AND v.tiers_id = ?
+                  AND v.tiers_id = ?%s
                 ORDER BY v.date_reference
-                """, LIGNE_MAPPER, chauffeurId);
+                """.formatted(clause.sql()), LIGNE_MAPPER, clause.avant(chauffeurId));
     }
 
     @Override
-    public List<CreanceVehicule> getBalanceAgeeParVehicule() {
+    public List<CreanceVehicule> getBalanceAgeeParVehicule(FiltreCreances filtre) {
+        Clause clause = Clause.de(filtre);
         return jdbcTemplate.query("""
                 SELECT v.vehicule_id,
                        veh.immatriculation, mar.nom AS marque, mod.nom AS modele,
@@ -90,13 +137,14 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
                        SUM(v.restant) AS total
                 FROM v_creances_chauffeurs v
                 JOIN vehicules veh ON veh.id = v.vehicule_id
+                JOIN chauffeurs ch ON ch.id = v.tiers_id
                 LEFT JOIN marques mar ON mar.id = veh.marque_id
                 LEFT JOIN modeles mod ON mod.id = veh.modele_id
                 WHERE v.tiers_type = 'CHAUFFEUR' AND v.sens = 'ILS_ME_DOIVENT'
-                  AND v.vehicule_id IS NOT NULL
+                  AND v.vehicule_id IS NOT NULL%s
                 GROUP BY v.vehicule_id, veh.immatriculation, mar.nom, mod.nom
                 ORDER BY total DESC
-                """,
+                """.formatted(clause.sql()),
                 (rs, i) -> CreanceVehicule.builder()
                         .vehiculeId(rs.getLong("vehicule_id"))
                         .immatriculation(rs.getString("immatriculation"))
@@ -107,11 +155,13 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
                         .du8a30Jours(rs.getBigDecimal("du_8_30"))
                         .duPlus30Jours(rs.getBigDecimal("du_plus_30"))
                         .total(rs.getBigDecimal("total"))
-                        .build());
+                        .build(),
+                clause.avant());
     }
 
     @Override
-    public List<LigneCreance> getLignesCreanceParVehicule(Long vehiculeId) {
+    public List<LigneCreance> getLignesCreanceParVehicule(Long vehiculeId, FiltreCreances filtre) {
+        Clause clause = Clause.de(filtre);
         return jdbcTemplate.query("""
                 SELECT v.document, v.document_id, v.vehicule_id,
                        v.tiers_id AS chauffeur_id,
@@ -119,10 +169,11 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
                        v.date_reference, v.montant_du, v.montant_regle, v.restant
                 FROM v_creances_chauffeurs v
                 JOIN chauffeurs ch ON ch.id = v.tiers_id
+                LEFT JOIN vehicules veh ON veh.id = v.vehicule_id
                 WHERE v.tiers_type = 'CHAUFFEUR' AND v.sens = 'ILS_ME_DOIVENT'
-                  AND v.vehicule_id = ?
+                  AND v.vehicule_id = ?%s
                 ORDER BY v.date_reference
-                """, LIGNE_MAPPER, vehiculeId);
+                """.formatted(clause.sql()), LIGNE_MAPPER, clause.avant(vehiculeId));
     }
 
     @Override
@@ -161,6 +212,8 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
         // annulée en août reste due dans la photo de juillet, où elle figurait
         // bien à l'actif. Une contravention s'annule par sa seule date — son
         // statut ne bouge pas —, d'où le test sur annule_le plutôt que sur lui.
+        // La cotisation n'y figure pas : c'est l'épargne du chauffeur, pas une
+        // dette (même périmètre que v_creances_chauffeurs).
         return jdbcTemplate.query("""
                 WITH bornes AS (SELECT CAST(? AS date) AS d),
                 docs AS (
@@ -178,21 +231,6 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
                        AND lr.montant_attendu IS NOT NULL
                        AND lr.chauffeur_id IS NOT NULL
                        AND lr.date_recette <= (SELECT d FROM bornes)
-                    UNION ALL
-                    SELECT lc.chauffeur_id,
-                           lc.date_cotisation,
-                           lc.montant_du - COALESCE((
-                               SELECT SUM(e.montant) FROM encaissements_cotisation e
-                                WHERE e.ligne_cotisation_id = lc.id
-                                  AND e.date_encaissement <= (SELECT d FROM bornes)
-                                  AND (e.annule_le IS NULL
-                                       OR e.annule_le::date > (SELECT d FROM bornes))), 0)
-                      FROM lignes_cotisation lc
-                     WHERE (lc.annule_le IS NULL
-                            OR lc.annule_le::date > (SELECT d FROM bornes))
-                       AND lc.montant_du IS NOT NULL
-                       AND lc.chauffeur_id IS NOT NULL
-                       AND lc.date_cotisation <= (SELECT d FROM bornes)
                     UNION ALL
                     SELECT lp.chauffeur_id,
                            COALESCE(lp.date_faute, lp.date_generation),

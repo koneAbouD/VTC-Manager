@@ -50,6 +50,15 @@ public class GenererRecuPdfUseCase {
         return recuDocumentRenderer.renderRecuPdf(construire(operationIds));
     }
 
+    /**
+     * Le même reçu, en données : ce que le client affiche avant l'envoi et
+     * rédige en message. Mêmes refus que le PDF — ce qui ne se quittance pas
+     * ne se propose pas non plus.
+     */
+    public RecuPaiement lire(List<Long> operationIds) {
+        return construire(operationIds);
+    }
+
     private RecuPaiement construire(List<Long> operationIds) {
         List<Long> ids = operationIds == null ? List.of()
                 : operationIds.stream().filter(Objects::nonNull).distinct().toList();

@@ -13,10 +13,11 @@ import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/widgets/encaissement_ligne_dialog.dart';
 import '../../../../core/widgets/encaissement_lot_dialog.dart';
 import '../../../../core/widgets/selection_lot_bar.dart';
-import '../../../../features/operation_financiere/presentation/providers/operation_financiere_provider.dart';
 import 'ligne_cotisation_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
+import '../../../recu/presentation/proposer_recu.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 
 // ── Constantes partagées ───────────────────────────────────────────────────
 
@@ -343,6 +344,10 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
 
     final repo    = ref.read(ligneCotisationRepositoryProvider);
     final dateFmt = DateFormat('dd/MM/yyyy');
+    // Écritures des lignes acceptées : le lot est un seul geste de caisse, et
+    // chaque chauffeur en reçoit un reçu.
+    final ecrituresParChauffeur = <int, List<int>>{};
+    final chauffeurDeLigne = {for (final l in selection) l.id!: l.chauffeurId};
 
     final ok = await showEncaissementLotDialog(
       context,
@@ -371,7 +376,16 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
         );
         return resultat.fold(
           (f) => IssueLot.erreur(f.message),
-          IssueLot.depuis,
+          (lot) {
+            for (final r in lot.resultats.where((r) => r.succes)) {
+              final chauffeur = chauffeurDeLigne[r.ligneId];
+              if (chauffeur == null) continue;
+              ecrituresParChauffeur
+                  .putIfAbsent(chauffeur, () => [])
+                  .addAll(r.operationIds);
+            }
+            return IssueLot.depuis(lot);
+          },
         );
       },
     );
@@ -382,11 +396,18 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
       _selectionMode = false;
     });
     _load();
-    ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+    refreshFinances(ref);
+
+    // Un reçu par chauffeur servi, l'un après l'autre.
+    for (final ids in ecrituresParChauffeur.values) {
+      if (!mounted) return;
+      await proposerEnvoiRecu(context, ref, ids);
+    }
   }
 
   Future<void> _openEncaisserDialog(LigneCotisation ligne) async {
     final repo   = ref.read(ligneCotisationRepositoryProvider);
+    var ecritures = <int>[];
     final result = await showEncaissementLigneDialog(
       context,
       titre:     ligne.nomCotisation,
@@ -407,12 +428,16 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
           commentaire:       saisie.commentaire,
         );
         final r = await repo.createEncaissement(ligne.id!, enc);
-        return r.fold((f) => f.message, (_) => null);
+        return r.fold((f) => f.message, (e) {
+          ecritures = [if (e.operationFinanciereId != null) e.operationFinanciereId!];
+          return null;
+        });
       },
     );
     if (result == true && mounted) {
       _load();
-      ref.read(operationFinanciereNotifierProvider.notifier).loadAll();
+      refreshFinances(ref);
+      await proposerEnvoiRecu(context, ref, ecritures);
     }
   }
 

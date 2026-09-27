@@ -141,3 +141,40 @@ class CreanceVehicule {
         total: (j['total'] as num?)?.toDouble() ?? 0,
       );
 }
+
+/// Restriction de la balance âgée, appliquée côté serveur : mois de naissance
+/// des documents et mot-clé (immatriculation ou nom du chauffeur).
+class FiltreCreances {
+  /// Mois retenu (seuls année et mois comptent) ; null = tous les mois.
+  final DateTime? mois;
+  final String recherche;
+
+  const FiltreCreances({this.mois, this.recherche = ''});
+
+  static const aucun = FiltreCreances();
+
+  bool get estActif => mois != null || recherche.trim().isNotEmpty;
+
+  FiltreCreances avecMois(DateTime? mois) =>
+      FiltreCreances(mois: mois, recherche: recherche);
+
+  FiltreCreances avecRecherche(String recherche) =>
+      FiltreCreances(mois: mois, recherche: recherche);
+
+  /// Paramètres de requête : `mois=AAAA-MM` et `q`, omis quand vides.
+  Map<String, String> toQuery() => {
+        if (mois != null)
+          'mois': '${mois!.year}-${mois!.month.toString().padLeft(2, '0')}',
+        if (recherche.trim().isNotEmpty) 'q': recherche.trim(),
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      other is FiltreCreances &&
+      other.mois?.year == mois?.year &&
+      other.mois?.month == mois?.month &&
+      other.recherche.trim() == recherche.trim();
+
+  @override
+  int get hashCode => Object.hash(mois?.year, mois?.month, recherche.trim());
+}

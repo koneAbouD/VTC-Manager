@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.application.ports.persistence;
 
 import com.tmk.vtcmanager.application.domain.finance.CreanceChauffeur;
 import com.tmk.vtcmanager.application.domain.finance.CreanceVehicule;
+import com.tmk.vtcmanager.application.domain.finance.FiltreCreances;
 import com.tmk.vtcmanager.application.domain.finance.LigneCreance;
 
 import java.math.BigDecimal;
@@ -12,7 +13,12 @@ import java.util.List;
 public interface CreanceRepository {
 
     /** Balance âgée agrégée par chauffeur, triée par total décroissant. */
-    List<CreanceChauffeur> getBalanceAgee();
+    default List<CreanceChauffeur> getBalanceAgee() {
+        return getBalanceAgee(FiltreCreances.AUCUN);
+    }
+
+    /** Même balance, restreinte au mois et au mot-clé de {@code filtre}. */
+    List<CreanceChauffeur> getBalanceAgee(FiltreCreances filtre);
 
     /**
      * Même balance, mais reconstituée telle qu'elle se présentait au soir de
@@ -24,13 +30,25 @@ public interface CreanceRepository {
     List<CreanceChauffeur> getBalanceAgeeALaDate(LocalDate date);
 
     /** Documents ouverts d'un chauffeur, du plus ancien au plus récent. */
-    List<LigneCreance> getLignesCreance(Long chauffeurId);
+    default List<LigneCreance> getLignesCreance(Long chauffeurId) {
+        return getLignesCreance(chauffeurId, FiltreCreances.AUCUN);
+    }
+
+    List<LigneCreance> getLignesCreance(Long chauffeurId, FiltreCreances filtre);
 
     /** Balance âgée agrégée par véhicule, triée par total décroissant. */
-    List<CreanceVehicule> getBalanceAgeeParVehicule();
+    default List<CreanceVehicule> getBalanceAgeeParVehicule() {
+        return getBalanceAgeeParVehicule(FiltreCreances.AUCUN);
+    }
+
+    List<CreanceVehicule> getBalanceAgeeParVehicule(FiltreCreances filtre);
 
     /** Documents ouverts rattachés à un véhicule, du plus ancien au plus récent. */
-    List<LigneCreance> getLignesCreanceParVehicule(Long vehiculeId);
+    default List<LigneCreance> getLignesCreanceParVehicule(Long vehiculeId) {
+        return getLignesCreanceParVehicule(vehiculeId, FiltreCreances.AUCUN);
+    }
+
+    List<LigneCreance> getLignesCreanceParVehicule(Long vehiculeId, FiltreCreances filtre);
 
     /**
      * Montant encaissé auprès des chauffeurs pour des contraventions non
