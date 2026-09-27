@@ -62,6 +62,19 @@ class Contravention {
   /// Reversée à l'État (opération « Reversement contravention » créée).
   bool get isReverse => statut == 'REVERSE' || statut == 'REVERSEE';
 
+  /// Ce qu'il reste à encaisser auprès du chauffeur, jamais négatif.
+  double get resteDu =>
+      (montant - (montantPaye ?? 0)).clamp(0, double.infinity).toDouble();
+
+  /// Reversée à l'État par l'entreprise, mais pas encore remboursée par le
+  /// chauffeur : l'avance reste due, elle s'encaisse depuis la fiche (ou se
+  /// compense lors d'un arrêté de restitution des cotisations).
+  bool get aRembourser => isReverse && !isCancelled && resteDu > 0;
+
+  /// Il reste quelque chose à encaisser auprès du chauffeur : en attente,
+  /// partiellement payée, ou reversée sans remboursement.
+  bool get encaissable => !isCancelled && !isPaid && resteDu > 0;
+
   /// Annulée.
   bool get isCancelled => statut == 'ANNULE' || statut == 'ANNULEE';
 

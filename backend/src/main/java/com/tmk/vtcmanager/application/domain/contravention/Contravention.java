@@ -74,15 +74,29 @@ public class Contravention {
 
     /**
      * Enregistre un paiement (ou versement partiel) et met à jour le statut de la contravention.
+     *
+     * <p>Reversée, elle le reste : l'entreprise a déjà payé l'État à la place
+     * du chauffeur, et ce versement ne fait que lui rembourser l'avance. La
+     * repasser PAYE la ferait compter de nouveau dans ce qui reste à reverser.
      */
     public void enregistrerPaiement(BigDecimal montantVerse) {
+        enregistrerPaiement(montantVerse, LocalDate.now());
+    }
+
+    /** Idem, en datant le règlement du jour où l'argent a été reçu. */
+    public void enregistrerPaiement(BigDecimal montantVerse, LocalDate jour) {
         if (montantVerse == null) return;
         BigDecimal courant = this.montantPaye == null ? BigDecimal.ZERO : this.montantPaye;
         this.montantPaye = courant.add(montantVerse);
+        boolean solde = this.montant != null && this.montantPaye.compareTo(this.montant) >= 0;
 
-        if (this.montant != null && this.montantPaye.compareTo(this.montant) >= 0) {
+        if (this.statut == ContraventionStatus.REVERSE) {
+            if (solde) this.datePaiement = jour;
+            return;
+        }
+        if (solde) {
             this.statut = ContraventionStatus.PAYE;
-            this.datePaiement = LocalDate.now();
+            this.datePaiement = jour;
         } else {
             this.statut = ContraventionStatus.PARTIELLEMENT_PAYE;
         }
@@ -103,6 +117,9 @@ public class Contravention {
         BigDecimal courant = this.montantPaye == null ? BigDecimal.ZERO : this.montantPaye;
         this.montantPaye = courant.subtract(montantVerse).max(BigDecimal.ZERO);
 
+        if (this.statut == ContraventionStatus.REVERSE && this.montantPaye.signum() == 0) {
+            this.datePaiement = null;
+        }
         if (this.statut != ContraventionStatus.EN_ATTENTE
                 && this.statut != ContraventionStatus.PARTIELLEMENT_PAYE
                 && this.statut != ContraventionStatus.PAYE) {
@@ -128,6 +145,12 @@ public class Contravention {
         // l'encaissement, pas le versement à l'État. Les écraser toutes deux
         // reviendrait à effacer le moment où la dette est née.
         this.dateReversement = LocalDate.now();
+    }
+
+    /** Ce qui reste à encaisser sur la contravention, jamais négatif. */
+    public BigDecimal resteDu() {
+        BigDecimal paye = montantPaye != null ? montantPaye : BigDecimal.ZERO;
+        return montant == null ? BigDecimal.ZERO : montant.subtract(paye).max(BigDecimal.ZERO);
     }
 
     /** Vrai si le chauffeur a déjà versé quelque chose. */

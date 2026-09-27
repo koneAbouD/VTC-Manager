@@ -118,9 +118,19 @@ class ContraventionRepositoryImpl implements ContraventionRepository {
 
   @override
   Future<Either<Failure, Contravention>> payContravention(
-      int id, double montantPaye) async {
+    int id,
+    double montantPaye, {
+    String? modePaiement,
+    DateTime? dateEncaissement,
+    String? reference,
+    String? commentaire,
+  }) async {
     try {
-      final result = await _datasource.payContravention(id, montantPaye);
+      final result = await _datasource.payContravention(id, montantPaye,
+          modePaiement: modePaiement,
+          dateEncaissement: dateEncaissement,
+          reference: reference,
+          commentaire: commentaire);
       return Right(result);
     } on ApiException catch (e) {
       return Left(_mapApiException(e));

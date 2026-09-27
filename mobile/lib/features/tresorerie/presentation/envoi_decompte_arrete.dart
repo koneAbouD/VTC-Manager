@@ -35,7 +35,8 @@ class PartDecompte {
   /// Ce que son fonds a éteint sur SES créances.
   final double retenuPourLui;
 
-  /// Ce que son fonds a éteint sur les créances d'autres chauffeurs du véhicule.
+  /// Ce que son fonds a éteint sur les créances d'autres chauffeurs du véhicule
+  /// ou du véhicule lui-même (contraventions sans chauffeur rattaché).
   final double retenuPourAutrui;
 
   /// Ses créances éteintes par le fonds d'autres chauffeurs du véhicule.
@@ -187,7 +188,7 @@ String composerDecompte(
     if (_significatif(part.retenuPourLui))
       '• Retenu pour vos créances : ${montantRecu(part.retenuPourLui)}',
     if (_significatif(part.retenuPourAutrui))
-      '• Retenu pour les créances d\'autres chauffeurs du véhicule : '
+      '• Retenu pour d\'autres dettes du véhicule : '
           '${montantRecu(part.retenuPourAutrui)}',
     if (_significatif(part.soldeParAutrui))
       '• Vos créances soldées par d\'autres chauffeurs du véhicule : '

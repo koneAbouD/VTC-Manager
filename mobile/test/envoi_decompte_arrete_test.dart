@@ -130,7 +130,7 @@ void main() {
           contains('• Retenu pour vos créances : ${montantRecu(30000)}'));
       expect(
           message,
-          contains("• Retenu pour les créances d'autres chauffeurs du véhicule : "
+          contains("• Retenu pour d'autres dettes du véhicule : "
               '${montantRecu(50000)}'));
       expect(message,
           contains('Net restitué : *${montantRecu(20000)}* en espèces'));

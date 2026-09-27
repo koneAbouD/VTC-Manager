@@ -493,9 +493,12 @@ public class UseCaseBeanConfiguration {
             CategorieOperationRepository categorieOperationRepository,
             CompteTresorerieResolver compteTresorerieResolver,
             SequenceReferenceService sequenceReferenceService,
-            CaisseClotureeGuard caisseClotureeGuard) {
+            CaisseClotureeGuard caisseClotureeGuard,
+            PeriodeClotureeGuard periodeClotureeGuard,
+            EncaissementFuturGuard encaissementFuturGuard) {
         return new PayContraventionUseCase(repo, operationFinanciereRepository,
-                categorieOperationRepository, compteTresorerieResolver, sequenceReferenceService, caisseClotureeGuard);
+                categorieOperationRepository, compteTresorerieResolver, sequenceReferenceService, caisseClotureeGuard,
+                periodeClotureeGuard, encaissementFuturGuard);
     }
 
     @Bean

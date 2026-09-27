@@ -123,6 +123,11 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
                 """.formatted(clause.sql()), LIGNE_MAPPER, clause.avant(chauffeurId));
     }
 
+    /**
+     * Sur l'axe véhicule, les dettes du véhicule lui-même — contraventions que
+     * personne ne porte — s'ajoutent à celles de ses chauffeurs : d'où le
+     * {@code LEFT JOIN} sur le chauffeur, absent pour elles.
+     */
     @Override
     public List<CreanceVehicule> getBalanceAgeeParVehicule(FiltreCreances filtre) {
         Clause clause = Clause.de(filtre);
@@ -137,10 +142,10 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
                        SUM(v.restant) AS total
                 FROM v_creances_chauffeurs v
                 JOIN vehicules veh ON veh.id = v.vehicule_id
-                JOIN chauffeurs ch ON ch.id = v.tiers_id
+                LEFT JOIN chauffeurs ch ON v.tiers_type = 'CHAUFFEUR' AND ch.id = v.tiers_id
                 LEFT JOIN marques mar ON mar.id = veh.marque_id
                 LEFT JOIN modeles mod ON mod.id = veh.modele_id
-                WHERE v.tiers_type = 'CHAUFFEUR' AND v.sens = 'ILS_ME_DOIVENT'
+                WHERE v.tiers_type IN ('CHAUFFEUR', 'VEHICULE') AND v.sens = 'ILS_ME_DOIVENT'
                   AND v.vehicule_id IS NOT NULL%s
                 GROUP BY v.vehicule_id, veh.immatriculation, mar.nom, mod.nom
                 ORDER BY total DESC
@@ -164,13 +169,13 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
         Clause clause = Clause.de(filtre);
         return jdbcTemplate.query("""
                 SELECT v.document, v.document_id, v.vehicule_id,
-                       v.tiers_id AS chauffeur_id,
-                       TRIM(CONCAT(ch.prenom, ' ', ch.nom)) AS chauffeur_nom,
+                       ch.id AS chauffeur_id,
+                       NULLIF(TRIM(CONCAT(ch.prenom, ' ', ch.nom)), '') AS chauffeur_nom,
                        v.date_reference, v.montant_du, v.montant_regle, v.restant
                 FROM v_creances_chauffeurs v
-                JOIN chauffeurs ch ON ch.id = v.tiers_id
+                LEFT JOIN chauffeurs ch ON v.tiers_type = 'CHAUFFEUR' AND ch.id = v.tiers_id
                 LEFT JOIN vehicules veh ON veh.id = v.vehicule_id
-                WHERE v.tiers_type = 'CHAUFFEUR' AND v.sens = 'ILS_ME_DOIVENT'
+                WHERE v.tiers_type IN ('CHAUFFEUR', 'VEHICULE') AND v.sens = 'ILS_ME_DOIVENT'
                   AND v.vehicule_id = ?%s
                 ORDER BY v.date_reference
                 """.formatted(clause.sql()), LIGNE_MAPPER, clause.avant(vehiculeId));

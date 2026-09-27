@@ -9,6 +9,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/confirmation_restauration_dialog.dart';
 import '../../../../core/widgets/detail_carte.dart';
+import '../../../../core/widgets/encaissement_ligne_dialog.dart';
+import '../../../../screens/finance/finance_refresh.dart';
 import '../../domain/entities/contravention.dart';
 import '../providers/contravention_provider.dart';
 import 'contravention_form_page.dart';
@@ -67,6 +69,7 @@ class _ContraventionDetailPageState
 
   (String, Color) get _statut {
     if (c.isCancelled) return ('Annulé', AppColors.error);
+    if (c.aRembourser) return ('Reversé · à rembourser', AppColors.warning);
     if (c.isReverse) return ('Reversé', AppColors.success);
     if (c.isPaid) return ('Payé', AppColors.success);
     if (c.isPartial) return ('Partiellement payé', AppColors.info);
@@ -88,9 +91,9 @@ class _ContraventionDetailPageState
 
   Future<void> _reverser() async {
     // Reversement à l'État : porte sur le montant total de la contravention et
-    // peut se faire même si elle n'a pas été payée par le chauffeur. Le
-    // remboursement chauffeur (PAYE) se fait, lui, côté finance via la
-    // compensation lors de la restitution des cotisations (arrêté de compte).
+    // peut se faire même si elle n'a pas été payée par le chauffeur. Ce qu'il
+    // doit s'encaisse depuis cette fiche (« Encaisser »), avant comme après le
+    // reversement, ou se compense lors d'un arrêté de compte.
     final montant = c.montant;
     if (montant <= 0) return;
 
@@ -243,6 +246,41 @@ class _ContraventionDetailPageState
       _toast('Contravention reversée');
       Navigator.pop(context, true);
     }
+  }
+
+  /// Encaisse ce que verse le chauffeur. Avant reversement, l'argent est
+  /// détenu pour l'État ; après, il rembourse l'avance de l'entreprise. Le
+  /// montant proposé est le reste dû ; le serveur refuse tout dépassement.
+  Future<void> _encaisser() async {
+    final id = c.id;
+    if (id == null) return;
+    final notifier = ref.read(contraventionNotifierProvider.notifier);
+    final qui = [c.vehiculeNom, c.chauffeurNom]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(' - ');
+    final ok = await showEncaissementLigneDialog(
+      context,
+      titre: '${c.isReverse ? 'Remboursement' : 'Paiement'} — '
+          '${c.typeInfraction ?? 'Contravention'}',
+      sousTitre: qui.isEmpty ? null : qui,
+      montantRestant: c.resteDu,
+      couleur: AppColors.warning,
+      icone: Icons.receipt_long_outlined,
+      onEncaisser: (saisie) => notifier.payContravention(
+        id,
+        saisie.montant,
+        modePaiement: saisie.mode == ModeEncaissementSaisie.mobileMoney
+            ? 'MOBILE_MONEY'
+            : 'ESPECES',
+        dateEncaissement: saisie.date,
+        reference: saisie.reference,
+        commentaire: saisie.commentaire,
+      ),
+    );
+    if (ok != true || !mounted) return;
+    refreshFinances(ref);
+    _toast(c.isReverse ? 'Remboursement encaissé' : 'Paiement encaissé');
+    Navigator.pop(context, true);
   }
 
   void _openDocument(int id) {
@@ -521,7 +559,7 @@ class _ContraventionDetailPageState
     // tant que les livres du mois restent ouverts, est portée par l'icône de
     // l'en-tête — et le serveur refuse dès qu'un arrêté couvre la date.
     if (c.isCancelled) return const SizedBox.shrink();
-    return Row(children: [
+    final ligne = Row(children: [
       if (reversable) ...[
         Expanded(
           child: SizedBox(
@@ -543,7 +581,7 @@ class _ContraventionDetailPageState
         const SizedBox(width: 12),
       ],
       if (retirable)
-        SizedBox(
+        _etirer(!reversable, SizedBox(
           height: 50,
           child: OutlinedButton.icon(
             onPressed: aMouvemente ? _annuler : _delete,
@@ -561,9 +599,39 @@ class _ContraventionDetailPageState
                 style:
                     const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           ),
+        )),
+    ]);
+    if (!c.encaissable) return ligne;
+    // Encaisser sur sa propre ligne : à côté de « Reverser » et « Annuler »,
+    // trois boutons ne tiendraient pas sur un téléphone.
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SizedBox(
+        height: 50,
+        child: FilledButton.icon(
+          onPressed: _encaisser,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.success,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+          ),
+          icon: const Icon(Icons.payments_outlined, size: 18),
+          label: Text(
+              c.isReverse
+                  ? 'Encaisser le remboursement'
+                  : 'Encaisser le paiement',
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         ),
+      ),
+      const SizedBox(height: 12),
+      ligne,
     ]);
   }
+
+  /// Seul sur sa ligne, un bouton en prend toute la largeur.
+  static Widget _etirer(bool seul, Widget bouton) =>
+      seul ? Expanded(child: bouton) : bouton;
 
   // ── Formatage ─────────────────────────────────────────────────────────────
 

@@ -141,19 +141,26 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
 
   // ── Décompte local (le serveur reste l'autorité) ────────────────────────────
 
-  /// Groupe les lignes de l'aperçu par bénéficiaire chauffeur.
+  /// Groupe les lignes de l'aperçu par bénéficiaire chauffeur. Les dettes du
+  /// véhicule lui-même — contraventions sans chauffeur rattaché — n'ont pas de
+  /// débiteur : elles forment un dernier groupe, sans fonds, que le fonds
+  /// commun des chauffeurs paie.
   List<_GroupeBeneficiaire> get _groupes {
     final apercu = _apercu;
     if (apercu == null) return const [];
     final noms = {for (final r in apercu.reglements) r.chauffeurId: r.chauffeurNom};
     final parChauffeur = <int, _GroupeBeneficiaire>{};
+    _GroupeBeneficiaire? vehicule;
     for (final l in apercu.lignes) {
-      final id = l.chauffeurId ?? -1;
-      final g = parChauffeur.putIfAbsent(
-          id, () => _GroupeBeneficiaire(id, noms[id] ?? 'Chauffeur #$id'));
+      final id = l.chauffeurId;
+      final g = id == null
+          ? (vehicule ??= _GroupeBeneficiaire(
+              _GroupeBeneficiaire.idVehicule, 'Dettes du véhicule'))
+          : parChauffeur.putIfAbsent(
+              id, () => _GroupeBeneficiaire(id, noms[id] ?? 'Chauffeur #$id'));
       (l.estCredit ? g.cotisations : g.creances).add(l);
     }
-    return parChauffeur.values.toList();
+    return [...parChauffeur.values, if (vehicule != null) vehicule];
   }
 
   bool _cotChoisie(LigneArrete l) => _cotisationsChoisies.contains(l.documentId);
@@ -516,12 +523,18 @@ class _Decompte {
 }
 
 /// Un bénéficiaire chauffeur : ses cotisations (crédit) et créances (débit).
+/// Ou, sous [idVehicule], les dettes du véhicule que personne ne porte.
 class _GroupeBeneficiaire {
+  /// Identifiant réservé au groupe des dettes du véhicule (aucun chauffeur).
+  static const idVehicule = -1;
+
   final int chauffeurId;
   final String nom;
   final List<LigneArrete> cotisations = [];
   final List<LigneArrete> creances = [];
   _GroupeBeneficiaire(this.chauffeurId, this.nom);
+
+  bool get estVehicule => chauffeurId == idVehicule;
 }
 
 class _SyntheseCard extends StatelessWidget {
@@ -619,7 +632,8 @@ class _GroupeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final net = decompte.net(groupe);
-    // Ce que son dépôt a mis sur les dettes des autres chauffeurs du véhicule.
+    // Ce que son dépôt a mis sur les dettes des autres chauffeurs du véhicule
+    // ou du véhicule lui-même.
     // Sans ce rappel, son net baisse sans que rien à l'écran ne dise pourquoi.
     final pourAutrui = decompte.pourAutrui(groupe);
     final anterieures = groupe.creances.where(etat._avantPeriode).toList();
@@ -646,22 +660,31 @@ class _GroupeCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: AppColors.dark)),
                 ),
-                Text('Net ${CurrencyFormatter.format(net)}',
-                    style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: net > 0
-                            ? Colors.green.shade800
-                            : AppColors.hint)),
+                if (!groupe.estVehicule)
+                  Text('Net ${CurrencyFormatter.format(net)}',
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: net > 0
+                              ? Colors.green.shade800
+                              : AppColors.hint)),
               ],
             ),
           ),
+          if (groupe.estVehicule)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 0, 14, 2),
+              child: Text(
+                  'Sans chauffeur rattaché : payées par le fonds commun, '
+                  'après les dettes de chaque chauffeur',
+                  style: TextStyle(fontSize: 11, color: AppColors.hint)),
+            ),
           if (pourAutrui > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 2),
               child: Text(
-                  'dont ${CurrencyFormatter.format(pourAutrui)} pour les dettes '
-                  'des autres chauffeurs du véhicule',
+                  'dont ${CurrencyFormatter.format(pourAutrui)} pour les autres '
+                  'dettes du véhicule',
                   style: TextStyle(fontSize: 11, color: Colors.orange.shade900)),
             ),
           if (groupe.cotisations.isNotEmpty)

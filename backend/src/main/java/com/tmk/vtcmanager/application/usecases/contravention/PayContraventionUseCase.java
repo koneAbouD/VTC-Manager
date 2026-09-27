@@ -13,12 +13,13 @@ import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepos
 import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
+import com.tmk.vtcmanager.application.services.EncaissementFuturGuard;
+import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 @RequiredArgsConstructor
 public class PayContraventionUseCase {
@@ -36,23 +37,66 @@ public class PayContraventionUseCase {
     private final CompteTresorerieResolver compteTresorerieResolver;
     private final SequenceReferenceService sequenceReferenceService;
     private final CaisseClotureeGuard caisseClotureeGuard;
+    private final PeriodeClotureeGuard periodeClotureeGuard;
+    private final EncaissementFuturGuard encaissementFuturGuard;
 
     @Transactional
     public Contravention execute(Long id, BigDecimal montant, ModePaiement modePaiement) {
+        return execute(id, montant, modePaiement, null, null, null);
+    }
+
+    /**
+     * Encaisse ce que le chauffeur verse sur une contravention : avant
+     * reversement, l'argent est détenu pour l'État ; après, il rembourse
+     * l'avance que l'entreprise a faite à sa place.
+     *
+     * @param date        jour où l'argent a été reçu, aujourd'hui si null
+     * @param reference   n° de transaction Mobile Money, facultatif
+     * @param commentaire facultatif, remplace le libellé par défaut
+     */
+    @Transactional
+    public Contravention execute(Long id, BigDecimal montant, ModePaiement modePaiement,
+                                 LocalDate date, String reference, String commentaire) {
         Contravention contravention = contraventionRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Contravention", id));
-        contravention.enregistrerPaiement(montant);
+        if (contravention.estAnnulee() || contravention.getAnnuleLe() != null) {
+            throw new IllegalStateException("Contravention annulée : plus rien n'y est dû.");
+        }
+        if (montant == null || montant.signum() <= 0) {
+            throw new IllegalArgumentException("Le montant encaissé doit être positif.");
+        }
+        BigDecimal reste = contravention.resteDu();
+        if (montant.compareTo(reste) > 0) {
+            throw new IllegalArgumentException(
+                    "Le montant dépasse le reste dû sur la contravention (" + reste.toPlainString() + ").");
+        }
+
+        LocalDate jour = date != null ? date : LocalDate.now();
+        ModePaiement mode = modePaiement != null ? modePaiement : ModePaiement.ESPECES;
+        // Mêmes verrous que tout encaissement : ni avenir, ni période close,
+        // ni caisse déjà comptée ce jour-là.
+        encaissementFuturGuard.verifier(jour);
+        periodeClotureeGuard.verifier(jour);
+        Long compteId = compteTresorerieResolver.resoudre(null, mode);
+        caisseClotureeGuard.verifier(compteId, jour);
+
+        contravention.enregistrerPaiement(montant, jour);
         Contravention saved = contraventionRepository.save(contravention);
 
-        creerOperation(saved, montant, modePaiement != null ? modePaiement : ModePaiement.ESPECES);
+        creerOperation(saved, montant, mode, compteId, jour, reference, commentaire);
         return saved;
     }
 
-    private void creerOperation(Contravention contravention, BigDecimal montant, ModePaiement modePaiement) {
+    private void creerOperation(Contravention contravention, BigDecimal montant, ModePaiement modePaiement,
+                                Long compteId, LocalDate jour, String reference, String commentaire) {
         CategorieOperation categorie = categorieOperationRepository.findByCode(CODE_CATEGORIE).orElse(null);
-
-        caisseClotureeGuard.verifier(
-                compteTresorerieResolver.resoudre(null, modePaiement), LocalDate.now());
+        String libelle = commentaire != null && !commentaire.isBlank()
+                ? commentaire
+                : "Remboursement contravention " + (contravention.getTypeInfraction() != null
+                        ? contravention.getTypeInfraction() : "#" + contravention.getId());
+        if (reference != null && !reference.isBlank()) {
+            libelle = libelle + " (réf. " + reference.trim() + ")";
+        }
 
         OperationFinanciere operation = OperationFinanciere.builder()
                 .typeOperation(TypeOperation.REVENU)
@@ -61,13 +105,12 @@ public class PayContraventionUseCase {
                 .vehicule(contravention.getVehicule())
                 .montant(montant)
                 .modePaiement(modePaiement)
-                .compteTresorerieId(compteTresorerieResolver.resoudre(null, modePaiement))
-                .dateOperation(LocalDate.now())
+                .compteTresorerieId(compteId)
+                .dateOperation(jour)
                 .dateReference(contravention.getDateInfraction())
-                .commentaire("Remboursement contravention " + (contravention.getTypeInfraction() != null
-                        ? contravention.getTypeInfraction() : "#" + contravention.getId()))
+                .commentaire(libelle)
                 .reference(sequenceReferenceService.suivante(
-                        SequenceReferenceService.Journal.CONTRAVENTION))
+                        SequenceReferenceService.Journal.CONTRAVENTION, jour))
                 .statut(StatutOperation.ENCAISSE)
                 // Trace du règlement : à l'annulation de l'écriture, elle seule
                 // permet de rendre la contravention à son état antérieur.

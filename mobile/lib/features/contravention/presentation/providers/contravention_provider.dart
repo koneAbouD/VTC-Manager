@@ -160,8 +160,21 @@ class ContraventionNotifier extends StateNotifier<ContraventionState> {
     );
   }
 
-  Future<String?> payContravention(int id, double montantPaye) async {
-    final result = await _payContravention.call(id, montantPaye);
+  /// Encaisse un versement du chauffeur. Retourne le message d'erreur, ou
+  /// `null` si l'encaissement a été accepté.
+  Future<String?> payContravention(
+    int id,
+    double montantPaye, {
+    String? modePaiement,
+    DateTime? dateEncaissement,
+    String? reference,
+    String? commentaire,
+  }) async {
+    final result = await _payContravention.call(id, montantPaye,
+        modePaiement: modePaiement,
+        dateEncaissement: dateEncaissement,
+        reference: reference,
+        commentaire: commentaire);
     return result.fold(
       (failure) => failure.message,
       (_) {

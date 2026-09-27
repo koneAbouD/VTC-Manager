@@ -189,7 +189,15 @@ class _LigneCreanceTile extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.primaryDark)),
+                              color: AppColors.primaryDark))
+                    else
+                      // Contravention que personne ne porte : c'est le
+                      // véhicule qui la doit.
+                      const Text('Sans chauffeur rattaché',
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.hint)),
                     Text(
                       'Dû ${CurrencyFormatter.format(ligne.montantDu)}'
                       ' · réglé ${CurrencyFormatter.format(ligne.montantRegle)}',

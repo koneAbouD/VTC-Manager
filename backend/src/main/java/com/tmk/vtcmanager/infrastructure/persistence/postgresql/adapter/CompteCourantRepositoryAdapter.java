@@ -21,6 +21,10 @@ import java.util.List;
  * par véhicule netterait le dépôt d'un chauffeur contre la dette d'un autre. Les
  * deux faces du solde sont donc rendues séparément — le restituable ({@code net})
  * et le reste dû ({@code reste_du}).
+ *
+ * <p>Seule exception, les dettes du véhicule lui-même (contraventions sans
+ * chauffeur) : n'appartenant à personne, elles s'imputent sur l'excédent cumulé
+ * des chauffeurs du véhicule.
  */
 @Component
 @RequiredArgsConstructor
@@ -103,6 +107,20 @@ public class CompteCourantRepositoryAdapter implements CompteCourantRepository {
                       AND document <> 'COTISATION' AND vehicule_id IS NOT NULL
                     GROUP BY vehicule_id, tiers_id
                 ),
+                -- Dettes du véhicule lui-même (contraventions sans chauffeur) :
+                -- personne ne les porte, le fonds commun les paie.
+                dettes_vehicule AS (
+                    SELECT vehicule_id,
+                           SUM(restant) AS total,
+                           COALESCE(SUM(restant) FILTER (WHERE date_reference >  CURRENT_DATE - 8), 0)  AS du_0_7,
+                           COALESCE(SUM(restant) FILTER (WHERE date_reference <= CURRENT_DATE - 8
+                                                             AND date_reference >  CURRENT_DATE - 31), 0) AS du_8_30,
+                           COALESCE(SUM(restant) FILTER (WHERE date_reference <= CURRENT_DATE - 31), 0) AS du_plus_30
+                    FROM v_creances_chauffeurs
+                    WHERE tiers_type = 'VEHICULE' AND sens = 'ILS_ME_DOIVENT'
+                      AND vehicule_id IS NOT NULL
+                    GROUP BY vehicule_id
+                ),
                 -- Une ligne par (véhicule, chauffeur) : la maille à laquelle la
                 -- compensation a le droit de se faire.
                 paires AS (
@@ -116,17 +134,33 @@ public class CompteCourantRepositoryAdapter implements CompteCourantRepository {
                     FULL OUTER JOIN creances c
                       ON c.vehicule_id = f.vehicule_id AND c.chauffeur_id = f.chauffeur_id
                 ),
-                soldes AS (
+                par_chauffeur AS (
                     SELECT vehicule_id,
                            SUM(fond)       AS fond,
                            SUM(creances)   AS total_creances,
                            SUM(du_0_7)     AS du_0_7,
                            SUM(du_8_30)    AS du_8_30,
                            SUM(du_plus_30) AS du_plus_30,
-                           SUM(GREATEST(fond - creances, 0)) AS net,
-                           SUM(GREATEST(creances - fond, 0)) AS reste_du
+                           SUM(GREATEST(fond - creances, 0)) AS excedent,
+                           SUM(GREATEST(creances - fond, 0)) AS deficit
                     FROM paires
                     GROUP BY vehicule_id
+                ),
+                -- La dette du véhicule s'impute sur l'excédent des chauffeurs,
+                -- une fois leurs propres dettes éteintes : ce que fait l'arrêté
+                -- par véhicule.
+                soldes AS (
+                    SELECT COALESCE(p.vehicule_id, d.vehicule_id) AS vehicule_id,
+                           COALESCE(p.fond, 0) AS fond,
+                           COALESCE(p.total_creances, 0) + COALESCE(d.total, 0)    AS total_creances,
+                           COALESCE(p.du_0_7, 0)     + COALESCE(d.du_0_7, 0)     AS du_0_7,
+                           COALESCE(p.du_8_30, 0)    + COALESCE(d.du_8_30, 0)    AS du_8_30,
+                           COALESCE(p.du_plus_30, 0) + COALESCE(d.du_plus_30, 0) AS du_plus_30,
+                           GREATEST(COALESCE(p.excedent, 0) - COALESCE(d.total, 0), 0) AS net,
+                           COALESCE(p.deficit, 0)
+                               + GREATEST(COALESCE(d.total, 0) - COALESCE(p.excedent, 0), 0) AS reste_du
+                    FROM par_chauffeur p
+                    FULL OUTER JOIN dettes_vehicule d ON d.vehicule_id = p.vehicule_id
                 )
                 SELECT veh.id AS tiers_id,
                        veh.immatriculation AS libelle,

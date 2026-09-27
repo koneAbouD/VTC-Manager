@@ -66,6 +66,8 @@ class ContraventionCard extends StatelessWidget {
   }
 
   (String, Color) _statut() {
+    // Reversée par l'entreprise, le chauffeur ne l'a pas encore remboursée.
+    if (contravention.aRembourser) return ('À rembourser', _ambre);
     if (contravention.isReverse) return ('Reversé', _vert);
     if (contravention.isPaid) return ('Payé', _vert);
     if (contravention.isPartial) return ('Partiel', _ambre);

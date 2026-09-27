@@ -72,10 +72,27 @@ class ContraventionRemoteDatasource {
   Future<Uint8List> getDocumentBytes(int id) =>
       _client.getBytes('/contraventions/$id/document');
 
+  /// Encaisse un versement du chauffeur (`POST /contraventions/{id}/payments`).
+  /// Sur une contravention reversée, il rembourse l'avance faite à l'État.
   Future<ContraventionModel> payContravention(
-      int id, double montantPaye) async {
-    final data = await _client
-        .post('/contraventions/$id/payments', {'montantPaye': montantPaye});
+    int id,
+    double montantPaye, {
+    String? modePaiement,
+    DateTime? dateEncaissement,
+    String? reference,
+    String? commentaire,
+  }) async {
+    final data = await _client.post('/contraventions/$id/payments', {
+      'montantPaye': montantPaye,
+      if (modePaiement != null) 'modePaiement': modePaiement,
+      if (dateEncaissement != null)
+        'dateEncaissement':
+            '${dateEncaissement.year.toString().padLeft(4, '0')}-'
+                '${dateEncaissement.month.toString().padLeft(2, '0')}-'
+                '${dateEncaissement.day.toString().padLeft(2, '0')}',
+      if (reference != null) 'reference': reference,
+      if (commentaire != null) 'commentaire': commentaire,
+    });
     return ContraventionModel.fromJson(data as Map<String, dynamic>);
   }
 

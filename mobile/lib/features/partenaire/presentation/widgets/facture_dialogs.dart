@@ -99,97 +99,103 @@ class _ReglementSheetState extends ConsumerState<_ReglementSheet> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         ),
         padding: EdgeInsets.fromLTRB(20, 14, 20, 20 + bottomSafe),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
+        // Défilable : le clavier du montant ne laisse souvent pas la place à
+        // toute la feuille (téléphone en paysage, écran déplié).
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text('Régler ${f.partenaireNom ?? "la facture"}',
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.dark)),
-            const SizedBox(height: 4),
-            Text(
-                '${f.reference ?? ""} · échéance '
-                '${DateFormat('dd/MM/yyyy').format(f.dateEcheance)}',
-                style: const TextStyle(fontSize: 11.5, color: AppColors.hint)),
-            const SizedBox(height: 16),
-            _Ligne(
-                'Montant de la facture', CurrencyFormatter.format(f.montant)),
-            if (f.montantPaye > 0)
-              _Ligne('Déjà réglé', CurrencyFormatter.format(f.montantPaye)),
-            _Ligne('Restant dû', CurrencyFormatter.format(f.restantDu),
-                fort: true),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _montantCtrl,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: 'Montant réglé',
-                suffixText: 'XOF',
-                filled: true,
-                fillColor: const Color(0xFFF2F3F5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+              const SizedBox(height: 16),
+              Text('Régler ${f.partenaireNom ?? "la facture"}',
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.dark)),
+              const SizedBox(height: 4),
+              Text(
+                  '${f.reference ?? ""} · échéance '
+                  '${DateFormat('dd/MM/yyyy').format(f.dateEcheance)}',
+                  style:
+                      const TextStyle(fontSize: 11.5, color: AppColors.hint)),
+              const SizedBox(height: 16),
+              _Ligne(
+                  'Montant de la facture', CurrencyFormatter.format(f.montant)),
+              if (f.montantPaye > 0)
+                _Ligne('Déjà réglé', CurrencyFormatter.format(f.montantPaye)),
+              _Ligne('Restant dû', CurrencyFormatter.format(f.restantDu),
+                  fort: true),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _montantCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'Montant réglé',
+                  suffixText: 'XOF',
+                  filled: true,
+                  fillColor: const Color(0xFFF2F3F5),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  errorText:
+                      _montant > f.restantDu ? 'Au-delà du restant dû' : null,
                 ),
-                errorText:
-                    _montant > f.restantDu ? 'Au-delà du restant dû' : null,
               ),
-            ),
-            const SizedBox(height: 12),
-            PremiumSelectField<String>(
-              value: _mode,
-              hint: 'Mode de paiement',
-              sheetTitle: 'Mode de paiement',
-              options: const [
-                SelectOption(value: 'ESPECES', label: 'Espèces'),
-                SelectOption(value: 'MOBILE_MONEY', label: 'Mobile money'),
+              const SizedBox(height: 12),
+              PremiumSelectField<String>(
+                value: _mode,
+                hint: 'Mode de paiement',
+                sheetTitle: 'Mode de paiement',
+                options: const [
+                  SelectOption(value: 'ESPECES', label: 'Espèces'),
+                  SelectOption(value: 'MOBILE_MONEY', label: 'Mobile money'),
+                ],
+                onChanged: (v) => setState(() => _mode = v ?? 'ESPECES'),
+              ),
+              const SizedBox(height: 12),
+              _ChampDate(
+                date: _date,
+                onChanged: (d) => setState(() => _date = d),
+              ),
+              if (_erreur != null) ...[
+                const SizedBox(height: 10),
+                Text(_erreur!,
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.error)),
               ],
-              onChanged: (v) => setState(() => _mode = v ?? 'ESPECES'),
-            ),
-            const SizedBox(height: 12),
-            _ChampDate(
-              date: _date,
-              onChanged: (d) => setState(() => _date = d),
-            ),
-            if (_erreur != null) ...[
-              const SizedBox(height: 10),
-              Text(_erreur!,
-                  style: const TextStyle(fontSize: 12, color: AppColors.error)),
-            ],
-            const SizedBox(height: 18),
-            FilledButton(
-              onPressed: _valide ? _valider : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: _valide ? _valider : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text('Enregistrer le règlement',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
               ),
-              child: _busy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Text('Enregistrer le règlement',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

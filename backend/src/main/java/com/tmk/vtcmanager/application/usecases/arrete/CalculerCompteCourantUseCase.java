@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * Calcule (sans rien écrire) le décompte d'un arrêté de compte : par bénéficiaire
@@ -46,6 +47,12 @@ import java.util.Set;
  * l'un peut solder la dette de l'autre — celui qui a financé voit d'autant
  * baisser le net qui lui est versé. Sur un arrêté <b>par chauffeur</b>, il n'y a
  * qu'un bénéficiaire : rien ne se croise.</p>
+ *
+ * <p><b>Dettes du véhicule.</b> Une contravention sans chauffeur rattaché n'a
+ * pas de débiteur : c'est le véhicule qui la doit. Elle n'entre que dans un
+ * arrêté par véhicule, au second temps, dans la même file d'antériorité que les
+ * dettes des chauffeurs — le fonds commun la paie. Sa ligne d'arrêté ne porte
+ * aucun chauffeur, et ce qu'il en reste n'est le reliquat de personne.</p>
  */
 @RequiredArgsConstructor
 public class CalculerCompteCourantUseCase {
@@ -112,12 +119,16 @@ public class CalculerCompteCourantUseCase {
         brouillons.forEach(b -> imputer(b, b.creances));
 
         // 2. Sur un arrêté par véhicule, ce qui reste disponible passe aux
-        //    créances encore ouvertes des autres chauffeurs du véhicule, dans
-        //    l'ordre d'antériorité — la plus vieille dette du véhicule d'abord,
-        //    peu importe qui la porte.
+        //    créances encore ouvertes des autres chauffeurs du véhicule et à
+        //    celles du véhicule lui-même, dans l'ordre d'antériorité — la plus
+        //    vieille dette du véhicule d'abord, peu importe qui la porte.
         if (perimetre == PerimetreArrete.VEHICULE) {
-            List<CreanceOuverte> duVehicule = brouillons.stream()
-                    .flatMap(b -> b.creances.stream())
+            List<CreanceOuverte> dettesVehicule = dettesDuVehicule(perimetreId).stream()
+                    .map(c -> new CreanceOuverte(c, selection.creanceIncluse(c)))
+                    .toList();
+            List<CreanceOuverte> duVehicule = Stream.concat(
+                            brouillons.stream().flatMap(b -> b.creances.stream()),
+                            dettesVehicule.stream())
                     .sorted(PAR_ANTERIORITE)
                     .toList();
             brouillons.forEach(b -> imputer(b, duVehicule));
@@ -185,6 +196,22 @@ public class CalculerCompteCourantUseCase {
                     .montantNet(d.getNet())
                     .reliquatReporte(d.getReliquat())
                     .build());
+        }
+        // Les dettes du véhicule, sans débiteur : l'écran les présente à part
+        // et laisse l'utilisateur décider s'il les fait payer au fonds commun.
+        if (perimetre == PerimetreArrete.VEHICULE) {
+            for (LigneCreance c : dettesDuVehicule(perimetreId)) {
+                lignes.add(LigneArrete.builder()
+                        .document(c.getDocument())
+                        .documentId(c.getDocumentId())
+                        .vehiculeId(c.getVehiculeId())
+                        .dateDocument(c.getDateReference())
+                        .montant(impute.getOrDefault(cle(c), BigDecimal.ZERO))
+                        .restant(c.getRestant())
+                        .montantDu(c.getMontantDu())
+                        .sens(SensArrete.DEBIT)
+                        .build());
+            }
         }
 
         return ArreteCompte.builder()
@@ -307,6 +334,15 @@ public class CalculerCompteCourantUseCase {
         return creanceRepository.getLignesCreance(chauffeurId).stream()
                 .filter(c -> c.getDocument() != TypeDocumentCreance.COTISATION)
                 .filter(c -> vehiculeId == null || vehiculeId.equals(c.getVehiculeId()))
+                .filter(c -> c.getRestant() != null && c.getRestant().signum() > 0)
+                .toList();
+    }
+
+    /** Créances ouvertes du véhicule que personne ne porte (contraventions non rattachées). */
+    private List<LigneCreance> dettesDuVehicule(Long vehiculeId) {
+        return creanceRepository.getLignesCreanceParVehicule(vehiculeId).stream()
+                .filter(c -> c.getChauffeurId() == null)
+                .filter(c -> c.getDocument() != TypeDocumentCreance.COTISATION)
                 .filter(c -> c.getRestant() != null && c.getRestant().signum() > 0)
                 .toList();
     }

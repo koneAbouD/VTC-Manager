@@ -402,9 +402,13 @@ class _LigneTile extends StatelessWidget {
                 // Le jour du document plutôt que son identifiant technique ;
                 // celui-ci ne reste qu'en repli si la date est introuvable.
                 Text(
-                    ligne.dateDocument != null
-                        ? fmtDate(ligne.dateDocument)
-                        : '#${ligne.documentId}',
+                    [
+                      ligne.dateDocument != null
+                          ? fmtDate(ligne.dateDocument)
+                          : '#${ligne.documentId}',
+                      // Dette du véhicule, payée par le fonds commun.
+                      if (!credit && ligne.chauffeurId == null) 'dette du véhicule',
+                    ].join(' · '),
                     style: const TextStyle(fontSize: 11, color: AppColors.hint)),
               ],
             ),

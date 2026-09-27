@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -154,6 +155,18 @@ class CalculerCompteCourantUseCaseTest {
             Long chauffeurId = invocation.getArgument(0);
             return toutes.stream().filter(c -> chauffeurId.equals(c.getChauffeurId())).toList();
         });
+    }
+
+    /** Contravention du véhicule que personne ne porte : pas de chauffeur. */
+    private LigneCreance detteDuVehicule(Long id, int restant, LocalDate date) {
+        return LigneCreance.builder()
+                .document(TypeDocumentCreance.CONTRAVENTION).documentId(id)
+                .chauffeurId(null).vehiculeId(VEHICULE)
+                .dateReference(date)
+                .montantDu(BigDecimal.valueOf(restant))
+                .montantRegle(BigDecimal.ZERO)
+                .restant(BigDecimal.valueOf(restant))
+                .build();
     }
 
     private DecompteBeneficiaire decompteDe(List<DecompteBeneficiaire> decomptes, Long chauffeurId) {
@@ -534,6 +547,75 @@ class CalculerCompteCourantUseCaseTest {
                 .extracting(LigneArrete::getChauffeurId, LigneArrete::getMontant,
                         LigneArrete::getRestant)
                 .containsExactly(AUTRE, BigDecimal.valueOf(6_000), BigDecimal.valueOf(6_000));
+    }
+
+    // ── Dettes du véhicule ──────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Le fonds commun paie la contravention du véhicule, après les dettes propres")
+    void vehicule_dette_du_vehicule_payee_par_le_fonds_commun() {
+        // La contravention non rattachée est la plus ancienne ; Aya solde
+        // d'abord sa propre recette, puis le reste de son dépôt passe au véhicule.
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 10_000));
+        creancesDuVehicule(
+                detteDuVehicule(900L, 4_000, DEBUT.minusDays(30)),
+                creanceDe(CHAUFFEUR, 200L, 3_000, DEBUT.minusDays(5)));
+
+        List<DecompteBeneficiaire> decomptes =
+                useCase.calculer(PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN);
+
+        assertThat(decomptes).hasSize(1);
+        DecompteBeneficiaire aya = decomptes.get(0);
+        assertThat(aya.getTotalCompense()).isEqualByComparingTo("7000");
+        assertThat(aya.getNet()).isEqualByComparingTo("3000");
+        // La dette du véhicule n'est pas la sienne : elle ne pèse jamais sur son reliquat.
+        assertThat(aya.getReliquat()).isEqualByComparingTo("0");
+        assertThat(CalculerCompteCourantUseCase.compensationsCumulees(decomptes))
+                .extracting(a -> a.getCreance().getDocumentId(), a -> a.getMontant())
+                .containsExactlyInAnyOrder(
+                        tuple(900L, BigDecimal.valueOf(4_000)),
+                        tuple(200L, BigDecimal.valueOf(3_000)));
+    }
+
+    @Test
+    @DisplayName("Un arrêté par chauffeur ne paie pas les dettes du véhicule")
+    void chauffeur_ignore_la_dette_du_vehicule() {
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 10_000));
+        creancesDuVehicule(detteDuVehicule(900L, 4_000, DEBUT.minusDays(30)));
+
+        DecompteBeneficiaire aya = calculerChauffeur();
+
+        assertThat(aya.getTotalCompense()).isEqualByComparingTo("0");
+        assertThat(aya.getNet()).isEqualByComparingTo("10000");
+    }
+
+    @Test
+    @DisplayName("Une dette du véhicule décochée reste due et ne réduit pas le net")
+    void vehicule_dette_du_vehicule_decochee() {
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 10_000));
+        creancesDuVehicule(detteDuVehicule(900L, 4_000, DEBUT.minusDays(30)));
+
+        List<DecompteBeneficiaire> decomptes = useCase.calculer(
+                PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN,
+                new SelectionArrete(null, Set.of()));
+
+        assertThat(decompteDe(decomptes, CHAUFFEUR).getNet()).isEqualByComparingTo("10000");
+    }
+
+    @Test
+    @DisplayName("L'aperçu montre la dette du véhicule sans débiteur, avec la part imputée")
+    void apercu_dette_du_vehicule() {
+        cotisationsDuVehicule(cotisationDe(CHAUFFEUR, 1L, 2_500));
+        creancesDuVehicule(detteDuVehicule(900L, 4_000, DEBUT.minusDays(30)));
+
+        ArreteCompte apercu = useCase.construireApercu(
+                PerimetreArrete.VEHICULE, VEHICULE, DEBUT, FIN);
+
+        assertThat(apercu.getLignes()).filteredOn(l -> l.getSens() == SensArrete.DEBIT)
+                .singleElement()
+                .extracting(LigneArrete::getChauffeurId, LigneArrete::getMontant,
+                        LigneArrete::getRestant)
+                .containsExactly(null, BigDecimal.valueOf(2_500), BigDecimal.valueOf(4_000));
     }
 
     // ── Aperçu ──────────────────────────────────────────────────────────────

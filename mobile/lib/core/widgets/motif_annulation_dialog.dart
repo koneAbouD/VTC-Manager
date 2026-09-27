@@ -55,7 +55,10 @@ Future<SaisieAnnulation?> showSaisieAnnulationDialog(
           insetPadding:
               const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          child: Padding(
+          // Défilable : le champ prend le focus à l'ouverture, et le clavier
+          // ne laisse souvent pas la place au dialog entier (petit écran,
+          // case d'option, motif sur trois lignes).
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
