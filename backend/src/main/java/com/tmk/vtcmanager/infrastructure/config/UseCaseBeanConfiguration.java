@@ -868,6 +868,13 @@ public class UseCaseBeanConfiguration {
         return new AnnulerLigneCotisationUseCase(ligneCotisationRepository);
     }
 
+    /** Même patron que l'encaissement en lot : une transaction par ligne, via le proxy du bean unitaire. */
+    @Bean
+    public AnnulerLignesCotisationLotUseCase annulerLignesCotisationLotUseCase(
+            AnnulerLigneCotisationUseCase annulerLigneCotisationUseCase) {
+        return new AnnulerLignesCotisationLotUseCase(annulerLigneCotisationUseCase);
+    }
+
     @Bean
     public RestaurerLigneCotisationUseCase restaurerLigneCotisationUseCase(
             LigneCotisationRepository ligneCotisationRepository,

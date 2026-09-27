@@ -116,6 +116,17 @@ class LigneCotisationRemoteDatasource {
     return ResultatEncaissementLot.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Annulation de masse sous un même motif (reste impayé abandonné après un
+  /// arrêté). Même forme de réponse que l'encaissement en lot : toujours 200,
+  /// verdict ligne par ligne.
+  Future<ResultatEncaissementLot> annulerLot(List<int> ligneIds, String motif) async {
+    final data = await _client.post('/cotisations/lignes/annulation-lot', {
+      'ligneIds': ligneIds,
+      'motif': motif,
+    });
+    return ResultatEncaissementLot.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<LigneCotisationModel> annuler(int id, String motif) async {
     final data = await _client.patch('/cotisations/lignes/$id/annuler', {'motif': motif});
     return LigneCotisationModel.fromJson(data as Map<String, dynamic>);

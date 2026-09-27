@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.usecases.cotisation.AnnulerLigneCotisationUseCase;
+import com.tmk.vtcmanager.application.usecases.cotisation.AnnulerLignesCotisationLotUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.ReaffecterChauffeurCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.cotisation.RestaurerLigneCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.reaffectation.GetApercuReaffectationUseCase;
@@ -20,7 +21,9 @@ import com.tmk.vtcmanager.interfaces.rest.common.ModificationDateEncaissementReq
 import com.tmk.vtcmanager.interfaces.rest.common.ReaffectationChauffeurRequest;
 import com.tmk.vtcmanager.interfaces.rest.reaffectation.dto.ApercuReaffectationResponse;
 import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
+import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.request.AnnulationCotisationLotRequest;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.request.EncaissementCotisationLotRequest;
+import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.AnnulationCotisationLotResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.request.EncaissementCotisationRequest;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.EncaissementCotisationLotResponse;
 import com.tmk.vtcmanager.interfaces.rest.cotisation.dto.response.EncaissementCotisationResponse;
@@ -53,6 +56,7 @@ public class LigneCotisationController {
     private final CreateEncaissementCotisationUseCase createEncaissementUseCase;
     private final CreateEncaissementsCotisationLotUseCase createEncaissementsLotUseCase;
     private final AnnulerLigneCotisationUseCase annulerUseCase;
+    private final AnnulerLignesCotisationLotUseCase annulerLotUseCase;
     private final RestaurerLigneCotisationUseCase restaurerUseCase;
     private final ReaffecterChauffeurCotisationUseCase reaffecterChauffeurUseCase;
     private final ModifierDateEncaissementCotisationUseCase modifierDateEncaissementUseCase;
@@ -195,6 +199,19 @@ public class LigneCotisationController {
     public LigneCotisationResponse annuler(@PathVariable Long id,
                                            @Valid @RequestBody AnnulationRequest request) {
         return mapper.toResponse(annulerUseCase.executer(id, request.motif()));
+    }
+
+    /**
+     * Annulation de masse, typiquement après un arrêté de compte : les
+     * cotisations restées en attente ou partiellement encaissées de la période
+     * sont abandonnées sous un même motif. Une partielle n'est acceptée que si
+     * tout son versé a déjà été restitué. Toujours 200 : verdict par ligne.
+     */
+    @PostMapping("/annulation-lot")
+    public AnnulationCotisationLotResponse annulerLot(
+            @Valid @RequestBody AnnulationCotisationLotRequest request) {
+        return AnnulationCotisationLotResponse.from(
+                annulerLotUseCase.executer(request.ligneIds(), request.motif()));
     }
 
     /**

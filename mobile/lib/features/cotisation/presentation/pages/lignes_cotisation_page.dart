@@ -16,6 +16,7 @@ import '../../../../core/widgets/selection_lot_bar.dart';
 import 'ligne_cotisation_detail_page.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/long_press_info_bubble.dart';
+import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../recu/presentation/proposer_recu.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 
@@ -68,6 +69,9 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
   // coche ce qu'il solde, et un seul aller-retour porte tout le lot.
   bool _selectionMode = false;
   final Set<int> _selectedIds = {};
+
+  /// Annulation de masse ou chargement de « tout cocher » en cours.
+  bool _busy = false;
 
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
@@ -333,6 +337,116 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
     });
   }
 
+  /// Coche toutes les lignes ouvertes de la sélection courante (période,
+  /// recherche, statut). La liste est paginée : on charge d'abord les pages
+  /// restantes, sinon « tout » ne couvrirait que les 20 premières lignes.
+  Future<void> _toutCocher() async {
+    setState(() => _busy = true);
+    final notifier = ref.read(lignesCotisationListeProvider.notifier);
+    while (mounted) {
+      final st = ref.read(lignesCotisationListeProvider);
+      if (!st.hasMore || st.error != null) break;
+      await notifier.loadMore();
+    }
+    if (!mounted) return;
+    final ouvertes = _selectionnables(ref.read(lignesCotisationListeProvider).items);
+    setState(() {
+      _busy = false;
+      final toutCoche = ouvertes.every((l) => _selectedIds.contains(l.id));
+      if (toutCoche) {
+        _selectedIds.clear();
+        _selectionMode = false;
+      } else {
+        _selectedIds.addAll(ouvertes.map((l) => l.id!));
+      }
+    });
+  }
+
+  /// Annulation de masse, typiquement après un arrêté de compte : le reste
+  /// impayé des cotisations de la période est abandonné sous un même motif.
+  ///
+  /// Le serveur tranche ligne par ligne : une cotisation partiellement
+  /// encaissée n'est annulée que si tout son versé a déjà été restitué — sinon
+  /// le dépôt du chauffeur disparaîtrait sans avoir été rendu.
+  Future<void> _annulerSelection(List<LigneCotisation> selection) async {
+    if (selection.isEmpty) return;
+    final partielles = selection
+        .where((l) => l.statut == StatutLigneCotisation.partiellementEncaisse)
+        .length;
+    final motif = await showMotifAnnulationDialog(
+      context,
+      titre: 'Annuler ${selection.length} cotisation(s) ?',
+      message: 'Le reste impayé de ces cotisations sera abandonné.'
+          '${partielles > 0 ? ' Les $partielles partiellement encaissée(s) ne '
+              'le seront que si leur versé a déjà été restitué par un arrêté.' : ''}'
+          ' Indiquez le motif de l\'annulation.',
+    );
+    if (motif == null || !mounted) return;
+
+    setState(() => _busy = true);
+    final resultat = await ref
+        .read(ligneCotisationRepositoryProvider)
+        .annulerLot(selection.map((l) => l.id!).toList(), motif);
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    await resultat.fold(
+      (f) async => ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(f.message), backgroundColor: Colors.red)),
+      (lot) async {
+        setState(() {
+          // Les refusées restent cochées : c'est ce qu'il reste à traiter.
+          _selectedIds
+            ..clear()
+            ..addAll(lot.lignesEnEchec.map((r) => r.ligneId));
+          _selectionMode = _selectedIds.isNotEmpty;
+        });
+        _load();
+        refreshFinances(ref);
+        if (lot.echecs == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('${lot.reussis} cotisation(s) annulée(s).')));
+          return;
+        }
+        final libelles = {for (final l in selection) l.id!: l};
+        final dateFmt = DateFormat('dd/MM/yyyy');
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('${lot.reussis} annulée(s), ${lot.echecs} refusée(s)'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final r in lot.lignesEnEchec) ...[
+                    Text(
+                      libelles[r.ligneId] != null
+                          ? '${_libelleVehiculeChauffeur(libelles[r.ligneId]!)}'
+                              ' · ${dateFmt.format(libelles[r.ligneId]!.dateCotisation)}'
+                          : 'Ligne ${r.ligneId}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    Text(r.message ?? 'Annulation refusée.',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade700)),
+                    const SizedBox(height: 10),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK')),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   /// Encaissement de masse : un versement, plusieurs cotisations soldées, un
   /// montant réglable créance par créance dans la feuille.
   ///
@@ -523,15 +637,24 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                               color: Color(0xFF1A1A2E),
                               letterSpacing: -0.3)),
                     ),
+                    // En sélection, le bouton de génération cède la place à
+                    // « tout cocher » : annuler le reste d'une période arrêtée
+                    // ne doit pas obliger à cocher trente lignes une à une.
                     GestureDetector(
-                      onTap: _generer,
+                      onTap: _selectionMode
+                          ? (_busy ? null : _toutCocher)
+                          : _generer,
                       child: Container(
                         width: 56, height: 38,
                         decoration: BoxDecoration(
                             color: const Color(0xFFF0F2F8),
                             borderRadius: BorderRadius.circular(20)),
-                        child: const Icon(Icons.auto_awesome_rounded,
-                            size: 18, color: Color(0xFF1A1A2E)),
+                        child: Icon(
+                            _selectionMode
+                                ? Icons.select_all_rounded
+                                : Icons.auto_awesome_rounded,
+                            size: 18,
+                            color: const Color(0xFF1A1A2E)),
                       ),
                     ),
                   ],
@@ -672,9 +795,10 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                 SelectionActionBar(
                   count: selection.length,
                   total: totalSelection,
-                  busy: false,
+                  busy: _busy,
                   onEncaisser: () => _encaisserSelection(selection),
                   onAnnuler: _quitterSelection,
+                  onAnnulerLignes: () => _annulerSelection(selection),
                 ),
             ],
           ),

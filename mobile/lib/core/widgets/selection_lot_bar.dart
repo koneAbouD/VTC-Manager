@@ -23,6 +23,10 @@ class SelectionActionBar extends StatelessWidget {
   /// cochées — l'en-tête et le retour système font la même chose.
   final VoidCallback onAnnuler;
 
+  /// Action secondaire facultative : annuler les lignes cochées (motif
+  /// demandé par l'appelant). Absente, la barre reste celle de l'encaissement.
+  final VoidCallback? onAnnulerLignes;
+
   const SelectionActionBar({
     super.key,
     required this.count,
@@ -30,6 +34,7 @@ class SelectionActionBar extends StatelessWidget {
     required this.busy,
     required this.onEncaisser,
     required this.onAnnuler,
+    this.onAnnulerLignes,
   });
 
   @override
@@ -69,6 +74,22 @@ class SelectionActionBar extends StatelessWidget {
               ],
             ),
           ),
+          if (onAnnulerLignes != null) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: actif ? onAnnulerLignes : null,
+              icon: const Icon(Icons.block_rounded, size: 20),
+              color: AppColors.error,
+              tooltip: 'Annuler les lignes cochées',
+              style: IconButton.styleFrom(
+                side: BorderSide(
+                    color: AppColors.error.withValues(alpha: actif ? 0.5 : 0.2)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.all(12),
+              ),
+            ),
+          ],
           const SizedBox(width: 12),
           FilledButton.icon(
             onPressed: actif ? onEncaisser : null,

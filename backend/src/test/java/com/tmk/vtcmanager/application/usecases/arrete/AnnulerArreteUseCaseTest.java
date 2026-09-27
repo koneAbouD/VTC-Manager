@@ -129,6 +129,24 @@ class AnnulerArreteUseCaseTest {
     }
 
     @Test
+    @DisplayName("Une cotisation annulée après l'arrêté bloque son annulation")
+    void refuse_si_cotisation_annulee_depuis() {
+        when(arreteCompteRepository.findById(1L)).thenReturn(Optional.of(arreteValide()));
+        when(ligneCotisationRepository.findById(100L)).thenReturn(Optional.of(
+                com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation.builder()
+                        .id(100L).dateCotisation(LocalDate.of(2026, 6, 10))
+                        .montantDu(BigDecimal.valueOf(200)).montantEncaisse(BigDecimal.valueOf(100))
+                        .statut(com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation.ANNULEE)
+                        .build()));
+
+        assertThatThrownBy(() -> useCase.executer(1L, "Erreur de saisie"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("restaurez-la");
+        verify(ligneCotisationRepository, never()).annulerRestitution(anyLong(), any());
+        verify(operationFinanciereRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     @DisplayName("Une caisse déjà comptée depuis le versement interdit l'annulation")
     void refuse_si_caisse_comptee() {
         when(arreteCompteRepository.findById(1L)).thenReturn(Optional.of(arreteValide()));

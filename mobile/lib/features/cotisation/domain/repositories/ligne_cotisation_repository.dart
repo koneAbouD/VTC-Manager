@@ -32,6 +32,12 @@ abstract interface class LigneCotisationRepository {
 
   Future<Either<Failure, LigneCotisation>> annuler(int id, String motif);
 
+  /// Annule plusieurs lignes sous un même motif — typiquement le reste impayé
+  /// d'une période dont le compte a été arrêté. Pas un tout ou rien : une
+  /// partielle dont le versé n'a pas été restitué est refusée seule.
+  Future<Either<Failure, ResultatEncaissementLot>> annulerLot(
+      List<int> ligneIds, String motif);
+
   /// Remet une ligne annulée en circulation : elle retrouve le statut que
   /// dictent ses versements. Refusé par le serveur si la période est clôturée.
   /// Ce qu'il faut savoir avant de déplacer la créance : les chauffeurs

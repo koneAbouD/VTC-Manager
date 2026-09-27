@@ -272,14 +272,52 @@ class EncaissementCotisationUseCasesTest {
         }
 
         @Test
-        @DisplayName("Une cotisation déjà versée ne s'annule pas directement")
+        @DisplayName("Une cotisation dont le versé n'a pas été restitué ne s'annule pas")
         void avec_versement() {
             when(ligneCotisationRepository.findById(LIGNE_ID))
                     .thenReturn(Optional.of(ligne(StatutLigneCotisation.PARTIELLEMENT_ENCAISSE, 400)));
 
             assertThatThrownBy(() -> annulerUseCase.executer(LIGNE_ID, "erreur"))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Annulez d'abord les encaissements");
+                    .hasMessageContaining("Arrêtez d'abord le compte");
+            verify(ligneCotisationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Après arrêté, une partielle dont tout le versé est restitué abandonne son reste")
+        void partielle_restituee() {
+            LigneCotisation partielle = ligne(StatutLigneCotisation.PARTIELLEMENT_ENCAISSE, 400);
+            partielle.setMontantRestitue(BigDecimal.valueOf(400));
+            when(ligneCotisationRepository.findById(LIGNE_ID)).thenReturn(Optional.of(partielle));
+
+            LigneCotisation annulee = annulerUseCase.executer(LIGNE_ID, "arrêté de septembre");
+
+            assertThat(annulee.getStatut()).isEqualTo(StatutLigneCotisation.ANNULEE);
+            // Le versé reste acquis : seul le reste impayé est abandonné.
+            assertThat(annulee.getMontantEncaisse()).isEqualByComparingTo("400");
+        }
+
+        @Test
+        @DisplayName("Une partielle restituée en partie seulement garde son fonds : refusée")
+        void partielle_restituee_en_partie() {
+            LigneCotisation partielle = ligne(StatutLigneCotisation.PARTIELLEMENT_ENCAISSE, 400);
+            partielle.setMontantRestitue(BigDecimal.valueOf(100));
+            when(ligneCotisationRepository.findById(LIGNE_ID)).thenReturn(Optional.of(partielle));
+
+            assertThatThrownBy(() -> annulerUseCase.executer(LIGNE_ID, "arrêté"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("300");
+        }
+
+        @Test
+        @DisplayName("Une cotisation soldée ou restituée ne s'annule pas")
+        void ligne_soldee() {
+            when(ligneCotisationRepository.findById(LIGNE_ID))
+                    .thenReturn(Optional.of(ligne(StatutLigneCotisation.RESTITUEE, 1_000)));
+
+            assertThatThrownBy(() -> annulerUseCase.executer(LIGNE_ID, "arrêté"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("en attente ou partiellement encaissée");
         }
 
         @Test

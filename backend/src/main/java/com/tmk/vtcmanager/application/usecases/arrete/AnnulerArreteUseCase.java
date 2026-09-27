@@ -5,6 +5,8 @@ import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.SensArrete;
 import com.tmk.vtcmanager.application.domain.arrete.StatutArrete;
 import com.tmk.vtcmanager.application.domain.contravention.Contravention;
+import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
+import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.ports.persistence.ArreteCompteRepository;
@@ -19,6 +21,8 @@ import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 /**
  * Annule un arrêté de compte (avec motif obligatoire) en contre-passant tous ses
@@ -60,6 +64,23 @@ public class AnnulerArreteUseCase {
         }
         periodeClotureeGuard.verifier(arrete.getDateArrete());
         arreteCompteRepository.verrouillerExecution();
+
+        // Une cotisation annulée après l'arrêté (reste impayé abandonné) ne
+        // compte plus dans le fonds : lui rendre la part restituée la bloquerait
+        // sur une ligne morte, sans que personne ne puisse la rendre ensuite.
+        arrete.getLignes().stream()
+                .filter(l -> l.getSens() == SensArrete.CREDIT
+                        && l.getDocument() == TypeDocumentCreance.COTISATION)
+                .map(l -> ligneCotisationRepository.findById(l.getDocumentId()))
+                .flatMap(Optional::stream)
+                .filter(c -> c.getStatut() == StatutLigneCotisation.ANNULEE)
+                .findFirst()
+                .ifPresent(c -> {
+                    throw new IllegalStateException("La cotisation du " + c.getDateCotisation()
+                            + " a été annulée après cet arrêté : restaurez-la avant d'annuler"
+                            + " l'arrêté, sinon le dépôt qu'il rendrait resterait bloqué sur"
+                            + " une ligne annulée.");
+                });
 
         // Le versement a fait baisser une caisse. Le retirer maintenant la
         // referait remonter au jour de l'arrêté, donc avant tout comptage
