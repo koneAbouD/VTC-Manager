@@ -53,7 +53,8 @@ enum TrancheAge {
 /// Document ouvert d'un chauffeur : documentId + document permettent de
 /// rouvrir le flux d'encaissement du module d'origine.
 class LigneCreance {
-  /// RECETTE | COTISATION | PENALITE | CONTRAVENTION
+  /// RECETTE | PENALITE | CONTRAVENTION (une cotisation n'est jamais une
+  /// créance : c'est l'épargne du chauffeur)
   final String document;
   final int documentId;
   final int? vehiculeId;

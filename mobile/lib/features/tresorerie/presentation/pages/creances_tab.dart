@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/month_filter_pill.dart';
+import '../../../../core/widgets/recherche_field.dart';
 import '../../domain/entities/creance.dart';
 import '../providers/tresorerie_providers.dart';
 import 'creances_chauffeur_page.dart';
@@ -76,7 +77,7 @@ class _CreancesTabState extends ConsumerState<CreancesTab> {
           child: Row(
             children: [
               Expanded(
-                child: _SearchField(
+                child: RechercheField(
                   controller: _searchController,
                   hint: _parVehicule
                       ? 'Immatriculation, chauffeur…'
@@ -103,61 +104,6 @@ class _CreancesTabState extends ConsumerState<CreancesTab> {
               : _ChauffeursView(parVehicule: _parVehicule, onToggle: _toggle),
         ),
       ],
-    );
-  }
-}
-
-/// Champ de recherche au style des listes recettes/cotisations : fond gris,
-/// croix d'effacement dès qu'un mot-clé est saisi.
-class _SearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final void Function(String) onChanged;
-
-  const _SearchField(
-      {required this.controller, required this.hint, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F5),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(children: [
-        const Icon(Icons.search, color: Color(0xFF8A8A8E), size: 18),
-        const SizedBox(width: 6),
-        Expanded(
-          child: TextField(
-            controller: controller,
-            onChanged: onChanged,
-            textInputAction: TextInputAction.search,
-            style: const TextStyle(fontSize: 13.5),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle:
-                  const TextStyle(color: Color(0xFF8A8A8E), fontSize: 13.5),
-              border: InputBorder.none,
-              isDense: true,
-            ),
-          ),
-        ),
-        ValueListenableBuilder<TextEditingValue>(
-          valueListenable: controller,
-          builder: (_, value, __) => value.text.isEmpty
-              ? const SizedBox.shrink()
-              : GestureDetector(
-                  onTap: () {
-                    controller.clear();
-                    onChanged('');
-                  },
-                  child: const Icon(Icons.close_rounded,
-                      size: 18, color: Color(0xFF8A8A8E)),
-                ),
-        ),
-      ]),
     );
   }
 }

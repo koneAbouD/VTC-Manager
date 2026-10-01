@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../../cotisation/presentation/pages/ligne_cotisation_detail_page.dart';
 import '../../../penalite/presentation/pages/ligne_penalite_detail_page.dart';
 import '../../../recette/presentation/pages/ligne_recette_detail_page.dart';
 import '../../../contravention/presentation/pages/contravention_detail_page.dart';
@@ -107,8 +106,6 @@ class CreancesChauffeurPage extends ConsumerWidget {
     switch (ligne.document) {
       case 'RECETTE':
         _push(context, LigneRecetteDetailPage(ligneId: ligne.documentId));
-      case 'COTISATION':
-        _push(context, LigneCotisationDetailPage(ligneId: ligne.documentId));
       case 'PENALITE':
         _push(context, LignePenaliteDetailPage(ligneId: ligne.documentId));
       default:
@@ -138,7 +135,6 @@ class _LigneCreanceTile extends StatelessWidget {
 
   (String, IconData) get _libelleEtIcone => switch (ligne.document) {
         'RECETTE' => ('Recette', Icons.attach_money_rounded),
-        'COTISATION' => ('Cotisation', Icons.savings_outlined),
         'PENALITE' => ('Pénalité', Icons.gavel_rounded),
         'CONTRAVENTION' => ('Contravention', Icons.receipt_long_outlined),
         _ => (ligne.document, Icons.description_outlined),

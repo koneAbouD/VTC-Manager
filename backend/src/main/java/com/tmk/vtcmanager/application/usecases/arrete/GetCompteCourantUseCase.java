@@ -14,8 +14,13 @@ public class GetCompteCourantUseCase {
     private final CompteCourantRepository compteCourantRepository;
 
     public List<CompteCourant> lister(PerimetreArrete perimetre) {
+        return lister(perimetre, null);
+    }
+
+    /** @param recherche chauffeur ou immatriculation (null ou vide = tous) */
+    public List<CompteCourant> lister(PerimetreArrete perimetre, String recherche) {
         return perimetre == PerimetreArrete.VEHICULE
-                ? compteCourantRepository.getComptesCourantsParVehicule()
-                : compteCourantRepository.getComptesCourantsParChauffeur();
+                ? compteCourantRepository.getComptesCourantsParVehicule(recherche)
+                : compteCourantRepository.getComptesCourantsParChauffeur(recherche);
     }
 }

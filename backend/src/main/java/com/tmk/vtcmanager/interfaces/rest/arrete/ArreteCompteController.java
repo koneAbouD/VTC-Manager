@@ -54,11 +54,15 @@ public class ArreteCompteController {
     private final GetArreteUseCase getArreteUseCase;
     private final GetArreteDecompteUseCase getArreteDecompteUseCase;
 
-    /** Soldes de compte courant, par chauffeur (défaut) ou par véhicule. */
+    /**
+     * Soldes de compte courant, par chauffeur (défaut) ou par véhicule,
+     * filtrables par nom de chauffeur ou immatriculation ({@code q}).
+     */
     @GetMapping("/compte-courant")
     public List<CompteCourantResponse> getComptesCourants(
-            @RequestParam(defaultValue = "CHAUFFEUR") PerimetreArrete perimetre) {
-        return getCompteCourantUseCase.lister(perimetre).stream()
+            @RequestParam(defaultValue = "CHAUFFEUR") PerimetreArrete perimetre,
+            @RequestParam(required = false) String q) {
+        return getCompteCourantUseCase.lister(perimetre, q).stream()
                 .map(ArreteCompteController::toCompteCourant)
                 .toList();
     }

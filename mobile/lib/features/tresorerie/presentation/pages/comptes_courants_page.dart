@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/recherche_field.dart';
 import '../../domain/entities/compte_courant.dart';
 import '../providers/tresorerie_providers.dart';
 import 'arrete_form_page.dart';
@@ -26,9 +29,36 @@ class _ComptesCourantsPageState extends ConsumerState<ComptesCourantsPage> {
 
   String get _perimetre => _parVehicule ? 'VEHICULE' : 'CHAUFFEUR';
 
+  final _searchController = TextEditingController();
+
+  /// Mot-clé effectivement envoyé au serveur, après la pause de frappe.
+  String _recherche = '';
+
+  /// La recherche part au serveur : on attend une pause de frappe pour ne pas
+  /// lancer une requête par caractère.
+  Timer? _debounceRecherche;
+
+  ({String perimetre, String recherche}) get _filtre =>
+      (perimetre: _perimetre, recherche: _recherche);
+
+  @override
+  void dispose() {
+    _debounceRecherche?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onRechercheChanged(String valeur) {
+    _debounceRecherche?.cancel();
+    _debounceRecherche = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      setState(() => _recherche = valeur.trim());
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(comptesCourantsProvider(_perimetre));
+    final async = ref.watch(comptesCourantsProvider(_filtre));
 
     return Scaffold(
       appBar: AppHeader(
@@ -39,49 +69,68 @@ class _ComptesCourantsPageState extends ConsumerState<ComptesCourantsPage> {
               MaterialPageRoute(builder: (_) => const ArretesHistoryPage())),
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(comptesCourantsProvider(_perimetre).future),
-        child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => _Error(
-              onRetry: () => ref.invalidate(comptesCourantsProvider(_perimetre))),
-          data: (comptes) {
-            final totalFonds = comptes.fold<double>(0, (s, c) => s + c.fondsCotisation);
-            // Le serveur ne rend plus qu'un net déjà compensé chauffeur par
-            // chauffeur : il est positif ou nul, rien à borner ici.
-            final totalNet = comptes.fold<double>(0, (s, c) => s + c.net);
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-              children: [
-                _EnteteCard(
-                  totalFonds: totalFonds,
-                  totalNet: totalNet,
-                  parVehicule: _parVehicule,
-                  onToggle: () => setState(() => _parVehicule = !_parVehicule),
-                ),
-                const SizedBox(height: 8),
-                if (comptes.isEmpty)
-                  const _Empty()
-                else
-                  for (final c in comptes)
-                    _CompteRow(
-                      compte: c,
-                      parVehicule: _parVehicule,
-                      onTap: () => _ouvrirArrete(c),
-                      onLongPress: _parVehicule
-                          ? null
-                          : () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ReleveChauffeurPage(
-                                      chauffeurId: c.tiersId, nom: c.libelle),
-                                ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: RechercheField(
+              controller: _searchController,
+              hint: _parVehicule
+                  ? 'Immatriculation, chauffeur…'
+                  : 'Chauffeur, immatriculation…',
+              onChanged: _onRechercheChanged,
+            ),
+          ),
+          Expanded(child: _liste(async)),
+        ],
+      ),
+    );
+  }
+
+  Widget _liste(AsyncValue<List<CompteCourant>> async) {
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(comptesCourantsProvider(_filtre).future),
+      child: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => _Error(
+            onRetry: () => ref.invalidate(comptesCourantsProvider(_filtre))),
+        data: (comptes) {
+          final totalFonds =
+              comptes.fold<double>(0, (s, c) => s + c.fondsCotisation);
+          // Le serveur ne rend plus qu'un net déjà compensé chauffeur par
+          // chauffeur : il est positif ou nul, rien à borner ici.
+          final totalNet = comptes.fold<double>(0, (s, c) => s + c.net);
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+            children: [
+              _EnteteCard(
+                totalFonds: totalFonds,
+                totalNet: totalNet,
+                parVehicule: _parVehicule,
+                onToggle: () => setState(() => _parVehicule = !_parVehicule),
+              ),
+              const SizedBox(height: 8),
+              if (comptes.isEmpty)
+                _Empty(recherche: _recherche.isNotEmpty)
+              else
+                for (final c in comptes)
+                  _CompteRow(
+                    compte: c,
+                    parVehicule: _parVehicule,
+                    onTap: () => _ouvrirArrete(c),
+                    onLongPress: _parVehicule
+                        ? null
+                        : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ReleveChauffeurPage(
+                                    chauffeurId: c.tiersId, nom: c.libelle),
                               ),
-                    ),
-              ],
-            );
-          },
-        ),
+                            ),
+                  ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -104,7 +153,6 @@ class _ComptesCourantsPageState extends ConsumerState<ComptesCourantsPage> {
       ref.invalidate(comptesCourantsProvider);
     }
   }
-
 }
 
 class _EnteteCard extends StatelessWidget {
@@ -134,7 +182,8 @@ class _EnteteCard extends StatelessWidget {
             children: [
               const Expanded(
                 child: Text('Fonds de cotisation détenu',
-                    style: TextStyle(fontSize: 13, color: AppColors.primaryDark)),
+                    style:
+                        TextStyle(fontSize: 13, color: AppColors.primaryDark)),
               ),
               InkWell(
                 onTap: onToggle,
@@ -169,8 +218,10 @@ class _EnteteCard extends StatelessWidget {
                   color: AppColors.primaryDark)),
           if (totalNet > 0) ...[
             const SizedBox(height: 4),
-            Text('dont ${CurrencyFormatter.format(totalNet)} restituables (net des créances)',
-                style: const TextStyle(fontSize: 12, color: AppColors.primaryDark)),
+            Text(
+                'dont ${CurrencyFormatter.format(totalNet)} restituables (net des créances)',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.primaryDark)),
           ],
         ],
       ),
@@ -212,7 +263,8 @@ class _CompteRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: AppColors.border, width: 0.6)),
+          border:
+              Border(bottom: BorderSide(color: AppColors.border, width: 0.6)),
         ),
         child: Row(
           children: [
@@ -240,7 +292,8 @@ class _CompteRow extends StatelessWidget {
                   Text(
                       'Fonds ${CurrencyFormatter.format(compte.fondsCotisation)}'
                       ' · Créances ${CurrencyFormatter.format(compte.totalCreances)}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.label)),
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.label)),
                 ],
               ),
             ),
@@ -248,7 +301,8 @@ class _CompteRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                       color: netBg, borderRadius: BorderRadius.circular(10)),
                   child: Text(CurrencyFormatter.format(montantBadge),
@@ -258,12 +312,14 @@ class _CompteRow extends StatelessWidget {
                           color: netFg)),
                 ),
                 const SizedBox(height: 3),
-                Text(estSolde
-                    ? 'soldé'
-                    : crediteur
-                        ? 'à restituer'
-                        : 'reste dû',
-                    style: const TextStyle(fontSize: 10.5, color: AppColors.hint)),
+                Text(
+                    estSolde
+                        ? 'soldé'
+                        : crediteur
+                            ? 'à restituer'
+                            : 'reste dû',
+                    style:
+                        const TextStyle(fontSize: 10.5, color: AppColors.hint)),
                 if (compte.aDeuxFaces)
                   Text('+ ${CurrencyFormatter.format(compte.resteDu)} dû',
                       style: TextStyle(
@@ -278,16 +334,22 @@ class _CompteRow extends StatelessWidget {
 }
 
 class _Empty extends StatelessWidget {
-  const _Empty();
+  /// Vrai quand la liste est vide parce qu'aucun tiers ne répond au mot-clé.
+  final bool recherche;
+  const _Empty({required this.recherche});
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 100),
       child: Column(
         children: [
-          Icon(Icons.savings_outlined, size: 56, color: Colors.grey.shade300),
+          Icon(recherche ? Icons.search_off_rounded : Icons.savings_outlined,
+              size: 56, color: Colors.grey.shade300),
           const SizedBox(height: 12),
-          Text('Aucun fonds de cotisation en cours',
+          Text(
+              recherche
+                  ? 'Aucun compte ne correspond à la recherche'
+                  : 'Aucun fonds de cotisation en cours',
               style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
         ],
       ),

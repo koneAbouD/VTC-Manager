@@ -65,9 +65,14 @@ class TresorerieRemoteDatasource {
 
   // ── Restitution des cotisations : comptes courants + arrêtés ─────────────
 
-  Future<List<CompteCourant>> getComptesCourants(String perimetre) async {
-    final data =
-        await _client.get('/finances/compte-courant', query: {'perimetre': perimetre});
+  /// [recherche] : chauffeur ou immatriculation ; le compte entier est rendu,
+  /// seule la liste des tiers est restreinte.
+  Future<List<CompteCourant>> getComptesCourants(String perimetre,
+      {String recherche = ''}) async {
+    final data = await _client.get('/finances/compte-courant', query: {
+      'perimetre': perimetre,
+      if (recherche.trim().isNotEmpty) 'q': recherche.trim(),
+    });
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data
         .map((e) => CompteCourant.fromJson(e as Map<String, dynamic>))

@@ -49,7 +49,7 @@ class BilanPage extends ConsumerWidget {
                 lignes: [
                   ('Trésorerie', bilan.tresorerie, 'Soldes des comptes actifs'),
                   ('Créances chauffeurs', bilan.creancesChauffeurs,
-                      'Recettes, cotisations, pénalités, contraventions dues'),
+                      'Recettes, pénalités, contraventions dues'),
                   // En négatif : les lignes s'additionnent alors exactement
                   // jusqu'au total, qui retient les créances nettes.
                   ('Dépréciation des créances', -bilan.provisionCreances,

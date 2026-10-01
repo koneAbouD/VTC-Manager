@@ -12,9 +12,26 @@ import java.util.List;
  */
 public interface CompteCourantRepository {
 
-    List<CompteCourant> getComptesCourantsParChauffeur();
+    default List<CompteCourant> getComptesCourantsParChauffeur() {
+        return getComptesCourantsParChauffeur(null);
+    }
 
-    List<CompteCourant> getComptesCourantsParVehicule();
+    default List<CompteCourant> getComptesCourantsParVehicule() {
+        return getComptesCourantsParVehicule(null);
+    }
+
+    /**
+     * Soldes par chauffeur, restreints aux chauffeurs dont le nom répond au
+     * mot-clé ou qui ont roulé (cotisation ou créance) un véhicule dont
+     * l'immatriculation y répond. Le compte reste entier : seule la liste des
+     * tiers est filtrée, jamais leurs lignes.
+     *
+     * @param recherche mot-clé (null ou vide = aucun filtre)
+     */
+    List<CompteCourant> getComptesCourantsParChauffeur(String recherche);
+
+    /** Pendant véhicule de {@link #getComptesCourantsParChauffeur(String)}. */
+    List<CompteCourant> getComptesCourantsParVehicule(String recherche);
 
     /**
      * Total des dépôts de cotisation encore détenus à une date : encaissements

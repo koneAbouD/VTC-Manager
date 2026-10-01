@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
 import com.tmk.vtcmanager.application.domain.finance.CompteCourant;
 import com.tmk.vtcmanager.application.ports.persistence.CompteCourantRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -49,8 +51,78 @@ public class CompteCourantRepositoryAdapter implements CompteCourantRepository {
             .resteDu(rs.getBigDecimal("reste_du"))
             .build();
 
+    /** Le nom du chauffeur d'alias {@code ch}, dans les deux ordres. */
+    private static final String NOM_CHAUFFEUR_REPOND = """
+            (LOWER(ch.nom) LIKE ? OR LOWER(ch.prenom) LIKE ?
+             OR LOWER(CONCAT(ch.prenom, ' ', ch.nom)) LIKE ?
+             OR LOWER(CONCAT(ch.nom, ' ', ch.prenom)) LIKE ?)""";
+
+    /** L'immatriculation du véhicule d'alias {@code veh}, avec ou sans tirets ni espaces. */
+    private static final String IMMAT_REPOND = """
+            (LOWER(veh.immatriculation) LIKE ?
+             OR REPLACE(REPLACE(LOWER(veh.immatriculation), '-', ''), ' ', '') LIKE ?)""";
+
+    /**
+     * Filtre de la liste des tiers, jamais de leurs lignes : le solde affiché
+     * reste celui que l'arrêté compenserait. Un tiers répond par son propre
+     * nom, ou par celui de l'autre axe dès qu'ils sont liés par une cotisation
+     * ou une créance — chercher une immatriculation ramène ses chauffeurs,
+     * chercher un chauffeur ramène ses véhicules.
+     */
+    private record Recherche(String sql, List<Object> params) {
+
+        static final Recherche AUCUNE = new Recherche("", List.of());
+
+        static Recherche parChauffeur(String recherche) {
+            if (!RechercheVehiculeChauffeur.estRenseignee(recherche)) return AUCUNE;
+            String sql = """
+                     AND (%s
+                          OR EXISTS (SELECT 1 FROM vehicules veh
+                                     WHERE %s
+                                       AND veh.id IN (SELECT vehicule_id FROM lignes_cotisation
+                                                      WHERE chauffeur_id = ch.id
+                                                      UNION
+                                                      SELECT vehicule_id FROM v_creances_chauffeurs
+                                                      WHERE tiers_type = 'CHAUFFEUR'
+                                                        AND tiers_id = ch.id)))"""
+                    .formatted(NOM_CHAUFFEUR_REPOND, IMMAT_REPOND);
+            List<Object> params = new ArrayList<>(nom(recherche));
+            params.addAll(immat(recherche));
+            return new Recherche(sql, params);
+        }
+
+        static Recherche parVehicule(String recherche) {
+            if (!RechercheVehiculeChauffeur.estRenseignee(recherche)) return AUCUNE;
+            String sql = """
+                     AND (%s
+                          OR EXISTS (SELECT 1 FROM chauffeurs ch
+                                     WHERE %s
+                                       AND ch.id IN (SELECT chauffeur_id FROM lignes_cotisation
+                                                     WHERE vehicule_id = veh.id
+                                                     UNION
+                                                     SELECT tiers_id FROM v_creances_chauffeurs
+                                                     WHERE tiers_type = 'CHAUFFEUR'
+                                                       AND vehicule_id = veh.id)))"""
+                    .formatted(IMMAT_REPOND, NOM_CHAUFFEUR_REPOND);
+            List<Object> params = new ArrayList<>(immat(recherche));
+            params.addAll(nom(recherche));
+            return new Recherche(sql, params);
+        }
+
+        private static List<Object> nom(String recherche) {
+            String motif = RechercheVehiculeChauffeur.motif(recherche);
+            return List.of(motif, motif, motif, motif);
+        }
+
+        private static List<Object> immat(String recherche) {
+            String motif = RechercheVehiculeChauffeur.motif(recherche);
+            return List.of(motif, motif.replace("-", "").replace(" ", ""));
+        }
+    }
+
     @Override
-    public List<CompteCourant> getComptesCourantsParChauffeur() {
+    public List<CompteCourant> getComptesCourantsParChauffeur(String recherche) {
+        Recherche filtre = Recherche.parChauffeur(recherche);
         return jdbcTemplate.query("""
                 WITH fonds AS (
                     SELECT chauffeur_id, SUM(%s) AS fond
@@ -81,13 +153,15 @@ public class CompteCourantRepositoryAdapter implements CompteCourantRepository {
                 FROM chauffeurs ch
                 LEFT JOIN fonds f    ON f.chauffeur_id = ch.id
                 LEFT JOIN creances c ON c.chauffeur_id = ch.id
-                WHERE COALESCE(f.fond, 0) > 0 OR COALESCE(c.total, 0) > 0
+                WHERE (COALESCE(f.fond, 0) > 0 OR COALESCE(c.total, 0) > 0)%s
                 ORDER BY net DESC, reste_du DESC
-                """.formatted(FOND_DETENU, STATUTS_FONDS), MAPPER);
+                """.formatted(FOND_DETENU, STATUTS_FONDS, filtre.sql()), MAPPER,
+                filtre.params().toArray());
     }
 
     @Override
-    public List<CompteCourant> getComptesCourantsParVehicule() {
+    public List<CompteCourant> getComptesCourantsParVehicule(String recherche) {
+        Recherche filtre = Recherche.parVehicule(recherche);
         return jdbcTemplate.query("""
                 WITH fonds AS (
                     SELECT vehicule_id, chauffeur_id, SUM(%s) AS fond
@@ -168,9 +242,10 @@ public class CompteCourantRepositoryAdapter implements CompteCourantRepository {
                        s.total_creances, s.net, s.reste_du
                 FROM soldes s
                 JOIN vehicules veh ON veh.id = s.vehicule_id
-                WHERE s.fond > 0 OR s.total_creances > 0
+                WHERE (s.fond > 0 OR s.total_creances > 0)%s
                 ORDER BY s.net DESC, s.reste_du DESC
-                """.formatted(FOND_DETENU, STATUTS_FONDS), MAPPER);
+                """.formatted(FOND_DETENU, STATUTS_FONDS, filtre.sql()), MAPPER,
+                filtre.params().toArray());
     }
 
     /**

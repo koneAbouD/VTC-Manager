@@ -100,10 +100,11 @@ final cloturesPeriodeProvider = FutureProvider<List<CloturePeriodeData>>(
 // ── Restitution des cotisations ─────────────────────────────────────────────
 
 /// Soldes de compte courant pour un axe ('CHAUFFEUR' ou 'VEHICULE').
-final comptesCourantsProvider =
-    FutureProvider.family<List<CompteCourant>, String>(
-  (ref, perimetre) =>
-      ref.watch(_tresorerieDatasourceProvider).getComptesCourants(perimetre),
+final comptesCourantsProvider = FutureProvider.family<List<CompteCourant>,
+    ({String perimetre, String recherche})>(
+  (ref, filtre) => ref
+      .watch(_tresorerieDatasourceProvider)
+      .getComptesCourants(filtre.perimetre, recherche: filtre.recherche),
 );
 
 /// Historique des arrêtés de compte (le plus récent en premier), filtré sur le
