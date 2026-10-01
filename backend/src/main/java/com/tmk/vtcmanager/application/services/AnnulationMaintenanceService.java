@@ -20,6 +20,7 @@ public class AnnulationMaintenanceService {
 
     private final MaintenanceRepository maintenanceRepository;
     private final VehiculeStatutEventPublisher statutEventPublisher;
+    private final VidangeMaintenanceService vidangeMaintenanceService;
 
     public void reouvrirMaintenanceLiee(OperationFinanciere operation) {
         if (operation == null || operation.getMaintenanceId() == null) {
@@ -32,6 +33,8 @@ public class AnnulationMaintenanceService {
         }
         maintenance.reouvrir();
         Maintenance saved = maintenanceRepository.save(maintenance);
+        // La vidange n'a pas eu lieu : elle quitte l'historique du véhicule.
+        vidangeMaintenanceService.retirerVidangeFaite(saved);
 
         if (saved.getVehicule() != null) {
             statutEventPublisher.publishStatutDirty(saved.getVehicule().getId());

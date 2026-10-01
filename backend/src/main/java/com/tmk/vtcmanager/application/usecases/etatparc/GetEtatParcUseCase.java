@@ -17,6 +17,7 @@ import com.tmk.vtcmanager.application.ports.persistence.MaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeStatutHistoriqueRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VidangeRepository;
+import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.ActionVehiculeDto;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.EtatParcAlertesDto;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.EtatParcSummaryResponse;
 import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.VehiculeExceptionDto;
@@ -25,8 +26,10 @@ import lombok.RequiredArgsConstructor;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,6 +63,20 @@ public class GetEtatParcUseCase {
     private static final String CIBLE_INDISPONIBILITE = "INDISPONIBILITE_VEHICULE";
     private static final String CIBLE_PENALITE = "PENALITE";
     private static final String CIBLE_VIDANGE = "VIDANGE";
+
+    /**
+     * Ordre de la liste : rang de l'action principale (arrêts, maintenances
+     * prévues, vidanges), puis les arrêts les plus anciens, puis les échéances
+     * les plus proches — les vidanges dues au seul kilométrage en dernier.
+     */
+    private static final Comparator<VehiculeExceptionDto> ORDRE_LISTE = Comparator
+            .comparingInt((VehiculeExceptionDto e) -> rang(e.motif()))
+            .thenComparing(VehiculeExceptionDto::joursDansStatut,
+                    Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(VehiculeExceptionDto::dateMaintenancePrevue,
+                    Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(VehiculeExceptionDto::dateProchaineVidange,
+                    Comparator.nullsLast(Comparator.naturalOrder()));
 
     private final VehiculeRepository vehiculeRepository;
     private final VehiculeStatutHistoriqueRepository statutHistoriqueRepository;
@@ -122,14 +139,6 @@ public class GetEtatParcUseCase {
                         today.plusDays(SEUIL_ALERTE_MAINTENANCE_JOURS),
                         MaintenanceStatus.PLANIFIEE);
 
-        List<VehiculeExceptionDto> exceptionsStatut = vehicules.stream()
-                .filter(v -> demandeUneAction(v.getStatut()))
-                .map(v -> toException(v, periodesEnCours.get(v.getId()),
-                        immobilisations.get(v.getId()), maintenancesEnCours.get(v.getId())))
-                .sorted(Comparator.comparing(VehiculeExceptionDto::joursDansStatut,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .toList();
-
         // Dernière vidange par véhicule : une seule lecture, partagée par la liste
         // « demandant une action » et l'alerte préventive (pas de N+1).
         Map<Long, Vidange> dernieresVidanges = vidangeRepository.findDernieresParVehicule()
@@ -138,28 +147,74 @@ public class GetEtatParcUseCase {
                 .collect(Collectors.toMap(Vidange::getVehiculeId, Function.identity(),
                         (a, b) -> a));
 
-        // Les blocs suivants sont indépendants du statut : un véhicule qui appelle
-        // plusieurs actions porte une ligne par motif, pour qu'un filtre sur l'un
-        // d'eux les montre tous (un immobilisé à vidanger reste à vidanger).
-        // Véhicules dont au moins une maintenance planifiée est proche (≤ 7 j).
-        List<VehiculeExceptionDto> exceptionsMaintenancePrevue =
-                maintenancesPrevues(maintenancesPlanifiees, vehicules);
+        // Les actions préventives (maintenance, vidange) portent sur le parc filtré
+        // hors HORS_PARC — même périmètre que les alertes préventives.
+        Set<Long> parcActifIds = vehicules.stream()
+                .filter(v -> v.getStatut() != VehiculeStatus.HORS_PARC)
+                .map(Vehicule::getId)
+                .collect(Collectors.toSet());
 
         // Véhicules dont la vidange est due (par date ou par kilométrage).
-        List<VehiculeExceptionDto> exceptionsVidange =
-                vidangesDues(vehicules, dernieresVidanges, today);
+        LocalDate horizonVidange = today.plusDays(SEUIL_ALERTE_VIDANGE_JOURS);
+        Set<Long> vidangesDues = vehicules.stream()
+                .filter(v -> parcActifIds.contains(v.getId()))
+                .filter(v -> vidangeDue(dernieresVidanges.get(v.getId()), v.getKilometrage(),
+                        horizonVidange))
+                .map(Vehicule::getId)
+                .collect(Collectors.toSet());
 
-        List<VehiculeExceptionDto> exceptions = new java.util.ArrayList<>(exceptionsStatut);
-        exceptions.addAll(exceptionsMaintenancePrevue);
-        exceptions.addAll(exceptionsVidange);
+        // Maintenance planifiée la plus proche par véhicule. Une maintenance
+        // « Vidange » sur un véhicule dont la vidange est due est cette vidange même
+        // (le rappel automatique la planifie à l'échéance) : elle porte l'action
+        // vidange au lieu d'apparaître une seconde fois en « maintenance prévue ».
+        Map<Long, Maintenance> maintenancesPrevues = new HashMap<>();
+        Map<Long, Maintenance> vidangesPlanifiees = new HashMap<>();
+        for (Maintenance m : maintenancesPlanifiees) {
+            if (m.getVehicule() == null || m.getDatePrevue() == null) continue;
+            Long vehiculeId = m.getVehicule().getId();
+            if (!parcActifIds.contains(vehiculeId)) continue;
+            Map<Long, Maintenance> destination =
+                    m.estVidange() && vidangesDues.contains(vehiculeId)
+                            ? vidangesPlanifiees
+                            : maintenancesPrevues;
+            destination.merge(vehiculeId, m, GetEtatParcUseCase::laPlusProche);
+        }
+
+        // Une seule ligne par véhicule, portant toutes ses actions — l'arrêt de
+        // production d'abord, puis la maintenance prévue, puis la vidange. Le filtre
+        // par motif côté client retient un véhicule dès qu'une de ses actions
+        // correspond (un immobilisé à vidanger reste à vidanger).
+        List<VehiculeExceptionDto> exceptions = new ArrayList<>();
+        for (Vehicule v : vehicules) {
+            List<ActionVehiculeDto> actions = new ArrayList<>(3);
+            Long jours = null;
+            if (demandeUneAction(v.getStatut())) {
+                VehiculeStatutHistorique periode = periodesEnCours.get(v.getId());
+                jours = periode != null ? periode.joursDansStatut() : null;
+                actions.add(actionStatut(v, periode, immobilisations.get(v.getId()),
+                        maintenancesEnCours.get(v.getId())));
+            }
+            Maintenance prevue = maintenancesPrevues.get(v.getId());
+            if (prevue != null) {
+                actions.add(actionMaintenancePrevue(prevue));
+            }
+            if (vidangesDues.contains(v.getId())) {
+                actions.add(actionVidange(v, dernieresVidanges.get(v.getId()),
+                        vidangesPlanifiees.get(v.getId())));
+            }
+            if (!actions.isEmpty()) {
+                exceptions.add(toException(v, jours, actions));
+            }
+        }
+        exceptions.sort(ORDRE_LISTE);
 
         return new EtatParcSummaryResponse(
                 vehicules.size(), parcActif,
                 enService, disponibles, enMaintenance, immobilises, horsParc,
                 tauxDisponibilite, tauxUtilisation,
                 exceptions,
-                calculerAlertes(vehicules, today, filtreActif, maintenancesPlanifiees,
-                        dernieresVidanges));
+                calculerAlertes(vehicules, today, filtreActif, maintenancesPrevues.size(),
+                        vidangesDues.size()));
     }
 
     private boolean matchGroupe(Vehicule v, Long groupeId) {
@@ -179,13 +234,13 @@ public class GetEtatParcUseCase {
                 || statut == VehiculeStatus.DISPONIBLE;
     }
 
-    private VehiculeExceptionDto toException(Vehicule vehicule, VehiculeStatutHistorique periode,
-                                             IndisponibiliteVehicule immobilisation,
-                                             Maintenance maintenanceEnCours) {
+    /** Action portée par le statut improductif du véhicule (arrêt de production). */
+    private ActionVehiculeDto actionStatut(Vehicule vehicule, VehiculeStatutHistorique periode,
+                                           IndisponibiliteVehicule immobilisation,
+                                           Maintenance maintenanceEnCours) {
         VehiculeStatutMotif motif = periode != null && periode.getMotif() != null
                 ? periode.getMotif()
                 : motifParDefaut(vehicule.getStatut());
-        Long jours = periode != null ? periode.joursDansStatut() : null;
 
         // Chaque motif ouvre sur l'objet qui explique l'arrêt, à défaut sur le véhicule.
         String cible = CIBLE_VEHICULE;
@@ -202,113 +257,82 @@ public class GetEtatParcUseCase {
             cible = CIBLE_PENALITE;
         }
 
+        return new ActionVehiculeDto(
+                motif != null ? motif.name() : null,
+                immobilisation != null ? immobilisation.getDateFin() : null,
+                null, null, null,
+                cible, cibleId);
+    }
+
+    /** Maintenance planifiée la plus proche : la ligne affiche et ouvre celle-ci. */
+    private ActionVehiculeDto actionMaintenancePrevue(Maintenance maintenance) {
+        return new ActionVehiculeDto(
+                VehiculeStatutMotif.MAINTENANCE_PREVUE.name(),
+                null,
+                maintenance.getDatePrevue(),
+                null, null,
+                CIBLE_MAINTENANCE, maintenance.getId());
+    }
+
+    /**
+     * Vidange due. Déjà planifiée en maintenance, elle ouvre sur cette
+     * intervention ; sinon sur l'historique des vidanges du véhicule.
+     */
+    private ActionVehiculeDto actionVidange(Vehicule vehicule, Vidange derniere,
+                                            Maintenance vidangePlanifiee) {
+        Integer kmCible = derniere.getKilometrageProchaineVidange();
+        Integer kmRestant = kmCible != null && vehicule.getKilometrage() != null
+                ? kmCible - vehicule.getKilometrage()
+                : null;
+
+        return new ActionVehiculeDto(
+                VehiculeStatutMotif.VIDANGE_DUE.name(),
+                null,
+                null,
+                derniere.getDateProchaineVidange(),
+                kmRestant,
+                vidangePlanifiee != null ? CIBLE_MAINTENANCE : CIBLE_VIDANGE,
+                vidangePlanifiee != null ? vidangePlanifiee.getId() : null);
+    }
+
+    /** Ligne du véhicule : ses actions, la principale recopiée à plat. */
+    private VehiculeExceptionDto toException(Vehicule vehicule, Long joursDansStatut,
+                                             List<ActionVehiculeDto> actions) {
+        ActionVehiculeDto principale = actions.get(0);
         return new VehiculeExceptionDto(
                 vehicule.getId(),
                 vehicule.getImmatriculation(),
                 libelleVehicule(vehicule),
                 vehicule.getStatut() != null ? vehicule.getStatut().name() : null,
-                motif != null ? motif.name() : null,
-                jours,
-                immobilisation != null ? immobilisation.getDateFin() : null,
-                null, null, null,
-                cible, cibleId);
+                principale.motif(),
+                joursDansStatut,
+                principale.finPrevue(),
+                principale.dateMaintenancePrevue(),
+                principale.dateProchaineVidange(),
+                principale.kmRestantVidange(),
+                principale.cible(), principale.cibleId(),
+                List.copyOf(actions));
+    }
+
+    /**
+     * Rang de l'action principale dans la liste : arrêts de production (0), puis
+     * maintenances prévues (1), puis vidanges dues (2).
+     */
+    private static int rang(String motif) {
+        if (VehiculeStatutMotif.MAINTENANCE_PREVUE.name().equals(motif)) return 1;
+        if (VehiculeStatutMotif.VIDANGE_DUE.name().equals(motif)) return 2;
+        return 0;
+    }
+
+    /** Des deux maintenances planifiées, celle dont l'échéance tombe la première. */
+    private static Maintenance laPlusProche(Maintenance a, Maintenance b) {
+        return a.getDatePrevue().isBefore(b.getDatePrevue()) ? a : b;
     }
 
     /** « Marque Modèle », vide si le véhicule n'en porte pas. */
     private String libelleVehicule(Vehicule vehicule) {
         return ((vehicule.getMarque() != null ? vehicule.getMarque().getNom() : "") + " "
                 + (vehicule.getModele() != null ? vehicule.getModele().getNom() : "")).trim();
-    }
-
-    /**
-     * Véhicules du parc filtré (HORS_PARC exclu) ayant au moins une maintenance
-     * PLANIFIEE dont l'échéance tombe sous {@value #SEUIL_ALERTE_MAINTENANCE_JOURS} j
-     * (échéances déjà dépassées incluses) — même horizon, même périmètre et même
-     * unité que l'alerte préventive « maintenances dues ». Une seule entrée par
-     * véhicule, sur la maintenance la plus proche ; le véhicule peut par ailleurs
-     * figurer dans la liste sous un autre motif (statut, vidange).
-     */
-    private List<VehiculeExceptionDto> maintenancesPrevues(List<Maintenance> maintenancesPlanifiees,
-                                                           List<Vehicule> vehicules) {
-        Map<Long, Vehicule> parcFiltre = vehicules.stream()
-                .filter(v -> v.getStatut() != VehiculeStatus.HORS_PARC)
-                .collect(Collectors.toMap(Vehicule::getId, Function.identity(), (a, b) -> a));
-        if (parcFiltre.isEmpty()) return List.of();
-
-        // Maintenance la plus proche par véhicule éligible : c'est elle que la ligne
-        // affiche et sur laquelle elle ouvre.
-        Map<Long, Maintenance> prochaines = new java.util.HashMap<>();
-        maintenancesPlanifiees.forEach(m -> {
-            if (m.getVehicule() == null || m.getDatePrevue() == null) return;
-            Long vehiculeId = m.getVehicule().getId();
-            if (!parcFiltre.containsKey(vehiculeId)) return;
-            prochaines.merge(vehiculeId, m,
-                    (a, b) -> a.getDatePrevue().isBefore(b.getDatePrevue()) ? a : b);
-        });
-
-        return prochaines.entrySet().stream()
-                .sorted(Comparator.comparing(e -> e.getValue().getDatePrevue()))
-                .map(e -> {
-                    Vehicule v = parcFiltre.get(e.getKey());
-                    Maintenance m = e.getValue();
-                    return new VehiculeExceptionDto(
-                            v.getId(),
-                            v.getImmatriculation(),
-                            libelleVehicule(v),
-                            v.getStatut() != null ? v.getStatut().name() : null,
-                            VehiculeStatutMotif.MAINTENANCE_PREVUE.name(),
-                            null,
-                            null,
-                            m.getDatePrevue(),
-                            null, null,
-                            CIBLE_MAINTENANCE, m.getId());
-                })
-                .toList();
-    }
-
-    /**
-     * Véhicules du parc filtré (HORS_PARC exclu) dont la vidange est due — par date
-     * (≤ {@value #SEUIL_ALERTE_VIDANGE_JOURS} j, retards inclus) ou par kilométrage
-     * (cible atteinte à {@value #SEUIL_ALERTE_VIDANGE_KM} km près). Même règle et
-     * même périmètre que l'alerte préventive « vidanges prévues », qui compte
-     * exactement ces véhicules. Triés par échéance la plus proche, les dues au seul
-     * kilométrage en dernier. Le véhicule peut par ailleurs figurer dans la liste
-     * sous un autre motif (statut, maintenance).
-     */
-    private List<VehiculeExceptionDto> vidangesDues(List<Vehicule> vehicules,
-                                                    Map<Long, Vidange> dernieresVidanges,
-                                                    LocalDate today) {
-        LocalDate horizon = today.plusDays(SEUIL_ALERTE_VIDANGE_JOURS);
-
-        return vehicules.stream()
-                .filter(v -> v.getStatut() != VehiculeStatus.HORS_PARC)
-                .filter(v -> vidangeDue(dernieresVidanges.get(v.getId()), v.getKilometrage(),
-                        horizon))
-                .sorted(Comparator.comparing(
-                        (Vehicule v) -> dernieresVidanges.get(v.getId()).getDateProchaineVidange(),
-                        Comparator.nullsLast(Comparator.naturalOrder())))
-                .map(v -> toExceptionVidange(v, dernieresVidanges.get(v.getId())))
-                .toList();
-    }
-
-    private VehiculeExceptionDto toExceptionVidange(Vehicule vehicule, Vidange derniere) {
-        Integer kmCible = derniere.getKilometrageProchaineVidange();
-        Integer kmRestant = kmCible != null && vehicule.getKilometrage() != null
-                ? kmCible - vehicule.getKilometrage()
-                : null;
-
-        return new VehiculeExceptionDto(
-                vehicule.getId(),
-                vehicule.getImmatriculation(),
-                libelleVehicule(vehicule),
-                vehicule.getStatut() != null ? vehicule.getStatut().name() : null,
-                VehiculeStatutMotif.VIDANGE_DUE.name(),
-                null,
-                null,
-                null,
-                derniere.getDateProchaineVidange(),
-                kmRestant,
-                CIBLE_VIDANGE, null);
     }
 
     /**
@@ -353,8 +377,7 @@ public class GetEtatParcUseCase {
 
     private EtatParcAlertesDto calculerAlertes(List<Vehicule> vehicules, LocalDate today,
                                                boolean filtreActif,
-                                               List<Maintenance> maintenancesPlanifiees,
-                                               Map<Long, Vidange> dernieresVidanges) {
+                                               int maintenancesDues, int vidangesDues) {
         LocalDate horizonDocuments = today.plusDays(SEUIL_ALERTE_DOCUMENTS_JOURS);
 
         List<Document> documents = documentRepository.findAll();
@@ -391,58 +414,12 @@ public class GetEtatParcUseCase {
                 .distinct()
                 .count();
 
-        long maintenancesDues = compterMaintenancesDues(vehicules, maintenancesPlanifiees);
-
-        long vidangesDues = compterVidangesDues(vehicules, dernieresVidanges, today);
-
+        // Maintenances et vidanges dues : mêmes véhicules que les actions de la
+        // liste. Une maintenance « Vidange » rattachée à la vidange due n'est
+        // comptée qu'en vidange.
         return new EtatParcAlertesDto(
-                (int) documentsExpirant, (int) maintenancesDues, (int) permisExpires,
-                (int) vidangesDues);
-    }
-
-    /**
-     * Compte les <b>véhicules</b> du parc actif filtré (HORS_PARC exclu) ayant au
-     * moins une maintenance PLANIFIEE échue ou due sous
-     * {@value #SEUIL_ALERTE_MAINTENANCE_JOURS} j : un véhicule portant plusieurs
-     * échéances proches ne compte qu'une fois, comme dans la liste « demandant une
-     * action », qui s'appuie sur le même horizon et le même périmètre.
-     * <p>
-     * Contrairement au champ {@code dateProchaineMaintenance} du véhicule (jamais
-     * recalculé après complétion), cette source reflète l'état réel des maintenances
-     * à venir.
-     */
-    private long compterMaintenancesDues(List<Vehicule> vehicules,
-                                         List<Maintenance> maintenancesPlanifiees) {
-        Set<Long> parcActifIds = vehicules.stream()
-                .filter(v -> v.getStatut() != VehiculeStatus.HORS_PARC)
-                .map(Vehicule::getId)
-                .collect(Collectors.toSet());
-        if (parcActifIds.isEmpty()) return 0;
-
-        return maintenancesPlanifiees.stream()
-                .filter(m -> m.getVehicule() != null
-                        && parcActifIds.contains(m.getVehicule().getId()))
-                .map(m -> m.getVehicule().getId())
-                .distinct()
-                .count();
-    }
-
-    /**
-     * Compte les véhicules (parc actif) dont la dernière vidange indique qu'une
-     * prochaine vidange est due, soit par la date prévue (≤ {@value #SEUIL_ALERTE_VIDANGE_JOURS} j,
-     * y compris en retard), soit par le kilométrage (km cible atteint à
-     * {@value #SEUIL_ALERTE_VIDANGE_KM} km près du km actuel du véhicule). Mêmes
-     * véhicules que le bloc {@code VIDANGE_DUE} de la liste « demandant une action ».
-     */
-    private long compterVidangesDues(List<Vehicule> vehicules,
-                                     Map<Long, Vidange> dernieresVidanges, LocalDate today) {
-        LocalDate horizonVidange = today.plusDays(SEUIL_ALERTE_VIDANGE_JOURS);
-
-        return vehicules.stream()
-                .filter(v -> v.getStatut() != VehiculeStatus.HORS_PARC)
-                .filter(v -> vidangeDue(dernieresVidanges.get(v.getId()), v.getKilometrage(),
-                        horizonVidange))
-                .count();
+                (int) documentsExpirant, maintenancesDues, (int) permisExpires,
+                vidangesDues);
     }
 
     /** Vraie si la vidange est due par date (≤ horizon) ou par kilométrage restant. */

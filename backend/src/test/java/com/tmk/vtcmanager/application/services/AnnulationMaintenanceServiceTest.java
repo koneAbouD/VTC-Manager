@@ -44,7 +44,8 @@ class AnnulationMaintenanceServiceTest {
         maintenanceRepository = mock(MaintenanceRepository.class);
         statutEventPublisher = mock(VehiculeStatutEventPublisher.class);
         when(maintenanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        service = new AnnulationMaintenanceService(maintenanceRepository, statutEventPublisher);
+        service = new AnnulationMaintenanceService(maintenanceRepository, statutEventPublisher,
+                mock(VidangeMaintenanceService.class));
     }
 
     private OperationFinanciere operationLiee() {

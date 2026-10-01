@@ -19,6 +19,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Maintenance {
 
+    /** Code du type (catégorie) d'une intervention de vidange. */
+    public static final String TYPE_VIDANGE = "VIDANGE";
+
     private Long id;
     private String type;
     private LocalDate datePrevue;
@@ -102,6 +105,11 @@ public class Maintenance {
         this.statut = MaintenanceStatus.PLANIFIEE;
         this.dateEffectuee = null;
         this.cout = null;
+    }
+
+    /** Vrai pour une intervention de type « Vidange » (rappel automatique ou saisie). */
+    public boolean estVidange() {
+        return TYPE_VIDANGE.equalsIgnoreCase(type);
     }
 
     public boolean isPlanifiee() {

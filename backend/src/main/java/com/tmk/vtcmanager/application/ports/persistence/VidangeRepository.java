@@ -24,4 +24,9 @@ public interface VidangeRepository {
 
     /** Dernière vidange de chaque véhicule (une par véhicule). Pour l'état de parc. */
     List<Vidange> findDernieresParVehicule();
+
+    /** Vidange produite par la clôture de cette maintenance, s'il y en a une. */
+    Optional<Vidange> findByMaintenanceId(Long maintenanceId);
+
+    void deleteById(Long id);
 }

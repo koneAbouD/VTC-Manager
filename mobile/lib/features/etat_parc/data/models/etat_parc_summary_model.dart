@@ -50,14 +50,76 @@ class EtatParcSummaryModel {
       );
 }
 
-/// Véhicule demandant une action, avec motif et ancienneté dans le statut.
+/// Libellé français d'un motif d'exception.
+String libelleMotifException(String? motif) => switch (motif) {
+      'IMMOBILISATION_PENALITE' => 'Pénalité en cours',
+      'IMMOBILISATION_INDISPONIBILITE' => 'Immobilisé (indisponibilité)',
+      'PANNE_OU_ACCIDENT' => 'Panne ou accident',
+      'MAINTENANCE_EN_COURS' => 'Maintenance en cours',
+      'MAINTENANCE_PREVUE' => 'Maintenance prévue',
+      'VIDANGE_DUE' => 'Vidange prévue',
+      'SANS_CHAUFFEUR' => 'Aucun chauffeur affecté',
+      'CHAUFFEUR_AFFECTE' => 'Chauffeur affecté',
+      'SORTIE_PARC' => 'Sorti du parc',
+      'DECISION_MANUELLE' => 'Décision manuelle',
+      'ENTREE_FLOTTE' => 'Entrée dans la flotte',
+      _ => 'Motif inconnu',
+    };
+
+DateTime? _date(dynamic v) => v is String ? DateTime.tryParse(v) : null;
+
+/// Véhicule demandant une action — une seule ligne par véhicule, qui porte
+/// toutes ses [actions], la plus prioritaire en tête (arrêt de production,
+/// puis maintenance prévue, puis vidange due).
 class VehiculeExceptionModel {
   final int? vehiculeId;
   final String immatriculation;
   final String libelleVehicule;
   final String? statut;
-  final String? motif;
+
+  /// Ancienneté dans le statut quand le véhicule est listé au titre de son
+  /// statut ; null pour un véhicule listé seulement en préventif.
   final int? joursDansStatut;
+
+  /// Jamais vide : au moins une action justifie la présence du véhicule.
+  final List<ActionVehiculeModel> actions;
+
+  const VehiculeExceptionModel({
+    required this.vehiculeId,
+    required this.immatriculation,
+    required this.libelleVehicule,
+    required this.statut,
+    required this.joursDansStatut,
+    required this.actions,
+  });
+
+  factory VehiculeExceptionModel.fromJson(Map<String, dynamic> json) {
+    final actions = (json['actions'] as List<dynamic>? ?? [])
+        .map((a) => ActionVehiculeModel.fromJson(a as Map<String, dynamic>))
+        .toList();
+    return VehiculeExceptionModel(
+      vehiculeId: (json['vehiculeId'] as num?)?.toInt(),
+      immatriculation: (json['immatriculation'] ?? '').toString(),
+      libelleVehicule: (json['libelleVehicule'] ?? '').toString(),
+      statut: json['statut'] as String?,
+      joursDansStatut: (json['joursDansStatut'] as num?)?.toInt(),
+      // Serveur antérieur au regroupement : l'action unique est à plat.
+      actions: actions.isNotEmpty
+          ? actions
+          : [ActionVehiculeModel.fromJson(json)],
+    );
+  }
+
+  /// Action principale : elle donne l'icône et la couleur de la ligne.
+  ActionVehiculeModel get principale => actions.first;
+
+  /// Vrai si l'une des actions du véhicule porte ce motif.
+  bool aLeMotif(String motif) => actions.any((a) => a.motif == motif);
+}
+
+/// Une action à mener sur un véhicule : motif, échéance et écran à ouvrir.
+class ActionVehiculeModel {
+  final String? motif;
 
   /// Fin prévue de l'immobilisation planifiée (indisponibilité véhicule).
   /// Null si le motif n'est pas une indisponibilité ou si elle est ouverte.
@@ -75,21 +137,17 @@ class VehiculeExceptionModel {
   /// si la cible est dépassée. Null si la vidange n'est due que par date.
   final int? kmRestantVidange;
 
-  /// Écran sur lequel ouvrir la ligne : `MAINTENANCE`,
-  /// `INDISPONIBILITE_VEHICULE`, `PENALITE`, `VIDANGE` ou `VEHICULE`.
+  /// Écran sur lequel ouvrir l'action : `MAINTENANCE`,
+  /// `INDISPONIBILITE_VEHICULE`, `PENALITE`, `VIDANGE` ou `VEHICULE`. Une
+  /// vidange déjà planifiée en maintenance ouvre sur cette maintenance.
   final String? cible;
 
   /// Identifiant de l'objet visé, quand la cible en désigne un (null lorsque
   /// l'écran se résout sur le véhicule lui-même).
   final int? cibleId;
 
-  const VehiculeExceptionModel({
-    required this.vehiculeId,
-    required this.immatriculation,
-    required this.libelleVehicule,
-    required this.statut,
+  const ActionVehiculeModel({
     required this.motif,
-    required this.joursDansStatut,
     this.finPrevue,
     this.dateMaintenancePrevue,
     this.dateProchaineVidange,
@@ -98,43 +156,18 @@ class VehiculeExceptionModel {
     this.cibleId,
   });
 
-  factory VehiculeExceptionModel.fromJson(Map<String, dynamic> json) =>
-      VehiculeExceptionModel(
-        vehiculeId: (json['vehiculeId'] as num?)?.toInt(),
-        immatriculation: (json['immatriculation'] ?? '').toString(),
-        libelleVehicule: (json['libelleVehicule'] ?? '').toString(),
-        statut: json['statut'] as String?,
+  factory ActionVehiculeModel.fromJson(Map<String, dynamic> json) =>
+      ActionVehiculeModel(
         motif: json['motif'] as String?,
-        joursDansStatut: (json['joursDansStatut'] as num?)?.toInt(),
-        finPrevue: json['finPrevue'] != null
-            ? DateTime.tryParse(json['finPrevue'] as String)
-            : null,
-        dateMaintenancePrevue: json['dateMaintenancePrevue'] != null
-            ? DateTime.tryParse(json['dateMaintenancePrevue'] as String)
-            : null,
-        dateProchaineVidange: json['dateProchaineVidange'] != null
-            ? DateTime.tryParse(json['dateProchaineVidange'] as String)
-            : null,
+        finPrevue: _date(json['finPrevue']),
+        dateMaintenancePrevue: _date(json['dateMaintenancePrevue']),
+        dateProchaineVidange: _date(json['dateProchaineVidange']),
         kmRestantVidange: (json['kmRestantVidange'] as num?)?.toInt(),
         cible: json['cible'] as String?,
         cibleId: (json['cibleId'] as num?)?.toInt(),
       );
 
-  /// Libellé français du motif historisé.
-  String get motifLabel => switch (motif) {
-        'IMMOBILISATION_PENALITE' => 'Pénalité en cours',
-        'IMMOBILISATION_INDISPONIBILITE' => 'Immobilisé (indisponibilité)',
-        'PANNE_OU_ACCIDENT' => 'Panne ou accident',
-        'MAINTENANCE_EN_COURS' => 'Maintenance en cours',
-        'MAINTENANCE_PREVUE' => 'Maintenance prévue',
-        'VIDANGE_DUE' => 'Vidange prévue',
-        'SANS_CHAUFFEUR' => 'Aucun chauffeur affecté',
-        'CHAUFFEUR_AFFECTE' => 'Chauffeur affecté',
-        'SORTIE_PARC' => 'Sorti du parc',
-        'DECISION_MANUELLE' => 'Décision manuelle',
-        'ENTREE_FLOTTE' => 'Entrée dans la flotte',
-        _ => 'Motif inconnu',
-      };
+  String get motifLabel => libelleMotifException(motif);
 }
 
 class EtatParcAlertesModel {

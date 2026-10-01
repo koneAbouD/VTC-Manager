@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.usecases.maintenance;
 
+import com.tmk.vtcmanager.application.services.VidangeMaintenanceService;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.ReglementMaintenance;
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
@@ -88,7 +89,7 @@ class CompleteMaintenanceDetteTest {
                 mock(PeriodeClotureeGuard.class), sequences, mock(CaisseClotureeGuard.class),
                 mock(CaisseCreditriceGuard.class),
                 facturePartenaireRepository, enregistrerFactureUseCase,
-                new RepartitionDetteMaintenanceService());
+                new RepartitionDetteMaintenanceService(), mock(VidangeMaintenanceService.class));
     }
 
     @Test

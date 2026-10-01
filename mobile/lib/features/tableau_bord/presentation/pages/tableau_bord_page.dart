@@ -390,7 +390,7 @@ class _SectionCash extends StatelessWidget {
     final c = data.cash;
 
     return TbSection(
-      icone: Icons.savings_outlined,
+      icone: Icons.analytics_outlined,
       titre: 'Encaissement et créances',
       question: 'Est-ce que l\'argent rentre ?',
       accent: const Color(0xFF1565C0),

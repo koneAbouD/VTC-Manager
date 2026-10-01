@@ -138,7 +138,7 @@ class _TotalCard extends StatelessWidget {
             const SizedBox(height: 4),
             if (summary.depotsCotisations > 0)
               _LigneRetenue(
-                icone: Icons.savings_outlined,
+                icone: Icons.analytics_outlined,
                 libelle: 'Dépôts cotisations à rendre',
                 montant: summary.depotsCotisations,
                 // Le détail par chauffeur / véhicule est dans les comptes

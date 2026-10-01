@@ -1,22 +1,19 @@
 package com.tmk.vtcmanager.interfaces.rest.etatparc.dto;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
- * Véhicule demandant une action : ne produit pas (immobilisé, en maintenance,
- * disponible sans chauffeur), avec le motif et l'ancienneté dans le statut.
- * {@code finPrevue} est la date de fin de l'indisponibilité véhicule en cours
- * (null si le motif n'est pas une immobilisation planifiée ou si elle est ouverte).
- * {@code dateMaintenancePrevue} est l'échéance de la maintenance planifiée la plus
- * proche (motif {@code MAINTENANCE_PREVUE}), null sinon. {@code dateProchaineVidange}
- * et {@code kmRestantVidange} ne sont renseignés que pour le motif
- * {@code VIDANGE_DUE}, et seulement si la dernière vidange porte la cible
- * correspondante (une vidange peut n'être due que par date, ou que par kilométrage).
+ * Véhicule demandant une action — une seule ligne par véhicule, quel que soit le
+ * nombre d'actions qu'il appelle (statut improductif, maintenance prévue, vidange
+ * due). {@code actions} les liste toutes, la plus prioritaire en tête :
+ * l'arrêt de production (immobilisation, maintenance en cours, sans chauffeur),
+ * puis la maintenance prévue, puis la vidange due.
  * <p>
- * {@code cible} dit vers quel écran ouvrir la ligne — {@code MAINTENANCE},
- * {@code INDISPONIBILITE_VEHICULE}, {@code PENALITE}, {@code VIDANGE} ou
- * {@code VEHICULE} — et {@code cibleId} identifie l'objet visé quand il en existe
- * un (null quand la cible se résout sur le véhicule lui-même).
+ * {@code joursDansStatut} est l'ancienneté dans le statut quand le véhicule est
+ * listé au titre de son statut (null sinon). Les champs {@code motif} à
+ * {@code cibleId} recopient l'action principale ({@code actions[0]}) : ils sont
+ * conservés pour les clients qui ne lisent pas encore {@code actions}.
  */
 public record VehiculeExceptionDto(
         Long vehiculeId,
@@ -30,5 +27,6 @@ public record VehiculeExceptionDto(
         LocalDate dateProchaineVidange,
         Integer kmRestantVidange,
         String cible,
-        Long cibleId
+        Long cibleId,
+        List<ActionVehiculeDto> actions
 ) {}

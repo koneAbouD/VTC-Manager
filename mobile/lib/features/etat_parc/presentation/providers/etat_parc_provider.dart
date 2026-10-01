@@ -49,7 +49,8 @@ final etatParcFiltreProvider =
 ///
 /// Filtre purement local : le résumé est déjà chargé, la liste est réduite à
 /// l'affichage (aucun appel réseau supplémentaire). Le critère porte sur le
-/// motif — ce qui appelle une action —, motif nul = « Tous ».
+/// motif — ce qui appelle une action —, motif nul = « Tous ». Un véhicule est
+/// retenu dès que l'une de ses actions porte ce motif.
 class ExceptionCritere {
   /// Code motif ciblé (`PANNE_OU_ACCIDENT`, `MAINTENANCE_PREVUE`,
   /// `VIDANGE_DUE`, …).
@@ -59,7 +60,8 @@ class ExceptionCritere {
 
   bool get estActif => motif != null;
 
-  bool correspond(VehiculeExceptionModel e) => motif == null || e.motif == motif;
+  bool correspond(VehiculeExceptionModel e) =>
+      motif == null || e.aLeMotif(motif!);
 
   @override
   bool operator ==(Object other) =>

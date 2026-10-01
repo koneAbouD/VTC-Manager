@@ -45,4 +45,14 @@ public class VidangeRepositoryAdapter implements VidangeRepository {
     public List<Vidange> findDernieresParVehicule() {
         return mapper.toDomainList(jpaRepository.findDernieresParVehicule());
     }
+
+    @Override
+    public Optional<Vidange> findByMaintenanceId(Long maintenanceId) {
+        return jpaRepository.findByMaintenanceId(maintenanceId).map(mapper::toDomain);
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        jpaRepository.deleteById(id);
+    }
 }

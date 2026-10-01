@@ -25,6 +25,7 @@ import com.tmk.vtcmanager.application.services.CompteTresorerieResolver;
 import com.tmk.vtcmanager.application.services.PeriodeClotureeGuard;
 import com.tmk.vtcmanager.application.services.RepartitionDetteMaintenanceService;
 import com.tmk.vtcmanager.application.services.SequenceReferenceService;
+import com.tmk.vtcmanager.application.services.VidangeMaintenanceService;
 import com.tmk.vtcmanager.application.services.CaisseClotureeGuard;
 import com.tmk.vtcmanager.application.services.CaisseCreditriceGuard;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,7 @@ public class CompleteMaintenanceUseCase {
     private final FacturePartenaireRepository facturePartenaireRepository;
     private final EnregistrerFactureUseCase enregistrerFactureUseCase;
     private final RepartitionDetteMaintenanceService repartitionService;
+    private final VidangeMaintenanceService vidangeMaintenanceService;
 
     @Transactional
     public Maintenance execute(Long id, BigDecimal cout, LocalDate dateEffectuee,
@@ -147,6 +149,10 @@ public class CompleteMaintenanceUseCase {
                 operationRepository.save(operation);
             }
         }
+
+        // Une vidange terminée entre à l'historique du véhicule : sa cible devient
+        // la prochaine vidange, et l'état de parc cesse de la réclamer.
+        vidangeMaintenanceService.enregistrerVidangeFaite(saved);
 
         // Maintenance terminée → recalcul du statut du véhicule (sortie de EN_MAINTENANCE).
         if (saved.getVehicule() != null) {

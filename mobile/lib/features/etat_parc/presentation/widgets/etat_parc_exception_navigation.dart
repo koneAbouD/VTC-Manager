@@ -14,8 +14,8 @@ import '../../data/models/etat_parc_summary_model.dart';
 /// Programme, Recettes, Cotisations, Pénalités).
 const int _ongletPenalitesVehicule = 5;
 
-/// Ouvre une ligne de « Véhicules demandant une action » sur l'objet qui
-/// explique l'arrêt : l'intervention, l'immobilisation datée, les pénalités du
+/// Ouvre une action d'une ligne de « Véhicules demandant une action » sur
+/// l'objet qui l'explique : l'intervention, l'immobilisation datée, les pénalités du
 /// véhicule ou son historique de vidanges — à défaut sa fiche.
 ///
 /// Le serveur ne transmet que le type de cible et son identifiant : les écrans
@@ -27,6 +27,7 @@ Future<void> ouvrirCibleException(
   BuildContext context,
   WidgetRef ref,
   VehiculeExceptionModel exception,
+  ActionVehiculeModel action,
 ) async {
   final vehiculeId = exception.vehiculeId;
   if (vehiculeId == null) return;
@@ -42,9 +43,9 @@ Future<void> ouvrirCibleException(
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  final cibleId = exception.cibleId;
+  final cibleId = action.cibleId;
 
-  switch (exception.cible) {
+  switch (action.cible) {
     case 'MAINTENANCE' when cibleId != null:
       final resultat =
           await ref.read(maintenanceRepositoryProvider).getMaintenanceById(cibleId);

@@ -49,23 +49,22 @@ List<CritereException> criteresDisponibles(
   List<VehiculeExceptionModel> exceptions,
   List<StatutVehicule> statutsRef,
 ) {
+  // Véhicules par motif : un véhicule compte dans chacun de ses motifs.
   final parMotif = <String, int>{};
-  final libelleMotif = <String, String>{};
-
   for (final e in exceptions) {
-    if (e.motif == null) continue;
-    parMotif.update(e.motif!, (n) => n + 1, ifAbsent: () => 1);
-    libelleMotif[e.motif!] = e.motifLabel;
+    for (final motif in e.actions.map((a) => a.motif).nonNulls.toSet()) {
+      parMotif.update(motif, (n) => n + 1, ifAbsent: () => 1);
+    }
   }
 
   final motifs = parMotif.entries.map((entry) {
-    // Couleur du statut porté par les véhicules de ce motif (un motif ne
-    // couvre qu'un statut en pratique ; le premier trouvé suffit).
+    // Couleur du statut porté par les véhicules de ce motif (le premier
+    // trouvé suffit).
     final statutDuMotif =
-        exceptions.firstWhere((e) => e.motif == entry.key).statut;
+        exceptions.firstWhere((e) => e.aLeMotif(entry.key)).statut;
     return CritereException(
       critere: ExceptionCritere(motif: entry.key),
-      libelle: libelleMotif[entry.key] ?? entry.key,
+      libelle: libelleMotifException(entry.key),
       icone: iconeMotifException(entry.key),
       couleur: StatutVehicule.resolve(statutDuMotif, statutsRef).couleur,
       nombre: entry.value,
@@ -85,8 +84,7 @@ String libelleCritereException(
   List<VehiculeExceptionModel> exceptions,
 ) {
   if (critere.motif == null) return 'Tous';
-  final e = exceptions.where((x) => x.motif == critere.motif).firstOrNull;
-  return e?.motifLabel ?? critere.motif!;
+  return libelleMotifException(critere.motif);
 }
 
 /// Ouvre le sélecteur de critère de la liste « véhicules demandant une action ».

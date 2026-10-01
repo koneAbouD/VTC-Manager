@@ -26,7 +26,7 @@ import java.util.List;
 public class PlanifierVidangesDuesUseCase {
 
     /** Code de catégorie de maintenance (cf. sous-catégorie « Maintenances »). */
-    public static final String TYPE_VIDANGE = "VIDANGE";
+    public static final String TYPE_VIDANGE = Maintenance.TYPE_VIDANGE;
 
     /** Fenêtre d'anticipation : on planifie à 7 jours de la date prévue. */
     private static final int JOURS_AVANT = 7;
@@ -73,7 +73,7 @@ public class PlanifierVidangesDuesUseCase {
     private boolean maintenanceVidangeDejaPlanifiee(Long vehiculeId, LocalDate datePrevue) {
         return maintenanceRepository
                 .findByFiltres(datePrevue, datePrevue, null, vehiculeId).stream()
-                .anyMatch(m -> TYPE_VIDANGE.equalsIgnoreCase(m.getType())
+                .anyMatch(m -> m.estVidange()
                         && m.getStatut() != MaintenanceStatus.ANNULEE);
     }
 }

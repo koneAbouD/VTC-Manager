@@ -42,4 +42,6 @@ public interface VidangeJpaRepository extends JpaRepository<VidangeEntity, Long>
                           WHERE v2.vehiculeId = v.vehiculeId)
             """)
     List<VidangeEntity> findDernieresParVehicule();
+
+    Optional<VidangeEntity> findByMaintenanceId(Long maintenanceId);
 }

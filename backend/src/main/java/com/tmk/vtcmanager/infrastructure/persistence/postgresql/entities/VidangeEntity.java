@@ -37,4 +37,7 @@ public class VidangeEntity extends AbstractAuditEntity {
 
     @Column(length = 500)
     private String commentaire;
+
+    @Column(name = "maintenance_id")
+    private Long maintenanceId;
 }

@@ -26,6 +26,9 @@ public class Vidange {
     private LocalDate dateProchaineVidange;
     private Integer kilometrageProchaineVidange;
     private String commentaire;
+    /** Maintenance « Vidange » dont la clôture a produit cette ligne ; null pour
+     *  une vidange saisie à la main. */
+    private Long maintenanceId;
 
     /** Validation métier : dates et kilométrages cohérents. */
     public void valider() {

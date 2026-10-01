@@ -1,5 +1,6 @@
 package com.tmk.vtcmanager.application.usecases.maintenance;
 
+import com.tmk.vtcmanager.application.services.VidangeMaintenanceService;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import com.tmk.vtcmanager.application.domain.maintenance.ReglementMaintenance;
@@ -133,7 +134,8 @@ class CycleMaintenanceUseCasesTest {
                 categorieRepository, sousCategorieRepository, statutEventPublisher,
                 compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService,
                 caisseClotureeGuard, caisseCreditriceGuard, facturePartenaireRepository,
-                enregistrerFactureUseCase, repartitionService);
+                enregistrerFactureUseCase, repartitionService,
+                mock(VidangeMaintenanceService.class));
         auteurCourant = mock(AuteurCourant.class);
         when(auteurCourant.nom()).thenReturn("exploitant");
         annulerUseCase = new AnnulerMaintenanceUseCase(maintenanceRepository, statutEventPublisher,

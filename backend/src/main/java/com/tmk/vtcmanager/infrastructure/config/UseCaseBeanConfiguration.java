@@ -32,6 +32,7 @@ import com.tmk.vtcmanager.application.services.ChauffeursAuProgrammeService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.services.AnnulationEncaissementService;
 import com.tmk.vtcmanager.application.services.AnnulationMaintenanceService;
+import com.tmk.vtcmanager.application.services.VidangeMaintenanceService;
 import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
 import com.tmk.vtcmanager.application.services.JoursFeriesCalculator;
 import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
@@ -610,12 +611,13 @@ public class UseCaseBeanConfiguration {
             CaisseCreditriceGuard caisseCreditriceGuard,
             FacturePartenaireRepository facturePartenaireRepository,
             EnregistrerFactureUseCase enregistrerFactureUseCase,
-            RepartitionDetteMaintenanceService repartitionDetteMaintenanceService) {
+            RepartitionDetteMaintenanceService repartitionDetteMaintenanceService,
+            VidangeMaintenanceService vidangeMaintenanceService) {
         return new CompleteMaintenanceUseCase(repo, operationRepository,
                 categorieOperationRepository, sousCategorieOperationRepository, statutEventPublisher,
                 compteTresorerieResolver, periodeClotureeGuard, sequenceReferenceService, caisseClotureeGuard,
                 caisseCreditriceGuard, facturePartenaireRepository, enregistrerFactureUseCase,
-                repartitionDetteMaintenanceService);
+                repartitionDetteMaintenanceService, vidangeMaintenanceService);
     }
 
     @Bean
@@ -1102,8 +1104,16 @@ public class UseCaseBeanConfiguration {
     @Bean
     public AnnulationMaintenanceService annulationMaintenanceService(
             MaintenanceRepository maintenanceRepository,
-            VehiculeStatutEventPublisher statutEventPublisher) {
-        return new AnnulationMaintenanceService(maintenanceRepository, statutEventPublisher);
+            VehiculeStatutEventPublisher statutEventPublisher,
+            VidangeMaintenanceService vidangeMaintenanceService) {
+        return new AnnulationMaintenanceService(maintenanceRepository, statutEventPublisher,
+                vidangeMaintenanceService);
+    }
+
+    @Bean
+    public VidangeMaintenanceService vidangeMaintenanceService(
+            VidangeRepository vidangeRepository) {
+        return new VidangeMaintenanceService(vidangeRepository);
     }
 
     @Bean

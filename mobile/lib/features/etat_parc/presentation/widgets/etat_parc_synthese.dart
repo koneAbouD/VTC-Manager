@@ -609,29 +609,31 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
 
   VehiculeExceptionModel get exception => widget.exception;
 
-  Future<void> _ouvrir() async {
+  Future<void> _ouvrir(ActionVehiculeModel action) async {
     if (_ouverture) return;
     setState(() => _ouverture = true);
     try {
-      await ouvrirCibleException(context, ref, exception);
+      await ouvrirCibleException(context, ref, exception, action);
     } finally {
       if (mounted) setState(() => _ouverture = false);
     }
   }
 
-  /// Échéance d'une vidange due : la date si elle est connue, sinon les
-  /// kilomètres restants (négatifs = cible déjà dépassée). Null hors motif
-  /// `VIDANGE_DUE`, ou si la dernière vidange ne porte aucune cible.
-  static String? _echeanceVidange(VehiculeExceptionModel e) {
-    if (e.dateProchaineVidange != null) {
-      return 'À faire le '
-          '${DateFormat('dd MMM yyyy', 'fr_FR').format(e.dateProchaineVidange!)}';
+  /// Une seule action : on l'ouvre directement. Plusieurs : le gestionnaire
+  /// choisit laquelle traiter.
+  Future<void> _onTap() async {
+    if (exception.actions.length == 1) {
+      return _ouvrir(exception.principale);
     }
-    final km = e.kmRestantVidange;
-    if (km == null) return null;
-    return km < 0
-        ? 'Cible dépassée de ${-km} km'
-        : 'Dans $km km';
+    final choisie = await showModalBottomSheet<ActionVehiculeModel>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _ActionsVehiculeSheet(exception: exception),
+    );
+    if (choisie != null && mounted) await _ouvrir(choisie);
   }
 
   @override
@@ -641,9 +643,10 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
         StatutVehicule.resolve(exception.statut ?? '', statuts);
     final color = statut.couleur;
     final jours = exception.joursDansStatut;
+    final plusieurs = exception.actions.length > 1;
 
     return InkWell(
-      onTap: exception.vehiculeId == null ? null : _ouvrir,
+      onTap: exception.vehiculeId == null ? null : _onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
@@ -655,7 +658,7 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
                 color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(iconeMotifException(exception.motif),
+              child: Icon(iconeMotifException(exception.principale.motif),
                   size: 19, color: color),
             ),
             const SizedBox(width: 10),
@@ -679,42 +682,39 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${statut.libelle} — ${exception.motifLabel}',
+                    '${statut.libelle} — '
+                    '${exception.actions.map((a) => a.motifLabel).join(' · ')}',
                     style:
                         TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    maxLines: 1,
+                    // Plusieurs motifs peuvent ne pas tenir sur une ligne.
+                    maxLines: plusieurs ? 2 : 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (exception.finPrevue != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Fin prévue le ${DateFormat('dd MMM yyyy', 'fr_FR').format(exception.finPrevue!)}',
-                      style: TextStyle(
-                          fontSize: 11.5, color: Colors.grey.shade500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  if (exception.dateMaintenancePrevue != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Prévue le ${DateFormat('dd MMM yyyy', 'fr_FR').format(exception.dateMaintenancePrevue!)}',
-                      style: TextStyle(
-                          fontSize: 11.5, color: Colors.grey.shade500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  if (_echeanceVidange(exception) != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      _echeanceVidange(exception)!,
-                      style: TextStyle(
-                          fontSize: 11.5, color: Colors.grey.shade500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                  // Une échéance par action ; l'icône du motif les distingue
+                  // quand le véhicule en cumule plusieurs.
+                  for (final action in exception.actions)
+                    if (echeanceAction(action) != null) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          if (plusieurs) ...[
+                            Icon(iconeMotifException(action.motif),
+                                size: 12, color: Colors.grey.shade500),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(
+                            child: Text(
+                              echeanceAction(action)!,
+                              style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: Colors.grey.shade500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                 ],
               ),
             ),
@@ -745,6 +745,79 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Échéance affichée sous une action : fin d'immobilisation, date de la
+/// maintenance prévue ou de la vidange — à défaut de date, les kilomètres
+/// restants avant la vidange (négatifs = cible déjà dépassée). Null si
+/// l'action n'en porte aucune.
+String? echeanceAction(ActionVehiculeModel a) {
+  String date(DateTime d) => DateFormat('dd MMM yyyy', 'fr_FR').format(d);
+  if (a.finPrevue != null) return 'Fin prévue le ${date(a.finPrevue!)}';
+  if (a.dateMaintenancePrevue != null) {
+    return 'Prévue le ${date(a.dateMaintenancePrevue!)}';
+  }
+  if (a.dateProchaineVidange != null) {
+    return 'À faire le ${date(a.dateProchaineVidange!)}';
+  }
+  final km = a.kmRestantVidange;
+  if (km == null) return null;
+  return km < 0 ? 'Cible dépassée de ${-km} km' : 'Dans $km km';
+}
+
+/// Choix de l'action à ouvrir pour un véhicule qui en cumule plusieurs.
+class _ActionsVehiculeSheet extends StatelessWidget {
+  final VehiculeExceptionModel exception;
+  const _ActionsVehiculeSheet({required this.exception});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
+              child: Text(
+                exception.immatriculation,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+            ),
+            for (final action in exception.actions)
+              ListTile(
+                leading: Icon(iconeMotifException(action.motif),
+                    color: const Color(0xFF1A1A2E)),
+                title: Text(action.motifLabel,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14)),
+                subtitle: echeanceAction(action) == null
+                    ? null
+                    : Text(echeanceAction(action)!),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.pop(context, action),
+              ),
           ],
         ),
       ),

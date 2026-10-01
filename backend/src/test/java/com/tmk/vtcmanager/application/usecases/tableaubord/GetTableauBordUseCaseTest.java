@@ -419,6 +419,6 @@ class GetTableauBordUseCaseTest {
     private static VehiculeExceptionDto exception(Long id, String statut, Long jours) {
         return new VehiculeExceptionDto(id, "AA-00" + id, "Véhicule " + id,
                 statut, "PANNE_OU_ACCIDENT", jours, null, null, null, null,
-                "VEHICULE", null);
+                "VEHICULE", null, List.of());
     }
 }
