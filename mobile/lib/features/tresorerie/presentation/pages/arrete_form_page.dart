@@ -235,7 +235,21 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
       }
     }
 
-    return _Decompte(groupes, fonds, dispo, compense, pourAutrui, reste);
+    // Le reliquat est ce que la période laisse à la suivante : les créances
+    // postérieures, même compensables, n'en sont pas. L'antérieur, lui, est ce
+    // que les périodes précédentes laissaient, tel qu'il était dû en entrant.
+    final reliquat = <int, double>{};
+    final anterieur = <int, double>{};
+    for (final g in groupes) {
+      reliquat[g.chauffeurId] = g.creances
+          .where((l) => !_apresPeriode(l))
+          .fold(0.0, (s, l) => s + (reste[_cleCreance(l)] ?? 0));
+      anterieur[g.chauffeurId] =
+          g.creances.where(_avantPeriode).fold(0.0, (s, l) => s + l.du);
+    }
+
+    return _Decompte(groupes, fonds, dispo, compense, pourAutrui, reliquat,
+        anterieur);
   }
 
   bool get _peutValider => _cotisationsChoisies.isNotEmpty;
@@ -371,9 +385,10 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                        'Le mois ne filtre que le fonds. Toutes les créances '
-                        'ouvertes restent compensables, antérieures comme '
-                        'postérieures.',
+                        'Le mois ne filtre que les cotisations. Toutes les '
+                        'créances ouvertes restent compensables, antérieures '
+                        'comme postérieures ; le reste dû reporté ne compte que '
+                        'celles datées jusqu\'à la fin du mois.',
                         style: TextStyle(
                             fontSize: 11.5, color: AppColors.label, height: 1.3)),
                   ),
@@ -400,6 +415,7 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
               compense: decompte.totalCompense,
               net: decompte.totalNet,
               reliquat: decompte.totalReliquat,
+              anterieur: decompte.totalAnterieur,
             ),
             const SizedBox(height: 4),
             Row(
@@ -474,7 +490,7 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                         ? 'Aucune cotisation à restituer'
                         : 'Sélectionnez au moins une cotisation')
                     : decompte.totalNet > 0
-                        ? 'Restituer ${CurrencyFormatter.format(decompte.totalNet)}'
+                        ? 'Verser ${CurrencyFormatter.format(decompte.totalNet)}'
                         : 'Compenser (aucun versement)'),
                 style:
                     FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
@@ -496,11 +512,14 @@ class _Decompte {
   /// Ce que son fonds a éteint, chez lui comme chez les autres.
   final Map<int, double> _compense;
   final Map<int, double> _pourAutrui;
-  /// Ce qu'il reste dû sur chaque créance, tous financeurs confondus.
-  final Map<String, double> _reste;
+  /// Reste dû après l'arrêté sur ses créances datées jusqu'à la fin de période.
+  final Map<int, double> _reliquat;
+
+  /// Reste dû des périodes précédentes, en entrant dans l'arrêté.
+  final Map<int, double> _anterieur;
 
   const _Decompte(this.groupes, this._fonds, this._net, this._compense,
-      this._pourAutrui, this._reste);
+      this._pourAutrui, this._reliquat, this._anterieur);
 
   double fonds(_GroupeBeneficiaire g) => _fonds[g.chauffeurId] ?? 0;
   double net(_GroupeBeneficiaire g) => _net[g.chauffeurId] ?? 0;
@@ -510,16 +529,18 @@ class _Decompte {
   /// nul hors arrêté par véhicule — c'est là que les fonds se mutualisent.
   double pourAutrui(_GroupeBeneficiaire g) => _pourAutrui[g.chauffeurId] ?? 0;
 
-  /// Ce qui reste dû sur SES créances après l'arrêté, d'où que vienne l'argent
-  /// qui les a entamées : une dette soldée par le chauffeur d'à côté n'est plus
-  /// un reliquat pour celui qui la portait.
-  double reliquat(_GroupeBeneficiaire g) => g.creances.fold(
-      0.0, (s, l) => s + (_reste[_ArreteFormPageState._cleCreance(l)] ?? 0));
+  /// Ce qui reste dû sur SES créances de la période (et des précédentes) après
+  /// l'arrêté, d'où que vienne l'argent qui les a entamées : une dette soldée
+  /// par le chauffeur d'à côté n'est plus un reliquat pour celui qui la portait.
+  double reliquat(_GroupeBeneficiaire g) => _reliquat[g.chauffeurId] ?? 0;
+
+  double anterieur(_GroupeBeneficiaire g) => _anterieur[g.chauffeurId] ?? 0;
 
   double get totalFonds => groupes.fold(0.0, (s, g) => s + fonds(g));
   double get totalCompense => groupes.fold(0.0, (s, g) => s + compense(g));
   double get totalNet => groupes.fold(0.0, (s, g) => s + net(g));
   double get totalReliquat => groupes.fold(0.0, (s, g) => s + reliquat(g));
+  double get totalAnterieur => groupes.fold(0.0, (s, g) => s + anterieur(g));
 }
 
 /// Un bénéficiaire chauffeur : ses cotisations (crédit) et créances (débit).
@@ -547,11 +568,15 @@ class _SyntheseCard extends StatelessWidget {
   /// Affiché dès qu'il est non nul : valider en ignorant ce qui reste à la
   /// charge du chauffeur est précisément ce qu'il faut éviter.
   final double reliquat;
+
+  /// Reste dû des périodes précédentes, repris par cet arrêté.
+  final double anterieur;
   const _SyntheseCard(
       {required this.fonds,
       required this.compense,
       required this.net,
-      required this.reliquat});
+      required this.reliquat,
+      required this.anterieur});
 
   @override
   Widget build(BuildContext context) {
@@ -564,14 +589,21 @@ class _SyntheseCard extends StatelessWidget {
           border: Border.all(color: AppColors.border, width: 0.8)),
       child: Column(
         children: [
-          _ligne('Fonds sélectionné', fonds, AppColors.dark),
+          if (anterieur > 0)
+            _ligne('Reste dû des périodes précédentes', anterieur,
+                Colors.red.shade900,
+                aide: 'repris par cet arrêté'),
+          _ligne('Cotisations sélectionnées', fonds, AppColors.dark),
+          _ligne('− Dettes réglées avec ces cotisations', compense,
+              Colors.orange.shade900),
           const Divider(height: 18),
-          _ligne('− Créances compensées', compense, Colors.orange.shade900),
-          if (reliquat > 0)
-            _ligne('Reste dû après arrêté', reliquat, Colors.red.shade900,
-                aide: 'toutes créances ouvertes'),
-          const Divider(height: 18),
-          _ligne('= Net à restituer', net, Colors.green.shade800, gras: true),
+          _ligne('= À verser au chauffeur', net, Colors.green.shade800,
+              gras: true),
+          if (reliquat > 0) ...[
+            const Divider(height: 18),
+            _ligne('Reste dû', reliquat, Colors.red.shade900,
+                gras: true, aide: 'reporté sur l\'arrêté suivant'),
+          ],
         ],
       ),
     );
@@ -661,7 +693,7 @@ class _GroupeCard extends StatelessWidget {
                           color: AppColors.dark)),
                 ),
                 if (!groupe.estVehicule)
-                  Text('Net ${CurrencyFormatter.format(net)}',
+                  Text('À verser ${CurrencyFormatter.format(net)}',
                       style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,

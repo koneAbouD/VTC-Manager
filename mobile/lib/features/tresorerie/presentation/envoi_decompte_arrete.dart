@@ -82,6 +82,9 @@ class PartDecompte {
   /// Ce qu'il doit encore sur le périmètre de l'arrêté. Nul sans règlement : le
   /// snapshot ne fige pas ce qui restait à celui qui n'avait rien à arrêter.
   double? get resteDu => reglement?.reliquatReporte;
+
+  /// Ce qu'il devait des périodes précédentes, repris par cet arrêté.
+  double get repris => reglement?.reliquatAnterieur ?? 0;
 }
 
 /// Un chauffeur à qui envoyer le décompte, et ce que son message lui dira.
@@ -111,17 +114,17 @@ class DestinataireDecompte implements DestinataireWhatsApp {
   @override
   String get resume {
     if (_significatif(part.net)) {
-      return 'Net restitué ${CurrencyFormatter.format(part.net)}';
+      return 'Versé ${CurrencyFormatter.format(part.net)}';
     }
     final reste = part.resteDu;
     if (reste != null && _significatif(reste)) {
-      return 'Rien à restituer · reste dû ${CurrencyFormatter.format(reste)}';
+      return 'Rien à verser · reste dû ${CurrencyFormatter.format(reste)}';
     }
     if (_significatif(part.soldeParAutrui)) {
       return 'Dette soldée par d\'autres chauffeurs · '
           '${CurrencyFormatter.format(part.soldeParAutrui)}';
     }
-    return 'Rien à restituer';
+    return 'Rien à verser';
   }
 
   /// Le message seul, sans pièce jointe.
@@ -183,6 +186,8 @@ String composerDecompte(
     'voici le décompte de l\'arrêté du '
         '${_dateFmt.format(arrete.dateArrete ?? arrete.periodeFin)}, période du '
         '${_dateFmt.format(arrete.periodeDebut)} au ${_dateFmt.format(arrete.periodeFin)} :',
+    if (_significatif(part.repris))
+      '• Reste dû des périodes précédentes : ${montantRecu(part.repris)}',
     if (part.reglement != null)
       '• Vos cotisations : ${montantRecu(part.cotisations)}',
     if (_significatif(part.retenuPourLui))
@@ -200,16 +205,16 @@ String composerDecompte(
   final vehicule = _vehicule(arrete);
   final solde = <String>[
     if (_significatif(part.net))
-      'Net restitué : *${montantRecu(part.net)}*${mode == null ? '' : ' $mode'}'
+      'Montant qui vous est versé : *${montantRecu(part.net)}*${mode == null ? '' : ' $mode'}'
     else if (part.reglement != null)
-      'Aucune somme ne vous est restituée.',
+      'Aucune somme ne vous est versée.',
     // Le reliquat d'un arrêté par véhicule ne compte que les créances de ce
     // véhicule : annoncer « reste à payer » tout court laisserait croire au
     // chauffeur qu'il ne doit rien ailleurs.
     if (reste != null && _significatif(reste))
       arrete.perimetre == 'VEHICULE'
-          ? 'Reste à payer sur ce véhicule : *${montantRecu(reste)}*'
-          : 'Reste à payer : *${montantRecu(reste)}*',
+          ? 'Reste à payer sur ce véhicule : *${montantRecu(reste)}* (reporté sur le prochain arrêté)'
+          : 'Reste à payer : *${montantRecu(reste)}* (reporté sur le prochain arrêté)',
     if (vehicule != null || _renseigne(arrete.reference))
       [
         if (vehicule != null) 'Véhicule $vehicule',

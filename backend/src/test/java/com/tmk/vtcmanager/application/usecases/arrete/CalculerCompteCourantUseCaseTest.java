@@ -352,6 +352,39 @@ class CalculerCompteCourantUseCaseTest {
     }
 
     @Test
+    @DisplayName("Le reliquat s'arrête à la fin de période ; l'antérieur est repris en tête")
+    void reliquat_borne_a_la_periode_et_anterieur_repris() {
+        cotisations(cotisation(1L, 4_000, StatutLigneCotisation.ENCAISSE));
+        creances(
+                // Laissée par la période précédente : soldée en premier.
+                creance(TypeDocumentCreance.RECETTE, 100L, 3_000, DEBUT.minusDays(5)),
+                // De la période : entamée seulement (1 000 sur 5 000).
+                creance(TypeDocumentCreance.CONTRAVENTION, 200L, 5_000, DEBUT.plusDays(10)),
+                // Postérieure : ni compensée (fonds épuisé) ni reportée par CETTE période.
+                creance(TypeDocumentCreance.RECETTE, 300L, 2_000, FIN.plusDays(2)));
+
+        DecompteBeneficiaire decompte = calculerChauffeur();
+
+        assertThat(decompte.getReliquatAnterieur()).isEqualByComparingTo("3000");
+        assertThat(decompte.getTotalCompense()).isEqualByComparingTo("4000");
+        assertThat(decompte.getReliquat()).isEqualByComparingTo("4000");
+    }
+
+    @Test
+    @DisplayName("L'aperçu dit, ligne par ligne, ce qui reste dû après imputation")
+    void apercu_reste_apres_par_ligne() {
+        cotisations(cotisation(1L, 4_000, StatutLigneCotisation.ENCAISSE));
+        creances(creance(TypeDocumentCreance.RECETTE, 100L, 10_000, DEBUT.plusDays(1)));
+
+        ArreteCompte apercu = useCase.construireApercu(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN);
+
+        LigneArrete recette = apercu.getLignes().stream()
+                .filter(l -> l.getSens() == SensArrete.DEBIT).findFirst().orElseThrow();
+        assertThat(recette.getMontant()).isEqualByComparingTo("4000");
+        assertThat(recette.getResteApres()).isEqualByComparingTo("6000");
+    }
+
+    @Test
     @DisplayName("Décocher une créance ne la fait pas disparaître du reliquat")
     void reliquat_porte_sur_toutes_les_creances_ouvertes() {
         cotisations(cotisation(1L, 2_000, StatutLigneCotisation.ENCAISSE));

@@ -82,16 +82,45 @@ class ArreteDetailPage extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: 16),
-              const _Section('Règlements'),
+              const _Section('Par chauffeur'),
               for (final r in a.reglements) _ReglementTile(reglement: r),
-              const SizedBox(height: 16),
-              const _Section('Lignes de l\'arrêté'),
-              for (final l in a.lignes) _LigneTile(ligne: l),
+              // Les mêmes rubriques que le PDF, dans le même ordre.
+              for (final (titre, document, sens) in const [
+                ('Cotisations versées', 'COTISATION', 'CREDIT'),
+                ('Recettes compensées', 'RECETTE', 'DEBIT'),
+                ('Contraventions compensées', 'CONTRAVENTION', 'DEBIT'),
+                ('Pénalités compensées', 'PENALITE', 'DEBIT'),
+              ])
+                ..._rubrique(a, titre, document, sens),
+              if (a.dettesRestantes.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _Section('Dettes restant dues (${a.dettesRestantes.length})'),
+                for (final d in a.dettesRestantes)
+                  _DetteTile(dette: d, parVehicule: a.perimetre == 'VEHICULE'),
+                _TotalDettes(
+                    total: a.dettesRestantes.fold(0.0, (s, d) => s + d.reste)),
+              ],
             ],
           );
         },
       ),
     );
+  }
+
+  /// Les lignes d'un type, par date ; rien si l'arrêté n'en compte aucune.
+  List<Widget> _rubrique(
+      ArreteCompte a, String titre, String document, String sens) {
+    final lignes = a.lignes
+        .where((l) => l.document == document && l.sens == sens)
+        .toList()
+      ..sort((x, y) => (x.dateDocument ?? DateTime(9999))
+          .compareTo(y.dateDocument ?? DateTime(9999)));
+    if (lignes.isEmpty) return const [];
+    return [
+      const SizedBox(height: 16),
+      _Section('$titre (${lignes.length})'),
+      for (final l in lignes) _LigneTile(ligne: l),
+    ];
   }
 
   /// Fait parvenir le décompte aux chauffeurs que l'arrêté concerne, par
@@ -247,8 +276,6 @@ class _Synthese extends StatelessWidget {
   const _Synthese({required this.arrete});
   @override
   Widget build(BuildContext context) {
-    final fonds =
-        arrete.reglements.fold<double>(0, (s, r) => s + r.totalCotisations);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -257,15 +284,26 @@ class _Synthese extends StatelessWidget {
           border: Border.all(color: AppColors.border, width: 0.8)),
       child: Column(
         children: [
-          _row('Fonds de cotisation', fonds, AppColors.dark),
-          const Divider(height: 18),
-          _row('− Créances compensées', arrete.totalCompense,
+          // Le calcul se lit de haut en bas, comme sur le PDF : ce qui était
+          // dû en entrant, ce qui a été déposé, ce que le dépôt a réglé, ce qui
+          // est versé. Le reste dû vient après, à part : il ne se soustrait de
+          // rien, il passe à l'arrêté suivant.
+          if (arrete.totalReliquatAnterieur > 0)
+            _row('Reste dû des périodes précédentes', arrete.totalReliquatAnterieur,
+                Colors.red.shade900,
+                aide: 'repris par cet arrêté'),
+          _row('Cotisations versées', arrete.totalCotisations, AppColors.dark),
+          _row('− Dettes réglées avec ces cotisations', arrete.totalCompense,
               Colors.orange.shade900),
-          if (arrete.totalReliquat > 0)
-            _row('Reliquat reporté', arrete.totalReliquat, Colors.red.shade900),
           const Divider(height: 18),
-          _row('= Net restitué', arrete.totalRestitue, Colors.green.shade800,
+          _row('= Versé au chauffeur', arrete.totalRestitue,
+              Colors.green.shade800,
               gras: true),
+          if (arrete.totalReliquat > 0) ...[
+            const Divider(height: 18),
+            _row('Reste dû', arrete.totalReliquat, Colors.red.shade900,
+                gras: true, aide: 'reporté sur l\'arrêté suivant'),
+          ],
           if (arrete.resteNet != null) ...[
             const Divider(height: 18),
             _resteRow(arrete.resteNet!),
@@ -277,25 +315,39 @@ class _Synthese extends StatelessWidget {
 
   /// Solde de compte courant du périmètre à ce jour : > 0 à restituer, < 0 dû.
   Widget _resteRow(double reste) {
+    // Le compte AUJOURD'HUI, pas à la date de l'arrêté : des cotisations ou
+    // des dettes ont pu naître depuis.
     final (label, couleur) = reste > 0
-        ? ('Reste à restituer', Colors.green.shade800)
+        ? ('Cotisations encore à rendre', Colors.green.shade800)
         : reste < 0
-            ? ('Reste dû', Colors.red.shade900)
+            ? ('Encore dû', Colors.red.shade900)
             : ('Compte soldé', AppColors.hint);
-    return _row(label, reste.abs(), couleur, gras: true);
+    return _row(label, reste.abs(), couleur, aide: 'situation du compte à ce jour');
   }
 
-  Widget _row(String label, double montant, Color couleur, {bool gras = false}) {
+  Widget _row(String label, double montant, Color couleur,
+      {bool gras = false, String? aide}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: gras ? FontWeight.w700 : FontWeight.w500,
-                  color: AppColors.dark)),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: gras ? FontWeight.w700 : FontWeight.w500,
+                        color: AppColors.dark)),
+                if (aide != null)
+                  Text(aide,
+                      style:
+                          const TextStyle(fontSize: 10.5, color: AppColors.hint)),
+              ],
+            ),
+          ),
           Text(CurrencyFormatter.format(montant),
               style: TextStyle(
                   fontSize: gras ? 15 : 13,
@@ -348,20 +400,38 @@ class _ReglementTile extends StatelessWidget {
                         color: AppColors.dark)),
                 const SizedBox(height: 2),
                 Text(
-                    'compensé ${CurrencyFormatter.format(reglement.totalCreancesCompensees)}'
-                    '${reglement.reliquatReporte > 0 ? ' · reliquat ${CurrencyFormatter.format(reglement.reliquatReporte)}' : ''}'
-                    '${reglement.modePaiement != null ? ' · ${reglement.modePaiement == 'MOBILE_MONEY' ? 'Mobile Money' : 'Espèces'}' : ''}',
+                    [
+                      if (reglement.reliquatAnterieur > 0)
+                        'repris ${CurrencyFormatter.format(reglement.reliquatAnterieur)}',
+                      'cotisations ${CurrencyFormatter.format(reglement.totalCotisations)}',
+                      'dettes réglées ${CurrencyFormatter.format(reglement.totalCreancesCompensees)}',
+                    ].join(' · '),
                     style: const TextStyle(fontSize: 11.5, color: AppColors.label)),
+                if (reglement.reliquatReporte > 0)
+                  Text(
+                      'reste dû ${CurrencyFormatter.format(reglement.reliquatReporte)}, '
+                      'reporté sur l\'arrêté suivant',
+                      style: TextStyle(fontSize: 11.5, color: Colors.red.shade900)),
               ],
             ),
           ),
-          Text(CurrencyFormatter.format(reglement.montantNet),
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: reglement.aRestitution
-                      ? Colors.green.shade800
-                      : AppColors.hint)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(CurrencyFormatter.format(reglement.montantNet),
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: reglement.aRestitution
+                          ? Colors.green.shade800
+                          : AppColors.hint)),
+              Text(
+                  reglement.aRestitution
+                      ? 'versé${reglement.modePaiement != null ? ' · ${reglement.modePaiement == 'MOBILE_MONEY' ? 'Mobile Money' : 'Espèces'}' : ''}'
+                      : 'rien à verser',
+                  style: const TextStyle(fontSize: 10.5, color: AppColors.hint)),
+            ],
+          ),
         ],
       ),
     );
@@ -413,11 +483,111 @@ class _LigneTile extends StatelessWidget {
               ],
             ),
           ),
-          Text('${credit ? '+' : '−'} ${CurrencyFormatter.format(ligne.montant)}',
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('${credit ? '+' : '−'} ${CurrencyFormatter.format(ligne.montant)}',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: credit ? Colors.green.shade800 : Colors.orange.shade900)),
+              // Créance que l'arrêté n'a pas soldée : ce qu'elle doit encore,
+              // pour qu'on ne la croie pas réglée.
+              if (!credit && (ligne.resteApres ?? 0) > 0)
+                Text('reste dû ${CurrencyFormatter.format(ligne.resteApres!)}',
+                    style: TextStyle(fontSize: 11, color: Colors.red.shade900)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Une créance laissée ouverte : ce qu'elle doit encore, et sur combien quand
+/// elle a déjà été entamée.
+class _DetteTile extends StatelessWidget {
+  final DetteRestanteArrete dette;
+  final bool parVehicule;
+  const _DetteTile({required this.dette, required this.parVehicule});
+
+  String get _label => switch (dette.document) {
+        'RECETTE' => 'Recette',
+        'PENALITE' => 'Pénalité',
+        'CONTRAVENTION' => 'Contravention',
+        _ => dette.document,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: Row(
+        children: [
+          Icon(Icons.hourglass_bottom_rounded,
+              size: 16, color: Colors.red.shade800),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    dette.immatriculation != null
+                        ? '$_label · ${dette.immatriculation}'
+                        : _label,
+                    style: const TextStyle(fontSize: 13, color: AppColors.dark)),
+                Text(
+                    [
+                      dette.dateDocument != null
+                          ? fmtDate(dette.dateDocument)
+                          : '#${dette.documentId}',
+                      if (parVehicule && dette.chauffeurId == null)
+                        'dette du véhicule',
+                    ].join(' · '),
+                    style: const TextStyle(fontSize: 11, color: AppColors.hint)),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(CurrencyFormatter.format(dette.reste),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red.shade900)),
+              if (dette.entamee)
+                Text('sur ${CurrencyFormatter.format(dette.montantDu!)}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.hint)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TotalDettes extends StatelessWidget {
+  final double total;
+  const _TotalDettes({required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Reporté sur l\'arrêté suivant',
+              style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.dark)),
+          Text(CurrencyFormatter.format(total),
               style: TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: credit ? Colors.green.shade800 : Colors.orange.shade900)),
+                  fontWeight: FontWeight.w700,
+                  color: Colors.red.shade900)),
         ],
       ),
     );

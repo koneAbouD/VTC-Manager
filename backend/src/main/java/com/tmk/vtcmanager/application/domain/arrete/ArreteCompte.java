@@ -43,6 +43,9 @@ public class ArreteCompte {
     private List<LigneArrete> lignes = new ArrayList<>();
     @Builder.Default
     private List<ReglementArrete> reglements = new ArrayList<>();
+    /** Créances laissées ouvertes, datées jusqu'à la fin de période : le détail du reste dû. */
+    @Builder.Default
+    private List<DetteRestanteArrete> dettesRestantes = new ArrayList<>();
 
     /** Total restitué (somme des nets positifs des règlements). */
     public BigDecimal totalRestitue() {

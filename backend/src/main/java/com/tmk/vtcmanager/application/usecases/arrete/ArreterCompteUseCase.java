@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.usecases.arrete;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
+import com.tmk.vtcmanager.application.domain.arrete.DetteRestanteArrete;
 import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
@@ -117,11 +118,14 @@ public class ArreterCompteUseCase {
         // protection est de les sérialiser. Ils sont rares, le coût est nul.
         arreteCompteRepository.verrouillerExecution();
 
-        List<DecompteBeneficiaire> decomptes =
-                calculerCompteCourantUseCase.calculer(perimetre, perimetreId, periodeDebut, periodeFin, selection)
-                        .stream()
-                        .filter(DecompteBeneficiaire::aMatiereAArreter)
-                        .toList();
+        // Tous les décomptes servent au détail des dettes restant dues — un
+        // chauffeur purement débiteur n'a rien à arrêter mais sa dette compte ;
+        // seuls ceux qui ont matière à arrêter produisent des écritures.
+        List<DecompteBeneficiaire> tousDecomptes =
+                calculerCompteCourantUseCase.calculer(perimetre, perimetreId, periodeDebut, periodeFin, selection);
+        List<DecompteBeneficiaire> decomptes = tousDecomptes.stream()
+                .filter(DecompteBeneficiaire::aMatiereAArreter)
+                .toList();
         if (decomptes.isEmpty()) {
             throw new IllegalArgumentException(
                     "Aucune cotisation à restituer ni créance à compenser sur cette période.");
@@ -205,6 +209,9 @@ public class ArreterCompteUseCase {
                     .vehiculeId(creance.getVehiculeId())
                     .dateDocument(creance.getDateReference())
                     .montant(alloc.getMontant())
+                    // Le cumul couvre tous les fonds qui l'ont entamée : ce
+                    // qui reste est bien ce que le document doit encore.
+                    .resteApres(creance.getRestant().subtract(alloc.getMontant()).max(BigDecimal.ZERO))
                     .sens(SensArrete.DEBIT)
                     .operationId(operationId)
                     .build());
@@ -226,6 +233,7 @@ public class ArreterCompteUseCase {
                     .totalCreancesCompensees(d.getTotalCompense())
                     .montantNet(d.getNet())
                     .reliquatReporte(d.getReliquat())
+                    .reliquatAnterieur(d.getReliquatAnterieur())
                     .modePaiement(d.getNet().signum() > 0 ? mode : null)
                     .compteTresorerieId(operationDecaissementId != null ? compteVersement : null)
                     .operationDecaissementId(operationDecaissementId)
@@ -234,6 +242,15 @@ public class ArreterCompteUseCase {
 
         arreteCompteRepository.enregistrerLignes(lignes);
         arreteCompteRepository.enregistrerReglements(reglements);
+
+        // Calculées sur les allocations, pas relues en base : les créances
+        // viennent d'être compensées dans cette même transaction.
+        List<DetteRestanteArrete> dettes = calculerCompteCourantUseCase
+                .dettesRestantes(tousDecomptes, perimetre, perimetreId, periodeFin);
+        if (dettes != null && !dettes.isEmpty()) {
+            dettes.forEach(d -> d.setArreteId(arreteId));
+            arreteCompteRepository.enregistrerDettesRestantes(dettes);
+        }
 
         return arreteCompteRepository.findById(arreteId).orElse(entete);
     }

@@ -14,6 +14,7 @@ import com.tmk.vtcmanager.interfaces.rest.arrete.dto.request.ArreterCompteReques
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.ArreteResponse;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.ChauffeurArreteResponse;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.CompteCourantResponse;
+import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.DetteRestanteArreteResponse;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.LigneArreteResponse;
 import com.tmk.vtcmanager.interfaces.rest.arrete.dto.response.ReglementArreteResponse;
 import com.tmk.vtcmanager.interfaces.rest.common.AnnulationRequest;
@@ -166,14 +167,14 @@ public class ArreteCompteController {
         List<ReglementArreteResponse> reglements = a.getReglements().stream()
                 .map(r -> new ReglementArreteResponse(r.getChauffeurId(), r.getChauffeurNom(),
                         r.getTotalCotisations(), r.getTotalCreancesCompensees(), r.getMontantNet(),
-                        r.getReliquatReporte(), r.getModePaiement(), r.getCompteTresorerieId(),
+                        r.getReliquatReporte(), r.getReliquatAnterieur(), r.getModePaiement(), r.getCompteTresorerieId(),
                         r.getOperationDecaissementId()))
                 .toList();
         List<LigneArreteResponse> lignes = a.getLignes().stream()
                 .map(l -> new LigneArreteResponse(l.getDocument(), l.getDocumentId(),
                         l.getChauffeurId(), l.getVehiculeId(), l.getImmatriculation(),
                         l.getDateDocument(), l.getMontant(), l.getRestant(),
-                        l.getMontantDu(), l.getSens()))
+                        l.getMontantDu(), l.getResteApres(), l.getSens()))
                 .toList();
 
         String libelle = a.getPerimetreLibelle();
@@ -184,6 +185,11 @@ public class ArreteCompteController {
         return new ArreteResponse(a.getId(), a.getPerimetre(), a.getPerimetreId(), libelle,
                 a.getPeriodeDebut(), a.getPeriodeFin(), a.getDateArrete(), a.getReference(),
                 a.getStatut() != null ? a.getStatut().name() : null, a.getMotifAnnulation(),
-                a.totalRestitue(), a.getResteNet(), lignes, reglements);
+                a.totalRestitue(), a.getResteNet(), lignes, reglements,
+                a.getDettesRestantes().stream()
+                        .map(d -> new DetteRestanteArreteResponse(d.getDocument(), d.getDocumentId(),
+                                d.getChauffeurId(), d.getVehiculeId(), d.getImmatriculation(),
+                                d.getDateDocument(), d.getMontantDu(), d.getReste()))
+                        .toList());
     }
 }

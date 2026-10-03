@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.usecases.arrete;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
+import com.tmk.vtcmanager.application.domain.arrete.DetteRestanteArrete;
 import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
@@ -135,7 +136,7 @@ public class CalculerCompteCourantUseCase {
         }
 
         return brouillons.stream()
-                .map(this::figer)
+                .map(b -> figer(b, debut, fin))
                 .filter(DecompteBeneficiaire::estNonVide)
                 .toList();
     }
@@ -185,6 +186,7 @@ public class CalculerCompteCourantUseCase {
                         .montant(impute.getOrDefault(cle(c), BigDecimal.ZERO))
                         .restant(c.getRestant())
                         .montantDu(c.getMontantDu())
+                        .resteApres(c.getRestant().subtract(impute.getOrDefault(cle(c), BigDecimal.ZERO)))
                         .sens(SensArrete.DEBIT)
                         .build());
             }
@@ -195,6 +197,7 @@ public class CalculerCompteCourantUseCase {
                     .totalCreancesCompensees(d.getTotalCompense())
                     .montantNet(d.getNet())
                     .reliquatReporte(d.getReliquat())
+                    .reliquatAnterieur(d.getReliquatAnterieur())
                     .build());
         }
         // Les dettes du véhicule, sans débiteur : l'écran les présente à part
@@ -209,6 +212,7 @@ public class CalculerCompteCourantUseCase {
                         .montant(impute.getOrDefault(cle(c), BigDecimal.ZERO))
                         .restant(c.getRestant())
                         .montantDu(c.getMontantDu())
+                        .resteApres(c.getRestant().subtract(impute.getOrDefault(cle(c), BigDecimal.ZERO)))
                         .sens(SensArrete.DEBIT)
                         .build());
             }
@@ -221,6 +225,7 @@ public class CalculerCompteCourantUseCase {
                 .periodeFin(fin)
                 .lignes(lignes)
                 .reglements(reglements)
+                .dettesRestantes(dettesRestantes(decomptes, perimetre, perimetreId, fin))
                 .build();
     }
 
@@ -248,6 +253,46 @@ public class CalculerCompteCourantUseCase {
         return List.copyOf(parDocument.values());
     }
 
+    /**
+     * Les créances datées jusqu'à la fin de période que l'arrêté laisse
+     * ouvertes, avec ce qu'elles doivent encore : le détail du reste dû.
+     *
+     * <p>Toutes les créances des bénéficiaires, décochées comprises, et sur un
+     * arrêté par véhicule les dettes du véhicule lui-même. Les postérieures à la
+     * période en sont exclues, comme du reliquat : elles relèvent de l'arrêté
+     * suivant.</p>
+     */
+    public List<DetteRestanteArrete> dettesRestantes(List<DecompteBeneficiaire> decomptes,
+                                                     PerimetreArrete perimetre, Long perimetreId,
+                                                     LocalDate fin) {
+        Map<SelectionArrete.CreanceKey, BigDecimal> impute = new LinkedHashMap<>();
+        for (DecompteBeneficiaire.Allocation a : compensationsCumulees(decomptes)) {
+            impute.put(cle(a.getCreance()), a.getMontant());
+        }
+        Map<SelectionArrete.CreanceKey, LigneCreance> creances = new LinkedHashMap<>();
+        decomptes.forEach(d -> d.getCreancesOuvertes().forEach(c -> creances.putIfAbsent(cle(c), c)));
+        if (perimetre == PerimetreArrete.VEHICULE) {
+            dettesDuVehicule(perimetreId).forEach(c -> creances.putIfAbsent(cle(c), c));
+        }
+        return creances.values().stream()
+                .filter(c -> c.getDateReference() == null || fin == null || !c.getDateReference().isAfter(fin))
+                .map(c -> DetteRestanteArrete.builder()
+                        .document(c.getDocument())
+                        .documentId(c.getDocumentId())
+                        .chauffeurId(c.getChauffeurId())
+                        .vehiculeId(c.getVehiculeId())
+                        .chauffeurNom(c.getChauffeurNom())
+                        .dateDocument(c.getDateReference())
+                        .montantDu(c.getMontantDu())
+                        .reste(c.getRestant().subtract(impute.getOrDefault(cle(c), BigDecimal.ZERO)))
+                        .build())
+                .filter(d -> d.getReste().signum() > 0)
+                .sorted(Comparator.comparing(DetteRestanteArrete::getDateDocument,
+                                Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(DetteRestanteArrete::getDocumentId))
+                .toList();
+    }
+
     // ── Interne ──────────────────────────────────────────────────────────────
 
     /**
@@ -269,15 +314,27 @@ public class CalculerCompteCourantUseCase {
     }
 
     /** Fige un brouillon en décompte : les totaux se lisent sur l'état final des créances. */
-    private DecompteBeneficiaire figer(Brouillon b) {
+    private DecompteBeneficiaire figer(Brouillon b, LocalDate debut, LocalDate fin) {
         BigDecimal totalCompense = b.allocations.stream()
                 .map(DecompteBeneficiaire.Allocation::getMontant)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         // Ce qui reste dû SUR SES créances, quel que soit le fonds qui les a
         // entamées : sur un arrêté par véhicule, une dette éteinte par le
         // chauffeur d'à côté n'est plus un reliquat pour son porteur.
+        //
+        // Borné à la fin de période : le reliquat est ce que CETTE période
+        // laisse à la suivante. Une créance postérieure reste compensable, mais
+        // si le fonds ne l'atteint pas elle sera simplement une créance de la
+        // période suivante, pas un report.
         BigDecimal reliquat = b.creances.stream()
+                .filter(c -> !apres(c, fin))
                 .map(c -> c.reste)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Ce que les périodes précédentes lui ont laissé, tel qu'il le devait
+        // en entrant dans cet arrêté.
+        BigDecimal reliquatAnterieur = b.creances.stream()
+                .filter(c -> avant(c, debut))
+                .map(c -> c.ligne.getRestant())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         // Ce que l'arrêté éteint sur SES créances, quel que soit le fonds qui
         // paie : c'est ce qui garde à l'écran le chauffeur sans dépôt dont un
@@ -291,9 +348,21 @@ public class CalculerCompteCourantUseCase {
                 .toList();
         return new DecompteBeneficiaire(b.chauffeurId,
                 nomChauffeur(b.chauffeurId, b.cotisations, retenues),
-                b.cotisations, b.fond, retenues, b.allocations,
-                totalCompense, b.fond.subtract(totalCompense), reliquat,
+                b.cotisations, b.fond, retenues,
+                b.creances.stream().map(c -> c.ligne).toList(), b.allocations,
+                totalCompense, b.fond.subtract(totalCompense), reliquat, reliquatAnterieur,
                 compenseSurSesCreances);
+    }
+
+    /** Créance datée avant le début de période. Une date inconnue n'est ni avant ni après. */
+    private static boolean avant(CreanceOuverte c, LocalDate debut) {
+        LocalDate d = c.ligne.getDateReference();
+        return d != null && debut != null && d.isBefore(debut);
+    }
+
+    private static boolean apres(CreanceOuverte c, LocalDate fin) {
+        LocalDate d = c.ligne.getDateReference();
+        return d != null && fin != null && d.isAfter(fin);
     }
 
     private static SelectionArrete.CreanceKey cle(LigneCreance creance) {

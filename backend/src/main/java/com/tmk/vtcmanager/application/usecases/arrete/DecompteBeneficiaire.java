@@ -26,11 +26,27 @@ public class DecompteBeneficiaire {
      * fait partie du décompte, au même titre que ce qui est éteint.
      */
     private final List<LigneCreance> creances;
+    /**
+     * Toutes ses créances ouvertes, décochées comprises : la matière du
+     * détail des dettes restant dues.
+     */
+    private final List<LigneCreance> creancesOuvertes;
     /** Créance compensée → montant imputé (par antériorité). Sous-ensemble de {@link #creances}. */
     private final List<Allocation> allocations;
     private final BigDecimal totalCompense;
     private final BigDecimal net;
+    /**
+     * Ce qui reste dû après l'arrêté sur SES créances datées jusqu'à la fin de
+     * la période — y compris les décochées et le reliquat antérieur non couvert.
+     * Les créances postérieures à la période, même compensables, n'en font pas
+     * partie : elles relèvent de l'arrêté suivant.
+     */
     private final BigDecimal reliquat;
+    /**
+     * Ce qu'il devait, avant cet arrêté, sur ses créances datées avant le début
+     * de la période : le reliquat des périodes précédentes, repris ici.
+     */
+    private final BigDecimal reliquatAnterieur;
     /**
      * Ce que cet arrêté éteint sur SES créances, d'où que vienne l'argent.
      *
@@ -45,18 +61,21 @@ public class DecompteBeneficiaire {
 
     public DecompteBeneficiaire(Long chauffeurId, String chauffeurNom,
                                 List<LigneCotisation> cotisations, BigDecimal fond,
-                                List<LigneCreance> creances, List<Allocation> allocations,
+                                List<LigneCreance> creances, List<LigneCreance> creancesOuvertes,
+                                List<Allocation> allocations,
                                 BigDecimal totalCompense, BigDecimal net, BigDecimal reliquat,
-                                BigDecimal compenseSurSesCreances) {
+                                BigDecimal reliquatAnterieur, BigDecimal compenseSurSesCreances) {
         this.chauffeurId = chauffeurId;
         this.chauffeurNom = chauffeurNom;
         this.cotisations = cotisations;
         this.fond = fond;
         this.creances = creances;
+        this.creancesOuvertes = creancesOuvertes;
         this.allocations = allocations;
         this.totalCompense = totalCompense;
         this.net = net;
         this.reliquat = reliquat;
+        this.reliquatAnterieur = reliquatAnterieur;
         this.compenseSurSesCreances = compenseSurSesCreances;
     }
 

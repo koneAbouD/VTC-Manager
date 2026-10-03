@@ -133,11 +133,11 @@ void main() {
           contains("• Retenu pour d'autres dettes du véhicule : "
               '${montantRecu(50000)}'));
       expect(message,
-          contains('Net restitué : *${montantRecu(20000)}* en espèces'));
+          contains('Montant qui vous est versé : *${montantRecu(20000)}* en espèces'));
       expect(message, contains('Véhicule 1234 AB 01 · Réf. ARR-2026-000012'));
       expect(message, contains('envoyé en PDF'));
       expect(message, isNot(contains('Reste à payer')));
-      expect(aya.resume, startsWith('Net restitué'));
+      expect(aya.resume, startsWith('Versé'));
     });
 
     test('celui dont un collègue a soldé la dette l\'apprend, sans versement '
@@ -150,8 +150,8 @@ void main() {
           contains("• Vos créances soldées par d'autres chauffeurs du véhicule : "
               '${montantRecu(50000)}'));
       expect(koffi.message, isNot(contains('Vos cotisations')));
-      expect(koffi.message, isNot(contains('Net restitué')));
-      expect(koffi.message, isNot(contains('restituée')));
+      expect(koffi.message, isNot(contains('versé')));
+      expect(koffi.message, isNot(contains('versée')));
       // Le message seul ne promet pas de pièce jointe.
       expect(koffi.message, isNot(contains('PDF')));
     });
@@ -198,10 +198,10 @@ void main() {
 
       expect(aya.message,
           contains('• Retenu pour vos créances : ${montantRecu(20000)}'));
-      expect(aya.message, contains('Aucune somme ne vous est restituée.'));
+      expect(aya.message, contains('Aucune somme ne vous est versée.'));
       expect(aya.message, contains('Reste à payer : *${montantRecu(10000)}*'));
       expect(aya.message, isNot(contains("d'autres chauffeurs")));
-      expect(aya.resume, startsWith('Rien à restituer · reste dû'));
+      expect(aya.resume, startsWith('Rien à verser · reste dû'));
       // Sans véhicule à nommer, le chauffeur tient lieu de plaque.
       expect(nomFichierDecompte(arrete), 'decompte_aya_traore_01-09-2026.pdf');
     });

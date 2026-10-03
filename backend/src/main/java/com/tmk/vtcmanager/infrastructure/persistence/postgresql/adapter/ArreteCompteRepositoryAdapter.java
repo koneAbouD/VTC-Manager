@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
 import com.tmk.vtcmanager.application.domain.arrete.ChauffeurArrete;
+import com.tmk.vtcmanager.application.domain.arrete.DetteRestanteArrete;
 import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
@@ -15,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -75,6 +77,23 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
             .sens(SensArrete.valueOf(rs.getString("sens")))
             .operationId(rs.getObject("operation_id", Long.class))
             .immatriculation(rs.getString("immatriculation"))
+            .chauffeurNom(rs.getString("chauffeur_nom"))
+            .resteApres(rs.getBigDecimal("reste_apres"))
+            .dateDocument(rs.getDate("date_document") != null
+                    ? rs.getDate("date_document").toLocalDate() : null)
+            .build();
+
+    private static final RowMapper<DetteRestanteArrete> DETTE_MAPPER = (rs, i) -> DetteRestanteArrete.builder()
+            .id(rs.getLong("id"))
+            .arreteId(rs.getLong("arrete_id"))
+            .document(TypeDocumentCreance.valueOf(rs.getString("document_type")))
+            .documentId(rs.getLong("document_id"))
+            .chauffeurId(rs.getObject("chauffeur_id", Long.class))
+            .vehiculeId(rs.getObject("vehicule_id", Long.class))
+            .montantDu(rs.getBigDecimal("montant_du"))
+            .reste(rs.getBigDecimal("reste"))
+            .chauffeurNom(rs.getString("chauffeur_nom"))
+            .immatriculation(rs.getString("immatriculation"))
             .dateDocument(rs.getDate("date_document") != null
                     ? rs.getDate("date_document").toLocalDate() : null)
             .build();
@@ -88,6 +107,7 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
             .totalCreancesCompensees(rs.getBigDecimal("total_creances_compensees"))
             .montantNet(rs.getBigDecimal("montant_net"))
             .reliquatReporte(rs.getBigDecimal("reliquat_reporte"))
+            .reliquatAnterieur(rs.getBigDecimal("reliquat_anterieur"))
             .modePaiement(rs.getString("mode_paiement") != null
                     ? ModePaiement.valueOf(rs.getString("mode_paiement")) : null)
             .compteTresorerieId(rs.getObject("compte_tresorerie_id", Long.class))
@@ -113,8 +133,9 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
     public void enregistrerLignes(List<LigneArrete> lignes) {
         jdbcTemplate.batchUpdate("""
                 INSERT INTO lignes_arrete
-                    (arrete_id, document_type, document_id, chauffeur_id, vehicule_id, montant, sens, operation_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    (arrete_id, document_type, document_id, chauffeur_id, vehicule_id, montant, sens, operation_id,
+                     reste_apres, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 """,
                 lignes, lignes.size(),
                 (ps, l) -> {
@@ -126,6 +147,7 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
                     ps.setBigDecimal(6, l.getMontant());
                     ps.setString(7, l.getSens().name());
                     ps.setObject(8, l.getOperationId());
+                    ps.setBigDecimal(9, l.getResteApres());
                 });
     }
 
@@ -135,8 +157,8 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
                 INSERT INTO reglements_arrete
                     (arrete_id, chauffeur_id, total_cotisations, total_creances_compensees,
                      montant_net, reliquat_reporte, mode_paiement, compte_tresorerie_id,
-                     operation_decaissement_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                     operation_decaissement_id, reliquat_anterieur, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 """,
                 reglements, reglements.size(),
                 (ps, r) -> {
@@ -149,6 +171,27 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
                     ps.setString(7, r.getModePaiement() != null ? r.getModePaiement().name() : null);
                     ps.setObject(8, r.getCompteTresorerieId());
                     ps.setObject(9, r.getOperationDecaissementId());
+                    ps.setBigDecimal(10, r.getReliquatAnterieur() != null
+                            ? r.getReliquatAnterieur() : BigDecimal.ZERO);
+                });
+    }
+
+    @Override
+    public void enregistrerDettesRestantes(List<DetteRestanteArrete> dettes) {
+        jdbcTemplate.batchUpdate("""
+                INSERT INTO dettes_restantes_arrete
+                    (arrete_id, document_type, document_id, chauffeur_id, vehicule_id, montant_du, reste, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                """,
+                dettes, dettes.size(),
+                (ps, d) -> {
+                    ps.setLong(1, d.getArreteId());
+                    ps.setString(2, d.getDocument().name());
+                    ps.setLong(3, d.getDocumentId());
+                    ps.setObject(4, d.getChauffeurId());
+                    ps.setObject(5, d.getVehiculeId());
+                    ps.setBigDecimal(6, d.getMontantDu());
+                    ps.setBigDecimal(7, d.getReste());
                 });
     }
 
@@ -166,11 +209,13 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
         // « jour » d'une créance des deux côtés.
         arrete.setLignes(jdbcTemplate.query("""
                 SELECT la.*, v.immatriculation,
+                       NULLIF(TRIM(CONCAT(ch.prenom, ' ', ch.nom)), '') AS chauffeur_nom,
                        COALESCE(lc.date_cotisation, lr.date_recette,
                                 lp.date_faute, lp.date_generation,
                                 ct.date_infraction) AS date_document
                 FROM lignes_arrete la
                 LEFT JOIN vehicules v ON v.id = la.vehicule_id
+                LEFT JOIN chauffeurs ch ON ch.id = la.chauffeur_id
                 LEFT JOIN lignes_cotisation lc
                        ON la.document_type = 'COTISATION' AND lc.id = la.document_id
                 LEFT JOIN lignes_recette lr
@@ -189,6 +234,24 @@ public class ArreteCompteRepositoryAdapter implements ArreteCompteRepository {
                 WHERE r.arrete_id = ?
                 ORDER BY r.id
                 """, REGLEMENT_MAPPER, id));
+        // Même résolution du « jour » que pour les lignes (cf. ci-dessus).
+        arrete.setDettesRestantes(jdbcTemplate.query("""
+                SELECT d.*, v.immatriculation,
+                       NULLIF(TRIM(CONCAT(ch.prenom, ' ', ch.nom)), '') AS chauffeur_nom,
+                       COALESCE(lr.date_recette, lp.date_faute, lp.date_generation,
+                                ct.date_infraction) AS date_document
+                FROM dettes_restantes_arrete d
+                LEFT JOIN vehicules v ON v.id = d.vehicule_id
+                LEFT JOIN chauffeurs ch ON ch.id = d.chauffeur_id
+                LEFT JOIN lignes_recette lr
+                       ON d.document_type = 'RECETTE' AND lr.id = d.document_id
+                LEFT JOIN lignes_penalite lp
+                       ON d.document_type = 'PENALITE' AND lp.id = d.document_id
+                LEFT JOIN contraventions ct
+                       ON d.document_type = 'CONTRAVENTION' AND ct.id = d.document_id
+                WHERE d.arrete_id = ?
+                ORDER BY date_document NULLS LAST, d.id
+                """, DETTE_MAPPER, id));
         return Optional.of(arrete);
     }
 

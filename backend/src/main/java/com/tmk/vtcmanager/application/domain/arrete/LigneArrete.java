@@ -30,6 +30,8 @@ public class LigneArrete {
     private SensArrete sens;
     /** Opération de compensation créée pour une ligne DEBIT (null pour un CREDIT). Sert au contre-passage. */
     private Long operationId;
+    /** Nom du chauffeur de la ligne (résolu à la lecture ; null si non rattachée). */
+    private String chauffeurNom;
     /** Immatriculation du véhicule de la ligne (résolue à la lecture ; null si non rattachée). */
     private String immatriculation;
     /**
@@ -55,4 +57,11 @@ public class LigneArrete {
      * ne dit que la part qu'un arrêté en éteint.
      */
     private BigDecimal montantDu;
+    /**
+     * Ce qui reste dû sur la créance une fois la part de cet arrêté imputée.
+     * Figé à l'enregistrement — un paiement ultérieur ne réécrit pas le
+     * décompte. Null pour une cotisation et pour les arrêtés plus anciens que
+     * cette donnée.
+     */
+    private BigDecimal resteApres;
 }

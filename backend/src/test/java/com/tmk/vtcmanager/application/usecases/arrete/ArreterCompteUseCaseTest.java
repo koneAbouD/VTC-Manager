@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.usecases.arrete;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
+import com.tmk.vtcmanager.application.domain.arrete.DetteRestanteArrete;
 import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
 import com.tmk.vtcmanager.application.domain.arrete.StatutArrete;
@@ -203,6 +204,33 @@ class ArreterCompteUseCaseTest {
         assertThat(r.getMontantNet()).isEqualByComparingTo("70");
         assertThat(r.getTotalCreancesCompensees()).isEqualByComparingTo("30");
         assertThat(r.getReliquatReporte()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("L'arrêté consigne les dettes qu'il laisse ouvertes jusqu'à la fin de période")
+    void dettes_restantes_enregistrees() {
+        // Fonds 40 : la recette 200 (30) est soldée, la 201 (50) entamée de 10.
+        // La 202, postérieure à la période, n'est pas un report de CETTE période.
+        when(ligneCotisationRepository.findByCriteres(any()))
+                .thenReturn(List.of(cotisation(BigDecimal.valueOf(40))));
+        LigneCreance posterieure = recette(202L, BigDecimal.valueOf(20));
+        posterieure.setDateReference(FIN.plusDays(3));
+        when(creanceRepository.getLignesCreance(CHAUFFEUR)).thenReturn(List.of(
+                recette(200L, BigDecimal.valueOf(30)),
+                recette(201L, BigDecimal.valueOf(50)),
+                posterieure));
+
+        useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null);
+
+        ArgumentCaptor<List<DetteRestanteArrete>> dettes = ArgumentCaptor.forClass(List.class);
+        verify(arreteCompteRepository).enregistrerDettesRestantes(dettes.capture());
+        assertThat(dettes.getValue()).singleElement().satisfies(d -> {
+            assertThat(d.getDocumentId()).isEqualTo(201L);
+            assertThat(d.getArreteId()).isEqualTo(1L);
+            assertThat(d.getReste()).isEqualByComparingTo("40");
+            assertThat(d.getMontantDu()).isEqualByComparingTo("50");
+        });
     }
 
     @Test

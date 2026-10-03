@@ -11,7 +11,10 @@ public record ReglementArreteResponse(
         BigDecimal totalCotisations,
         BigDecimal totalCreancesCompensees,
         BigDecimal montantNet,
+        /** Reste dû sur les créances datées jusqu'à la fin de période, reporté sur l'arrêté suivant. */
         BigDecimal reliquatReporte,
+        /** Reste dû des périodes précédentes, repris par cet arrêté. */
+        BigDecimal reliquatAnterieur,
         ModePaiement modePaiement,
         Long compteTresorerieId,
         Long operationDecaissementId

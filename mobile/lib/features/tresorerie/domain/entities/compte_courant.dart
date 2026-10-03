@@ -76,6 +76,11 @@ class LigneArrete {
   /// l'amende. Servi par l'aperçu seulement, comme [restant] : c'est à lui que
   /// l'utilisateur reconnaît la créance.
   final double? montantDu;
+
+  /// Ce qui reste dû sur la créance une fois la part de cet arrêté imputée.
+  /// Figé à l'enregistrement ; null pour une cotisation et pour les arrêtés
+  /// antérieurs à cette donnée.
+  final double? resteApres;
   final String sens; // CREDIT | DEBIT
 
   const LigneArrete({
@@ -88,6 +93,7 @@ class LigneArrete {
     required this.montant,
     this.restant,
     this.montantDu,
+    this.resteApres,
     required this.sens,
   });
 
@@ -113,7 +119,55 @@ class LigneArrete {
         montant: (j['montant'] as num?)?.toDouble() ?? 0,
         restant: (j['restant'] as num?)?.toDouble(),
         montantDu: (j['montantDu'] as num?)?.toDouble(),
+        resteApres: (j['resteApres'] as num?)?.toDouble(),
         sens: j['sens'] ?? '',
+      );
+}
+
+/// Créance que l'arrêté laisse ouverte, datée jusqu'à la fin de sa période : le
+/// détail du reste dû reporté sur l'arrêté suivant.
+class DetteRestanteArrete {
+  final String document; // RECETTE | PENALITE | CONTRAVENTION
+  final int documentId;
+
+  /// Null : dette du véhicule sans chauffeur rattaché.
+  final int? chauffeurId;
+  final int? vehiculeId;
+  final String? immatriculation;
+  final DateTime? dateDocument;
+
+  /// Ce que le document réclamait à l'origine.
+  final double? montantDu;
+
+  /// Ce qu'il doit encore après l'arrêté.
+  final double reste;
+
+  const DetteRestanteArrete({
+    required this.document,
+    required this.documentId,
+    this.chauffeurId,
+    this.vehiculeId,
+    this.immatriculation,
+    this.dateDocument,
+    this.montantDu,
+    required this.reste,
+  });
+
+  /// Vrai si la créance a déjà été entamée : son reste n'est pas son montant.
+  bool get entamee => montantDu != null && montantDu! > reste;
+
+  factory DetteRestanteArrete.fromJson(Map<String, dynamic> j) =>
+      DetteRestanteArrete(
+        document: j['document'] ?? '',
+        documentId: (j['documentId'] as num).toInt(),
+        chauffeurId: (j['chauffeurId'] as num?)?.toInt(),
+        vehiculeId: (j['vehiculeId'] as num?)?.toInt(),
+        immatriculation: j['immatriculation'] as String?,
+        dateDocument: j['dateDocument'] != null
+            ? DateTime.parse(j['dateDocument'] as String)
+            : null,
+        montantDu: (j['montantDu'] as num?)?.toDouble(),
+        reste: (j['reste'] as num?)?.toDouble() ?? 0,
       );
 }
 
@@ -124,7 +178,13 @@ class ReglementArrete {
   final double totalCotisations;
   final double totalCreancesCompensees;
   final double montantNet;
+
+  /// Reste dû sur les créances datées jusqu'à la fin de période, reporté sur
+  /// l'arrêté suivant.
   final double reliquatReporte;
+
+  /// Reste dû des périodes précédentes, repris par cet arrêté.
+  final double reliquatAnterieur;
   final String? modePaiement;
   final int? operationDecaissementId;
 
@@ -135,6 +195,7 @@ class ReglementArrete {
     required this.totalCreancesCompensees,
     required this.montantNet,
     required this.reliquatReporte,
+    this.reliquatAnterieur = 0,
     this.modePaiement,
     this.operationDecaissementId,
   });
@@ -149,6 +210,7 @@ class ReglementArrete {
             (j['totalCreancesCompensees'] as num?)?.toDouble() ?? 0,
         montantNet: (j['montantNet'] as num?)?.toDouble() ?? 0,
         reliquatReporte: (j['reliquatReporte'] as num?)?.toDouble() ?? 0,
+        reliquatAnterieur: (j['reliquatAnterieur'] as num?)?.toDouble() ?? 0,
         modePaiement: j['modePaiement'],
         operationDecaissementId: (j['operationDecaissementId'] as num?)?.toInt(),
       );
@@ -193,6 +255,10 @@ class ArreteCompte {
   final List<LigneArrete> lignes;
   final List<ReglementArrete> reglements;
 
+  /// Créances laissées ouvertes, datées jusqu'à la fin de période. Vide pour
+  /// les arrêtés antérieurs à ce détail.
+  final List<DetteRestanteArrete> dettesRestantes;
+
   const ArreteCompte({
     this.id,
     required this.perimetre,
@@ -208,6 +274,7 @@ class ArreteCompte {
     this.resteNet,
     required this.lignes,
     required this.reglements,
+    this.dettesRestantes = const [],
   });
 
   bool get estAnnule => statut == 'ANNULE';
@@ -216,9 +283,17 @@ class ArreteCompte {
   double get totalCompense =>
       reglements.fold(0, (s, r) => s + r.totalCreancesCompensees);
 
-  /// Total des reliquats reportés (créances non couvertes).
+  /// Reste dû à la fin de la période, reporté sur l'arrêté suivant.
   double get totalReliquat =>
       reglements.fold(0, (s, r) => s + r.reliquatReporte);
+
+  /// Reste dû des périodes précédentes, repris par cet arrêté.
+  double get totalReliquatAnterieur =>
+      reglements.fold(0, (s, r) => s + r.reliquatAnterieur);
+
+  /// Total des cotisations de la période, tous bénéficiaires confondus.
+  double get totalCotisations =>
+      reglements.fold(0, (s, r) => s + r.totalCotisations);
 
   factory ArreteCompte.fromJson(Map<String, dynamic> j) => ArreteCompte(
         id: (j['id'] as num?)?.toInt(),
@@ -240,6 +315,9 @@ class ArreteCompte {
             .toList(),
         reglements: ((j['reglements'] as List?) ?? [])
             .map((e) => ReglementArrete.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        dettesRestantes: ((j['dettesRestantes'] as List?) ?? [])
+            .map((e) => DetteRestanteArrete.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 }

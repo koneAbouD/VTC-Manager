@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.application.ports.persistence;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
 import com.tmk.vtcmanager.application.domain.arrete.ChauffeurArrete;
+import com.tmk.vtcmanager.application.domain.arrete.DetteRestanteArrete;
 import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
@@ -37,7 +38,10 @@ public interface ArreteCompteRepository {
     /** Insère les règlements par bénéficiaire (chacun porte son arrete_id). */
     void enregistrerReglements(List<ReglementArrete> reglements);
 
-    /** Charge l'arrêté complet (en-tête + lignes + règlements). */
+    /** Insère le détail des dettes laissées ouvertes (chacune porte son arrete_id). */
+    void enregistrerDettesRestantes(List<DetteRestanteArrete> dettes);
+
+    /** Charge l'arrêté complet (en-tête + lignes + règlements + dettes restantes). */
     Optional<ArreteCompte> findById(Long id);
 
     /**

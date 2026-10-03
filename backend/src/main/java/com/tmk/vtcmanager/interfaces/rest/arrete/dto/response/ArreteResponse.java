@@ -21,5 +21,7 @@ public record ArreteResponse(
         BigDecimal totalRestitue,
         BigDecimal resteNet,
         List<LigneArreteResponse> lignes,
-        List<ReglementArreteResponse> reglements
+        List<ReglementArreteResponse> reglements,
+        /** Créances laissées ouvertes, datées jusqu'à la fin de période. */
+        List<DetteRestanteArreteResponse> dettesRestantes
 ) {}
