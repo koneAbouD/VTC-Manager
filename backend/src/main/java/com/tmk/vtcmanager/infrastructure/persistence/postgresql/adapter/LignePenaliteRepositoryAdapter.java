@@ -197,4 +197,10 @@ public class LignePenaliteRepositoryAdapter implements LignePenaliteRepository {
     public void reaffecterChauffeur(Long id, Long chauffeurId) {
         jpaRepository.reaffecterChauffeur(id, chauffeurId);
     }
+
+    @Override
+    @Transactional
+    public void modifierMontant(Long id, BigDecimal montant) {
+        jpaRepository.modifierMontant(id, montant);
+    }
 }

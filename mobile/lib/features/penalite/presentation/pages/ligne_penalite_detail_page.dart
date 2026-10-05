@@ -12,6 +12,7 @@ import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/confirmation_restauration_dialog.dart';
+import '../../../../core/widgets/modification_montant_dialog.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 
@@ -145,8 +146,14 @@ class _DetailBody extends ConsumerWidget {
               dateFmt.format(ligne.dateGeneration)),
           // Montants : seule l'amende en a.
           if (estAmende) ...[
-            DetailInfoRow(Icons.payments_outlined, 'Montant total',
-                fmt.format(ligne.montant)),
+            DetailInfoRowAction(
+              Icons.payments_outlined,
+              'Montant total',
+              fmt.format(ligne.montant),
+              verrouille: !ligne.montantModifiable,
+              motifVerrou: ligne.motifMontantNonModifiable,
+              onTap: () => _modifierMontant(context, ref),
+            ),
             DetailInfoRow(Icons.check_circle_outline_rounded, 'Encaissé',
                 fmt.format(ligne.montantEncaisse)),
             DetailInfoRow(Icons.schedule_outlined, 'Restant',
@@ -311,6 +318,32 @@ class _DetailBody extends ConsumerWidget {
   /// Corrige le jour d'un versement déjà enregistré. Rien d'autre ne bouge :
   /// c'est la date à laquelle l'argent est réputé entré, donc l'écriture au
   /// journal, le solde de trésorerie à date et l'ancienneté de la créance.
+  /// Corrige le montant de l'amende. Les versements ne bougent pas : le statut
+  /// se relit sur eux côté serveur.
+  Future<void> _modifierMontant(BuildContext context, WidgetRef ref) async {
+    final repo = ref.read(penaliteRepositoryProvider);
+    final immat =
+        ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}';
+    final ok = await showModificationMontantDialog(
+      context,
+      titre: 'Corriger le montant de l\'amende',
+      sousTitre: '$immat'
+          '${ligne.chauffeurNomComplet != null ? ' · ${ligne.chauffeurNomComplet}' : ''}',
+      montantActuel: ligne.montant,
+      dejaVerse: ligne.montantEncaisse,
+      onValider: (montant, motif) async {
+        final r = await repo.modifierMontant(ligneId, montant, motif);
+        return r.fold((f) => f.message, (_) => null);
+      },
+    );
+    if (ok == true && context.mounted) {
+      ref.invalidate(lignePenaliteDetailProvider(ligneId));
+      refreshFinances(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Montant de l\'amende corrigé')));
+    }
+  }
+
   Future<void> _modifierDateEncaissement(BuildContext context, WidgetRef ref,
       EncaissementPenalite encaissement) async {
     // Même borne qu'à la saisie : régulariser la veille reste possible,

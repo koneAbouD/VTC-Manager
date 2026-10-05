@@ -9,6 +9,9 @@ import com.tmk.vtcmanager.application.usecases.recette.RestaurerLigneRecetteUseC
 import com.tmk.vtcmanager.application.usecases.reaffectation.GetApercuReaffectationUseCase;
 import com.tmk.vtcmanager.application.services.CompensationArreteService;
 import com.tmk.vtcmanager.application.services.ModificationDateEncaissementService;
+import com.tmk.vtcmanager.application.services.ModificationMontantService;
+import com.tmk.vtcmanager.application.usecases.recette.ModifierMontantAttenduRecetteUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.ModificationMontantRequest;
 import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
 import com.tmk.vtcmanager.application.usecases.recette.ConfirmerVersementUseCase;
@@ -63,6 +66,8 @@ public class LigneRecetteController {
     private final CompensationArreteService compensationArreteService;
     private final GetApercuReaffectationUseCase getApercuReaffectationUseCase;
     private final ConfirmerVersementUseCase confirmerVersementUseCase;
+    private final ModifierMontantAttenduRecetteUseCase modifierMontantAttenduUseCase;
+    private final ModificationMontantService modificationMontantService;
     private final GenererLignesRecetteUseCase genererLignesRecetteUseCase;
     private final RecetteRestMapper mapper;
 
@@ -128,6 +133,10 @@ public class LigneRecetteController {
         modificationDateEncaissementService.marquerVersements(ligne);
         // Et lequel n'est pas un argent reçu, mais une compensation d'arrêté.
         compensationArreteService.marquer(ligne);
+        // Le montant attendu peut-il encore être corrigé.
+        String blocageMontant = modificationMontantService.motifBlocage(ligne);
+        ligne.setMontantModifiable(blocageMontant == null);
+        ligne.setMotifMontantNonModifiable(blocageMontant);
         return ligne;
     }
 
@@ -212,6 +221,20 @@ public class LigneRecetteController {
             @Valid @RequestBody ReaffectationChauffeurRequest request) {
         return mapper.toResponse(reaffecterChauffeurRecetteUseCase.executer(
                 id, request.chauffeurId(), request.motif()));
+    }
+
+    /**
+     * Corrige ce que le chauffeur devait verser ce jour-là. Les versements ne
+     * bougent pas ; le statut se relit sur eux. Refusé sur une recette annulée
+     * ou au montant réel, sous un montant déjà versé, si un arrêté l'a
+     * compensée, si les livres du jour sont fermés ou si un paiement est en vol.
+     */
+    @PatchMapping("/{id}/montant-attendu")
+    public LigneRecetteResponse modifierMontantAttendu(
+            @PathVariable Long id,
+            @Valid @RequestBody ModificationMontantRequest request) {
+        return mapper.toResponse(enrichir(modifierMontantAttenduUseCase.executer(
+                id, request.montant(), request.motif())));
     }
 
     @PatchMapping("/{id}/confirmer-versement")

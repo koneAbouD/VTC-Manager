@@ -33,5 +33,9 @@ public record LignePenaliteResponse(
          * désormais de restaurer cet élément annulé. Le client masque alors
          * l'action « Restaurer », qui n'aboutirait pas.
          */
-        Boolean restaurable
+        Boolean restaurable,
+        /** Faux si le montant de l'amende ne peut plus être corrigé. Null hors fiche. */
+        Boolean montantModifiable,
+        /** Ce qui ferme la correction du montant, en français. */
+        String motifMontantNonModifiable
 ) {}

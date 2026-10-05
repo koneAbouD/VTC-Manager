@@ -22,6 +22,8 @@ public interface LignePenalitePersistenceMapper {
     @Mapping(target = "encaissements", source = "encaissements")
     // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
     @Mapping(target = "restaurable", ignore = true)
+    @Mapping(target = "montantModifiable", ignore = true)
+    @Mapping(target = "motifMontantNonModifiable", ignore = true)
     LignePenalite toDomain(LignePenaliteEntity entity);
 
     List<LignePenalite> toDomainList(List<LignePenaliteEntity> entities);

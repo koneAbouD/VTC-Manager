@@ -149,4 +149,10 @@ public interface LignePenaliteJpaRepository
     @Query(value = "UPDATE lignes_penalite SET chauffeur_id = :chauffeurId, updated_at = now()"
             + " WHERE id = :id", nativeQuery = true)
     void reaffecterChauffeur(@Param("id") Long id, @Param("chauffeurId") Long chauffeurId);
+
+    /** Corrige le montant de l'amende, et lui seul. Le statut se relit ensuite sur les encaissements. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE lignes_penalite SET montant = :montant, updated_at = now()"
+            + " WHERE id = :id", nativeQuery = true)
+    void modifierMontant(@Param("id") Long id, @Param("montant") BigDecimal montant);
 }

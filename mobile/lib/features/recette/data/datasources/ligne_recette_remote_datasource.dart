@@ -125,6 +125,17 @@ class LigneRecetteRemoteDatasource {
     return LigneRecetteModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Corrige le montant attendu ; le serveur relit le statut sur les
+  /// versements et renvoie la ligne à jour, drapeaux compris.
+  Future<LigneRecetteModel> modifierMontantAttendu(
+      int id, double montant, String motif) async {
+    final data = await _client.patch('/recettes/lignes/$id/montant-attendu', {
+      'montant': montant,
+      'motif': motif,
+    });
+    return LigneRecetteModel.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<LigneRecetteModel> restaurer(int id) async {
     final data = await _client.patch('/recettes/lignes/$id/restaurer');
     return LigneRecetteModel.fromJson(data as Map<String, dynamic>);

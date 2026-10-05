@@ -172,6 +172,11 @@ class PenaliteRepositoryImpl implements PenaliteRepository {
       _action(() => _datasource.restaurer(id));
 
   @override
+  Future<Either<Failure, LignePenalite>> modifierMontant(
+          int id, double montant, String motif) async =>
+      _action(() => _datasource.modifierMontant(id, montant, motif));
+
+  @override
   Future<Either<Failure, List<LignePenalite>>> generer({DateTime? date}) async {
     try {
       final result = await _datasource.generer(

@@ -34,5 +34,9 @@ public record LigneRecetteResponse(
          */
         Boolean reaffectable,
         /** Ce qui ferme la réaffectation, en français. Null quand elle est ouverte. */
-        String motifNonReaffectable
+        String motifNonReaffectable,
+        /** Faux si le montant attendu ne peut plus être corrigé. Null hors fiche. */
+        Boolean montantModifiable,
+        /** Ce qui ferme la correction du montant, en français. */
+        String motifMontantNonModifiable
 ) {}

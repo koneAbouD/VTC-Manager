@@ -49,6 +49,13 @@ public class LignePenalite {
      * client s'en sert pour ne pas proposer une action vouée au refus.
      */
     private Boolean restaurable;
+    /**
+     * Renseigné à la lecture seulement : faux si le montant ne peut plus être
+     * corrigé — pas une amende, arrêté de compte, livres fermés, annulée.
+     */
+    private Boolean montantModifiable;
+    /** Ce qui ferme la correction du montant, en français. Null quand elle est ouverte. */
+    private String motifMontantNonModifiable;
 
     private String commentaire;
 

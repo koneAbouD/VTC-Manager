@@ -164,6 +164,20 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
   }
 
   @override
+  Future<Either<Failure, LigneRecette>> modifierMontantAttendu(
+      int id, double montant, String motif) async {
+    try {
+      return Right(await _datasource.modifierMontantAttendu(id, montant, motif));
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, LigneRecette>> reaffecterChauffeur(
       int id, int chauffeurId, String motif) async {
     try {

@@ -12,6 +12,7 @@ import '../../../../core/widgets/detail_carte.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/detail_premium.dart';
 import '../../../../core/widgets/confirmation_restauration_dialog.dart';
+import '../../../../core/widgets/modification_montant_dialog.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../../core/widgets/reaffectation_chauffeur_sheet.dart';
 import '../../../../screens/finance/finance_refresh.dart';
@@ -112,8 +113,8 @@ class _DetailBody extends ConsumerWidget {
               dateFmt.format(ligne.dateRecette)),
           DetailInfoRow(Icons.directions_car_filled_rounded, 'Véhicule',
               ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}'),
-          // Le chauffeur est la seule valeur modifiable de la fiche : elle porte
-          // donc son affordance, plutôt qu'un bouton de plus dans le corps.
+          // Les valeurs modifiables portent leur affordance, plutôt qu'un
+          // bouton de plus dans le corps.
           DetailInfoRowAction(
             Icons.person_outline_rounded,
             'Chauffeur',
@@ -122,12 +123,14 @@ class _DetailBody extends ConsumerWidget {
             motifVerrou: ligne.motifNonReaffectable,
             onTap: () => _reaffecter(context, ref),
           ),
-          DetailInfoRow(
-              Icons.payments_outlined,
-              'Attendu',
-              ligne.montantAttendu != null
-                  ? fmt.format(ligne.montantAttendu)
-                  : null),
+          DetailInfoRowAction(
+            Icons.payments_outlined,
+            'Attendu',
+            ligne.montantAttendu != null ? fmt.format(ligne.montantAttendu) : null,
+            verrouille: !ligne.montantModifiable,
+            motifVerrou: ligne.motifMontantNonModifiable,
+            onTap: () => _modifierMontant(context, ref),
+          ),
           DetailInfoRow(Icons.check_circle_outline_rounded, 'Encaissé',
               fmt.format(ligne.montantEncaisse)),
           DetailInfoRow(Icons.schedule_outlined, 'Restant',
@@ -236,6 +239,33 @@ class _DetailBody extends ConsumerWidget {
       ref.invalidate(ligneRecetteDetailProvider(ligneId));
       refreshFinances(ref);
       if (context.mounted) await proposerEnvoiRecu(context, ref, ecritures);
+    }
+  }
+
+  /// Corrige ce que le chauffeur devait verser ce jour-là. Les versements ne
+  /// bougent pas : le statut se relit sur eux côté serveur.
+  Future<void> _modifierMontant(BuildContext context, WidgetRef ref) async {
+    final repo = ref.read(ligneRecetteRepositoryProvider);
+    final immat =
+        ligne.vehiculeImmatriculation ?? 'Véhicule #${ligne.vehiculeId}';
+    final ok = await showModificationMontantDialog(
+      context,
+      titre: 'Corriger le montant attendu',
+      sousTitre:
+          '$immat · ${DateFormat('dd/MM/yyyy').format(ligne.dateRecette)}'
+          '${ligne.chauffeurNom != null ? ' · ${ligne.chauffeurNom}' : ''}',
+      montantActuel: ligne.montantAttendu!,
+      dejaVerse: ligne.montantEncaisse,
+      onValider: (montant, motif) async {
+        final r = await repo.modifierMontantAttendu(ligneId, montant, motif);
+        return r.fold((f) => f.message, (_) => null);
+      },
+    );
+    if (ok == true && context.mounted) {
+      ref.invalidate(ligneRecetteDetailProvider(ligneId));
+      refreshFinances(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Montant attendu corrigé')));
     }
   }
 

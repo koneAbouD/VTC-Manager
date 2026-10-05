@@ -45,6 +45,9 @@ public interface LignePenaliteRepository {
     /** Recalcule montant_encaisse + statut (amende) depuis ses encaissements (source de vérité). */
     void recalculerDepuisEncaissements(Long ligneId);
 
+    /** Corrige le montant de l'amende ; le statut est à recalculer ensuite. */
+    void modifierMontant(Long id, BigDecimal montant);
+
     void updateDebutImmobilisation(Long id, StatutLignePenalite statut, LocalDateTime dateDebut);
 
     void updateFinImmobilisation(Long id, StatutLignePenalite statut, LocalDateTime dateFin);

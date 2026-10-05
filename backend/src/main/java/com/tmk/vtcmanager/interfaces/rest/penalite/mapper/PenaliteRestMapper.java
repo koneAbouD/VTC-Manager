@@ -37,6 +37,8 @@ public interface PenaliteRestMapper {
     @Mapping(target = "annuleLe",        ignore = true)
     // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
     @Mapping(target = "restaurable",     ignore = true)
+    @Mapping(target = "montantModifiable",         ignore = true)
+    @Mapping(target = "motifMontantNonModifiable", ignore = true)
     LignePenalite toDomain(LignePenaliteRequest request);
 
     @Mapping(target = "modeEncaissement", expression = "java(ModePaiement.valueOf(request.modeEncaissement()))")

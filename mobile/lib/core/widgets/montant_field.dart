@@ -20,6 +20,11 @@ final _money = NumberFormat('#,##0', 'fr_FR');
 final _caracteresAutorises =
     FilteringTextInputFormatter.allow(RegExp(r'[0-9   .,]'));
 
+/// Les filtres de frappe d'un champ montant, pour les champs qui ne passent
+/// pas par [MontantField] (validation sur mesure).
+List<TextInputFormatter> get montantInputFormatters =>
+    [_caracteresAutorises, const AmountInputFormatter()];
+
 /// Lit un montant saisi : espaces de milliers (ordinaires ou insécables) et
 /// virgule décimale du clavier français. `null` si ce n'est pas un nombre.
 double? parseMontant(String? texte) {

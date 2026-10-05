@@ -64,6 +64,15 @@ abstract interface class LigneRecetteRepository {
   /// Aucun montant ne bouge. Refusé par le serveur si un arrêté l'a consignée,
   /// si les livres du jour sont fermés, ou si le chauffeur visé conduisait un
   /// autre véhicule ce jour-là.
+  /// Corrige ce que le chauffeur devait verser ce jour-là. Les versements ne
+  /// bougent pas. Refusé par le serveur sous le montant déjà versé, si un
+  /// arrêté l'a compensée ou si les livres du jour sont fermés.
+  Future<Either<Failure, LigneRecette>> modifierMontantAttendu(
+    int id,
+    double montant,
+    String motif,
+  );
+
   Future<Either<Failure, LigneRecette>> reaffecterChauffeur(
     int id,
     int chauffeurId,

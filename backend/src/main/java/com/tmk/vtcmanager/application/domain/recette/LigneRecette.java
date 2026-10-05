@@ -55,6 +55,13 @@ public class LigneRecette {
     private Boolean reaffectable;
     /** Ce qui ferme la réaffectation, en français. Null quand elle est ouverte. */
     private String motifNonReaffectable;
+    /**
+     * Renseigné à la lecture seulement : faux si le montant attendu ne peut plus
+     * être corrigé — arrêté de compte, livres fermés, montant réel, annulée.
+     */
+    private Boolean montantModifiable;
+    /** Ce qui ferme la correction du montant, en français. Null quand elle est ouverte. */
+    private String motifMontantNonModifiable;
 
     public void recalculerStatutEtMontant() {
         BigDecimal total = encaissements.stream()

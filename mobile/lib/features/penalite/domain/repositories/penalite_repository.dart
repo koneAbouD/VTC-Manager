@@ -49,5 +49,9 @@ abstract class PenaliteRepository {
 
   Future<Either<Failure, LignePenalite>> restaurer(int id);
 
+  /// Corrige le montant d'une amende. Les versements ne bougent pas.
+  Future<Either<Failure, LignePenalite>> modifierMontant(
+      int id, double montant, String motif);
+
   Future<Either<Failure, List<LignePenalite>>> generer({DateTime? date});
 }

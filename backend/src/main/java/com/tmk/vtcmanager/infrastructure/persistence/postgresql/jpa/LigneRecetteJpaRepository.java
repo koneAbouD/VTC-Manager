@@ -109,4 +109,10 @@ public interface LigneRecetteJpaRepository
     /** La journée entière : le jugement des candidats se fait ensuite en mémoire. */
     @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
     List<LigneRecetteEntity> findByDateRecette(LocalDate dateRecette);
+
+    /** Corrige le montant attendu, et lui seul. Le statut se relit ensuite sur les encaissements. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE lignes_recette SET montant_attendu = :montant, updated_at = now()"
+            + " WHERE id = :id", nativeQuery = true)
+    void modifierMontantAttendu(@Param("id") Long id, @Param("montant") BigDecimal montant);
 }

@@ -1,5 +1,8 @@
 package com.tmk.vtcmanager.interfaces.rest.penalite;
 
+import com.tmk.vtcmanager.application.services.ModificationMontantService;
+import com.tmk.vtcmanager.application.usecases.penalite.ModifierMontantPenaliteUseCase;
+import com.tmk.vtcmanager.interfaces.rest.common.ModificationMontantRequest;
 import com.tmk.vtcmanager.application.domain.conditionTravail.TypeSanction;
 import com.tmk.vtcmanager.application.domain.penalite.LignePenalite;
 import com.tmk.vtcmanager.application.domain.penalite.LignePenaliteFiltres;
@@ -58,6 +61,8 @@ public class LignePenaliteController {
     private final VerrouArreteService verrouArreteService;
     private final ModificationDateEncaissementService modificationDateEncaissementService;
     private final CompensationArreteService compensationArreteService;
+    private final ModifierMontantPenaliteUseCase modifierMontantUseCase;
+    private final ModificationMontantService modificationMontantService;
     private final ExecuterBuzzerUseCase executerBuzzerUseCase;
     private final NotifierAvertissementUseCase notifierUseCase;
     private final DemarrerImmobilisationUseCase demarrerUseCase;
@@ -122,6 +127,10 @@ public class LignePenaliteController {
         modificationDateEncaissementService.marquerVersements(ligne);
         // Et lequel n'est pas un argent reçu, mais une compensation d'arrêté.
         compensationArreteService.marquer(ligne);
+        // Le montant de l'amende peut-il encore être corrigé.
+        String blocageMontant = modificationMontantService.motifBlocage(ligne);
+        ligne.setMontantModifiable(blocageMontant == null);
+        ligne.setMotifMontantNonModifiable(blocageMontant);
         return ligne;
     }
 
@@ -168,6 +177,20 @@ public class LignePenaliteController {
             @Valid @RequestBody ModificationDateEncaissementRequest request) {
         return mapper.toResponse(enrichir(modifierDateEncaissementUseCase.executer(
                 id, encaissementId, request.dateEncaissement())));
+    }
+
+    /**
+     * Corrige le montant d'une amende. Les versements ne bougent pas ; le
+     * statut se relit sur eux. Refusé hors amende, sur une pénalité annulée,
+     * sous un montant déjà versé, si un arrêté l'a compensée ou si les livres
+     * du jour sont fermés.
+     */
+    @PatchMapping("/{id}/montant")
+    public LignePenaliteResponse modifierMontant(
+            @PathVariable Long id,
+            @Valid @RequestBody ModificationMontantRequest request) {
+        return mapper.toResponse(enrichir(modifierMontantUseCase.executer(
+                id, request.montant(), request.motif())));
     }
 
     @PatchMapping("/{id}/executer")

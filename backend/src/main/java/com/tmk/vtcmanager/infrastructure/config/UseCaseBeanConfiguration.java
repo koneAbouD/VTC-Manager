@@ -188,6 +188,10 @@ import com.tmk.vtcmanager.application.ports.document.RecuDocumentRenderer;
 import com.tmk.vtcmanager.application.services.LectureImputationService;
 import com.tmk.vtcmanager.application.usecases.recu.GenererRecuPdfUseCase;
 
+import com.tmk.vtcmanager.application.services.ModificationMontantService;
+import com.tmk.vtcmanager.application.ports.persistence.ModificationMontantRepository;
+import com.tmk.vtcmanager.application.usecases.recette.ModifierMontantAttenduRecetteUseCase;
+import com.tmk.vtcmanager.application.usecases.penalite.ModifierMontantPenaliteUseCase;
 @Configuration
 public class UseCaseBeanConfiguration {
 
@@ -2084,5 +2088,36 @@ public class UseCaseBeanConfiguration {
     public GetConflitsChauffeurUseCase getConflitsChauffeurUseCase(
             CoherenceGenerationRepository coherenceGenerationRepository) {
         return new GetConflitsChauffeurUseCase(coherenceGenerationRepository);
+    }
+
+    @Bean
+    public ModificationMontantService modificationMontantService(
+            VerrouArreteService verrouArreteService,
+            ArreteCompteRepository arreteCompteRepository,
+            PaiementRepository paiementRepository) {
+        return new ModificationMontantService(verrouArreteService, arreteCompteRepository,
+                paiementRepository);
+    }
+
+    @Bean
+    public ModifierMontantAttenduRecetteUseCase modifierMontantAttenduRecetteUseCase(
+            LigneRecetteRepository ligneRecetteRepository,
+            ArreteCompteRepository arreteCompteRepository,
+            ModificationMontantRepository modificationMontantRepository,
+            ModificationMontantService modificationMontantService,
+            AuteurCourant auteurCourant) {
+        return new ModifierMontantAttenduRecetteUseCase(ligneRecetteRepository, arreteCompteRepository,
+                modificationMontantRepository, modificationMontantService, auteurCourant);
+    }
+
+    @Bean
+    public ModifierMontantPenaliteUseCase modifierMontantPenaliteUseCase(
+            LignePenaliteRepository lignePenaliteRepository,
+            ArreteCompteRepository arreteCompteRepository,
+            ModificationMontantRepository modificationMontantRepository,
+            ModificationMontantService modificationMontantService,
+            AuteurCourant auteurCourant) {
+        return new ModifierMontantPenaliteUseCase(lignePenaliteRepository, arreteCompteRepository,
+                modificationMontantRepository, modificationMontantService, auteurCourant);
     }
 }

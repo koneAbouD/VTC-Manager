@@ -52,6 +52,14 @@ class LigneRecette {
   /// Ce qui ferme la réaffectation, en français — affiché à l'appui prolongé
   /// sur la ligne verrouillée. Nul quand elle est ouverte.
   final String? motifNonReaffectable;
+
+  /// Faux si le montant attendu ne peut plus être corrigé : montant réel,
+  /// annulée, arrêté de compte, livres fermés, paiement en vol.
+  final bool montantModifiable;
+
+  /// Ce qui ferme la correction du montant, en français. Nul quand elle est
+  /// ouverte.
+  final String? motifMontantNonModifiable;
   final List<Encaissement> encaissements;
 
   const LigneRecette({
@@ -70,6 +78,8 @@ class LigneRecette {
     this.restaurable = false,
     this.reaffectable = false,
     this.motifNonReaffectable,
+    this.montantModifiable = false,
+    this.motifMontantNonModifiable,
     this.encaissements = const [],
   });
 

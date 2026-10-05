@@ -130,6 +130,17 @@ class PenaliteRemoteDatasource {
     return LignePenaliteModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Corrige le montant de l'amende ; le serveur relit le statut sur les
+  /// versements et renvoie la ligne à jour.
+  Future<LignePenaliteModel> modifierMontant(
+      int id, double montant, String motif) async {
+    final data = await _client.patch('/penalites/lignes/$id/montant', {
+      'montant': montant,
+      'motif': motif,
+    });
+    return LignePenaliteModel.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<LignePenaliteModel> restaurer(int id) async {
     final data = await _client.patch('/penalites/lignes/$id/restaurer');
     return LignePenaliteModel.fromJson(data as Map<String, dynamic>);

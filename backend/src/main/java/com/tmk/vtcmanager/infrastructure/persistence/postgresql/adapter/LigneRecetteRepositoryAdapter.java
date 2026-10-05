@@ -161,4 +161,10 @@ public class LigneRecetteRepositoryAdapter implements LigneRecetteRepository {
     public List<LigneRecette> findByDateRecette(LocalDate date) {
         return mapper.toDomainList(jpaRepository.findByDateRecette(date));
     }
+
+    @Override
+    @Transactional
+    public void modifierMontantAttendu(Long ligneId, java.math.BigDecimal montant) {
+        jpaRepository.modifierMontantAttendu(ligneId, montant);
+    }
 }

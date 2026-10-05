@@ -89,6 +89,13 @@ class LignePenalite {
   /// désormais la restauration. Le bouton « Restaurer » est alors masqué :
   /// le serveur refuserait.
   final bool restaurable;
+
+  /// Faux si le montant de l'amende ne peut plus être corrigé : pas une
+  /// amende, annulée, arrêté de compte, livres fermés.
+  final bool montantModifiable;
+
+  /// Ce qui ferme la correction du montant, en français.
+  final String? motifMontantNonModifiable;
   final List<EncaissementPenalite> encaissements;
 
   const LignePenalite({
@@ -114,6 +121,8 @@ class LignePenalite {
     this.commentaire,
     this.motifAnnulation,
     this.restaurable = false,
+    this.montantModifiable = false,
+    this.motifMontantNonModifiable,
     this.encaissements = const [],
   });
 

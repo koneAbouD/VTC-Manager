@@ -52,5 +52,8 @@ public interface LigneRecetteRepository {
     /** Recalcule montant_encaisse + statut de la ligne depuis ses encaissements (source de vérité). */
     void recalculerDepuisEncaissements(Long ligneId);
 
+    /** Corrige le montant attendu ; le statut est à recalculer ensuite. */
+    void modifierMontantAttendu(Long ligneId, java.math.BigDecimal montant);
+
     void deleteById(Long id);
 }

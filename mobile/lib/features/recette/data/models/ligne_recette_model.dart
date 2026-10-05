@@ -18,6 +18,8 @@ class LigneRecetteModel extends LigneRecette {
     super.restaurable,
     super.reaffectable,
     super.motifNonReaffectable,
+    super.montantModifiable,
+    super.motifMontantNonModifiable,
     super.encaissements,
   });
 
@@ -48,6 +50,8 @@ class LigneRecetteModel extends LigneRecette {
       // que d'offrir une modification que le serveur refuserait.
       reaffectable: json['reaffectable'] as bool? ?? false,
       motifNonReaffectable: json['motifNonReaffectable'] as String?,
+      montantModifiable: json['montantModifiable'] as bool? ?? false,
+      motifMontantNonModifiable: json['motifMontantNonModifiable'] as String?,
       encaissements: encaissements,
     );
   }

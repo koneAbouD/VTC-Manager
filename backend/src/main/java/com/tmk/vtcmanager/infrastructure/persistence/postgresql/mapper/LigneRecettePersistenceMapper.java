@@ -24,6 +24,8 @@ public interface LigneRecettePersistenceMapper {
     @Mapping(target = "restaurable", ignore = true)
     @Mapping(target = "reaffectable", ignore = true)
     @Mapping(target = "motifNonReaffectable", ignore = true)
+    @Mapping(target = "montantModifiable", ignore = true)
+    @Mapping(target = "motifMontantNonModifiable", ignore = true)
     LigneRecette toDomain(LigneRecetteEntity entity);
 
     List<LigneRecette> toDomainList(List<LigneRecetteEntity> entities);
