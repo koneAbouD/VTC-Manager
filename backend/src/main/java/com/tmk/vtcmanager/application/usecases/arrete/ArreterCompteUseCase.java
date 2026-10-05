@@ -376,20 +376,22 @@ public class ArreterCompteUseCase {
     }
 
     /**
-     * Période réellement couverte, resserrée sur les cotisations restituées.
+     * Période réellement couverte : les mois des cotisations restituées, du
+     * premier au dernier jour.
      *
-     * <p>L'utilisateur qui vide tout un compte courant demande « depuis
-     * toujours » : garder ses bornes telles quelles ferait figurer dans
-     * l'historique et sur le décompte PDF une période qui commence des années
-     * avant la première cotisation. On borne donc à ce qui a été arrêté, en
-     * gardant les bornes demandées quand rien ne permet de resserrer.
+     * <p>Un arrêté se lit au mois — « septembre », pas « du 4 au 27 » parce
+     * que la première cotisation tombe un 4. L'utilisateur qui vide tout un
+     * compte courant demande « depuis toujours » : on borne donc aux mois
+     * réellement arrêtés, en gardant les mois demandés quand rien ne permet
+     * de resserrer (arrêté de pures dettes).
      */
     private LocalDate debutEffectif(List<DecompteBeneficiaire> decomptes, LocalDate demande) {
-        return datesCotisations(decomptes).min(LocalDate::compareTo).orElse(demande);
+        return datesCotisations(decomptes).min(LocalDate::compareTo).orElse(demande).withDayOfMonth(1);
     }
 
     private LocalDate finEffective(List<DecompteBeneficiaire> decomptes, LocalDate demandee) {
-        return datesCotisations(decomptes).max(LocalDate::compareTo).orElse(demandee);
+        LocalDate fin = datesCotisations(decomptes).max(LocalDate::compareTo).orElse(demandee);
+        return fin.withDayOfMonth(fin.lengthOfMonth());
     }
 
     private Stream<LocalDate> datesCotisations(List<DecompteBeneficiaire> decomptes) {

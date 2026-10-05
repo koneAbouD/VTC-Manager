@@ -391,7 +391,7 @@ class ArreterCompteUseCaseTest {
     }
 
     @Test
-    @DisplayName("La période enregistrée se resserre sur les cotisations réellement restituées")
+    @DisplayName("La période enregistrée se resserre sur les mois des cotisations restituées, du 1er au dernier jour")
     void periode_resserree_sur_les_cotisations() {
         // L'utilisateur vide tout un compte courant : il demande « depuis
         // toujours ». Ce qui est archivé doit rester lisible.
@@ -406,8 +406,8 @@ class ArreterCompteUseCaseTest {
 
         ArgumentCaptor<ArreteCompte> entete = ArgumentCaptor.forClass(ArreteCompte.class);
         verify(arreteCompteRepository).enregistrerEntete(entete.capture());
-        assertThat(entete.getValue().getPeriodeDebut()).isEqualTo(LocalDate.of(2026, 3, 4));
-        assertThat(entete.getValue().getPeriodeFin()).isEqualTo(LocalDate.of(2026, 5, 20));
+        assertThat(entete.getValue().getPeriodeDebut()).isEqualTo(LocalDate.of(2026, 3, 1));
+        assertThat(entete.getValue().getPeriodeFin()).isEqualTo(LocalDate.of(2026, 5, 31));
     }
 
     @Test

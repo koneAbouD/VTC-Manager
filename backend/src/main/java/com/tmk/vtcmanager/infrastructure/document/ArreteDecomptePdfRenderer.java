@@ -16,6 +16,7 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.stereotype.Component;
 
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -23,29 +24,41 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Décompte de restitution des cotisations en PDF (PDFBox 2.x, A4).
  *
- * <p>Le calcul par bénéficiaire, puis le détail des documents de l'arrêté :
- * cotisations versées, recettes, contraventions et pénalités compensées. Le
- * détail peut courir sur plusieurs pages — un mois de cotisations journalières
- * n'y tient pas toujours.</p>
+ * <p>Trois blocs, dans l'ordre où on vérifie un arrêté à la main : les
+ * cotisations du mois, jour par jour — un jour sans versement se voit ; les
+ * dettes, chacune avec ce que les cotisations en ont réglé et ce qu'il en
+ * reste ; puis le décompte par chauffeur qui tire le montant versé des deux
+ * tableaux. Le document peut courir sur plusieurs pages.</p>
  */
 @Component
 public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter JOUR = DateTimeFormatter.ofPattern("EEE dd/MM/yyyy", Locale.FRENCH);
     private static final PDFont REGULAR = PDType1Font.HELVETICA;
     private static final PDFont BOLD = PDType1Font.HELVETICA_BOLD;
+    private static final PDFont ITALIQUE = PDType1Font.HELVETICA_OBLIQUE;
     private static final float MARGE = 50;
     private static final float DROITE = 545;
     private static final float HAUT = 800;
     private static final float BAS = 60;
     private static final float INTERLIGNE = 14;
+
+    // Colonnes du tableau des dettes.
+    private static final float COL_TYPE = 135;
+    private static final float COL_TIERS = 220;
+    private static final float COL_COMPENSE = 465;
 
     private final DecimalFormat montantFormat;
 
@@ -60,23 +73,14 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             try (Curseur c = new Curseur(document)) {
-                entete(c, arrete);
-                synthese(c, arrete);
-
                 boolean parVehicule = arrete.getPerimetre() == PerimetreArrete.VEHICULE;
-                detail(c, arrete, "Cotisations versées", TypeDocumentCreance.COTISATION, SensArrete.CREDIT,
-                        "Montant", parVehicule);
-                detail(c, arrete, "Recettes compensées", TypeDocumentCreance.RECETTE, SensArrete.DEBIT,
-                        "Réglé", parVehicule);
-                detail(c, arrete, "Contraventions compensées", TypeDocumentCreance.CONTRAVENTION, SensArrete.DEBIT,
-                        "Réglé", parVehicule);
-                // Rares, mais sans elles la somme des sections ne retomberait pas
-                // sur le total compensé de la synthèse.
-                detail(c, arrete, "Pénalités compensées", TypeDocumentCreance.PENALITE, SensArrete.DEBIT,
-                        "Réglé", parVehicule);
+                LocalDate debut = debutMois(arrete);
+                LocalDate fin = finMois(arrete);
 
-                dettesRestantes(c, arrete, parVehicule);
-
+                entete(c, arrete, debut, fin);
+                cotisations(c, arrete, debut, fin, parVehicule);
+                dettes(c, arrete, parVehicule);
+                decompte(c, arrete);
                 notes(c, parVehicule);
             }
             document.save(out);
@@ -86,7 +90,22 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
         }
     }
 
-    private void entete(Curseur c, ArreteCompte arrete) throws IOException {
+    /**
+     * Un arrêté couvre des mois entiers. Les arrêtés enregistrés avant cette
+     * règle portent des bornes resserrées sur la première et la dernière
+     * cotisation : on les élargit au rendu plutôt que de réécrire l'historique.
+     */
+    private static LocalDate debutMois(ArreteCompte arrete) {
+        LocalDate d = arrete.getPeriodeDebut();
+        return d != null ? d.withDayOfMonth(1) : null;
+    }
+
+    private static LocalDate finMois(ArreteCompte arrete) {
+        LocalDate f = arrete.getPeriodeFin();
+        return f != null ? f.withDayOfMonth(f.lengthOfMonth()) : null;
+    }
+
+    private void entete(Curseur c, ArreteCompte arrete, LocalDate debut, LocalDate fin) throws IOException {
         c.ligne(BOLD, 16, MARGE, "Décompte de restitution des cotisations");
         c.y -= 6;
         c.ligne(REGULAR, 10, MARGE, "Référence : " + valeur(arrete.getReference()));
@@ -94,22 +113,201 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
                 (arrete.getPerimetre() == PerimetreArrete.VEHICULE ? "Véhicule : " : "Chauffeur : ")
                         + valeur(arrete.getPerimetreLibelle()));
         c.ligne(REGULAR, 10, MARGE,
-                "Période : " + date(arrete.getPeriodeDebut()) + " au " + date(arrete.getPeriodeFin())
+                "Période : du " + date(debut) + " au " + date(fin)
                         + "   |   Arrêté le : " + date(arrete.getDateArrete()));
         if (arrete.getStatut() != null && arrete.getStatut().name().equals("ANNULE")) {
             c.y -= 4;
             c.ligne(BOLD, 11, MARGE, "*** ARRÊTÉ ANNULÉ ***");
         }
-        c.y -= 14;
+        c.y -= 10;
+    }
+
+    // ── 1. Cotisations ──────────────────────────────────────────────────
+
+    /**
+     * Chaque jour de la période, versé ou non : c'est le jour vide que le
+     * chauffeur conteste, et une liste des seuls versements le cache. Un jour
+     * où plusieurs chauffeurs du véhicule ont cotisé compte une ligne chacun.
+     */
+    private void cotisations(Curseur c, ArreteCompte arrete, LocalDate debut, LocalDate fin,
+                             boolean parVehicule) throws IOException {
+        Map<LocalDate, List<LigneArrete>> parJour = new TreeMap<>(Comparator.nullsLast(Comparator.naturalOrder()));
+        arrete.getLignes().stream()
+                .filter(l -> l.getDocument() == TypeDocumentCreance.COTISATION && l.getSens() == SensArrete.CREDIT)
+                .sorted(Comparator.comparing(LigneArrete::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .forEach(l -> parJour.computeIfAbsent(l.getDateDocument(), k -> new ArrayList<>()).add(l));
+        if (debut != null && fin != null) {
+            for (LocalDate j = debut; !j.isAfter(fin); j = j.plusDays(1)) {
+                parJour.putIfAbsent(j, List.of());
+            }
+        }
+
+        String titre = "1. Cotisations versées";
+        titreSection(c, titre);
+        enteteCotisations(c, parVehicule);
+
+        double total = 0;
+        int nombre = 0;
+        for (Map.Entry<LocalDate, List<LigneArrete>> jour : parJour.entrySet()) {
+            if (jour.getValue().isEmpty()) {
+                if (c.saut(INTERLIGNE)) suiteCotisations(c, titre, parVehicule);
+                c.texte(REGULAR, 9.5f, MARGE, jourLibelle(jour.getKey()));
+                c.couleur(Color.GRAY);
+                c.texte(ITALIQUE, 9, 160, "Pas de cotisation versée ce jour");
+                c.couleur(Color.BLACK);
+                c.y -= INTERLIGNE;
+                continue;
+            }
+            for (LigneArrete l : jour.getValue()) {
+                if (c.saut(INTERLIGNE)) suiteCotisations(c, titre, parVehicule);
+                c.texte(REGULAR, 9.5f, MARGE, jourLibelle(jour.getKey()));
+                c.texte(REGULAR, 9.5f, 160, tronquer(tiers(l.getChauffeurId(), l.getChauffeurNom(),
+                        l.getImmatriculation(), parVehicule), 45));
+                c.texteDroite(REGULAR, 9.5f, DROITE, montantFormat.format(montant(l.getMontant())));
+                c.y -= INTERLIGNE;
+                total += montant(l.getMontant());
+                nombre++;
+            }
+        }
+
+        ligneTotal(c, "Total des cotisations (" + nombre + (nombre > 1 ? " versements)" : " versement)"),
+                null, total);
+    }
+
+    private void suiteCotisations(Curseur c, String titre, boolean parVehicule) throws IOException {
+        c.ligne(BOLD, 10, MARGE, titre + " (suite)");
+        enteteCotisations(c, parVehicule);
+    }
+
+    private void enteteCotisations(Curseur c, boolean parVehicule) throws IOException {
+        c.texte(BOLD, 9.5f, MARGE, "Date");
+        c.texte(BOLD, 9.5f, 160, parVehicule ? "Chauffeur" : "Véhicule");
+        c.texteDroite(BOLD, 9.5f, DROITE, "Montant");
+        c.y -= 4;
+        c.trait();
+        c.y -= INTERLIGNE;
+    }
+
+    // ── 2. Dettes ───────────────────────────────────────────────────────
+
+    /** Une dette du tableau : ce que l'arrêté en a réglé et ce qu'il en reste. */
+    private static final class Dette {
+        LocalDate date;
+        TypeDocumentCreance type;
+        Long chauffeurId;
+        String chauffeurNom;
+        String immatriculation;
+        double compense;
+        double reste;
     }
 
     /**
-     * Le calcul, posé comme on le ferait à la main, pour chaque bénéficiaire :
-     * ce qu'il devait en entrant, ce qu'il a déposé, ce que ses cotisations ont
+     * Toutes les dettes en un seul tableau — recettes, contraventions,
+     * pénalités — qu'elles aient été réglées par les cotisations, en partie
+     * ou pas du tout. Une créance entamée apparaît une fois, avec ses deux
+     * montants côte à côte.
+     *
+     * <p>Les lignes compensées (DEBIT) et les dettes restantes se recoupent sur
+     * une créance entamée : on les fusionne par document. Pour le reste dû, la
+     * dette restante fait foi ; à défaut, le reste figé sur la ligne.</p>
+     */
+    private void dettes(Curseur c, ArreteCompte arrete, boolean parVehicule) throws IOException {
+        Map<String, Dette> dettes = new LinkedHashMap<>();
+        for (LigneArrete l : arrete.getLignes()) {
+            if (l.getSens() != SensArrete.DEBIT) continue;
+            Dette d = dettes.computeIfAbsent(l.getDocument() + ":" + l.getDocumentId(), k -> new Dette());
+            d.type = l.getDocument();
+            d.date = l.getDateDocument();
+            d.chauffeurId = l.getChauffeurId();
+            d.chauffeurNom = l.getChauffeurNom();
+            d.immatriculation = l.getImmatriculation();
+            d.compense += montant(l.getMontant());
+            d.reste = Math.max(d.reste, montant(l.getResteApres()));
+        }
+        if (arrete.getDettesRestantes() != null) {
+            for (DetteRestanteArrete r : arrete.getDettesRestantes()) {
+                Dette d = dettes.computeIfAbsent(r.getDocument() + ":" + r.getDocumentId(), k -> new Dette());
+                d.type = r.getDocument();
+                if (d.date == null) d.date = r.getDateDocument();
+                if (d.chauffeurNom == null) {
+                    d.chauffeurId = r.getChauffeurId();
+                    d.chauffeurNom = r.getChauffeurNom();
+                }
+                if (d.immatriculation == null) d.immatriculation = r.getImmatriculation();
+                d.reste = montant(r.getReste());
+            }
+        }
+
+        List<Dette> lignes = dettes.values().stream()
+                .sorted(Comparator.comparing((Dette d) -> d.date, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(d -> d.type))
+                .toList();
+
+        String titre = "2. Dettes";
+        c.y -= 10;
+        titreSection(c, titre);
+        if (lignes.isEmpty()) {
+            c.couleur(Color.GRAY);
+            c.ligne(ITALIQUE, 9.5f, MARGE, "Aucune dette sur la période.");
+            c.couleur(Color.BLACK);
+            return;
+        }
+        enteteDettes(c, parVehicule);
+
+        double totalCompense = 0;
+        double totalReste = 0;
+        for (Dette d : lignes) {
+            if (c.saut(INTERLIGNE)) {
+                c.ligne(BOLD, 10, MARGE, titre + " (suite)");
+                enteteDettes(c, parVehicule);
+            }
+            c.texte(REGULAR, 9.5f, MARGE, date(d.date));
+            c.texte(REGULAR, 9.5f, COL_TYPE, libelleDocument(d.type));
+            c.texte(REGULAR, 9.5f, COL_TIERS,
+                    tronquer(tiers(d.chauffeurId, d.chauffeurNom, d.immatriculation, parVehicule), 30));
+            c.texteDroite(REGULAR, 9.5f, COL_COMPENSE, montantFormat.format(d.compense));
+            c.texteDroite(d.reste > 0 ? BOLD : REGULAR, 9.5f, DROITE, montantFormat.format(d.reste));
+            c.y -= INTERLIGNE;
+            totalCompense += d.compense;
+            totalReste += d.reste;
+        }
+
+        ligneTotal(c, "Total des dettes", totalCompense, totalReste);
+    }
+
+    private void enteteDettes(Curseur c, boolean parVehicule) throws IOException {
+        c.texte(BOLD, 9.5f, MARGE, "Date");
+        c.texte(BOLD, 9.5f, COL_TYPE, "Type");
+        c.texte(BOLD, 9.5f, COL_TIERS, parVehicule ? "Chauffeur" : "Véhicule");
+        c.texteDroite(BOLD, 9.5f, COL_COMPENSE, "Compensé");
+        c.texteDroite(BOLD, 9.5f, DROITE, "Reste dû");
+        c.y -= 4;
+        c.trait();
+        c.y -= INTERLIGNE;
+    }
+
+    private static String libelleDocument(TypeDocumentCreance type) {
+        return switch (type) {
+            case RECETTE -> "Recette";
+            case PENALITE -> "Pénalité";
+            case CONTRAVENTION -> "Contravention";
+            case COTISATION -> "Cotisation";
+        };
+    }
+
+    // ── 3. Décompte ─────────────────────────────────────────────────────
+
+    /**
+     * Le calcul, posé comme on le ferait à la main, pour chaque chauffeur : ce
+     * qu'il devait en entrant, ce qu'il a déposé, ce que ses cotisations ont
      * réglé, ce qu'on lui verse et ce qu'il laisse à la période suivante.
      */
-    private void synthese(Curseur c, ArreteCompte arrete) throws IOException {
+    private void decompte(Curseur c, ArreteCompte arrete) throws IOException {
         List<ReglementArrete> reglements = arrete.getReglements();
+        if (reglements.isEmpty()) return;
+        c.y -= 10;
+        c.saut(140);
+        titreSection(c, reglements.size() > 1 ? "3. Décompte par chauffeur" : "3. Décompte");
         for (ReglementArrete r : reglements) {
             String nom = r.getChauffeurNom() != null ? r.getChauffeurNom() : "Chauffeur #" + r.getChauffeurId();
             calcul(c, nom, montant(r.getReliquatAnterieur()), montant(r.getTotalCotisations()),
@@ -124,22 +322,12 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
                     reglements.stream().mapToDouble(r -> montant(r.getMontantNet())).sum(),
                     reglements.stream().mapToDouble(r -> montant(r.getReliquatReporte())).sum());
         }
-
-        // Le solde du compte courant AUJOURD'HUI, et non à la date de l'arrêté :
-        // des cotisations ou des dettes ont pu naître depuis.
-        c.saut(30);
-        double reste = montant(arrete.getResteNet());
-        String situation = reste > 0 ? montantFormat.format(reste) + " FCFA de cotisations encore à rendre"
-                : reste < 0 ? montantFormat.format(-reste) + " FCFA encore dus"
-                : "compte soldé";
-        c.ligne(REGULAR, 9.5f, MARGE, "Situation du compte à ce jour : " + situation);
-        c.y -= 6;
     }
 
     private void calcul(Curseur c, String titre, double reliquatAnterieur, double cotisations,
                         double regle, double verse, double reliquat) throws IOException {
         c.saut(110);
-        c.ligne(BOLD, 11, MARGE, titre);
+        c.ligne(BOLD, 10.5f, MARGE, titre);
         c.y -= 2;
         if (reliquatAnterieur > 0) {
             rangeeCalcul(c, REGULAR, "Reste dû des périodes précédentes (repris)", reliquatAnterieur);
@@ -165,137 +353,37 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
         c.y -= INTERLIGNE;
     }
 
-    /**
-     * Liste des documents d'un type, triés par date. Omise si l'arrêté n'en
-     * compte aucun. Sur un arrêté véhicule, le chauffeur de chaque ligne est
-     * précisé — plusieurs se partagent le fonds ; sur un arrêté chauffeur,
-     * c'est le véhicule qui varie.
-     */
-    private void detail(Curseur c, ArreteCompte arrete, String titre, TypeDocumentCreance type,
-                        SensArrete sens, String libelleMontant, boolean parVehicule) throws IOException {
-        List<LigneArrete> lignes = arrete.getLignes().stream()
-                .filter(l -> l.getDocument() == type && l.getSens() == sens)
-                .sorted(Comparator.comparing(LigneArrete::getDateDocument,
-                                Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparing(LigneArrete::getId, Comparator.nullsLast(Comparator.naturalOrder())))
-                .toList();
-        if (lignes.isEmpty()) return;
+    // ── Commun ──────────────────────────────────────────────────────────
 
-        // Titre, en-tête et au moins une ligne ensemble : jamais de titre orphelin en bas de page.
-        c.saut(70);
-        c.y -= 8;
-        c.ligne(BOLD, 11, MARGE, titre + " (" + lignes.size() + ")");
+    /** Titre de section, avec la place pour l'en-tête et une ligne : jamais de titre orphelin en bas de page. */
+    private void titreSection(Curseur c, String titre) throws IOException {
+        c.saut(60);
+        c.ligne(BOLD, 12, MARGE, titre);
         c.y -= 2;
-        enteteDetail(c, libelleMontant, parVehicule);
+    }
 
-        double total = 0;
-        for (LigneArrete l : lignes) {
-            if (c.saut(2 * INTERLIGNE)) {
-                c.ligne(BOLD, 10, MARGE, titre + " (suite)");
-                enteteDetail(c, libelleMontant, parVehicule);
-            }
-            String tiers = parVehicule ? valeur(l.getChauffeurNom()) : valeur(l.getImmatriculation());
-            c.texte(REGULAR, 9.5f, MARGE, date(l.getDateDocument()));
-            c.texte(REGULAR, 9.5f, 140, tronquer(tiers, 40));
-            c.texteDroite(REGULAR, 9.5f, DROITE, montantFormat.format(montant(l.getMontant())));
-            c.y -= INTERLIGNE;
-            total += montant(l.getMontant());
-            // Une créance que le fonds n'a pas soldée : ce qu'elle doit encore,
-            // juste dessous, pour qu'on ne la croie pas réglée.
-            if (montant(l.getResteApres()) > 0) {
-                c.y += 3;
-                c.texteDroite(REGULAR, 8, DROITE,
-                        "reste dû : " + montantFormat.format(montant(l.getResteApres())) + " FCFA");
-                c.y -= INTERLIGNE;
-            }
-        }
-
+    /** Trait puis ligne de total ; {@code avantDernier} null pour un tableau à une seule colonne de montant. */
+    private void ligneTotal(Curseur c, String libelle, Double avantDernier, double dernier) throws IOException {
         c.saut(24);
         c.y += 6;
         c.trait();
         c.y -= 12;
-        c.texte(BOLD, 9.5f, MARGE, "Total");
-        c.texteDroite(BOLD, 9.5f, DROITE, montantFormat.format(total));
+        c.texte(BOLD, 9.5f, MARGE, libelle);
+        if (avantDernier != null) {
+            c.texteDroite(BOLD, 9.5f, COL_COMPENSE, montantFormat.format(avantDernier));
+        }
+        c.texteDroite(BOLD, 9.5f, DROITE, montantFormat.format(dernier));
         c.y -= INTERLIGNE + 4;
     }
 
     /**
-     * Ce que l'arrêté laisse dû, créance par créance : le détail du « reste dû
-     * reporté ». Une créance entamée y figure aussi, pour son seul reste — la
-     * rubrique se lit alors d'un bloc, sans recouper les sections au-dessus.
+     * Sur un arrêté véhicule, plusieurs chauffeurs se partagent le fonds : on
+     * nomme celui de la ligne. Sur un arrêté chauffeur, c'est le véhicule qui
+     * varie.
      */
-    private void dettesRestantes(Curseur c, ArreteCompte arrete, boolean parVehicule) throws IOException {
-        List<DetteRestanteArrete> dettes = arrete.getDettesRestantes();
-        if (dettes == null || dettes.isEmpty()) return;
-
-        String titre = "Dettes restant dues";
-        c.saut(70);
-        c.y -= 8;
-        c.ligne(BOLD, 11, MARGE, titre + " (" + dettes.size() + ")");
-        c.y -= 2;
-        enteteDettes(c, parVehicule);
-
-        double total = 0;
-        for (DetteRestanteArrete d : dettes) {
-            if (c.saut(2 * INTERLIGNE)) {
-                c.ligne(BOLD, 10, MARGE, titre + " (suite)");
-                enteteDettes(c, parVehicule);
-            }
-            String tiers = parVehicule
-                    ? (d.getChauffeurId() == null ? "Véhicule (sans chauffeur)" : valeur(d.getChauffeurNom()))
-                    : valeur(d.getImmatriculation());
-            c.texte(REGULAR, 9.5f, MARGE, date(d.getDateDocument()));
-            c.texte(REGULAR, 9.5f, 130, libelleDocument(d.getDocument()));
-            c.texte(REGULAR, 9.5f, 230, tronquer(tiers, 30));
-            c.texteDroite(REGULAR, 9.5f, DROITE, montantFormat.format(montant(d.getReste())));
-            c.y -= INTERLIGNE;
-            total += montant(d.getReste());
-            // Le montant d'origine, quand la créance a déjà été entamée : sans
-            // lui, une recette de 21 000 dont il reste 6 000 passe pour une
-            // recette de 6 000.
-            if (d.getMontantDu() != null && montant(d.getMontantDu()) > montant(d.getReste())) {
-                c.y += 3;
-                c.texteDroite(REGULAR, 8, DROITE,
-                        "sur " + montantFormat.format(montant(d.getMontantDu())) + " FCFA dus");
-                c.y -= INTERLIGNE;
-            }
-        }
-
-        c.saut(24);
-        c.y += 6;
-        c.trait();
-        c.y -= 12;
-        c.texte(BOLD, 9.5f, MARGE, "Total reporté sur l'arrêté suivant");
-        c.texteDroite(BOLD, 9.5f, DROITE, montantFormat.format(total));
-        c.y -= INTERLIGNE + 4;
-    }
-
-    private void enteteDettes(Curseur c, boolean parVehicule) throws IOException {
-        c.texte(BOLD, 9.5f, MARGE, "Date");
-        c.texte(BOLD, 9.5f, 130, "Document");
-        c.texte(BOLD, 9.5f, 230, parVehicule ? "Chauffeur" : "Véhicule");
-        c.texteDroite(BOLD, 9.5f, DROITE, "Reste dû");
-        c.y -= 4;
-        c.trait();
-        c.y -= INTERLIGNE;
-    }
-
-    private static String libelleDocument(TypeDocumentCreance type) {
-        return switch (type) {
-            case RECETTE -> "Recette";
-            case PENALITE -> "Pénalité";
-            case CONTRAVENTION -> "Contravention";
-            case COTISATION -> "Cotisation";
-        };
-    }
-
-    private void enteteDetail(Curseur c, String libelleMontant, boolean parVehicule) throws IOException {
-        c.texte(BOLD, 9.5f, MARGE, "Date");
-        c.texte(BOLD, 9.5f, 140, parVehicule ? "Chauffeur" : "Véhicule");
-        c.texteDroite(BOLD, 9.5f, DROITE, libelleMontant);
-        c.y -= 4;
-        c.trait();
-        c.y -= INTERLIGNE;
+    private String tiers(Long chauffeurId, String chauffeurNom, String immatriculation, boolean parVehicule) {
+        if (!parVehicule) return valeur(immatriculation);
+        return chauffeurId == null ? "Véhicule (sans chauffeur)" : valeur(chauffeurNom);
     }
 
     private void notes(Curseur c, boolean parVehicule) throws IOException {
@@ -311,6 +399,10 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
             c.ligne(REGULAR, 8.5f, MARGE,
                     "Arrêté par véhicule : les cotisations d'un chauffeur peuvent régler la dette d'un autre chauffeur du véhicule.");
         }
+    }
+
+    private String jourLibelle(LocalDate d) {
+        return d != null ? d.format(JOUR) : "—";
     }
 
     private String date(LocalDate d) {
@@ -358,6 +450,10 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
         void ligne(PDFont font, float taille, float x, String s) throws IOException {
             texte(font, taille, x, s);
             y -= taille + 5;
+        }
+
+        void couleur(Color couleur) throws IOException {
+            cs.setNonStrokingColor(couleur);
         }
 
         void trait() throws IOException {
