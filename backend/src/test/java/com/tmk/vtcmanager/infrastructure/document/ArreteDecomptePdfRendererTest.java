@@ -161,7 +161,7 @@ class ArreteDecomptePdfRendererTest {
     }
 
     @Test
-    @DisplayName("les recettes annulées sont listées avec leur commentaire, entre les dettes et le décompte")
+    @DisplayName("les recettes annulées sont listées avec leur motif, entre les dettes et le décompte")
     void recettesAnnulees() throws Exception {
         String motifLong = "Véhicule au garage toute la journée suite à une panne d'embrayage constatée "
                 + "le matin par le chauffeur, recette non due";
@@ -171,7 +171,7 @@ class ArreteDecomptePdfRendererTest {
                         recetteAnnulee(15, null, motifLong)));
 
         String texte = texte(pdf);
-        assertThat(texte).contains("3. Recettes annulées", "Commentaire",
+        assertThat(texte).contains("3. Recettes annulées", "Motif",
                 "08/09/2026 Jean Kouassi 21 000 Jour férié ?",
                 "15/09/2026 Jean Kouassi — Véhicule au garage",
                 "recette non due",

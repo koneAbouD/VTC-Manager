@@ -306,8 +306,8 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
         enteteRecettesAnnulees(c, parVehicule);
 
         for (LigneRecette r : recettes) {
-            String commentaire = encodable(valeur(r.getMotifAnnulation()), REGULAR);
-            List<String> motif = decouper(commentaire, REGULAR, 9.5f, DROITE - COL_MOTIF);
+            String texteMotif = encodable(valeur(r.getMotifAnnulation()), REGULAR);
+            List<String> motif = decouper(texteMotif, REGULAR, 9.5f, DROITE - COL_MOTIF);
             if (c.saut(motif.size() * INTERLIGNE)) {
                 c.ligne(BOLD, 10, MARGE, titre + " (suite)");
                 enteteRecettesAnnulees(c, parVehicule);
@@ -331,7 +331,7 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
         c.texte(BOLD, 9.5f, MARGE, "Date");
         c.texte(BOLD, 9.5f, COL_TYPE, parVehicule ? "Chauffeur" : "Véhicule");
         c.texteDroite(BOLD, 9.5f, COL_MONTANT_ANNULE, "Montant");
-        c.texte(BOLD, 9.5f, COL_MOTIF, "Commentaire");
+        c.texte(BOLD, 9.5f, COL_MOTIF, "Motif");
         c.y -= 4;
         c.trait();
         c.y -= INTERLIGNE;
