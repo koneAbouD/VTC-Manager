@@ -47,6 +47,21 @@ public class ArreteCompte {
     @Builder.Default
     private List<DetteRestanteArrete> dettesRestantes = new ArrayList<>();
 
+    /**
+     * Premier jour du mois de début : un arrêté couvre des mois entiers. Les
+     * arrêtés enregistrés avant cette règle portent des bornes resserrées sur
+     * la première cotisation ; on les élargit à la lecture plutôt que de
+     * réécrire l'historique.
+     */
+    public LocalDate debutMois() {
+        return periodeDebut != null ? periodeDebut.withDayOfMonth(1) : null;
+    }
+
+    /** Dernier jour du mois de fin (voir {@link #debutMois()}). */
+    public LocalDate finMois() {
+        return periodeFin != null ? periodeFin.withDayOfMonth(periodeFin.lengthOfMonth()) : null;
+    }
+
     /** Total restitué (somme des nets positifs des règlements). */
     public BigDecimal totalRestitue() {
         return reglements.stream()

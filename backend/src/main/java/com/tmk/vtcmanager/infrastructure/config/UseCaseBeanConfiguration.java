@@ -1645,8 +1645,9 @@ public class UseCaseBeanConfiguration {
     @Bean
     public GetArreteDecompteUseCase getArreteDecompteUseCase(
             GetArreteUseCase getArreteUseCase,
-            ArreteDocumentRenderer arreteDocumentRenderer) {
-        return new GetArreteDecompteUseCase(getArreteUseCase, arreteDocumentRenderer);
+            ArreteDocumentRenderer arreteDocumentRenderer,
+            LigneRecetteRepository ligneRecetteRepository) {
+        return new GetArreteDecompteUseCase(getArreteUseCase, arreteDocumentRenderer, ligneRecetteRepository);
     }
 
     // ----- Partenaires : dettes et échéancier -----

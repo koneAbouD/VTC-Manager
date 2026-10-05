@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
 import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
 import com.tmk.vtcmanager.application.domain.arrete.SensArrete;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
+import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.ports.document.ArreteDocumentRenderer;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -35,11 +36,11 @@ import java.util.TreeMap;
 /**
  * Décompte de restitution des cotisations en PDF (PDFBox 2.x, A4).
  *
- * <p>Trois blocs, dans l'ordre où on vérifie un arrêté à la main : les
- * cotisations du mois, jour par jour — un jour sans versement se voit ; les
- * dettes, chacune avec ce que les cotisations en ont réglé et ce qu'il en
- * reste ; puis le décompte par chauffeur qui tire le montant versé des deux
- * tableaux. Le document peut courir sur plusieurs pages.</p>
+ * <p>Dans l'ordre où on vérifie un arrêté à la main : les cotisations du
+ * mois, jour par jour — un jour sans versement se voit ; les dettes, chacune
+ * avec ce que les cotisations en ont réglé et ce qu'il en reste ; les recettes
+ * annulées avec leur motif, qui expliquent un jour non réclamé ; puis le
+ * décompte par chauffeur qui tire le montant versé des tableaux. Le document peut courir sur plusieurs pages.</p>
  */
 @Component
 public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
@@ -59,6 +60,9 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
     private static final float COL_TYPE = 135;
     private static final float COL_TIERS = 220;
     private static final float COL_COMPENSE = 465;
+    // Colonnes du tableau des recettes annulées.
+    private static final float COL_MONTANT_ANNULE = 320;
+    private static final float COL_MOTIF = 335;
 
     private final DecimalFormat montantFormat;
 
@@ -69,17 +73,18 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
     }
 
     @Override
-    public byte[] renderDecomptePdf(ArreteCompte arrete) {
+    public byte[] renderDecomptePdf(ArreteCompte arrete, List<LigneRecette> recettesAnnulees) {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             try (Curseur c = new Curseur(document)) {
                 boolean parVehicule = arrete.getPerimetre() == PerimetreArrete.VEHICULE;
-                LocalDate debut = debutMois(arrete);
-                LocalDate fin = finMois(arrete);
+                LocalDate debut = arrete.debutMois();
+                LocalDate fin = arrete.finMois();
 
                 entete(c, arrete, debut, fin);
                 cotisations(c, arrete, debut, fin, parVehicule);
                 dettes(c, arrete, parVehicule);
+                recettesAnnulees(c, recettesAnnulees, parVehicule);
                 decompte(c, arrete);
                 notes(c, parVehicule);
             }
@@ -88,21 +93,6 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
         } catch (IOException e) {
             throw new IllegalStateException("Échec de génération du décompte PDF", e);
         }
-    }
-
-    /**
-     * Un arrêté couvre des mois entiers. Les arrêtés enregistrés avant cette
-     * règle portent des bornes resserrées sur la première et la dernière
-     * cotisation : on les élargit au rendu plutôt que de réécrire l'historique.
-     */
-    private static LocalDate debutMois(ArreteCompte arrete) {
-        LocalDate d = arrete.getPeriodeDebut();
-        return d != null ? d.withDayOfMonth(1) : null;
-    }
-
-    private static LocalDate finMois(ArreteCompte arrete) {
-        LocalDate f = arrete.getPeriodeFin();
-        return f != null ? f.withDayOfMonth(f.lengthOfMonth()) : null;
     }
 
     private void entete(Curseur c, ArreteCompte arrete, LocalDate debut, LocalDate fin) throws IOException {
@@ -295,7 +285,104 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
         };
     }
 
-    // ── 3. Décompte ─────────────────────────────────────────────────────
+    // ── 3. Recettes annulées ────────────────────────────────────────────
+
+    /**
+     * Les recettes de la période annulées, avec le motif saisi à l'annulation.
+     * Elles ne pèsent pas dans le calcul ; sans elles, le chauffeur ne
+     * comprend pas pourquoi un jour travaillé n'apparaît pas parmi les dettes.
+     * Le motif peut courir sur plusieurs lignes.
+     */
+    private void recettesAnnulees(Curseur c, List<LigneRecette> recettes, boolean parVehicule) throws IOException {
+        String titre = "3. Recettes annulées";
+        c.y -= 10;
+        titreSection(c, titre);
+        if (recettes == null || recettes.isEmpty()) {
+            c.couleur(Color.GRAY);
+            c.ligne(ITALIQUE, 9.5f, MARGE, "Aucune recette annulée sur la période.");
+            c.couleur(Color.BLACK);
+            return;
+        }
+        enteteRecettesAnnulees(c, parVehicule);
+
+        for (LigneRecette r : recettes) {
+            String commentaire = encodable(valeur(r.getMotifAnnulation()), REGULAR);
+            List<String> motif = decouper(commentaire, REGULAR, 9.5f, DROITE - COL_MOTIF);
+            if (c.saut(motif.size() * INTERLIGNE)) {
+                c.ligne(BOLD, 10, MARGE, titre + " (suite)");
+                enteteRecettesAnnulees(c, parVehicule);
+            }
+            c.texte(REGULAR, 9.5f, MARGE, date(r.getDateRecette()));
+            c.texte(REGULAR, 9.5f, COL_TYPE, tronquer(tiers(r.getChauffeurId(), r.getChauffeurNom(),
+                    r.getVehiculeImmatriculation(), parVehicule), 24));
+            c.texteDroite(REGULAR, 9.5f, COL_MONTANT_ANNULE,
+                    r.getMontantAttendu() != null ? montantFormat.format(montant(r.getMontantAttendu())) : "—");
+            for (String ligne : motif) {
+                c.texte(REGULAR, 9.5f, COL_MOTIF, ligne);
+                c.y -= INTERLIGNE;
+            }
+        }
+        c.couleur(Color.GRAY);
+        c.ligne(ITALIQUE, 8.5f, MARGE, "Une recette annulée n'est pas due : elle n'entre pas dans le décompte.");
+        c.couleur(Color.BLACK);
+    }
+
+    private void enteteRecettesAnnulees(Curseur c, boolean parVehicule) throws IOException {
+        c.texte(BOLD, 9.5f, MARGE, "Date");
+        c.texte(BOLD, 9.5f, COL_TYPE, parVehicule ? "Chauffeur" : "Véhicule");
+        c.texteDroite(BOLD, 9.5f, COL_MONTANT_ANNULE, "Montant");
+        c.texte(BOLD, 9.5f, COL_MOTIF, "Commentaire");
+        c.y -= 4;
+        c.trait();
+        c.y -= INTERLIGNE;
+    }
+
+    /** Coupe un texte aux espaces pour qu'il tienne dans {@code largeur} ; un mot trop long est coupé net. */
+    private static List<String> decouper(String texte, PDFont font, float taille, float largeur) throws IOException {
+        List<String> lignes = new ArrayList<>();
+        StringBuilder courante = new StringBuilder();
+        for (String mot : texte.replaceAll("\\s+", " ").trim().split(" ")) {
+            String essai = courante.isEmpty() ? mot : courante + " " + mot;
+            if (largeur(font, taille, essai) <= largeur) {
+                courante = new StringBuilder(essai);
+                continue;
+            }
+            if (!courante.isEmpty()) lignes.add(courante.toString());
+            courante = new StringBuilder(mot);
+            while (courante.length() > 1 && largeur(font, taille, courante.toString()) > largeur) {
+                int n = courante.length() - 1;
+                while (n > 1 && largeur(font, taille, courante.substring(0, n)) > largeur) n--;
+                lignes.add(courante.substring(0, n));
+                courante = new StringBuilder(courante.substring(n));
+            }
+        }
+        if (!courante.isEmpty() || lignes.isEmpty()) lignes.add(courante.toString());
+        return lignes;
+    }
+
+    /**
+     * Le motif est saisi librement, au téléphone : un emoji ou un caractère
+     * hors WinAnsi ferait échouer tout le PDF. On le remplace par « ? ».
+     */
+    private static String encodable(String texte, PDFont font) {
+        StringBuilder sb = new StringBuilder();
+        texte.codePoints().forEach(cp -> {
+            String car = new String(Character.toChars(cp));
+            try {
+                font.encode(car);
+                sb.append(car);
+            } catch (IOException | IllegalArgumentException e) {
+                sb.append(Character.isWhitespace(cp) ? " " : "?");
+            }
+        });
+        return sb.toString();
+    }
+
+    private static float largeur(PDFont font, float taille, String s) throws IOException {
+        return font.getStringWidth(s) / 1000 * taille;
+    }
+
+    // ── 4. Décompte ─────────────────────────────────────────────────────
 
     /**
      * Le calcul, posé comme on le ferait à la main, pour chaque chauffeur : ce
@@ -307,7 +394,7 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
         if (reglements.isEmpty()) return;
         c.y -= 10;
         c.saut(140);
-        titreSection(c, reglements.size() > 1 ? "3. Décompte par chauffeur" : "3. Décompte");
+        titreSection(c, reglements.size() > 1 ? "4. Décompte par chauffeur" : "4. Décompte");
         for (ReglementArrete r : reglements) {
             String nom = r.getChauffeurNom() != null ? r.getChauffeurNom() : "Chauffeur #" + r.getChauffeurId();
             calcul(c, nom, montant(r.getReliquatAnterieur()), montant(r.getTotalCotisations()),

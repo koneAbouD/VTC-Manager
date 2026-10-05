@@ -8,6 +8,8 @@ import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
 import com.tmk.vtcmanager.application.domain.arrete.SensArrete;
 import com.tmk.vtcmanager.application.domain.arrete.StatutArrete;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
+import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
+import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.DisplayName;
@@ -124,7 +126,7 @@ class ArreteDecomptePdfRendererTest {
 
         String texte = texte(pdf);
         assertThat(texte.indexOf("1. Cotisations")).isLessThan(texte.indexOf("2. Dettes"));
-        assertThat(texte.indexOf("2. Dettes")).isLessThan(texte.indexOf("3. Décompte"));
+        assertThat(texte.indexOf("2. Dettes")).isLessThan(texte.indexOf("4. Décompte"));
         assertThat(texte).contains(
                 "Reste dû des périodes précédentes (repris) 5 000 FCFA",
                 "Cotisations versées sur la période 60 000 FCFA",
@@ -147,7 +149,41 @@ class ArreteDecomptePdfRendererTest {
         String texte = texte(pdf);
         assertThat(pages(pdf)).isGreaterThan(1);
         assertThat(texte).contains("Total des cotisations (30 versements) 60 000",
-                "Total des dettes 15 000 0", "1234 AB 01", "3. Décompte");
+                "Total des dettes 15 000 0", "1234 AB 01", "4. Décompte");
         assertThat(texte).doesNotContain("Pas de cotisation versée ce jour");
+    }
+
+    private static LigneRecette recetteAnnulee(int jour, String montant, String motif) {
+        return LigneRecette.builder().id((long) jour).chauffeurId(1L).chauffeurNom("Jean Kouassi")
+                .vehiculeImmatriculation("1234 AB 01").dateRecette(LocalDate.of(2026, 9, jour))
+                .montantAttendu(montant != null ? new BigDecimal(montant) : null)
+                .statut(StatutLigneRecette.ANNULEE).motifAnnulation(motif).build();
+    }
+
+    @Test
+    @DisplayName("les recettes annulées sont listées avec leur commentaire, entre les dettes et le décompte")
+    void recettesAnnulees() throws Exception {
+        String motifLong = "Véhicule au garage toute la journée suite à une panne d'embrayage constatée "
+                + "le matin par le chauffeur, recette non due";
+        byte[] pdf = renderer.renderDecomptePdf(arrete(PerimetreArrete.VEHICULE, List.of(
+                        ligne(1, TypeDocumentCreance.COTISATION, SensArrete.CREDIT, 2, "2000"))),
+                List.of(recetteAnnulee(8, "21000", "Jour férié 🎉"),
+                        recetteAnnulee(15, null, motifLong)));
+
+        String texte = texte(pdf);
+        assertThat(texte).contains("3. Recettes annulées", "Commentaire",
+                "08/09/2026 Jean Kouassi 21 000 Jour férié ?",
+                "15/09/2026 Jean Kouassi — Véhicule au garage",
+                "recette non due",
+                "Une recette annulée n'est pas due");
+        assertThat(texte.indexOf("2. Dettes")).isLessThan(texte.indexOf("3. Recettes annulées"));
+        assertThat(texte.indexOf("3. Recettes annulées")).isLessThan(texte.indexOf("4. Décompte"));
+    }
+
+    @Test
+    @DisplayName("sans recette annulée, la section le dit")
+    void aucuneRecetteAnnulee() throws Exception {
+        String texte = texte(renderer.renderDecomptePdf(arrete(PerimetreArrete.CHAUFFEUR, List.of())));
+        assertThat(texte).contains("3. Recettes annulées", "Aucune recette annulée sur la période.");
     }
 }
