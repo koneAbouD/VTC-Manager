@@ -76,8 +76,9 @@ abstract interface class LigneRecetteRepository {
   Future<Either<Failure, LigneRecette>> reaffecterChauffeur(
     int id,
     int chauffeurId,
-    String motif,
-  );
+    String motif, {
+    bool avecCotisations = false,
+  });
 
   /// Corrige le jour d'un versement déjà enregistré : l'encaissement et
   /// l'écriture qu'il a produite au journal changent de date ensemble. Aucun

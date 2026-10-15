@@ -247,7 +247,7 @@ class _Body extends ConsumerWidget {
         final res = await repo.getApercuReaffectation(ligneId);
         return res.fold((f) => throw Exception(f.message), (apercu) => apercu);
       },
-      decrireImpacts: (impacts, choisi) => [
+      decrireImpacts: (impacts, choisi, _) => [
         ImpactReaffectation('La cotisation « ${ligne.nomCotisation} » de '
             '${fmt.format(impacts.montantCreance)} passe au compte de ${choisi.nom}.'),
         if (impacts.montantEncaisse > 0)
@@ -255,7 +255,7 @@ class _Body extends ConsumerWidget {
               'Le dépôt déjà versé (${fmt.format(impacts.montantEncaisse)}) devient le sien : '
               "c'est à lui qu'un arrêté le restituera."),
       ],
-      onReaffecter: (choisi, motif) async {
+      onReaffecter: (choisi, motif, _) async {
         final r = await repo.reaffecterChauffeur(ligneId, choisi.id, motif);
         return r.fold((f) => f.message, (_) => null);
       },

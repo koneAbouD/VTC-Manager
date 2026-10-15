@@ -31,6 +31,10 @@ class VersementRegroupe extends LigneJournal {
 
   bool get entierementAnnule => actives.isEmpty;
 
+  /// Les extournes d'un billet rendu : la contre-passation du versement, qui
+  /// se lit en une ligne comme le versement qu'elle annule.
+  bool get estExtourne => ecritures.every((e) => e.estUneExtourne);
+
   /// Ce que le versement vaut encore. Entièrement extourné, il garde son
   /// montant d'origine — affiché barré, comme une écriture annulée.
   double get total => (entierementAnnule ? ecritures : actives)
@@ -45,7 +49,9 @@ class VersementRegroupe extends LigneJournal {
 /// Seule la clé [OperationFinanciere.versementId] fait foi : le serveur la
 /// retire dès qu'une correction — date, chauffeur — fait que les écritures ne
 /// décrivent plus le même billet. Rien n'est donc déduit ici des dates ou des
-/// chauffeurs.
+/// chauffeurs. Les extournes d'un billet rendu se rassemblent de même, sur
+/// [OperationFinanciere.annulationVersementId] : l'extournée et l'extourne
+/// donnent chacune une ligne.
 ///
 /// Un versement dont une seule écriture est à l'écran — la sœur filtrée, ou pas
 /// encore chargée par la page suivante — reste une écriture seule : on ne
@@ -53,14 +59,14 @@ class VersementRegroupe extends LigneJournal {
 List<LigneJournal> regrouperParVersement(List<OperationFinanciere> operations) {
   final parVersement = <String, List<OperationFinanciere>>{};
   for (final op in operations) {
-    final id = op.versementId;
+    final id = _cle(op);
     if (id != null) parVersement.putIfAbsent(id, () => []).add(op);
   }
 
   final lignes = <LigneJournal>[];
   final dejaPlaces = <String>{};
   for (final op in operations) {
-    final id = op.versementId;
+    final id = _cle(op);
     final membres = id == null ? null : parVersement[id];
     if (membres == null || membres.length < 2) {
       lignes.add(EcritureSeule(op));
@@ -71,6 +77,14 @@ List<LigneJournal> regrouperParVersement(List<OperationFinanciere> operations) {
         <OperationFinanciere>[...membres]..sort(_recetteDabord))));
   }
   return lignes;
+}
+
+/// Deux espaces de clés distincts : un UUID de versement ne peut pas croiser
+/// celui d'une annulation, mais le préfixe le garantit sans y penser.
+String? _cle(OperationFinanciere op) {
+  if (op.versementId != null) return 'v:${op.versementId}';
+  if (op.annulationVersementId != null) return 'a:${op.annulationVersementId}';
+  return null;
 }
 
 int _rang(OperationFinanciere op) => switch (op.categorieCode?.toUpperCase()) {

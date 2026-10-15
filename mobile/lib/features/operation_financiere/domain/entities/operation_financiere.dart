@@ -47,6 +47,11 @@ class OperationFinanciere {
   /// désigne encore un seul versement : on rassemble sur elle, et sur elle seule.
   final String? versementId;
 
+  /// Pièce d'annulation partagée avec l'extourne sœur : les extournes d'un même
+  /// billet rendu, rassemblées à l'affichage comme les écritures qu'elles
+  /// contre-passent. Nul hors extourne d'un versement.
+  final String? annulationVersementId;
+
   /// Renseignés sur une écriture qui a été extournée.
   final DateTime? annuleLe;
   final String? motifAnnulation;
@@ -99,6 +104,7 @@ class OperationFinanciere {
     this.detailMaintenance,
     this.extourneDeId,
     this.versementId,
+    this.annulationVersementId,
     this.annuleLe,
     this.motifAnnulation,
     this.modifiable = false,

@@ -26,6 +26,7 @@ import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
 import com.tmk.vtcmanager.application.services.NotificationReaffectationService;
 import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
 import com.tmk.vtcmanager.application.services.VerrouArreteService;
+import com.tmk.vtcmanager.application.usecases.cotisation.ReaffecterChauffeurCotisationUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.ReaffecterChauffeurRecetteUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -80,6 +81,7 @@ class ReaffecterChauffeurRecetteUseCaseTest {
     private CloturePeriodeRepository cloturePeriodeRepository;
     private ClotureCaisseRepository clotureCaisseRepository;
     private NotificationReaffectationService notificationService;
+    private ReaffecterChauffeurCotisationUseCase cotisationUseCase;
     private ReaffecterChauffeurRecetteUseCase useCase;
 
     @BeforeEach
@@ -95,6 +97,7 @@ class ReaffecterChauffeurRecetteUseCaseTest {
         cloturePeriodeRepository = mock(CloturePeriodeRepository.class);
         clotureCaisseRepository = mock(ClotureCaisseRepository.class);
         notificationService = mock(NotificationReaffectationService.class);
+        cotisationUseCase = mock(ReaffecterChauffeurCotisationUseCase.class);
 
         // Livres ouverts, aucun arrêté, aucun paiement en vol, journée libre.
         when(cloturePeriodeRepository.findDerniere()).thenReturn(Optional.empty());
@@ -120,7 +123,7 @@ class ReaffecterChauffeurRecetteUseCaseTest {
         AuteurCourant auteurCourant = () -> "akone";
         useCase = new ReaffecterChauffeurRecetteUseCase(ligneRecetteRepository, chauffeurRepository,
                 arreteCompteRepository, operationRepository, lignePenaliteRepository,
-                journalRepository, service, notificationService, auteurCourant);
+                journalRepository, service, notificationService, auteurCourant, cotisationUseCase);
     }
 
     // ── Fixtures ────────────────────────────────────────────────────────────
@@ -161,6 +164,65 @@ class ReaffecterChauffeurRecetteUseCaseTest {
         verify(operationRepository, never()).detacherVersementsDesEncaissements(any(), anyLong());
         verify(ligneRecetteRepository, never()).reaffecterChauffeur(anyLong(), anyLong());
         verifyNoInteractions(journalRepository);
+    }
+
+    private static LigneCotisation cotisation(Long id, Long chauffeurId, StatutLigneCotisation statut) {
+        return LigneCotisation.builder()
+                .id(id).vehiculeId(VEHICULE).chauffeurId(chauffeurId)
+                .dateCotisation(JOUR).nomCotisation("Épargne")
+                .montantDu(BigDecimal.valueOf(2_000))
+                .statut(statut).encaissements(new ArrayList<>())
+                .build();
+    }
+
+    // ── Cotisations liées ───────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Avec les cotisations liées")
+    class AvecCotisations {
+
+        @Test
+        @DisplayName("emmène les cotisations vivantes du même chauffeur, ce véhicule, ce jour")
+        void emmeneLesCotisationsDuChauffeur() {
+            enBase(ligne(StatutLigneRecette.EN_ATTENTE));
+            when(ligneCotisationRepository.findByVehiculeIdAndDateCotisation(VEHICULE, JOUR))
+                    .thenReturn(List.of(
+                            cotisation(90L, ANCIEN, StatutLigneCotisation.EN_ATTENTE),
+                            cotisation(91L, ANCIEN, StatutLigneCotisation.ANNULEE),
+                            cotisation(92L, 9L, StatutLigneCotisation.EN_ATTENTE)));
+
+            useCase.executer(LIGNE_ID, NOUVEAU, MOTIF, true);
+
+            verify(ligneRecetteRepository).reaffecterChauffeur(LIGNE_ID, NOUVEAU);
+            verify(cotisationUseCase).executer(90L, NOUVEAU, MOTIF);
+            verify(cotisationUseCase, never()).executer(eq(91L), anyLong(), anyString());
+            verify(cotisationUseCase, never()).executer(eq(92L), anyLong(), anyString());
+        }
+
+        @Test
+        @DisplayName("sans la demande, la cotisation reste où elle est")
+        void sansDemandeRienNeSuit() {
+            enBase(ligne(StatutLigneRecette.EN_ATTENTE));
+            when(ligneCotisationRepository.findByVehiculeIdAndDateCotisation(VEHICULE, JOUR))
+                    .thenReturn(List.of(cotisation(90L, ANCIEN, StatutLigneCotisation.EN_ATTENTE)));
+
+            useCase.executer(LIGNE_ID, NOUVEAU, MOTIF);
+
+            verifyNoInteractions(cotisationUseCase);
+        }
+
+        @Test
+        @DisplayName("une cotisation déjà restituée refuse tout, avant la moindre écriture")
+        void cotisationRestitueeRefuseTout() {
+            enBase(ligne(StatutLigneRecette.EN_ATTENTE));
+            when(ligneCotisationRepository.findByVehiculeIdAndDateCotisation(VEHICULE, JOUR))
+                    .thenReturn(List.of(cotisation(90L, ANCIEN, StatutLigneCotisation.RESTITUEE)));
+
+            assertThatThrownBy(() -> useCase.executer(LIGNE_ID, NOUVEAU, MOTIF, true))
+                    .isInstanceOf(ReaffectationImpossibleException.class);
+            aucuneEcriture();
+            verifyNoInteractions(cotisationUseCase);
+        }
     }
 
     // ── Cas nominal ─────────────────────────────────────────────────────────

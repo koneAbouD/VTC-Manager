@@ -179,9 +179,11 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
 
   @override
   Future<Either<Failure, LigneRecette>> reaffecterChauffeur(
-      int id, int chauffeurId, String motif) async {
+      int id, int chauffeurId, String motif,
+      {bool avecCotisations = false}) async {
     try {
-      return Right(await _datasource.reaffecterChauffeur(id, chauffeurId, motif));
+      return Right(await _datasource.reaffecterChauffeur(id, chauffeurId, motif,
+          avecCotisations: avecCotisations));
     } on ApiException catch (e) {
       return Left(_mapApiException(e));
     } on NetworkException catch (e) {

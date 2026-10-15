@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/widgets/extourne_badge.dart';
+
 import 'ligne_journal.dart';
 
 /// Un versement dans le journal : le billet en tête, sa ventilation dessous.
@@ -29,6 +31,9 @@ class VersementCard extends StatelessWidget {
     final montant = NumberFormat('#,##0', 'fr_FR');
     final tete = versement.tete;
     final annule = versement.entierementAnnule;
+    final extourne = versement.estExtourne;
+    // La pastille prend la couleur de la contre-passation, comme son badge.
+    final teinte = extourne ? Colors.orange.shade700 : _vert;
 
     // « Recette + Cotisation d'hier » : ce que le billet a soldé, puis la
     // journée réglée — la même date relative que sur une écriture seule.
@@ -65,11 +70,11 @@ class VersementCard extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: _vert.withValues(alpha: 0.1),
+                color: teinte.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.receipt_long_rounded,
-                  color: _vert, size: 18),
+              child: Icon(Icons.receipt_long_rounded,
+                  color: teinte, size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -91,6 +96,11 @@ class VersementCard extends StatelessWidget {
                               annule),
                         ),
                       ),
+                      // « Extournée » sur le billet rendu, « Extourne » sur
+                      // sa contre-passation : le même repère que les lignes
+                      // d'une écriture seule.
+                      ExtourneBadge(
+                          estUneExtourne: extourne, estAnnulee: annule),
                       const SizedBox(width: 8),
                       Text(
                         '${montant.format(versement.total)} XOF',

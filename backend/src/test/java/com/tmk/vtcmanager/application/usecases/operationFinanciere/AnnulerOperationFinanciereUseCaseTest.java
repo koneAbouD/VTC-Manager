@@ -105,6 +105,8 @@ class AnnulerOperationFinanciereUseCaseTest {
         assertThat(sauvees.get(1).getExtourneDeId()).isEqualTo(1L);
         assertThat(sauvees.get(1).getMontant()).isEqualByComparingTo("-75000");
         assertThat(sauvees.get(1).getDateOperation()).isEqualTo(LocalDate.now());
+        // Écriture isolée : aucune pièce d'annulation à partager.
+        assertThat(sauvees.get(1).getAnnulationVersementId()).isNull();
     }
 
     @Test
@@ -180,6 +182,10 @@ class AnnulerOperationFinanciereUseCaseTest {
         assertThat(sauvees.get(3).getMontant()).isEqualByComparingTo("-1000");
         // L'extourne ne rejoint jamais le versement : elle n'est pas un billet.
         assertThat(sauvees.get(3).getVersementId()).isNull();
+        // …mais les deux extournes forment une seule pièce d'annulation, que
+        // l'affichage rassemble comme le billet d'origine.
+        assertThat(sauvees.get(1).getAnnulationVersementId()).isNotNull()
+                .isEqualTo(sauvees.get(3).getAnnulationVersementId());
 
         // Les deux créances redeviennent dues.
         verify(annulationEncaissement)
@@ -200,7 +206,11 @@ class AnnulerOperationFinanciereUseCaseTest {
 
         useCase.execute(1L, "erreur de montant");
 
-        // La recette seule : son marquage et son extourne.
-        verify(operationRepository, times(2)).save(any());
+        // La recette seule : son marquage et son extourne, sans sœur à
+        // rejoindre — elle reste une écriture seule à l'affichage.
+        ArgumentCaptor<OperationFinanciere> captor =
+                ArgumentCaptor.forClass(OperationFinanciere.class);
+        verify(operationRepository, times(2)).save(captor.capture());
+        assertThat(captor.getAllValues().get(1).getAnnulationVersementId()).isNull();
     }
 }

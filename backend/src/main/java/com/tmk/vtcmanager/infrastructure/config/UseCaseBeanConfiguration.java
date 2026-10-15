@@ -2037,11 +2037,13 @@ public class UseCaseBeanConfiguration {
             ReaffectationChauffeurRepository reaffectationChauffeurRepository,
             ReaffectationChauffeurService reaffectationChauffeurService,
             NotificationReaffectationService notificationReaffectationService,
-            AuteurCourant auteurCourant) {
+            AuteurCourant auteurCourant,
+            ReaffecterChauffeurCotisationUseCase reaffecterChauffeurCotisationUseCase) {
         return new ReaffecterChauffeurRecetteUseCase(ligneRecetteRepository, chauffeurRepository,
                 arreteCompteRepository, operationFinanciereRepository, lignePenaliteRepository,
                 reaffectationChauffeurRepository, reaffectationChauffeurService,
-                notificationReaffectationService, auteurCourant);
+                notificationReaffectationService, auteurCourant,
+                reaffecterChauffeurCotisationUseCase);
     }
 
     @Bean

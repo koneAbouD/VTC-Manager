@@ -105,10 +105,14 @@ class LigneRecetteRemoteDatasource {
 
   /// Porte la ligne au compte d'un autre chauffeur. Le motif est obligatoire :
   /// le serveur refuse une réaffectation qui ne s'explique pas.
-  Future<LigneRecetteModel> reaffecterChauffeur(int id, int chauffeurId, String motif) async {
+  /// Avec [avecCotisations], les cotisations du même chauffeur, même véhicule,
+  /// même jour suivent la recette — ou rien ne bouge.
+  Future<LigneRecetteModel> reaffecterChauffeur(int id, int chauffeurId, String motif,
+      {bool avecCotisations = false}) async {
     final data = await _client.patch('/recettes/lignes/$id/chauffeur', {
       'chauffeurId': chauffeurId,
       'motif': motif,
+      'avecCotisations': avecCotisations,
     });
     return LigneRecetteModel.fromJson(data as Map<String, dynamic>);
   }

@@ -20,6 +20,28 @@ class ImpactReaffectation {
   const ImpactReaffectation(this.texte, {this.secondaire = false});
 }
 
+/// Une créance voisine qui peut suivre celle qu'on déplace — la cotisation du
+/// même jour quand on réaffecte une recette, par exemple.
+///
+/// Proposée par un interrupteur à l'étape de confirmation. Quand quelque chose
+/// l'empêche de suivre, l'interrupteur reste visible mais éteint, avec la
+/// raison : le cacher laisserait croire qu'elle a bougé.
+class OptionReaffectationLiee {
+  final String libelle;
+  final String? detail;
+
+  /// Pourquoi elle ne peut pas suivre, ou null si elle le peut.
+  final String? motifIndisponible;
+
+  const OptionReaffectationLiee({
+    required this.libelle,
+    this.detail,
+    this.motifIndisponible,
+  });
+
+  bool get disponible => motifIndisponible == null;
+}
+
 /// Ouvre la feuille de réaffectation d'une créance (recette ou cotisation).
 ///
 /// Deux temps dans **une seule** feuille, en glissement horizontal : choisir,
@@ -32,6 +54,10 @@ class ImpactReaffectation {
 /// caisse entre-temps — et cette phrase-là doit rester lisible, pas glisser
 /// dans un snackbar qui passe.
 ///
+/// [optionLiee] décrit, à partir des impacts, la créance voisine qui peut
+/// suivre (ou null s'il n'y en a pas). Son état — `avecLiees` — est passé à
+/// [decrireImpacts] et à [onReaffecter] ; il vaut `false` sans option.
+///
 /// Retourne `true` si la réaffectation a abouti.
 Future<bool?> showReaffectationChauffeurSheet(
   BuildContext context, {
@@ -40,9 +66,12 @@ Future<bool?> showReaffectationChauffeurSheet(
   required String chauffeurActuel,
   required Future<ApercuReaffectation> Function() chargerApercu,
   required List<ImpactReaffectation> Function(
-          ImpactsReaffectation impacts, CandidatChauffeur choisi)
+          ImpactsReaffectation impacts, CandidatChauffeur choisi, bool avecLiees)
       decrireImpacts,
-  required Future<String?> Function(CandidatChauffeur choisi, String motif) onReaffecter,
+  required Future<String?> Function(
+          CandidatChauffeur choisi, String motif, bool avecLiees)
+      onReaffecter,
+  OptionReaffectationLiee? Function(ImpactsReaffectation impacts)? optionLiee,
   Color accent = AppColors.primaryDark,
 }) {
   return showModalBottomSheet<bool>(
@@ -60,6 +89,7 @@ Future<bool?> showReaffectationChauffeurSheet(
       chargerApercu: chargerApercu,
       decrireImpacts: decrireImpacts,
       onReaffecter: onReaffecter,
+      optionLiee: optionLiee,
       accent: accent,
     ),
   );
@@ -72,8 +102,10 @@ class _ReaffectationSheet extends StatefulWidget {
   final String sousTitre;
   final String chauffeurActuel;
   final Future<ApercuReaffectation> Function() chargerApercu;
-  final List<ImpactReaffectation> Function(ImpactsReaffectation, CandidatChauffeur) decrireImpacts;
-  final Future<String?> Function(CandidatChauffeur, String) onReaffecter;
+  final List<ImpactReaffectation> Function(ImpactsReaffectation, CandidatChauffeur, bool)
+      decrireImpacts;
+  final Future<String?> Function(CandidatChauffeur, String, bool) onReaffecter;
+  final OptionReaffectationLiee? Function(ImpactsReaffectation)? optionLiee;
   final Color accent;
 
   const _ReaffectationSheet({
@@ -83,6 +115,7 @@ class _ReaffectationSheet extends StatefulWidget {
     required this.chargerApercu,
     required this.decrireImpacts,
     required this.onReaffecter,
+    required this.optionLiee,
     required this.accent,
   });
 
@@ -102,6 +135,18 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
   bool _envoi = false;
   String? _erreur;
   bool _motifManquant = false;
+
+  /// Cochée d'office quand elle est possible : la créance voisine a presque
+  /// toujours la même cause que celle qu'on corrige.
+  bool _avecLiees = true;
+
+  OptionReaffectationLiee? get _option {
+    final impacts = _impactsCharges;
+    if (impacts == null || widget.optionLiee == null) return null;
+    return widget.optionLiee!(impacts);
+  }
+
+  bool get _lieesRetenues => _avecLiees && (_option?.disponible ?? false);
 
   @override
   void initState() {
@@ -146,7 +191,7 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
       _motifManquant = false;
     });
 
-    final erreur = await widget.onReaffecter(_choisi!, motif);
+    final erreur = await widget.onReaffecter(_choisi!, motif, _lieesRetenues);
     if (!mounted) return;
 
     if (erreur != null) {
@@ -437,7 +482,8 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
     final choisi = _choisi!;
     // Les faits sont ceux que le serveur a comptés ; la phrase se compose ici,
     // là où le nom du chauffeur et le format des montants sont connus.
-    final lignes = widget.decrireImpacts(_impactsCharges!, choisi);
+    final lignes = widget.decrireImpacts(_impactsCharges!, choisi, _lieesRetenues);
+    final option = _option;
 
     return ListView(
       key: const ValueKey('confirmation'),
@@ -535,6 +581,11 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
           ),
         ),
         const SizedBox(height: 16),
+
+        if (option != null) ...[
+          _optionLieeTile(option),
+          const SizedBox(height: 16),
+        ],
 
         Row(
           children: [
@@ -645,6 +696,76 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
           ],
         ),
       ],
+    );
+  }
+
+  // ── Option liée ──────────────────────────────────────────────────────────
+
+  Widget _optionLieeTile(OptionReaffectationLiee option) {
+    final actif = option.disponible && !_envoi;
+    final sousTexte = option.disponible ? option.detail : option.motifIndisponible;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _lieesRetenues
+              ? widget.accent.withValues(alpha: 0.40)
+              : AppColors.border,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(option.libelle,
+                      style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: option.disponible ? AppColors.dark : AppColors.hint)),
+                ),
+                if (sousTexte != null && sousTexte.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!option.disponible)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 1, right: 5),
+                            child: Icon(Icons.lock_outline_rounded,
+                                size: 13, color: AppColors.warning),
+                          ),
+                        Expanded(
+                          child: Text(sousTexte,
+                              style: TextStyle(
+                                  fontSize: 11.5,
+                                  height: 1.35,
+                                  color: option.disponible
+                                      ? AppColors.hint
+                                      : AppColors.warning)),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: _lieesRetenues,
+            activeTrackColor: widget.accent,
+            onChanged: actif
+                ? (v) => setState(() => _avecLiees = v)
+                : null,
+          ),
+        ],
+      ),
     );
   }
 }

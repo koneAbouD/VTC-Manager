@@ -57,6 +57,7 @@ public class GetApercuReaffectationUseCase {
         BigDecimal creance = ligne.getMontantAttendu() != null
                 ? ligne.getMontantAttendu() : montantEncaisse(ligne);
         List<LignePenalite> penalites = reaffectationService.penalitesQuiSuivent(ligneId);
+        List<LigneCotisation> cotisations = reaffectationService.cotisationsLiees(ligne);
 
         return new ApercuReaffectation(candidats, new ImpactsReaffectation(
                 creance,
@@ -65,7 +66,12 @@ public class GetApercuReaffectationUseCase {
                 penalites.size(),
                 penalites.stream()
                         .map(p -> p.getMontant() != null ? p.getMontant() : BigDecimal.ZERO)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add)));
+                        .reduce(BigDecimal.ZERO, BigDecimal::add),
+                cotisations.size(),
+                cotisations.stream()
+                        .map(c -> c.getMontantDu() != null ? c.getMontantDu() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add),
+                reaffectationService.motifBlocageCotisations(cotisations)));
     }
 
     @Transactional(readOnly = true)

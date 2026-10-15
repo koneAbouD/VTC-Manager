@@ -119,10 +119,15 @@ public class AnnulerOperationFinanciereUseCase {
             caisseClotureeGuard.verifier(soeur.getCompteTresorerieId(), date);
         }
 
+        // Les extournes d'un billet rendu forment une seule pièce, comme les
+        // écritures qu'elles contre-passent : un identifiant commun le dit.
+        UUID annulationVersementId = soeurs.isEmpty() ? null : UUID.randomUUID();
+
         String auteur = auteurCourant.nom();
-        OperationFinanciere origineSauvee = contrePasser(origine, date, motif, auteur);
+        OperationFinanciere origineSauvee =
+                contrePasser(origine, date, motif, auteur, annulationVersementId);
         for (OperationFinanciere soeur : soeurs) {
-            contrePasser(soeur, date, motif, auteur);
+            contrePasser(soeur, date, motif, auteur, annulationVersementId);
             log.info("Écriture {} extournée avec le versement {} de l'écriture {}",
                     soeur.getId(), origine.getVersementId(), origine.getId());
         }
@@ -147,13 +152,15 @@ public class AnnulerOperationFinanciereUseCase {
 
     /** Marque l'écriture annulée, lui oppose son extourne, repositionne sa source. */
     private OperationFinanciere contrePasser(OperationFinanciere operation, LocalDate date,
-                                             String motif, String auteur) {
+                                             String motif, String auteur,
+                                             UUID annulationVersementId) {
         operation.setMotifAnnulation(motif);
         operation.setAnnulePar(auteur);
         operation.setAnnuleLe(LocalDateTime.now());
         OperationFinanciere sauvee = operationRepository.save(operation);
 
-        operationRepository.save(construireExtourne(sauvee, date, motif));
+        operationRepository.save(
+                construireExtourne(sauvee, date, motif, annulationVersementId));
 
         // L'encaissement sous-jacent (recette / cotisation / pénalité) est marqué
         // annulé — jamais supprimé — et la ligne recalculée sans lui : elle
@@ -171,7 +178,8 @@ public class AnnulerOperationFinanciereUseCase {
     }
 
     private OperationFinanciere construireExtourne(OperationFinanciere origine,
-                                                   LocalDate date, String motif) {
+                                                   LocalDate date, String motif,
+                                                   UUID annulationVersementId) {
         return OperationFinanciere.builder()
                 .reference(sequenceReferenceService.suivante(
                         SequenceReferenceService.Journal.EXTOURNE, date))
@@ -189,6 +197,7 @@ public class AnnulerOperationFinanciereUseCase {
                 .dateReference(origine.getDateReference())
                 .statut(origine.getStatut())
                 .extourneDeId(origine.getId())
+                .annulationVersementId(annulationVersementId)
                 .commentaire("Extourne de " + origine.getReference() + " — " + motif)
                 .build();
     }

@@ -50,6 +50,12 @@ public record OperationFinanciereResponse(
          * serveur garantit qu'elle désigne encore un seul versement.
          */
         UUID versementId,
+        /**
+         * Annulation dont l'extourne fait partie, partagée avec l'extourne sœur
+         * du même billet rendu. Le client rassemble les extournes sur elle comme
+         * les écritures d'origine sur {@code versementId}.
+         */
+        UUID annulationVersementId,
         /** Renseignés sur une écriture qui a été extournée. */
         String motifAnnulation,
         String annulePar,

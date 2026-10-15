@@ -87,6 +87,16 @@ public class OperationFinanciere {
     private UUID versementId;
 
     /**
+     * Pièce d'annulation : partagé par les extournes nées d'une même
+     * annulation de versement — la recette et la cotisation du billet rendues
+     * ensemble. Le pendant de {@link #versementId} côté contre-passation :
+     * seul l'affichage les rassemble, aucun agrégat ne le lit.
+     *
+     * <p>Null hors extourne, et sur l'extourne d'une écriture isolée.
+     */
+    private UUID annulationVersementId;
+
+    /**
      * Renseigné à la lecture seulement : {@link #estAnnulable()} — ce que l'état
      * de l'écriture permet — combiné au verrou des arrêtés, que seule la couche
      * de lecture connaît. Faux, le client masque l'action « Annuler ».

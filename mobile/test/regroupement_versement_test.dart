@@ -14,6 +14,8 @@ OperationFinanciere _op(
   String libelle = 'Recette',
   double montant = 15000,
   DateTime? annuleLe,
+  int? extourneDe,
+  String? annulation,
 }) =>
     OperationFinanciere(
       id: id,
@@ -24,15 +26,24 @@ OperationFinanciere _op(
       dateOperation: DateTime(2026, 9, 11),
       versementId: versement,
       annuleLe: annuleLe,
+      extourneDeId: extourneDe,
+      annulationVersementId: annulation,
     );
 
-OperationFinanciere _cotisation(int id, {String? versement, DateTime? annuleLe}) =>
+OperationFinanciere _cotisation(int id,
+        {String? versement,
+        DateTime? annuleLe,
+        int? extourneDe,
+        String? annulation,
+        double montant = 2000}) =>
     _op(id,
         versement: versement,
         code: 'ENCAISSEMENT_COTISATIONS',
         libelle: 'Cotisation',
-        montant: 2000,
-        annuleLe: annuleLe);
+        montant: montant,
+        annuleLe: annuleLe,
+        extourneDe: extourneDe,
+        annulation: annulation);
 
 void main() {
   test('deux écritures du même versement forment une seule ligne, recette d\'abord',
@@ -107,5 +118,33 @@ void main() {
     final versement = lignes.single as VersementRegroupe;
     expect(versement.entierementAnnule, isTrue);
     expect(versement.total, 17000);
+  });
+
+  // Billet rendu : l'extournée et l'extourne donnent chacune une ligne.
+  test('l\'annulation d\'un versement donne exactement deux lignes', () {
+    final annule = DateTime(2026, 9, 12);
+    final lignes = regrouperParVersement([
+      _cotisation(94, extourneDe: 92, annulation: 'a1', montant: -2000),
+      _op(93, extourneDe: 91, annulation: 'a1', montant: -15000),
+      _op(91, versement: 'v7', annuleLe: annule),
+      _cotisation(92, versement: 'v7', annuleLe: annule),
+    ]);
+
+    expect(lignes, hasLength(2));
+    final extourne = lignes.first as VersementRegroupe;
+    expect(extourne.estExtourne, isTrue);
+    expect(extourne.ecritures.map((e) => e.id), [93, 94]);
+    expect(extourne.total, -17000);
+    final extournee = lignes.last as VersementRegroupe;
+    expect(extournee.estExtourne, isFalse);
+    expect(extournee.entierementAnnule, isTrue);
+    expect(extournee.total, 17000);
+  });
+
+  test('une extourne sans sœur à l\'écran reste une écriture seule', () {
+    final lignes = regrouperParVersement(
+        [_op(95, extourneDe: 91, annulation: 'a2', montant: -15000)]);
+
+    expect(lignes.single, isA<EcritureSeule>());
   });
 }

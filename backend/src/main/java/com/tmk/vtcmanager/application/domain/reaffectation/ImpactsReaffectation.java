@@ -12,9 +12,28 @@ import java.math.BigDecimal;
  *
  * <p>Des faits, et non des textes tout faits : la phrase se compose côté écran,
  * là où le nom du chauffeur choisi et le format des montants sont connus.
+ *
+ * <p>Les cotisations liées — dues par le même chauffeur, sur le même véhicule,
+ * le même jour — ne concernent qu'une recette : l'écran propose de les emmener,
+ * ou dit pourquoi elles ne peuvent pas suivre.
  */
 public record ImpactsReaffectation(BigDecimal montantCreance,
                                    int encaissementsRattaches,
                                    BigDecimal montantEncaisse,
                                    int penalitesQuiSuivent,
-                                   BigDecimal montantPenalites) {}
+                                   BigDecimal montantPenalites,
+                                   int cotisationsLiees,
+                                   BigDecimal montantCotisationsLiees,
+                                   String motifCotisationsNonReaffectables) {
+
+    /**
+     * Sans cotisation à emmener : le cas d'une cotisation réaffectée pour
+     * elle-même, ou d'une recette dont le chauffeur ne devait rien d'autre.
+     */
+    public ImpactsReaffectation(BigDecimal montantCreance, int encaissementsRattaches,
+                                BigDecimal montantEncaisse, int penalitesQuiSuivent,
+                                BigDecimal montantPenalites) {
+        this(montantCreance, encaissementsRattaches, montantEncaisse, penalitesQuiSuivent,
+                montantPenalites, 0, BigDecimal.ZERO, null);
+    }
+}

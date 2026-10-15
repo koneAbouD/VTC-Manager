@@ -11,5 +11,13 @@ import jakarta.validation.constraints.NotNull;
  */
 public record ReaffectationChauffeurRequest(
         @NotNull(message = "Le chauffeur est obligatoire.") Long chauffeurId,
-        @NotBlank(message = "Le motif de la réaffectation est obligatoire.") String motif
-) {}
+        @NotBlank(message = "Le motif de la réaffectation est obligatoire.") String motif,
+        // Recette seulement : emmener les cotisations du même chauffeur, même
+        // véhicule, même jour. Absent = non, comme avant.
+        Boolean avecCotisations
+) {
+
+    public boolean avecCotisationsDemandees() {
+        return Boolean.TRUE.equals(avecCotisations);
+    }
+}

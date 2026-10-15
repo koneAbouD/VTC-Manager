@@ -214,13 +214,15 @@ public class LigneRecetteController {
      * versements et la pénalité qu'elle a pu engendrer changent de débiteur.
      * Aucun montant ne bouge. Refusé si un arrêté l'a consignée, si les livres
      * du jour sont fermés, ou si le chauffeur visé conduisait ailleurs ce jour-là.
+     * Avec {@code avecCotisations}, les cotisations du même jour et du même
+     * véhicule suivent, ou rien ne bouge.
      */
     @PatchMapping("/{id}/chauffeur")
     public LigneRecetteResponse reaffecterChauffeur(
             @PathVariable Long id,
             @Valid @RequestBody ReaffectationChauffeurRequest request) {
         return mapper.toResponse(reaffecterChauffeurRecetteUseCase.executer(
-                id, request.chauffeurId(), request.motif()));
+                id, request.chauffeurId(), request.motif(), request.avecCotisationsDemandees()));
     }
 
     /**

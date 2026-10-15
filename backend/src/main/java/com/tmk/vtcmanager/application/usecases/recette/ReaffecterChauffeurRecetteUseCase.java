@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.application.usecases.recette;
 
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
+import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 import com.tmk.vtcmanager.application.domain.penalite.LignePenalite;
 import com.tmk.vtcmanager.application.domain.reaffectation.ReaffectationChauffeur;
@@ -16,6 +17,7 @@ import com.tmk.vtcmanager.application.ports.persistence.ReaffectationChauffeurRe
 import com.tmk.vtcmanager.application.ports.security.AuteurCourant;
 import com.tmk.vtcmanager.application.services.NotificationReaffectationService;
 import com.tmk.vtcmanager.application.services.ReaffectationChauffeurService;
+import com.tmk.vtcmanager.application.usecases.cotisation.ReaffecterChauffeurCotisationUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,11 @@ import java.util.Objects;
  * l'imputerait au mauvais compte. Toutes les <b>vérifications ensuite, avant
  * la moindre écriture</b> : une pénalité déjà encaissée doit faire échouer la
  * réaffectation entière, pas la laisser à moitié faite.
+ *
+ * <p>Sur demande, la recette emmène les <b>cotisations liées</b> — celles que le
+ * même chauffeur devait sur ce véhicule ce jour-là. Elles passent par leur
+ * propre use case, dans la même transaction : mêmes refus, même journal, et
+ * tout échoue ensemble si l'une d'elles ne peut pas suivre.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -53,9 +60,20 @@ public class ReaffecterChauffeurRecetteUseCase {
     private final ReaffectationChauffeurService reaffectationService;
     private final NotificationReaffectationService notificationService;
     private final AuteurCourant auteurCourant;
+    private final ReaffecterChauffeurCotisationUseCase reaffecterCotisationUseCase;
 
     @Transactional
     public LigneRecette executer(Long ligneId, Long chauffeurCibleId, String motif) {
+        return executer(ligneId, chauffeurCibleId, motif, false);
+    }
+
+    /**
+     * @param avecCotisations vrai pour porter aussi au chauffeur visé les
+     *                        cotisations liées à la recette
+     */
+    @Transactional
+    public LigneRecette executer(Long ligneId, Long chauffeurCibleId, String motif,
+                                 boolean avecCotisations) {
         LigneRecette ligne = ligneRecetteRepository.findById(ligneId)
                 .orElseThrow(() -> new LigneRecetteNotFoundException(ligneId));
 
@@ -86,6 +104,16 @@ public class ReaffecterChauffeurRecetteUseCase {
         // il ferme la ligne pour tout le monde, et la fiche doit le savoir avant
         // d'offrir l'action. Ici, il ne reste qu'à ramasser celles qui suivent.
         List<LignePenalite> penalitesASuivre = reaffectationService.penalitesQuiSuivent(ligneId);
+        // Les cotisations s'éprouvent ici aussi, avant la première écriture :
+        // leur use case refuserait de toute façon, mais après que la recette a
+        // bougé, et le message parlerait d'une créance qu'on n'a pas visée.
+        List<LigneCotisation> cotisationsASuivre = avecCotisations
+                ? reaffectationService.cotisationsLiees(ligne) : List.of();
+        for (LigneCotisation cotisation : cotisationsASuivre) {
+            reaffectationService.verifierLigne(cotisation);
+            reaffectationService.verifierChauffeurCible(
+                    ReaffectationChauffeurService.Cible.de(cotisation), chauffeurCibleId);
+        }
 
         // ── Écritures ──────────────────────────────────────────────────────
         Long ancienChauffeurId = ligne.getChauffeurId();
@@ -117,6 +145,11 @@ public class ReaffecterChauffeurRecetteUseCase {
 
         log.info("Recette {} réaffectée : chauffeur {} → {} ({} écriture(s), {} pénalité(s)) par {}",
                 ligneId, ancienChauffeurId, chauffeurCibleId, operations, penalitesASuivre.size(), auteur);
+
+        // Même transaction : chaque cotisation garde sa trace au journal des
+        // réaffectations et sa notification, comme si on l'avait déplacée seule.
+        cotisationsASuivre.forEach(c ->
+                reaffecterCotisationUseCase.executer(c.getId(), chauffeurCibleId, motif));
 
         LigneRecette rechargee = ligneRecetteRepository.findById(ligneId)
                 .orElseThrow(() -> new LigneRecetteNotFoundException(ligneId));

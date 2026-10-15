@@ -101,6 +101,10 @@ public class OperationFinanciereEntity extends AbstractEcritureAuditEntity {
     @Column(name = "versement_id")
     private UUID versementId;
 
+    /** Annulation commune aux extournes d'un même versement. */
+    @Column(name = "annulation_versement_id")
+    private UUID annulationVersementId;
+
     /** Facture fournisseur soldée par cette écriture (règlement). */
     @Column(name = "facture_partenaire_id")
     private Long facturePartenaireId;

@@ -31,6 +31,7 @@ class OperationFinanciereModel extends OperationFinanciere {
     super.detailMaintenance,
     super.extourneDeId,
     super.versementId,
+    super.annulationVersementId,
     super.annuleLe,
     super.motifAnnulation,
     super.modifiable,
@@ -92,6 +93,7 @@ class OperationFinanciereModel extends OperationFinanciere {
           dm != null ? DetailMaintenanceModel.fromJson(dm) : null,
       extourneDeId: (json['extourneDeId'] as num?)?.toInt(),
       versementId: json['versementId'] as String?,
+      annulationVersementId: json['annulationVersementId'] as String?,
       annuleLe: json['annuleLe'] != null
           ? DateTime.tryParse(json['annuleLe'] as String)
           : null,

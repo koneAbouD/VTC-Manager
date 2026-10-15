@@ -23,7 +23,10 @@ public record ApercuReaffectationResponse(List<CandidatReaffectationResponse> ca
                                   int encaissementsRattaches,
                                   BigDecimal montantEncaisse,
                                   int penalitesQuiSuivent,
-                                  BigDecimal montantPenalites) {}
+                                  BigDecimal montantPenalites,
+                                  int cotisationsLiees,
+                                  BigDecimal montantCotisationsLiees,
+                                  String motifCotisationsNonReaffectables) {}
 
     public static ApercuReaffectationResponse de(ApercuReaffectation apercu) {
         return new ApercuReaffectationResponse(
@@ -36,6 +39,9 @@ public record ApercuReaffectationResponse(List<CandidatReaffectationResponse> ca
                         apercu.impacts().encaissementsRattaches(),
                         apercu.impacts().montantEncaisse(),
                         apercu.impacts().penalitesQuiSuivent(),
-                        apercu.impacts().montantPenalites()));
+                        apercu.impacts().montantPenalites(),
+                        apercu.impacts().cotisationsLiees(),
+                        apercu.impacts().montantCotisationsLiees(),
+                        apercu.impacts().motifCotisationsNonReaffectables()));
     }
 }

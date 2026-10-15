@@ -193,6 +193,36 @@ public class ReaffectationChauffeurService {
                 .toList();
     }
 
+    /**
+     * Les cotisations que le chauffeur de la recette devait ce jour-là, sur ce
+     * même véhicule : celles qu'on peut emmener avec elle quand la recette
+     * change de débiteur. Aucun lien n'existe en base entre les deux créances —
+     * c'est la journée, le véhicule et le chauffeur qui les rapprochent, comme
+     * la génération les a produites.
+     */
+    public List<LigneCotisation> cotisationsLiees(LigneRecette ligne) {
+        if (ligne.getChauffeurId() == null || ligne.getVehiculeId() == null) return List.of();
+        return ligneCotisationRepository
+                .findByVehiculeIdAndDateCotisation(ligne.getVehiculeId(), ligne.getDateRecette())
+                .stream()
+                .filter(c -> Objects.equals(c.getChauffeurId(), ligne.getChauffeurId()))
+                .filter(c -> c.getStatut() != StatutLigneCotisation.ANNULEE)
+                .toList();
+    }
+
+    /**
+     * Ce qui interdit d'emmener ces cotisations, ou null si rien ne s'y oppose.
+     * Une seule bloquée suffit : la recette partirait seule et l'écran doit le
+     * dire avant qu'on coche l'option.
+     */
+    public String motifBlocageCotisations(List<LigneCotisation> cotisations) {
+        return cotisations.stream()
+                .map(this::motifBlocage)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
     private static String libelle(StatutLignePenalite statut) {
         return switch (statut) {
             case PARTIELLEMENT_ENCAISSEE -> "partiellement encaissée";

@@ -81,12 +81,24 @@ class ImpactsReaffectation {
   final int penalitesQuiSuivent;
   final double montantPenalites;
 
+  /// Recette seulement : cotisations dues par le même chauffeur, sur le même
+  /// véhicule, le même jour — celles que l'écran propose d'emmener.
+  final int cotisationsLiees;
+  final double montantCotisationsLiees;
+
+  /// Pourquoi ces cotisations ne peuvent pas suivre (arrêté, caisse close…),
+  /// ou null si rien ne s'y oppose.
+  final String? motifCotisationsNonReaffectables;
+
   const ImpactsReaffectation({
     this.montantCreance = 0,
     this.encaissementsRattaches = 0,
     this.montantEncaisse = 0,
     this.penalitesQuiSuivent = 0,
     this.montantPenalites = 0,
+    this.cotisationsLiees = 0,
+    this.montantCotisationsLiees = 0,
+    this.motifCotisationsNonReaffectables,
   });
 
   factory ImpactsReaffectation.fromJson(Map<String, dynamic> json) {
@@ -96,6 +108,11 @@ class ImpactsReaffectation {
       montantEncaisse: (json['montantEncaisse'] as num?)?.toDouble() ?? 0,
       penalitesQuiSuivent: json['penalitesQuiSuivent'] as int? ?? 0,
       montantPenalites: (json['montantPenalites'] as num?)?.toDouble() ?? 0,
+      cotisationsLiees: json['cotisationsLiees'] as int? ?? 0,
+      montantCotisationsLiees:
+          (json['montantCotisationsLiees'] as num?)?.toDouble() ?? 0,
+      motifCotisationsNonReaffectables:
+          json['motifCotisationsNonReaffectables'] as String?,
     );
   }
 }

@@ -293,9 +293,29 @@ class _DetailBody extends ConsumerWidget {
         final res = await repo.getApercuReaffectation(ligneId);
         return res.fold((f) => throw Exception(f.message), (apercu) => apercu);
       },
-      decrireImpacts: (impacts, choisi) => [
+      // La cotisation du même jour, même véhicule, même chauffeur : elle a
+      // presque toujours la même cause que la recette qu'on corrige.
+      optionLiee: (impacts) {
+        final n = impacts.cotisationsLiees;
+        if (n == 0) return null;
+        return OptionReaffectationLiee(
+          libelle: n > 1
+              ? 'Réaffecter aussi les $n cotisations'
+              : 'Réaffecter aussi la cotisation',
+          detail: '${fmt.format(impacts.montantCotisationsLiees)} dus le même jour '
+              'sur ce véhicule',
+          motifIndisponible: impacts.motifCotisationsNonReaffectables,
+        );
+      },
+      decrireImpacts: (impacts, choisi, avecCotisations) => [
         ImpactReaffectation('La créance de ${fmt.format(impacts.montantCreance)} '
             'passe au compte de ${choisi.nom}.'),
+        if (avecCotisations)
+          ImpactReaffectation(
+              '${impacts.cotisationsLiees > 1 ? 'Les ${impacts.cotisationsLiees} cotisations' : 'La cotisation'} '
+              'du jour (${fmt.format(impacts.montantCotisationsLiees)}) '
+              '${impacts.cotisationsLiees > 1 ? 'passent' : 'passe'} aussi à son compte, '
+              'dépôts déjà versés compris.'),
         if (impacts.encaissementsRattaches > 0)
           ImpactReaffectation(
               '${impacts.encaissementsRattaches} encaissement'
@@ -311,8 +331,9 @@ class _DetailBody extends ConsumerWidget {
               '${impacts.penalitesQuiSuivent > 1 ? 'nt' : ''} aussi.',
               secondaire: true),
       ],
-      onReaffecter: (choisi, motif) async {
-        final r = await repo.reaffecterChauffeur(ligneId, choisi.id, motif);
+      onReaffecter: (choisi, motif, avecCotisations) async {
+        final r = await repo.reaffecterChauffeur(ligneId, choisi.id, motif,
+            avecCotisations: avecCotisations);
         return r.fold((f) => f.message, (_) => null);
       },
     );
