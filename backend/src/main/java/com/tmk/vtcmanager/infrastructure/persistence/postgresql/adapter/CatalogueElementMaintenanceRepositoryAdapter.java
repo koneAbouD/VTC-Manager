@@ -2,7 +2,10 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.adapter;
 
 import com.tmk.vtcmanager.application.domain.operation.CatalogueElementMaintenance;
 import com.tmk.vtcmanager.application.ports.persistence.CatalogueElementMaintenanceRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.CatalogueElementMaintenanceEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.CatalogueElementMaintenanceJpaRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.MarqueJpaRepository;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.ModeleJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.CatalogueElementMaintenancePersistenceMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -16,11 +19,21 @@ import java.util.Optional;
 public class CatalogueElementMaintenanceRepositoryAdapter implements CatalogueElementMaintenanceRepository {
 
     private final CatalogueElementMaintenanceJpaRepository jpaRepository;
+    private final MarqueJpaRepository marqueJpaRepository;
+    private final ModeleJpaRepository modeleJpaRepository;
     private final CatalogueElementMaintenancePersistenceMapper mapper;
 
     @Override
     public CatalogueElementMaintenance save(CatalogueElementMaintenance element) {
-        return mapper.toDomain(jpaRepository.save(mapper.toEntity(element)));
+        CatalogueElementMaintenanceEntity entity = mapper.toEntity(element);
+        // Les colonnes marque_id / modele_id s'écrivent par identifiant ; les
+        // associations en lecture seule sont posées ici pour que l'élément
+        // renvoyé porte déjà les noms de marque et de modèle.
+        entity.setMarque(element.getMarqueId() != null
+                ? marqueJpaRepository.getReferenceById(element.getMarqueId()) : null);
+        entity.setModele(element.getModeleId() != null
+                ? modeleJpaRepository.getReferenceById(element.getModeleId()) : null);
+        return mapper.toDomain(jpaRepository.save(entity));
     }
 
     @Override

@@ -476,6 +476,16 @@ class CycleMaintenanceUseCasesTest {
         }
 
         @Test
+        @DisplayName("Une maintenance sans véhicule est refusée")
+        void vehicule_obligatoire() {
+            assertThatThrownBy(() -> scheduleUseCase.execute(
+                    null, aPlanifier(LocalDate.now().plusDays(1))))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("véhicule concerné est obligatoire");
+            verify(maintenanceRepository, never()).save(any());
+        }
+
+        @Test
         @DisplayName("Un véhicule inexistant est refusé")
         void vehicule_introuvable() {
             when(vehiculeRepository.findById(VEHICULE_ID)).thenReturn(Optional.empty());

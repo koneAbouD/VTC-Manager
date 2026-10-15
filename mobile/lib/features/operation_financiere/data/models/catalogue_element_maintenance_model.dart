@@ -7,6 +7,8 @@ class CatalogueElementMaintenanceModel extends CatalogueElementMaintenance {
     required super.actif,
     super.montantDefaut,
     super.imageUrl,
+    super.marqueNom,
+    super.modeleNom,
   });
 
   factory CatalogueElementMaintenanceModel.fromJson(
@@ -17,6 +19,8 @@ class CatalogueElementMaintenanceModel extends CatalogueElementMaintenance {
         actif: json['actif'] as bool? ?? true,
         montantDefaut: (json['montantDefaut'] as num?)?.toDouble(),
         imageUrl: json['imageUrl'] as String?,
+        marqueNom: json['marqueNom'] as String?,
+        modeleNom: json['modeleNom'] as String?,
       );
 
   Map<String, dynamic> toJson() => {'libelle': libelle};

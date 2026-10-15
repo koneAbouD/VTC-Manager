@@ -733,13 +733,21 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
-    public GetActifsCatalogueElementsMaintenanceUseCase getActifsCatalogueElementsMaintenanceUseCase(CatalogueElementMaintenanceRepository repo) {
-        return new GetActifsCatalogueElementsMaintenanceUseCase(repo);
+    public GetActifsCatalogueElementsMaintenanceUseCase getActifsCatalogueElementsMaintenanceUseCase(
+            CatalogueElementMaintenanceRepository repo, VehiculeRepository vehiculeRepository) {
+        return new GetActifsCatalogueElementsMaintenanceUseCase(repo, vehiculeRepository);
     }
 
     @Bean
-    public CreateCatalogueElementMaintenanceUseCase createCatalogueElementMaintenanceUseCase(CatalogueElementMaintenanceRepository repo) {
-        return new CreateCatalogueElementMaintenanceUseCase(repo);
+    public CibleVehiculeCatalogue cibleVehiculeCatalogue(
+            MarqueRepository marqueRepository, ModeleRepository modeleRepository) {
+        return new CibleVehiculeCatalogue(marqueRepository, modeleRepository);
+    }
+
+    @Bean
+    public CreateCatalogueElementMaintenanceUseCase createCatalogueElementMaintenanceUseCase(
+            CatalogueElementMaintenanceRepository repo, CibleVehiculeCatalogue cibleVehicule) {
+        return new CreateCatalogueElementMaintenanceUseCase(repo, cibleVehicule);
     }
 
     @Bean
@@ -750,8 +758,9 @@ public class UseCaseBeanConfiguration {
 
     @Bean
     public UpdateCatalogueElementMaintenanceUseCase updateCatalogueElementMaintenanceUseCase(
-            CatalogueElementMaintenanceRepository repo, FileStoragePort storage) {
-        return new UpdateCatalogueElementMaintenanceUseCase(repo, storage);
+            CatalogueElementMaintenanceRepository repo, FileStoragePort storage,
+            CibleVehiculeCatalogue cibleVehicule) {
+        return new UpdateCatalogueElementMaintenanceUseCase(repo, storage, cibleVehicule);
     }
 
     @Bean

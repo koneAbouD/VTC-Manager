@@ -184,6 +184,10 @@ public class ReferentielCatalogue {
                 "id",
                 List.of(
                         texte("libelle", "Libellé", true),
+                        // Facultatifs : sans marque, l'élément vaut pour tous les
+                        // véhicules ; sans modèle, pour toute la marque.
+                        reference("marqueId", "Marque du véhicule", false, "marques"),
+                        reference("modeleId", "Modèle du véhicule", false, "modeles"),
                         nombre("montantDefaut", "Montant par défaut", false),
                         image("image", "Image", false),
                         booleen("actif", "Actif")));

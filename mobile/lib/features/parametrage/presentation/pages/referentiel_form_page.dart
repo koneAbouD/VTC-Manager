@@ -83,11 +83,77 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
   Object? _valRefId(ChampDescriptor c) {
     final item = widget.item;
     if (item == null) return null;
-    if (item[c.nom] != null) return item[c.nom]; // ex. typeId à plat
-    final nested =
-        c.nom.endsWith('Id') ? c.nom.substring(0, c.nom.length - 2) : c.nom;
-    final obj = item[nested];
-    return obj is Map ? obj['id'] : null;
+    return _idReference(item, c.nom);
+  }
+
+  /// Identifiant porté par [obj] pour le champ référence [nom] : à plat
+  /// (`marqueId`) ou imbriqué (`marque: {id}`).
+  static Object? _idReference(Map<String, dynamic> obj, String nom) {
+    if (obj[nom] != null) return obj[nom]; // ex. typeId à plat
+    final nested = nom.endsWith('Id') ? nom.substring(0, nom.length - 2) : nom;
+    final sous = obj[nested];
+    return sous is Map ? sous['id'] : null;
+  }
+
+  /// Champ référence du formulaire dont dépend [c] : celui que portent aussi
+  /// les valeurs proposées par [c]. Ex. les modèles portent leur marque — le
+  /// choix du modèle se restreint donc à la marque choisie dans le formulaire.
+  ChampDescriptor? _champParent(
+      ChampDescriptor c, List<Map<String, dynamic>> items) {
+    if (items.isEmpty) return null;
+    for (final p in d.champsSaisis) {
+      if (p.type != 'reference' || p.nom == c.nom) continue;
+      if (items.any((it) => _idReference(it, p.nom) != null)) return p;
+    }
+    return null;
+  }
+
+  /// Change la valeur d'un champ référence et garde ses voisins cohérents :
+  /// choisir un modèle renseigne sa marque, changer de marque vide le modèle
+  /// qui n'en relève plus.
+  void _changerReference(ChampDescriptor c, Object? valeur) {
+    setState(() {
+      final avant = _refs[c.nom];
+      _refs[c.nom] = valeur;
+      if (avant == valeur) return;
+
+      final items = _itemsReference(c);
+      final parent = items != null ? _champParent(c, items) : null;
+      if (parent != null && valeur != null) {
+        final choisi = items!
+            .where((it) => it[_refDesc(c)!.idField] == valeur)
+            .firstOrNull;
+        final idParent = choisi != null ? _idReference(choisi, parent.nom) : null;
+        if (idParent != null) _refs[parent.nom] = idParent;
+      }
+
+      for (final enfant in d.champsSaisis) {
+        if (enfant.type != 'reference' || enfant.nom == c.nom) continue;
+        final items = _itemsReference(enfant);
+        if (items == null || _champParent(enfant, items)?.nom != c.nom) {
+          continue;
+        }
+        final choisi = items
+            .where((it) => it[_refDesc(enfant)!.idField] == _refs[enfant.nom])
+            .firstOrNull;
+        if (choisi != null &&
+            valeur != null &&
+            _idReference(choisi, c.nom) != valeur) {
+          _refs[enfant.nom] = null;
+        }
+      }
+    });
+  }
+
+  ReferentielDescriptor? _refDesc(ChampDescriptor c) {
+    final catalogue = ref.read(catalogueProvider).valueOrNull ?? const [];
+    return catalogue.where((r) => r.key == c.refKey).firstOrNull;
+  }
+
+  List<Map<String, dynamic>>? _itemsReference(ChampDescriptor c) {
+    final desc = _refDesc(c);
+    if (desc == null) return null;
+    return ref.read(referentielItemsProvider(desc.endpoint)).valueOrNull;
   }
 
   // ── Enregistrement ────────────────────────────────────────────────────────
@@ -671,7 +737,16 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
               style: const TextStyle(color: AppColors.error, fontSize: 12)),
           data: (items) {
             final titreChamp = refDesc.champTitre?.nom ?? 'nom';
-            final options = items.map((it) {
+            // Valeurs restreintes au choix du champ parent (ex. modèles de la
+            // marque choisie) ; sans choix parent, tout reste proposé.
+            final parent = _champParent(c, items);
+            final valeurParent = parent != null ? _refs[parent.nom] : null;
+            final visibles = valeurParent == null
+                ? items
+                : items
+                    .where((it) => _idReference(it, parent!.nom) == valeurParent)
+                    .toList();
+            final options = visibles.map((it) {
               final id = it[refDesc.idField] as Object;
               final label = (it[titreChamp] ?? it['nom'] ?? it['libelle'] ?? id)
                   .toString();
@@ -681,9 +756,10 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
               value: _refs[c.nom],
               options: options,
               sheetTitle: c.label,
+              hint: c.obligatoire ? 'Choisir…' : 'Tous',
               isRequired: c.obligatoire,
               fillColor: _kFieldFill,
-              onChanged: (v) => setState(() => _refs[c.nom] = v),
+              onChanged: (v) => _changerReference(c, v),
             );
           },
         ),

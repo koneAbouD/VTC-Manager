@@ -52,15 +52,18 @@ public class ScheduleMaintenanceUseCase {
                                ReglementMaintenance reglement) {
         validerType(maintenance.getType());
 
-        if (vehiculeId != null) {
-            Vehicule vehicule = vehiculeRepository.findById(vehiculeId)
-                    .orElseThrow(() -> new VehiculeNotFoundException(vehiculeId));
-            maintenance.setVehicule(vehicule);
+        // Le véhicule est obligatoire : c'est sa marque et son modèle qui
+        // déterminent les éléments de maintenance proposés.
+        if (vehiculeId == null) {
+            throw new IllegalArgumentException("Le véhicule concerné est obligatoire.");
+        }
+        Vehicule vehicule = vehiculeRepository.findById(vehiculeId)
+                .orElseThrow(() -> new VehiculeNotFoundException(vehiculeId));
+        maintenance.setVehicule(vehicule);
 
-            if (maintenance.getDatePrevue() != null) {
-                vehicule.updateProchaineMaintenance(maintenance.getDatePrevue());
-                vehiculeRepository.save(vehicule);
-            }
+        if (maintenance.getDatePrevue() != null) {
+            vehicule.updateProchaineMaintenance(maintenance.getDatePrevue());
+            vehiculeRepository.save(vehicule);
         }
 
         // Un détail sans ligne n'a rien à enregistrer.

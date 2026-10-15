@@ -26,9 +26,11 @@ final _cemUCProvider = Provider((ref) =>
     GetCatalogueElementsMaintenanceUseCase(
         ref.watch(catalogueElementMaintenanceRepositoryProvider)));
 
-final catalogueElementsMaintenanceProvider =
-    FutureProvider<List<CatalogueElementMaintenance>>((ref) async {
+/// Éléments actifs du catalogue, restreints à ceux compatibles avec le
+/// véhicule donné (marque / modèle) ; `null` = tous les éléments actifs.
+final catalogueElementsMaintenanceProvider = FutureProvider.family<
+    List<CatalogueElementMaintenance>, int?>((ref, vehiculeId) async {
   final uc = ref.watch(_cemUCProvider);
-  final result = await uc();
+  final result = await uc(vehiculeId: vehiculeId);
   return result.fold((f) => throw Exception(f.message), (list) => list);
 });

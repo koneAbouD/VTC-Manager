@@ -10,5 +10,10 @@ public record CatalogueElementMaintenanceResponse(
         // Nom d'objet de l'image (à renvoyer tel quel lors d'une mise à jour).
         String image,
         // URL présignée temporaire pour afficher l'image (null si aucune image).
-        String imageUrl
+        String imageUrl,
+        // Marque / modèle réservés (null : élément générique, ou toute la marque).
+        Long marqueId,
+        String marqueNom,
+        Long modeleId,
+        String modeleNom
 ) {}

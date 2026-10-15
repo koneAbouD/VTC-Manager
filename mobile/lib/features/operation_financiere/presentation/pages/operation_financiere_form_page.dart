@@ -482,7 +482,9 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
       context,
       MaterialPageRoute(
         builder: (_) => ElementsMaintenancePage(
-            initial: _elements, partenaireDefautNom: _partenaireNom),
+            initial: _elements,
+            partenaireDefautNom: _partenaireNom,
+            vehiculeId: _vehiculeId),
       ),
     );
     if (result != null && mounted) {

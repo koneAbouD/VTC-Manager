@@ -12,8 +12,8 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 /**
- * Met à jour le libellé d'un élément de catalogue de maintenance. L'unicité du
- * libellé est garantie par la contrainte {@code uk_catalogue_elements_maintenance_libelle}
+ * Met à jour un élément de catalogue de maintenance. L'unicité du libellé par
+ * marque / modèle est garantie par l'index {@code uk_catalogue_elements_maintenance_libelle_vehicule}
  * (→ 409 via le gestionnaire d'exceptions global).
  */
 @Slf4j
@@ -22,14 +22,17 @@ public class UpdateCatalogueElementMaintenanceUseCase {
 
     private final CatalogueElementMaintenanceRepository repository;
     private final FileStoragePort storage;
+    private final CibleVehiculeCatalogue cibleVehicule;
 
     @Transactional
     public CatalogueElementMaintenance execute(Long id, String libelle,
-                                               BigDecimal montantDefaut, String image) {
+                                               BigDecimal montantDefaut, String image,
+                                               Long marqueId, Long modeleId) {
         CatalogueElementMaintenance element = repository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Élément catalogue", id));
         String ancienneImage = element.getImage();
         element.update(libelle, montantDefaut, image);
+        cibleVehicule.appliquer(element, marqueId, modeleId);
         CatalogueElementMaintenance saved = repository.save(element);
 
         // Nettoyage best-effort : supprime l'ancien fichier si l'image a changé

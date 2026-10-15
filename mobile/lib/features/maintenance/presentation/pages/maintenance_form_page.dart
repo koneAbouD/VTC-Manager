@@ -11,6 +11,7 @@ import '../../../../features/vehicule/presentation/pages/vehicule_selector_page.
 import '../../../operation_financiere/domain/entities/detail_maintenance.dart';
 import '../../../operation_financiere/domain/entities/element_maintenance.dart';
 import '../../../operation_financiere/presentation/pages/elements_maintenance_page.dart';
+import '../../../operation_financiere/presentation/providers/catalogue_element_maintenance_provider.dart';
 import '../../../operation_financiere/domain/entities/categorie_operation.dart';
 import '../../../partenaire/presentation/providers/partenaire_providers.dart';
 import '../../domain/entities/maintenance.dart';
@@ -161,19 +162,63 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       MaterialPageRoute(builder: (_) => const VehiculeSelectorPage()),
     );
     if (result != null && mounted) {
+      final change = result.id != _vehiculeId;
       setState(() {
         _vehiculeId = result.id;
         _vehiculeImmatriculation = result.immatriculation;
       });
+      if (change) await _retirerElementsIncompatibles();
     }
   }
 
+  /// Le catalogue proposé dépend de la marque et du modèle du véhicule : après
+  /// un changement de véhicule, les éléments du catalogue déjà retenus qui ne
+  /// le concernent pas sont retirés. Les éléments saisis librement restent.
+  Future<void> _retirerElementsIncompatibles() async {
+    final vehiculeId = _vehiculeId;
+    if (vehiculeId == null ||
+        !_elements.any((e) => e.catalogueElementId != null)) {
+      return;
+    }
+    final List<int> compatibles;
+    try {
+      compatibles = (await ref
+              .read(catalogueElementsMaintenanceProvider(vehiculeId).future))
+          .map((c) => c.id)
+          .toList();
+    } catch (_) {
+      return; // catalogue indisponible : la sélection reste telle quelle
+    }
+    if (!mounted || vehiculeId != _vehiculeId) return;
+    final retenus = _elements
+        .where((e) =>
+            e.catalogueElementId == null ||
+            compatibles.contains(e.catalogueElementId))
+        .toList();
+    final retires = _elements.length - retenus.length;
+    if (retires == 0) return;
+    setState(() => _elements = retenus);
+    _showToast(
+        context,
+        '$retires élément${retires > 1 ? 's' : ''} retiré${retires > 1 ? 's' : ''} : '
+        'non prévu${retires > 1 ? 's' : ''} pour ce véhicule',
+        error: true);
+  }
+
   Future<void> _openElementsPage() async {
+    // Les éléments proposés dépendent du véhicule : il se choisit d'abord.
+    if (_vehiculeId == null) {
+      _showToast(context, 'Sélectionnez d\'abord le véhicule concerné',
+          error: true);
+      return;
+    }
     final result = await Navigator.push<List<ElementMaintenance>>(
       context,
       MaterialPageRoute(
           builder: (_) => ElementsMaintenancePage(
-              initial: _elements, partenaireDefautNom: _partenaireNom)),
+              initial: _elements,
+              partenaireDefautNom: _partenaireNom,
+              vehiculeId: _vehiculeId)),
     );
     if (result != null && mounted) {
       setState(() => _elements = List.from(result));
@@ -190,6 +235,12 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
     if (_categorieType == null) {
       _showToast(context, 'Veuillez sélectionner un type de maintenance',
+          error: true);
+      return;
+    }
+
+    if (_vehiculeId == null) {
+      _showToast(context, 'Veuillez sélectionner le véhicule concerné',
           error: true);
       return;
     }
@@ -386,6 +437,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                     title: 'Véhicule',
                     child: _LabeledField(
                       label: 'Véhicule concerné',
+                      isRequired: true,
                       child: _buildSelectorField(
                         hint: 'Sélectionner un véhicule',
                         value: _vehiculeImmatriculation,
@@ -636,9 +688,11 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  _elements.isEmpty
-                      ? 'Sélectionner les éléments'
-                      : 'Modifier la sélection',
+                  _vehiculeId == null
+                      ? 'Choisissez d\'abord le véhicule'
+                      : _elements.isEmpty
+                          ? 'Sélectionner les éléments'
+                          : 'Modifier la sélection',
                   style: TextStyle(
                       fontSize: 15, color: _elements.isEmpty ? _kHint : _kDark),
                 ),

@@ -9,10 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class CreateCatalogueElementMaintenanceUseCase {
 
     private final CatalogueElementMaintenanceRepository repository;
+    private final CibleVehiculeCatalogue cibleVehicule;
 
     @Transactional
     public CatalogueElementMaintenance execute(CatalogueElementMaintenance element) {
         element.setActif(true);
+        cibleVehicule.appliquer(element, element.getMarqueId(), element.getModeleId());
         return repository.save(element);
     }
 }

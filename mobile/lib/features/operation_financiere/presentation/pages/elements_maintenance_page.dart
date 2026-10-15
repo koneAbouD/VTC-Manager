@@ -43,10 +43,15 @@ class ElementsMaintenancePage extends ConsumerStatefulWidget {
   /// sans prestataire propre.
   final String? partenaireDefautNom;
 
+  /// Véhicule concerné : seuls les éléments compatibles avec sa marque et son
+  /// modèle sont proposés. Sans véhicule, tout le catalogue actif.
+  final int? vehiculeId;
+
   const ElementsMaintenancePage({
     super.key,
     required this.initial,
     this.partenaireDefautNom,
+    this.vehiculeId,
   });
 
   @override
@@ -84,7 +89,7 @@ class _ElementsMaintenancePageState
     // dépend du ProviderScope, indisponible pendant initState.
     if (!_refRafraichi) {
       _refRafraichi = true;
-      ref.invalidate(catalogueElementsMaintenanceProvider);
+      ref.invalidate(catalogueElementsMaintenanceProvider(widget.vehiculeId));
     }
   }
 
@@ -180,7 +185,8 @@ class _ElementsMaintenancePageState
 
   @override
   Widget build(BuildContext context) {
-    final catalogueAsync = ref.watch(catalogueElementsMaintenanceProvider);
+    final catalogueAsync =
+        ref.watch(catalogueElementsMaintenanceProvider(widget.vehiculeId));
     final catalogue = catalogueAsync.valueOrNull ?? [];
 
     final filtered = _query.isEmpty

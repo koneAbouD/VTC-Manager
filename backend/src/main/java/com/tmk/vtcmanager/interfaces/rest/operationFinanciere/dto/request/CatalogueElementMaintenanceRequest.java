@@ -26,5 +26,13 @@ public record CatalogueElementMaintenanceRequest(
         @Schema(description = "Nom d'objet de l'image d'illustration dans le stockage "
                 + "(retourné par POST /image ; facultatif).", nullable = true)
         @Size(max = 512)
-        String image
+        String image,
+
+        @Schema(description = "Marque de véhicule à laquelle l'élément est réservé "
+                + "(facultative : sans marque, l'élément vaut pour tous les véhicules).", nullable = true)
+        Long marqueId,
+
+        @Schema(description = "Modèle de véhicule auquel l'élément est réservé (facultatif : "
+                + "sans modèle, l'élément vaut pour toute la marque). Sa marque en est déduite.", nullable = true)
+        Long modeleId
 ) {}

@@ -148,7 +148,12 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
       if (obj is Map) {
         return (obj['nom'] ?? obj['libelle'] ?? obj['code'] ?? '').toString();
       }
-      return item[champ.nom]?.toString() ?? '';
+      // Référence à plat : son nom est renvoyé à côté de l'identifiant
+      // (ex. marqueId + marqueNom). Sans nom, un identifiant nu n'apprendrait
+      // rien à l'utilisateur.
+      final nom = item['${nested}Nom'];
+      if (nom != null) return nom.toString();
+      return item[champ.nom] == null ? '' : '#${item[champ.nom]}';
     }
     return item[champ.nom]?.toString() ?? '';
   }
@@ -482,25 +487,71 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
                       onChanged: _busy ? null : (v) => _basculerActif(item, v),
                     ),
                   ),
-                if (d.editable)
-                  PopupMenuButton<String>(
-                    enabled: !_busy,
-                    icon: const Icon(Icons.more_vert_rounded,
-                        color: AppColors.hint, size: 20),
-                    onSelected: (v) {
-                      if (v == 'edit') _ouvrirFormulaire(item);
-                      if (v == 'delete') _supprimer(item);
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'edit', child: Text('Modifier')),
-                      PopupMenuItem(value: 'delete', child: Text('Supprimer')),
-                    ],
-                  ),
+                if (d.editable) _menuActions(item),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// Menu Modifier / Supprimer : carte blanche (le fond teinté du thème
+  /// Material 3 est neutralisé), entrées iconées et suffisamment hautes pour
+  /// le pouce, l'action destructive en rouge et séparée de l'autre.
+  Widget _menuActions(Map<String, dynamic> item) {
+    return PopupMenuButton<String>(
+      enabled: !_busy,
+      tooltip: 'Actions',
+      icon: const Icon(Icons.more_vert_rounded,
+          color: AppColors.hint, size: 20),
+      color: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shadowColor: AppColors.dark.withValues(alpha: 0.18),
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 4),
+      constraints: const BoxConstraints(minWidth: 190),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      menuPadding: const EdgeInsets.symmetric(vertical: 6),
+      onSelected: (v) {
+        if (v == 'edit') _ouvrirFormulaire(item);
+        if (v == 'delete') _supprimer(item);
+      },
+      itemBuilder: (_) => [
+        _entreeMenu('edit', Icons.edit_outlined, 'Modifier', AppColors.dark),
+        const PopupMenuDivider(height: 9),
+        _entreeMenu('delete', Icons.delete_outline_rounded, 'Supprimer',
+            AppColors.error),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _entreeMenu(
+      String valeur, IconData icone, String libelle, Color couleur) {
+    return PopupMenuItem<String>(
+      value: valeur,
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(children: [
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: couleur.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(icone, size: 18, color: couleur),
+        ),
+        const SizedBox(width: 12),
+        Text(libelle,
+            style: TextStyle(
+                fontSize: 14.5, fontWeight: FontWeight.w600, color: couleur)),
+      ]),
     );
   }
 }

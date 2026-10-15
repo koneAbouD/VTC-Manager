@@ -58,9 +58,12 @@ public class CatalogueElementMaintenanceController {
     @GetMapping("/actifs")
     @Operation(summary = "Lister les éléments de maintenance actifs",
                description = "Retourne uniquement les éléments actifs, triés par libellé — "
-                       + "destinés à la sélection lors de la saisie d'une opération de maintenance.")
-    public List<CatalogueElementMaintenanceResponse> findActifs() {
-        return getActifsUseCase.execute().stream()
+                       + "destinés à la sélection lors de la saisie d'une opération de maintenance. "
+                       + "Avec « vehiculeId », seuls les éléments compatibles avec la marque et le modèle "
+                       + "du véhicule sont retournés (génériques, de sa marque, ou de son modèle).")
+    public List<CatalogueElementMaintenanceResponse> findActifs(
+            @RequestParam(required = false) Long vehiculeId) {
+        return getActifsUseCase.execute(vehiculeId).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -76,6 +79,8 @@ public class CatalogueElementMaintenanceController {
                         .libelle(request.libelle())
                         .montantDefaut(request.montantDefaut())
                         .image(request.image())
+                        .marqueId(request.marqueId())
+                        .modeleId(request.modeleId())
                         .build());
         return toResponse(created);
     }
@@ -83,11 +88,13 @@ public class CatalogueElementMaintenanceController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Mettre à jour un élément de maintenance",
-               description = "Modifie le libellé d'un élément. Réservé au rôle ADMIN.")
+               description = "Modifie le libellé, le montant, l'image et la marque / le modèle "
+                       + "d'un élément. Réservé au rôle ADMIN.")
     public CatalogueElementMaintenanceResponse update(
             @PathVariable Long id, @Valid @RequestBody CatalogueElementMaintenanceRequest request) {
         return toResponse(updateUseCase.execute(
-                id, request.libelle(), request.montantDefaut(), request.image()));
+                id, request.libelle(), request.montantDefaut(), request.image(),
+                request.marqueId(), request.modeleId()));
     }
 
     @PatchMapping("/{id}/actif")
@@ -137,6 +144,7 @@ public class CatalogueElementMaintenanceController {
                 : null;
         return new CatalogueElementMaintenanceResponse(
                 e.getId(), e.getLibelle(), e.isActif(),
-                e.getMontantDefaut(), e.getImage(), imageUrl);
+                e.getMontantDefaut(), e.getImage(), imageUrl,
+                e.getMarqueId(), e.getMarqueNom(), e.getModeleId(), e.getModeleNom());
     }
 }

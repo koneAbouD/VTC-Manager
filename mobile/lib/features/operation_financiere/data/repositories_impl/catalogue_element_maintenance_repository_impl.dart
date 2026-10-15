@@ -12,9 +12,10 @@ class CatalogueElementMaintenanceRepositoryImpl
   const CatalogueElementMaintenanceRepositoryImpl(this._datasource);
 
   @override
-  Future<Either<Failure, List<CatalogueElementMaintenance>>> getAll() async {
+  Future<Either<Failure, List<CatalogueElementMaintenance>>> getAll(
+      {int? vehiculeId}) async {
     try {
-      return Right(await _datasource.getAll());
+      return Right(await _datasource.getAll(vehiculeId: vehiculeId));
     } on ApiException catch (e) {
       return Left(ServerFailure(e.message, statusCode: e.statusCode));
     } on NetworkException catch (e) {
