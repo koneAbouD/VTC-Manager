@@ -316,6 +316,22 @@ class GenererLignesCotisationUseCaseTest {
     }
 
     @Test
+    @DisplayName("Les cotisations en attente d'un chauffeur qui ne roule plus ce jour sont supprimées")
+    void chauffeur_inactif_purge() {
+        // Alternance corrigée : B portait le jour, A est le conducteur réel.
+        lignesExistantes(
+                ligne(61L, CHAUFFEUR_B, "Épargne", StatutLigneCotisation.EN_ATTENTE, 0),
+                ligne(62L, CHAUFFEUR_B, "Assurance", StatutLigneCotisation.EN_ATTENTE, 0));
+
+        List<LigneCotisation> generees = useCase.executer(LUNDI);
+
+        verify(ligneCotisationRepository).deleteById(61L);
+        verify(ligneCotisationRepository).deleteById(62L);
+        assertThat(generees).extracting(LigneCotisation::getChauffeurId)
+                .containsExactly(CHAUFFEUR_A, CHAUFFEUR_A);
+    }
+
+    @Test
     @DisplayName("Les cotisations sont dues par le remplaçant du chauffeur en congé")
     void substitution_appliquee() {
         when(substitutionService.appliquer(List.of(CHAUFFEUR_A), LUNDI)).thenReturn(List.of(9L));

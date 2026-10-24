@@ -72,6 +72,12 @@ public class GenererLignesCotisationUseCase {
                 continue;
             }
 
+            // Chauffeur qui ne roule plus ce jour (alternance corrigée, chauffeur
+            // changé) : ses cotisations en attente, sans encaissement, disparaissent.
+            // Sans cela, la régénération ajoutait celles du conducteur réel à côté :
+            // une cotisation en double pour le véhicule.
+            purgerChauffeursInactifs(lignesJour, chauffeursActifs);
+
             for (Long chauffeurId : chauffeursActifs) {
                 List<LigneCotisation> existantes = new ArrayList<>(
                         ligneCotisationRepository.findByVehiculeIdAndDateCotisation(
@@ -125,6 +131,24 @@ public class GenererLignesCotisationUseCase {
                     ligneCotisationRepository.deleteById(l.getId());
                     log.info("Cotisation jour de salaire purgée : id={}, véhicule={}, date={}",
                             l.getId(), vehiculeId, date);
+                });
+    }
+
+    /**
+     * Supprime les cotisations EN_ATTENTE sans encaissement des chauffeurs qui ne
+     * sont plus actifs ce jour. Pendant de {@code nettoyerLignesObsoletes} côté
+     * recette ; celles qui portent un encaissement ont déjà bloqué la génération.
+     */
+    private void purgerChauffeursInactifs(List<LigneCotisation> lignesJour, List<Long> chauffeursActifs) {
+        lignesJour.stream()
+                .filter(l -> !chauffeursActifs.contains(l.getChauffeurId())
+                        && l.getStatut() == StatutLigneCotisation.EN_ATTENTE
+                        && (l.getMontantEncaisse() == null
+                                || l.getMontantEncaisse().compareTo(BigDecimal.ZERO) == 0))
+                .forEach(l -> {
+                    ligneCotisationRepository.deleteById(l.getId());
+                    log.info("Cotisation d'un chauffeur inactif supprimée : id={}, véhicule={}, chauffeur={}, date={}",
+                            l.getId(), l.getVehiculeId(), l.getChauffeurId(), l.getDateCotisation());
                 });
     }
 
