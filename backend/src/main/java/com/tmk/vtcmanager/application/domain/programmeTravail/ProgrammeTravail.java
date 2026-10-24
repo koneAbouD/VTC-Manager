@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -401,22 +400,59 @@ public class ProgrammeTravail {
         return !heure.isBefore(debut) || !heure.isAfter(fin);
     }
 
+    /**
+     * Conducteur du jour en alternance automatique. Doit rester identique au
+     * calendrier du programme affiché par le mobile (fiches véhicule et
+     * chauffeur) : c'est lui que suivent les chauffeurs, et la recette doit
+     * tomber sur celui qui a réellement roulé.
+     *
+     * <ul>
+     *   <li>un chauffeur dont la date de prise de service n'est pas atteinte ne
+     *       roule pas encore ;</li>
+     *   <li>l'alternance démarre à la date de début, repoussée à la prise de
+     *       service la plus tardive : elle ne commence qu'une fois le binôme
+     *       au complet ;</li>
+     *   <li>seuls les jours partagés comptent dans le décompte : un jour hors
+     *       semaine partagée ne fait pas tourner le tour.</li>
+     * </ul>
+     */
     private Long chauffeurAlternanceAuto(LocalDate date) {
-        long joursEcoules = ChronoUnit.DAYS.between(dateDebutAlternance, date);
-        long periode = joursEcoules / joursAlternance;
-        boolean chauffeurUn = (periode % 2) == 0;
-
-        return chauffeurs.stream()
+        List<ProgrammeChauffeur> prets = chauffeurs.stream()
                 .filter(pc -> pc.getChauffeurId() != null)
-                .filter(pc -> chauffeurUn
-                        ? pc.getOrdreAlternance() != null && pc.getOrdreAlternance() == 1
-                        : pc.getOrdreAlternance() != null && pc.getOrdreAlternance() == 2)
-                .map(ProgrammeChauffeur::getChauffeurId)
-                .findFirst()
-                .orElseGet(() -> chauffeurs.stream()
-                        .filter(pc -> pc.getChauffeurId() != null)
-                        .map(ProgrammeChauffeur::getChauffeurId)
-                        .findFirst()
-                        .orElse(null));
+                .filter(pc -> pc.getDateService() == null || !date.isBefore(pc.getDateService()))
+                .sorted(Comparator.comparing(
+                        pc -> pc.getOrdreAlternance() == null ? Integer.MAX_VALUE : pc.getOrdreAlternance()))
+                .toList();
+        if (prets.isEmpty()) {
+            return null;
+        }
+        if (prets.size() == 1) {
+            return prets.get(0).getChauffeurId();
+        }
+
+        LocalDate debut = dateDebutAlternance;
+        for (ProgrammeChauffeur pc : prets) {
+            if (pc.getDateService() != null && pc.getDateService().isAfter(debut)) {
+                debut = pc.getDateService();
+            }
+        }
+        if (debut.isAfter(date)) {
+            return prets.get(0).getChauffeurId();
+        }
+
+        long joursDeService = 0;
+        for (LocalDate jour = debut; !jour.isAfter(date); jour = jour.plusDays(1)) {
+            if (estJourPartage(jour)) {
+                joursDeService++;
+            }
+        }
+        // Date hors semaine partagée : on garde le tour du dernier jour compté.
+        long periode = Math.max(joursDeService - 1, 0) / joursAlternance;
+        return prets.get((int) (periode % prets.size())).getChauffeurId();
+    }
+
+    private boolean estJourPartage(LocalDate date) {
+        return joursAlternanceSemaine == null || joursAlternanceSemaine.isEmpty()
+                || joursAlternanceSemaine.contains(JourSemaine.from(date.getDayOfWeek()));
     }
 }
