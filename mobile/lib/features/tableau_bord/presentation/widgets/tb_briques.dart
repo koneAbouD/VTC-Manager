@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -7,9 +9,10 @@ import '../../../../core/utils/currency_formatter.dart';
 ///
 /// Un tableau de bord n'est pas une liste de nombres : c'est une hiérarchie de
 /// lecture. Ces briques la portent — une carte par question (`TbSection`), un
-/// chiffre dominant par carte (`TbKpiPrincipal`), des chiffres de contexte
-/// autour (`TbKpiTuile`), et le détail en lignes (`TbLigneDetail`). L'œil
-/// descend, il ne cherche pas.
+/// chiffre dominant par carte (`TbKpiPrincipal`, `TbJauge`), des chiffres de
+/// contexte autour (`TbKpiTuile`). Le détail ligne à ligne n'est pas ici : il
+/// vit dans l'écran que chaque lien (`TbLienVoir`, `TbLigneLien`) ouvre.
+/// L'œil descend, il ne cherche pas.
 
 /// Seuils de couleur communs : un taux se lit vert / orange / rouge, jamais
 /// « bleu parce que ça fait joli ». Le sens précède l'esthétique.
@@ -73,29 +76,32 @@ String tbPourcent(double? valeur, {int decimales = 1}) {
   return '${valeur.toStringAsFixed(arrondi).replaceAll('.', ',')} %';
 }
 
-/// Carte de section : un titre, une question en sous-titre, un contenu.
+/// Carte de section : pastille d'icône, titre, et à droite le lien vers
+/// l'écran qui tient le détail. La section ne montre que la synthèse ; tout ce
+/// qui se lit ligne à ligne vit derrière ce lien.
 class TbSection extends StatelessWidget {
   final IconData icone;
   final String titre;
-
-  /// La question à laquelle la section répond, en clair. Un tableau de bord
-  /// dont on doit deviner l'intention n'est pas lu.
-  final String question;
-
   final Color accent;
   final Widget child;
 
-  /// Action optionnelle en haut à droite (ex. : « Voir le détail »).
-  final Widget? action;
+  /// Libellé et cible du lien d'en-tête (« Détail », « État de parc »…).
+  /// Sans [onVoir], pas de lien.
+  final String libelleVoir;
+  final VoidCallback? onVoir;
+
+  /// Pastille posée après le titre (ex. : nombre de points à traiter).
+  final Widget? badge;
 
   TbSection({
     super.key,
     required this.icone,
     required this.titre,
-    required this.question,
     required this.child,
     Color? accent,
-    this.action,
+    this.libelleVoir = 'Voir tout',
+    this.onVoir,
+    this.badge,
   }) : accent = accent ?? AppColors.primary;
 
   @override
@@ -103,46 +109,116 @@ class TbSection extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
         border: Border.all(color: AppColors.border),
       ),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icone, size: 18, color: accent),
+                child: Icon(icone, size: 17, color: accent),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(titre,
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.dark)),
-                    Text(question,
-                        style: TextStyle(
-                            fontSize: 11.5, color: AppColors.hint)),
+                    Flexible(
+                      child: Text(titre,
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.dark),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    if (badge != null) ...[const SizedBox(width: 8), badge!],
                   ],
                 ),
               ),
-              if (action != null) action!,
+              if (onVoir != null) TbLienVoir(libelle: libelleVoir, onTap: onVoir!),
             ],
           ),
           const SizedBox(height: 14),
           child,
         ],
+      ),
+    );
+  }
+}
+
+/// Lien texte « Voir › » des en-têtes de section.
+class TbLienVoir extends StatelessWidget {
+  final String libelle;
+  final VoidCallback onTap;
+
+  const TbLienVoir({super.key, required this.libelle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 4, 2, 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(libelle,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary)),
+            Icon(Icons.chevron_right_rounded,
+                size: 18, color: AppColors.primary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Carte en relief, dans le langage de la carte solde de l'accueil : filet
+/// dégradé et fond teinté de l'accent. Réservée au premier regard de la page.
+class TbCarteRelief extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  const TbCarteRelief({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.fromLTRB(16, 14, 16, 16),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppColors.cardBorderGradient,
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
+      ),
+      padding: const EdgeInsets.all(1.5),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppColors.cardInnerRadius),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardTint,
+            borderRadius: BorderRadius.circular(AppColors.cardInnerRadius),
+          ),
+          padding: padding,
+          child: child,
+        ),
       ),
     );
   }
@@ -261,6 +337,7 @@ class TbVariationPill extends StatelessWidget {
 }
 
 /// Petite tuile de contexte, posée en grille sous le chiffre dominant.
+/// Avec [onTap], elle devient un lien et le signale par un chevron.
 class TbKpiTuile extends StatelessWidget {
   final String label;
   final String valeur;
@@ -271,6 +348,8 @@ class TbKpiTuile extends StatelessWidget {
   /// indicateur qu'on ne sait pas définir ne sert à rien.
   final String? aide;
 
+  final VoidCallback? onTap;
+
   TbKpiTuile({
     super.key,
     required this.label,
@@ -278,25 +357,30 @@ class TbKpiTuile extends StatelessWidget {
     Color? couleur,
     this.sousLabel,
     this.aide,
+    this.onTap,
   }) : couleur = couleur ?? kTbNeutre;
 
   @override
   Widget build(BuildContext context) {
-    final contenu = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppColors.scaffold,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
+    final contenu = Padding(
+      padding: const EdgeInsets.fromLTRB(12, 11, 8, 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label,
-              style: TextStyle(fontSize: 11, color: AppColors.label),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis),
+          Row(
+            children: [
+              Expanded(
+                child: Text(label,
+                    style: TextStyle(fontSize: 11.5, color: AppColors.label),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              if (onTap != null)
+                Icon(Icons.chevron_right_rounded,
+                    size: 16, color: AppColors.hint),
+            ],
+          ),
           const SizedBox(height: 5),
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -319,16 +403,31 @@ class TbKpiTuile extends StatelessWidget {
       ),
     );
 
-    if (aide == null) return contenu;
-    return Tooltip(
-      message: aide!,
-      triggerMode: TooltipTriggerMode.longPress,
-      showDuration: const Duration(seconds: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      textStyle: const TextStyle(fontSize: 12, color: Colors.white),
-      child: contenu,
+    final tuile = Material(
+      color: AppColors.scaffold,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(onTap: onTap, child: contenu),
     );
+
+    return tbAvecAide(aide, tuile);
   }
+}
+
+/// Enveloppe [enfant] d'une bulle d'aide à l'appui long, s'il y a une aide.
+Widget tbAvecAide(String? aide, Widget enfant) {
+  if (aide == null) return enfant;
+  return Tooltip(
+    message: aide,
+    triggerMode: TooltipTriggerMode.longPress,
+    showDuration: const Duration(seconds: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    textStyle: const TextStyle(fontSize: 12, color: Colors.white),
+    child: enfant,
+  );
 }
 
 /// Grille de tuiles : deux colonnes en téléphone, quatre en écran large.
@@ -364,66 +463,278 @@ class TbGrilleTuiles extends StatelessWidget {
   }
 }
 
-/// Ligne de détail : libellé à gauche, valeur à droite, filet de séparation.
-class TbLigneDetail extends StatelessWidget {
-  final String libelle;
-  final String valeur;
-  final Color? couleurValeur;
+/// Jauge circulaire d'un taux : l'arc dit la proportion avant qu'on lise le
+/// chiffre. Un taux absent (« — ») laisse l'anneau vide, sans couleur.
+class TbJauge extends StatelessWidget {
+  final double? taux;
+  final Color couleur;
+  final double taille;
 
-  /// Met la ligne en avant (soldes intermédiaires : marge, EBE, résultat).
-  final bool forte;
-
-  final String? sousLibelle;
-
-  const TbLigneDetail({
+  const TbJauge({
     super.key,
-    required this.libelle,
-    required this.valeur,
-    this.couleurValeur,
-    this.forte = false,
-    this.sousLibelle,
+    required this.taux,
+    required this.couleur,
+    this.taille = 76,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(libelle,
-                    style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: forte ? FontWeight.w700 : FontWeight.w500,
-                        color: forte ? AppColors.dark : AppColors.label)),
-                if (sousLibelle != null)
-                  Text(sousLibelle!,
-                      style: TextStyle(
-                          fontSize: 10.5, color: AppColors.hint)),
-              ],
+    return SizedBox(
+      width: taille,
+      height: taille,
+      child: CustomPaint(
+        painter: _JaugePainter(
+          fraction: ((taux ?? 0) / 100).clamp(0.0, 1.0).toDouble(),
+          couleur: couleur,
+          piste: AppColors.border,
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(tbPourcent(taux, decimales: 0),
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: taux == null ? AppColors.hint : couleur)),
             ),
           ),
-          const SizedBox(width: 12),
-          Text(valeur,
-              style: TextStyle(
-                  fontSize: forte ? 14 : 13,
-                  fontWeight: forte ? FontWeight.w800 : FontWeight.w600,
-                  color: couleurValeur ?? AppColors.dark)),
-        ],
+        ),
       ),
     );
   }
 }
 
-/// Filet de séparation entre lignes de détail.
-class TbFilet extends StatelessWidget {
-  const TbFilet({super.key});
+class _JaugePainter extends CustomPainter {
+  final double fraction;
+  final Color couleur;
+  final Color piste;
+
+  _JaugePainter(
+      {required this.fraction, required this.couleur, required this.piste});
 
   @override
-  Widget build(BuildContext context) =>
-      Divider(height: 1, thickness: 1, color: AppColors.border);
+  void paint(Canvas canvas, Size size) {
+    const epaisseur = 7.0;
+    final rect = Rect.fromLTWH(epaisseur / 2, epaisseur / 2,
+        size.width - epaisseur, size.height - epaisseur);
+    final trait = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = epaisseur
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(rect, 0, 2 * math.pi, false, trait..color = piste);
+    if (fraction > 0) {
+      canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * fraction, false,
+          trait..color = couleur);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_JaugePainter old) =>
+      old.fraction != fraction || old.couleur != couleur || old.piste != piste;
+}
+
+/// Segment d'une [TbBarreSegments].
+typedef TbSegment = ({String libelle, double valeur, String texte, Color couleur});
+
+/// Barre segmentée avec sa légende : une répartition se lit en proportions,
+/// pas en trois nombres côte à côte. Les segments nuls sont omis.
+class TbBarreSegments extends StatelessWidget {
+  final List<TbSegment> segments;
+
+  const TbBarreSegments({super.key, required this.segments});
+
+  @override
+  Widget build(BuildContext context) {
+    final visibles = segments.where((s) => s.valeur > 0).toList();
+    final total = visibles.fold<double>(0, (t, s) => t + s.valeur);
+    if (total <= 0) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            height: 10,
+            // Étirés en hauteur : un ColoredBox sans enfant prend sinon la
+            // plus petite hauteur permise, zéro, et la barre disparaît.
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < visibles.length; i++) ...[
+                  // Filet de surface entre deux aplats : sans lui, deux
+                  // segments voisins se lisent comme un seul bloc.
+                  if (i > 0) const SizedBox(width: 2),
+                  Expanded(
+                    flex: (visibles[i].valeur / total * 1000)
+                        .round()
+                        .clamp(1, 1000),
+                    child: ColoredBox(color: visibles[i].couleur),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 14,
+          runSpacing: 6,
+          children: [
+            for (final s in visibles)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                          color: s.couleur,
+                          borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 5),
+                  Text('${s.libelle}  ',
+                      style: TextStyle(fontSize: 11, color: AppColors.label)),
+                  Text(s.texte,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark)),
+                ],
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Ligne cliquable : pastille d'icône, libellé et précision, valeur à droite,
+/// chevron. Pour les listes courtes qui mènent chacune à une fiche (débiteur,
+/// véhicule, point à traiter).
+class TbLigneLien extends StatelessWidget {
+  final IconData icone;
+  final Color couleur;
+  final String libelle;
+  final String? precision;
+  final Color? couleurPrecision;
+  final String valeur;
+  final Color? couleurValeur;
+  final VoidCallback? onTap;
+
+  const TbLigneLien({
+    super.key,
+    required this.icone,
+    required this.couleur,
+    required this.libelle,
+    this.precision,
+    this.couleurPrecision,
+    required this.valeur,
+    this.couleurValeur,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: couleur.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icone, size: 18, color: couleur),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(libelle,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.dark),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  if (precision != null)
+                    Text(precision!,
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: couleurPrecision ?? AppColors.hint),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(valeur,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: couleurValeur ?? AppColors.dark)),
+            if (onTap != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: Icon(Icons.chevron_right_rounded,
+                    size: 20, color: AppColors.hint),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Barre de progression vers un seuil (point mort) : remplie jusqu'à 100 %,
+/// verte une fois le seuil franchi.
+class TbProgression extends StatelessWidget {
+  final double? taux;
+  final Color couleur;
+
+  const TbProgression({super.key, required this.taux, required this.couleur});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: LinearProgressIndicator(
+        value: ((taux ?? 0) / 100).clamp(0.0, 1.0).toDouble(),
+        minHeight: 8,
+        backgroundColor: AppColors.border,
+        valueColor: AlwaysStoppedAnimation(couleur),
+      ),
+    );
+  }
+}
+
+/// Pastille de compteur posée après un titre de section.
+class TbPastille extends StatelessWidget {
+  final String texte;
+  final Color couleur;
+
+  const TbPastille({super.key, required this.texte, required this.couleur});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: couleur.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(texte,
+          style: TextStyle(
+              fontSize: 11.5, fontWeight: FontWeight.w800, color: couleur)),
+    );
+  }
 }

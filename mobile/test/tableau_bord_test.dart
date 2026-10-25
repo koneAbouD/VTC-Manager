@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'package:vtc_manager/features/etat_parc/presentation/providers/etat_parc_provider.dart';
 import 'package:vtc_manager/features/tableau_bord/data/models/tableau_bord_model.dart';
 import 'package:vtc_manager/features/tableau_bord/presentation/pages/tableau_bord_page.dart';
 import 'package:vtc_manager/features/tableau_bord/presentation/providers/tableau_bord_provider.dart';
 import 'package:vtc_manager/features/tableau_bord/presentation/widgets/tb_briques.dart';
+import 'package:vtc_manager/screens/home_nav_provider.dart';
 
 /// Période représentative : mai 2026, close.
 PeriodeTableauBord _periode({bool moisEnCours = false, bool cloture = true}) =>
@@ -232,13 +234,26 @@ void main() {
   });
 
   group('page', () {
-    testWidgets('les quatre questions structurent la page', (tester) async {
+    testWidgets('la page se lit en blocs : à traiter, résultat, argent, parc',
+        (tester) async {
       await _pump(tester, _modele());
 
-      expect(find.text('Santé financière'), findsOneWidget);
-      expect(find.text('Encaissement et créances'), findsOneWidget);
-      expect(find.text('Performance du parc'), findsOneWidget);
-      expect(find.text('Points de vigilance'), findsOneWidget);
+      expect(find.text('À traiter'), findsOneWidget);
+      expect(find.text('Résultat du mois'), findsOneWidget);
+      expect(find.text('Encaissement'), findsOneWidget);
+      expect(find.text('Parc'), findsOneWidget);
+    });
+
+    testWidgets('le détail ligne à ligne reste dans les états, pas ici',
+        (tester) async {
+      await _pump(tester, _modele());
+
+      // La cascade du compte de résultat et le détail des créances vivent
+      // derrière les liens : les recopier ici noierait la synthèse.
+      expect(find.text('Excédent brut d\'exploitation'), findsNothing);
+      expect(find.text('Créances nettes'), findsNothing);
+      expect(find.text('Détail'), findsOneWidget);
+      expect(find.text('État de parc'), findsOneWidget);
     });
 
     testWidgets('l\'essentiel met le jour en avant et rappelle le mois',
@@ -315,8 +330,8 @@ void main() {
 
       expect(find.text('0 – 7 j  '), findsOneWidget);
       expect(find.text('> 30 j  '), findsOneWidget);
-      // La part à risque, mise en avant comme tuile.
-      expect(find.text('Dont > 30 jours'), findsOneWidget);
+      // La part de plus de 30 jours, annoncée comme risque.
+      expect(find.text('30 % à risque'), findsOneWidget);
     });
 
     testWidgets('un encours nul remplace la barre par une phrase',
@@ -345,7 +360,7 @@ void main() {
       expect(find.text('tout est rentré'), findsOneWidget);
     });
 
-    testWidgets('le palmarès véhicules affiche les marges des deux bords',
+    testWidgets('seuls les véhicules à surveiller sont listés',
         (tester) async {
       await _pump(
           tester,
@@ -368,9 +383,12 @@ void main() {
                     joursImmobilisation: 8),
               ])));
 
-      expect(find.text('AA-001'), findsOneWidget);
+      // Les meilleures marges n'appellent aucune action : seules les plus
+      // faibles sont listées.
+      expect(find.text('AA-001'), findsNothing);
       expect(find.text('AA-002'), findsOneWidget);
       expect(find.textContaining('8 j d\'arrêt'), findsOneWidget);
+      expect(find.text('1 déficitaire sur 3'), findsOneWidget);
     });
 
     testWidgets('sans alerte ouverte, la section le dit au lieu de rester vide',
@@ -398,6 +416,99 @@ void main() {
       // Compteurs à zéro : rien à signaler, donc rien à afficher.
       expect(find.text('Arrêts longs'), findsNothing);
       expect(find.text('Vidanges dues'), findsNothing);
+    });
+
+    testWidgets('les points à traiter vont du plus bloquant au moins pressant',
+        (tester) async {
+      await _pump(tester, _modele(alertes: _alertes(documents: 3, arretsLongs: 2)));
+
+      final permis = tester.getTopLeft(find.text('Permis expirés')).dy;
+      final documents =
+          tester.getTopLeft(find.text('Documents à renouveler')).dy;
+      expect(permis, lessThan(documents));
+    });
+
+    testWidgets('trois débiteurs au plus, la balance âgée fait le reste',
+        (tester) async {
+      await _pump(
+          tester,
+          _modele(
+              cash: _cash(debiteurs: [
+            for (var i = 1; i <= 5; i++)
+              Debiteur(
+                  chauffeurId: i,
+                  nom: 'Chauffeur $i',
+                  nbLignes: 1,
+                  total: 10000.0 * i,
+                  plus30Jours: 0),
+          ])));
+
+      expect(find.text('Chauffeur 3'), findsOneWidget);
+      expect(find.text('Chauffeur 4'), findsNothing);
+    });
+
+    group('redirections', () {
+      ProviderContainer conteneur(WidgetTester tester) =>
+          ProviderScope.containerOf(
+              tester.element(find.byType(TableauBordPage)));
+
+      testWidgets('le manquant ouvre les créances du hub Finances',
+          (tester) async {
+        await _pump(tester, _modele());
+
+        await tester.tap(find.text('Manquant'));
+        await tester.pump();
+
+        final c = conteneur(tester);
+        expect(c.read(homeTabIndexProvider), 3);
+        expect(c.read(financeTabIndexProvider), FinanceTab.creances);
+      });
+
+      testWidgets('les dépenses ouvrent les opérations filtrées',
+          (tester) async {
+        await _pump(tester, _modele());
+
+        await tester.tap(find.text('Dépenses').first);
+        await tester.pump();
+
+        final c = conteneur(tester);
+        expect(c.read(financeTabIndexProvider), FinanceTab.operations);
+        expect(c.read(operationsTypeFiltreProvider), 'DEPENSE');
+      });
+
+      testWidgets('une vidange due ouvre l\'état de parc filtré sur ce motif',
+          (tester) async {
+        await _pump(
+            tester,
+            _modele(
+                alertes: const AlertesTableauBord(
+              documentsExpirantSous30Jours: 0,
+              maintenancesDuesSous7Jours: 0,
+              permisExpires: 0,
+              vidangesDues: 2,
+              immobilisationsLongues: 0,
+              vehiculesSansChauffeur: 0,
+            )));
+
+        await tester.tap(find.text('Vidanges dues'));
+        await tester.pump();
+
+        final c = conteneur(tester);
+        expect(c.read(homeTabIndexProvider), 1);
+        expect(c.read(fleetTabIndexProvider), FleetTab.etatParc);
+        expect(c.read(etatParcExceptionCritereProvider).motif, 'VIDANGE_DUE');
+      });
+
+      testWidgets('un permis expiré ouvre la liste des chauffeurs',
+          (tester) async {
+        await _pump(tester, _modele());
+
+        await tester.tap(find.text('Permis expirés'));
+        await tester.pump();
+
+        expect(conteneur(tester).read(fleetTabIndexProvider),
+            FleetTab.chauffeurs);
+      });
     });
 
     testWidgets('basculer sur la base « Dû » recadre la lecture',

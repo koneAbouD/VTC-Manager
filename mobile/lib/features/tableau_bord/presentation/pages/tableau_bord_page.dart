@@ -8,18 +8,26 @@ import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/responsive_field_row.dart'
     show kFormPhoneBreakpoint;
+import '../../../../screens/home_nav_provider.dart';
+import '../../../contravention/presentation/pages/contraventions_hub_page.dart';
+import '../../../maintenance/presentation/pages/lignes_maintenance_page.dart';
+import '../../../tresorerie/presentation/pages/compte_resultat_page.dart';
+import '../../../tresorerie/presentation/pages/creances_chauffeur_page.dart';
+import '../../../vehicule/presentation/pages/vehicule_detail_page.dart';
 import '../../data/models/tableau_bord_model.dart';
 import '../providers/tableau_bord_provider.dart';
 import '../widgets/tb_briques.dart';
+import '../widgets/tb_navigation.dart';
 import '../widgets/tb_tendance.dart';
 
 /// Tableau de bord de supervision.
 ///
-/// **La page répond à quatre questions, dans l'ordre où un exploitant se les
-/// pose** : est-ce que je gagne de l'argent (résultat), est-ce que l'argent
-/// rentre (cash), est-ce que mon parc produit (flotte), qu'est-ce qui menace la
-/// suite (alertes). Ce n'est pas un empilement de chiffres : chaque bloc a un
-/// chiffre dominant, ses ratios de contexte, puis son détail.
+/// **Une synthèse qui mène quelque part.** La page ne garde que les chiffres
+/// qui appellent une décision, dans l'ordre où on les cherche : la journée,
+/// ce qui est à traiter, le résultat du mois, l'argent qui rentre, le parc.
+/// Chaque chiffre est un lien vers l'écran qui en tient le détail — la
+/// cascade du compte de résultat, la balance âgée, l'état de parc ne sont pas
+/// recopiées ici.
 ///
 /// Tous les montants viennent des états déjà publiés — compte de résultat,
 /// balance âgée, marges par véhicule, état de parc — assemblés côté backend en
@@ -61,23 +69,40 @@ class TableauBordPage extends ConsumerWidget {
               ),
             ],
           ),
-          data: (data) => ListView(
-            padding: EdgeInsets.fromLTRB(
-                16, 12, 16, 24 + MediaQuery.of(context).padding.bottom),
-            children: [
-              _BandeauPeriode(data: data),
-              const SizedBox(height: 12),
-              _BandeauEssentiel(data: data, isWide: isWide),
-              const SizedBox(height: 12),
-              _SectionFinance(data: data, isWide: isWide),
-              const SizedBox(height: 12),
-              _SectionCash(data: data, isWide: isWide),
-              const SizedBox(height: 12),
-              _SectionFlotte(data: data, isWide: isWide),
-              const SizedBox(height: 12),
-              _SectionAlertes(alertes: data.alertes, isWide: isWide),
-            ],
-          ),
+          data: (data) {
+            final cash = _SectionCash(cash: data.cash);
+            final parc = _SectionParc(flotte: data.flotte);
+            return ListView(
+              padding: EdgeInsets.fromLTRB(
+                  16, 12, 16, 24 + MediaQuery.of(context).padding.bottom),
+              children: [
+                _BandeauPeriode(data: data),
+                const SizedBox(height: 14),
+                _BandeauEssentiel(data: data, isWide: isWide),
+                const SizedBox(height: 14),
+                _SectionATraiter(
+                    alertes: data.alertes, aReverserEtat: data.cash.aReverserEtat),
+                const SizedBox(height: 14),
+                _SectionResultat(data: data),
+                const SizedBox(height: 14),
+                // En écran large, l'argent et le parc se lisent côte à côte.
+                if (isWide)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: cash),
+                      const SizedBox(width: 14),
+                      Expanded(child: parc),
+                    ],
+                  )
+                else ...[
+                  cash,
+                  const SizedBox(height: 14),
+                  parc,
+                ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -249,20 +274,19 @@ class _BasculeBase extends StatelessWidget {
 
 /// Les quatre montants qu'on vient chercher — encaissé, manquant, dépenses,
 /// bénéfice net —, posés avant tout bloc d'analyse : celui du jour en gros,
-/// celui du mois juste dessous.
+/// celui du mois juste dessous. Chaque carte ouvre la liste qui le compose.
 ///
 /// Aucun chiffre n'est calculé ici. Le jour vient du bloc `journee` du
-/// backend ; le mois est repris tel quel des blocs plus bas (encaissé et
-/// manquant du bloc cash, dépenses et bénéfice du compte de résultat), pour
-/// qu'un total en tête ne contredise jamais son détail.
-class _BandeauEssentiel extends StatelessWidget {
+/// backend ; le mois est repris tel quel des blocs cash et compte de
+/// résultat, pour qu'un total en tête ne contredise jamais son détail.
+class _BandeauEssentiel extends ConsumerWidget {
   final TableauBordModel data;
   final bool isWide;
 
   const _BandeauEssentiel({required this.data, required this.isWide});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final j = data.journee;
     final f = data.finance;
     final c = data.cash;
@@ -300,6 +324,8 @@ class _BandeauEssentiel extends StatelessWidget {
             valeurMois: tbMontantCourt(c.produitsEncaissesPeriode),
             aide: 'Argent réellement versé : recettes, pénalités et autres '
                 'produits d\'exploitation encaissés, arriérés compris.',
+            onTap: () => tbOuvrirFinances(context, ref, FinanceTab.operations,
+                typeOperation: 'REVENU'),
           ),
           _CarteEssentiel(
             icone: Icons.money_off_outlined,
@@ -313,6 +339,7 @@ class _BandeauEssentiel extends StatelessWidget {
             valeurMois: tbMontantCourt(c.resteAEncaisserPeriode),
             aide: 'Produits dus et pas encore encaissés : l\'écart entre ce '
                 'que les chauffeurs devaient et ce qu\'ils ont versé.',
+            onTap: () => tbOuvrirFinances(context, ref, FinanceTab.creances),
           ),
           _CarteEssentiel(
             icone: Icons.shopping_cart_outlined,
@@ -324,18 +351,21 @@ class _BandeauEssentiel extends StatelessWidget {
             valeurMois: tbMontantCourt(f.chargesTotales),
             aide: 'Charges variables (carburant, entretien…) et charges fixes '
                 '(assurances, salaires…), hors amortissements.',
+            onTap: () => tbOuvrirFinances(context, ref, FinanceTab.operations,
+                typeOperation: 'DEPENSE'),
           ),
           _CarteEssentiel(
             icone: Icons.trending_up_rounded,
             label: 'Bénéfice net',
             valeur: tbMontantCourt(j.beneficeNet),
-            couleur: j.beneficeNet < 0 ? kTbRouge : const Color(0xFF1565C0),
+            couleur: j.beneficeNet < 0 ? kTbRouge : AppColors.info,
             sousLabel: j.beneficeNet < 0 ? 'perte du jour' : 'après toutes charges',
             libelleMois: mois,
             valeurMois: tbMontantCourt(f.resultatGestion),
             aide: 'Produits moins charges et amortissements. La dotation aux '
                 'provisions ne se mesure qu\'au mois : elle ne pèse que sur '
                 'le chiffre mensuel.',
+            onTap: () => tbPousser(context, const CompteResultatPage()),
           ),
         ]),
       ],
@@ -351,8 +381,8 @@ class _BandeauEssentiel extends StatelessWidget {
 }
 
 /// Carte mise en évidence : fond teinté de sa couleur, pictogramme, montant
-/// du jour en gros, total du mois en pied. Plus appuyée qu'une [TbKpiTuile],
-/// parce que c'est le premier regard sur la page.
+/// du jour en gros, total du mois en pied, chevron du lien. Plus appuyée
+/// qu'une [TbKpiTuile], parce que c'est le premier regard sur la page.
 class _CarteEssentiel extends StatelessWidget {
   final IconData icone;
   final String label;
@@ -362,6 +392,7 @@ class _CarteEssentiel extends StatelessWidget {
   final String libelleMois;
   final String valeurMois;
   final String aide;
+  final VoidCallback onTap;
 
   const _CarteEssentiel({
     required this.icone,
@@ -372,89 +403,97 @@ class _CarteEssentiel extends StatelessWidget {
     required this.libelleMois,
     required this.valeurMois,
     required this.aide,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: aide,
-      triggerMode: TooltipTriggerMode.longPress,
-      showDuration: const Duration(seconds: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      textStyle: const TextStyle(fontSize: 12, color: Colors.white),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-        decoration: BoxDecoration(
-          color: couleur.withValues(alpha: 0.07),
+    return tbAvecAide(
+      aide,
+      Material(
+        color: couleur.withValues(alpha: 0.07),
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: couleur.withValues(alpha: 0.25)),
+          side: BorderSide(color: couleur.withValues(alpha: 0.25)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 8, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: couleur.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
+                Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: couleur.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icone, size: 16, color: couleur),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(label,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.label),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        size: 18, color: couleur.withValues(alpha: 0.7)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(valeur,
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: couleur,
+                          height: 1.1)),
+                ),
+                const SizedBox(height: 4),
+                Text(sousLabel,
+                    style: TextStyle(fontSize: 10.5, color: AppColors.hint),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 8, right: 4),
+                  child: Divider(
+                      height: 1, color: couleur.withValues(alpha: 0.2)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(libelleMois,
+                            style: TextStyle(
+                                fontSize: 10.5, color: AppColors.hint),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(valeurMois,
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.label)),
+                    ],
                   ),
-                  child: Icon(icone, size: 16, color: couleur),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(label,
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.label),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(valeur,
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: couleur,
-                      height: 1.1)),
-            ),
-            const SizedBox(height: 4),
-            Text(sousLabel,
-                style: TextStyle(fontSize: 10.5, color: AppColors.hint),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Divider(
-                  height: 1, color: couleur.withValues(alpha: 0.2)),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(libelleMois,
-                      style: TextStyle(
-                          fontSize: 10.5, color: AppColors.hint),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ),
-                const SizedBox(width: 6),
-                Text(valeurMois,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.label)),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -462,26 +501,185 @@ class _CarteEssentiel extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Bloc 1 — Santé financière
+// À traiter — les signaux ouverts, chacun menant à son écran
 // ─────────────────────────────────────────────────────────────────────────
 
-class _SectionFinance extends StatelessWidget {
-  final TableauBordModel data;
-  final bool isWide;
+/// Un point à traiter : ce qu'il compte, et où le traiter.
+typedef _PointATraiter = ({
+  String libelle,
+  String precision,
+  IconData icone,
+  Color couleur,
+  String valeur,
+  void Function() ouvrir,
+});
 
-  const _SectionFinance({required this.data, required this.isWide});
+/// Les signaux ouverts, du plus bloquant au moins pressant. Un compteur à
+/// zéro n'est pas affiché : rien à signaler, rien à lire.
+class _SectionATraiter extends ConsumerWidget {
+  final AlertesTableauBord alertes;
+  final double aReverserEtat;
+
+  const _SectionATraiter({required this.alertes, required this.aReverserEtat});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final a = alertes;
+    void flotte(int onglet, [String? motif]) =>
+        tbOuvrirFlotte(context, ref, onglet, motif: motif);
+
+    final points = <_PointATraiter>[
+      if (a.permisExpires > 0)
+        (
+          libelle: 'Permis expirés',
+          precision: 'chauffeurs bloqués',
+          icone: Icons.badge_outlined,
+          couleur: kTbRouge,
+          valeur: '${a.permisExpires}',
+          ouvrir: () => flotte(FleetTab.chauffeurs),
+        ),
+      if (a.immobilisationsLongues > 0)
+        (
+          libelle: 'Arrêts longs',
+          precision: 'véhicules arrêtés depuis plus de 15 jours',
+          icone: Icons.timer_off_outlined,
+          couleur: kTbRouge,
+          valeur: '${a.immobilisationsLongues}',
+          ouvrir: () => flotte(FleetTab.etatParc),
+        ),
+      if (a.vidangesDues > 0)
+        (
+          libelle: 'Vidanges dues',
+          precision: 'date ou kilométrage atteint',
+          icone: Icons.opacity_outlined,
+          couleur: kTbOrange,
+          valeur: '${a.vidangesDues}',
+          ouvrir: () => flotte(FleetTab.etatParc, 'VIDANGE_DUE'),
+        ),
+      if (a.maintenancesDuesSous7Jours > 0)
+        (
+          libelle: 'Maintenances dues',
+          precision: 'dans les 7 jours',
+          icone: Icons.build_outlined,
+          couleur: kTbOrange,
+          valeur: '${a.maintenancesDuesSous7Jours}',
+          ouvrir: () => tbPousser(context, const LignesMaintenancePage()),
+        ),
+      if (a.documentsExpirantSous30Jours > 0)
+        (
+          libelle: 'Documents à renouveler',
+          precision: 'expirent dans les 30 jours',
+          icone: Icons.description_outlined,
+          couleur: kTbOrange,
+          valeur: '${a.documentsExpirantSous30Jours}',
+          ouvrir: () => flotte(FleetTab.etatParc),
+        ),
+      if (a.vehiculesSansChauffeur > 0)
+        (
+          libelle: 'Sans chauffeur',
+          precision: 'véhicules prêts mais non affectés',
+          icone: Icons.person_off_outlined,
+          couleur: kTbOrange,
+          valeur: '${a.vehiculesSansChauffeur}',
+          ouvrir: () => flotte(FleetTab.etatParc, 'SANS_CHAUFFEUR'),
+        ),
+      if (aReverserEtat > 0)
+        (
+          libelle: 'À reverser à l\'État',
+          precision: 'contraventions encaissées, non reversées',
+          icone: Icons.account_balance_outlined,
+          couleur: kTbOrange,
+          valeur: tbMontantCourt(aReverserEtat),
+          ouvrir: () => tbPousser(context, const ContraventionsHubPage()),
+        ),
+    ];
+
+    final urgent = points.any((p) => p.couleur == kTbRouge);
+
+    return TbSection(
+      icone: Icons.notifications_active_outlined,
+      titre: 'À traiter',
+      accent: points.isEmpty ? kTbVert : (urgent ? kTbRouge : kTbOrange),
+      badge: points.isEmpty
+          ? null
+          : TbPastille(
+              texte: '${points.length}',
+              couleur: urgent ? kTbRouge : kTbOrange),
+      child: points.isEmpty
+          ? Row(
+              children: [
+                Icon(Icons.check_circle_outline_rounded,
+                    size: 18, color: kTbVert),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Aucun point de vigilance ouvert',
+                      style:
+                          TextStyle(fontSize: 12.5, color: AppColors.label)),
+                ),
+              ],
+            )
+          : Column(
+              children: [
+                for (var i = 0; i < points.length; i++) ...[
+                  if (i > 0)
+                    Divider(height: 1, indent: 46, color: AppColors.border),
+                  TbLigneLien(
+                    icone: points[i].icone,
+                    couleur: points[i].couleur,
+                    libelle: points[i].libelle,
+                    precision: points[i].precision,
+                    valeur: points[i].valeur,
+                    couleurValeur: points[i].couleur,
+                    onTap: points[i].ouvrir,
+                  ),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Résultat du mois
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Est-ce que je gagne de l'argent : le résultat, la distance au point mort,
+/// et la tendance. La cascade complète est un tap plus loin, dans le compte
+/// de résultat.
+class _SectionResultat extends StatelessWidget {
+  final TableauBordModel data;
+
+  const _SectionResultat({required this.data});
 
   @override
   Widget build(BuildContext context) {
     final f = data.finance;
+    final couverture = f.tauxCouverturePointMort;
+    final couleurCouverture =
+        tbCouleurTauxCroissant(couverture, bon: 100, moyen: 80);
 
-    return TbSection(
-      icone: Icons.account_balance_wallet_outlined,
-      titre: 'Santé financière',
-      question: 'Est-ce que je gagne de l\'argent ?',
+    return TbCarteRelief(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Icon(Icons.account_balance_wallet_outlined,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Résultat du mois',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark)),
+              ),
+              TbLienVoir(
+                  libelle: 'Détail',
+                  onTap: () => tbPousser(context, const CompteResultatPage())),
+            ],
+          ),
+          const SizedBox(height: 10),
           TbKpiPrincipal(
             label: 'Résultat de gestion',
             valeur: tbMontantCourt(f.resultatGestion),
@@ -489,8 +687,49 @@ class _SectionFinance extends StatelessWidget {
             variationPct: f.variationResultatPct,
             commentaire: _commentaireResultat(f),
           ),
+          const SizedBox(height: 16),
+          tbAvecAide(
+            'Chiffre d\'affaires à partir duquel les charges fixes sont '
+            'couvertes. Au-dessus, chaque franc encaissé est du bénéfice ; '
+            'en dessous, la période perd de l\'argent.',
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('Point mort',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.label),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    Text(
+                        couverture == null
+                            ? 'marge insuffisante'
+                            : 'couvert à ${tbPourcent(couverture, decimales: 0)}',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: couleurCouverture)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                TbProgression(taux: couverture, couleur: couleurCouverture),
+                if (f.pointMort != null) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                      'Seuil ${tbMontantCourt(f.pointMort!)} · marge '
+                      '${tbPourcent(f.tauxMargeVariable)} après charges variables',
+                      style: TextStyle(fontSize: 10.5, color: AppColors.hint)),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 14),
-          TbGrilleTuiles(isWide: isWide, tuiles: [
+          TbGrilleTuiles(isWide: false, tuiles: [
             TbKpiTuile(
               label: 'Produits',
               valeur: tbMontantCourt(f.produits),
@@ -509,68 +748,7 @@ class _SectionFinance extends StatelessWidget {
               aide: 'Charges variables (carburant, entretien…) et charges '
                   'fixes (assurances, salaires…) de la période.',
             ),
-            TbKpiTuile(
-              label: 'Taux de marge',
-              valeur: tbPourcent(f.tauxMargeVariable),
-              couleur: tbCouleurTauxCroissant(f.tauxMargeVariable,
-                  bon: 50, moyen: 30),
-              sousLabel: 'après charges variables',
-              aide: 'Marge sur coûts variables rapportée aux produits : ce que '
-                  'chaque franc encaissé laisse pour couvrir les charges fixes.',
-            ),
-            TbKpiTuile(
-              label: 'Point mort',
-              valeur:
-                  f.pointMort == null ? '—' : tbMontantCourt(f.pointMort!),
-              couleur: tbCouleurTauxCroissant(f.tauxCouverturePointMort,
-                  bon: 100, moyen: 80),
-              sousLabel: f.tauxCouverturePointMort == null
-                  ? 'marge insuffisante'
-                  : 'couvert à ${tbPourcent(f.tauxCouverturePointMort, decimales: 0)}',
-              aide: 'Chiffre d\'affaires à partir duquel les charges fixes '
-                  'sont couvertes. Au-dessus, chaque franc encaissé est du '
-                  'bénéfice ; en dessous, la période perd de l\'argent.',
-            ),
           ]),
-          const SizedBox(height: 14),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Produits d\'exploitation',
-              valeur: tbMontant(f.produits)),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Charges variables', valeur: '− ${tbMontant(f.chargesVariables)}'),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Marge sur coûts variables',
-              valeur: tbMontant(f.margeSurCoutsVariables),
-              couleurValeur: tbCouleurMontant(f.margeSurCoutsVariables),
-              forte: true),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Charges fixes', valeur: '− ${tbMontant(f.chargesFixes)}'),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Excédent brut d\'exploitation',
-              valeur: tbMontant(f.excedentBrutExploitation),
-              couleurValeur: tbCouleurMontant(f.excedentBrutExploitation),
-              forte: true),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Amortissements',
-              sousLibelle: 'Usure des véhicules sur la période',
-              valeur: '− ${tbMontant(f.amortissements)}'),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Dotation aux provisions',
-              sousLibelle: 'Perte attendue sur les impayés',
-              valeur: '− ${tbMontant(f.dotationProvisions)}'),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Résultat de gestion',
-              valeur: tbMontant(f.resultatGestion),
-              couleurValeur: tbCouleurMontant(f.resultatGestion),
-              forte: true),
           const SizedBox(height: 16),
           TbTendance(
               serie: f.serie,
@@ -597,45 +775,79 @@ class _SectionFinance extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Bloc 2 — Cash et créances
+// Encaissement
 // ─────────────────────────────────────────────────────────────────────────
 
-class _SectionCash extends StatelessWidget {
-  final TableauBordModel data;
-  final bool isWide;
+/// Est-ce que l'argent rentre : le taux de recouvrement en jauge, la
+/// trésorerie et l'encours, l'âge des créances, et qui doit.
+class _SectionCash extends ConsumerWidget {
+  final CashCreances cash;
 
-  const _SectionCash({required this.data, required this.isWide});
+  const _SectionCash({required this.cash});
+
+  /// Débiteurs affichés : au-delà, la balance âgée prend le relais.
+  static const _maxDebiteurs = 3;
 
   @override
-  Widget build(BuildContext context) {
-    final c = data.cash;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = cash;
+    final couleurRecouvrement =
+        tbCouleurTauxCroissant(c.tauxRecouvrement, bon: 95, moyen: 80);
 
     return TbSection(
-      icone: Icons.analytics_outlined,
-      titre: 'Encaissement et créances',
-      question: 'Est-ce que l\'argent rentre ?',
-      accent: const Color(0xFF1565C0),
+      icone: Icons.savings_outlined,
+      titre: 'Encaissement',
+      accent: AppColors.info,
+      libelleVoir: 'Créances',
+      onVoir: () => tbOuvrirFinances(context, ref, FinanceTab.creances),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TbKpiPrincipal(
-            label: 'Trésorerie disponible',
-            valeur: tbMontantCourt(c.tresorerieDisponible),
-            couleur: tbCouleurMontant(c.tresorerieDisponible),
-            commentaire: 'Solde de tous les comptes actifs, à l\'instant',
+          tbAvecAide(
+            'Part des produits dus de la période effectivement encaissée. '
+            'Le complément a été facturé mais dort en créance.',
+            Row(
+              children: [
+                TbJauge(taux: c.tauxRecouvrement, couleur: couleurRecouvrement),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Taux de recouvrement',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.dark)),
+                      const SizedBox(height: 2),
+                      Text(
+                          c.resteAEncaisserPeriode > 0
+                              ? '${tbMontantCourt(c.resteAEncaisserPeriode)} non encaissés'
+                              : 'tout est rentré',
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              color: c.resteAEncaisserPeriode > 0
+                                  ? couleurRecouvrement
+                                  : AppColors.hint)),
+                      Text('sur les produits dus du mois',
+                          style:
+                              TextStyle(fontSize: 10.5, color: AppColors.hint)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 14),
-          TbGrilleTuiles(isWide: isWide, tuiles: [
+          TbGrilleTuiles(isWide: false, tuiles: [
             TbKpiTuile(
-              label: 'Taux de recouvrement',
-              valeur: tbPourcent(c.tauxRecouvrement),
-              couleur: tbCouleurTauxCroissant(c.tauxRecouvrement,
-                  bon: 95, moyen: 80),
-              sousLabel: c.resteAEncaisserPeriode > 0
-                  ? '${tbMontantCourt(c.resteAEncaisserPeriode)} non encaissés'
-                  : 'tout est rentré',
-              aide: 'Part des produits dus de la période effectivement '
-                  'encaissée. Le complément a été facturé mais dort en créance.',
+              label: 'Trésorerie',
+              valeur: tbMontantCourt(c.tresorerieDisponible),
+              couleur: tbCouleurMontant(c.tresorerieDisponible),
+              sousLabel: 'disponible à l\'instant',
+              aide: 'Solde de tous les comptes actifs, à l\'instant.',
+              onTap: () =>
+                  tbOuvrirFinances(context, ref, FinanceTab.tresorerie),
             ),
             TbKpiTuile(
               label: 'Créances',
@@ -643,140 +855,69 @@ class _SectionCash extends StatelessWidget {
               sousLabel: '${c.nbChauffeursDebiteurs} chauffeur'
                   '${c.nbChauffeursDebiteurs > 1 ? 's' : ''}',
               aide: 'Encours total dû par les chauffeurs, toutes périodes '
-                  'confondues : recettes, cotisations et pénalités impayées.',
-            ),
-            TbKpiTuile(
-              label: 'Dont > 30 jours',
-              valeur: tbPourcent(c.partCreancesRisque),
-              couleur: tbCouleurTauxDecroissant(c.partCreancesRisque,
-                  bon: 10, moyen: 25),
-              sousLabel: tbMontantCourt(c.creancesPlus30Jours),
-              aide: 'Part de l\'encours qui a plus de 30 jours. Plus une '
-                  'somme dort, moins elle rentre : c\'est la fraction à risque.',
-            ),
-            TbKpiTuile(
-              label: 'Délai de recouvrement',
-              valeur: c.dso == null
-                  ? '—'
-                  : '${c.dso!.toStringAsFixed(0)} j',
-              couleur: tbCouleurTauxDecroissant(c.dso, bon: 7, moyen: 20),
-              sousLabel: 'de production en attente',
-              aide: 'Nombre de jours de production que représente l\'encours '
-                  '(DSO). Au-delà du rythme de versement attendu, le décalage '
-                  'devient un impayé.',
+                  'confondues : recettes et pénalités impayées.',
+              onTap: () => tbOuvrirFinances(context, ref, FinanceTab.creances),
             ),
           ]),
           const SizedBox(height: 14),
-          _BarreAnciennete(cash: c),
-          const SizedBox(height: 14),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Créances brutes', valeur: tbMontant(c.creancesBrutes)),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Provision sur créances',
-              sousLibelle: 'Perte probable, par ancienneté',
-              valeur: '− ${tbMontant(c.provisionCreances)}'),
-          const TbFilet(),
-          TbLigneDetail(
-              libelle: 'Créances nettes',
-              sousLibelle: 'Ce qu\'on espère raisonnablement encaisser',
-              valeur: tbMontant(c.creancesNettes),
-              forte: true),
-          if (c.aReverserEtat > 0) ...[
-            const TbFilet(),
-            TbLigneDetail(
-                libelle: 'À reverser à l\'État',
-                sousLibelle: 'Contraventions encaissées, non reversées',
-                valeur: tbMontant(c.aReverserEtat),
-                couleurValeur: kTbOrange),
+          if (c.creancesBrutes <= 0)
+            Text('Aucune créance ouverte',
+                style: TextStyle(fontSize: 12, color: AppColors.hint))
+          else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Âge des créances',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.label),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ),
+                Text('${tbPourcent(c.partCreancesRisque, decimales: 0)} à risque',
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: tbCouleurTauxDecroissant(c.partCreancesRisque,
+                            bon: 10, moyen: 25))),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TbBarreSegments(segments: [
+              (
+                libelle: '0 – 7 j',
+                valeur: c.creances0a7Jours,
+                texte: tbMontantCourt(c.creances0a7Jours),
+                couleur: kTbVert,
+              ),
+              (
+                libelle: '8 – 30 j',
+                valeur: c.creances8a30Jours,
+                texte: tbMontantCourt(c.creances8a30Jours),
+                couleur: kTbOrange,
+              ),
+              (
+                libelle: '> 30 j',
+                valeur: c.creancesPlus30Jours,
+                texte: tbMontantCourt(c.creancesPlus30Jours),
+                couleur: kTbRouge,
+              ),
+            ]),
           ],
           if (c.topDebiteurs.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text('Principaux débiteurs',
                 style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.label)),
-            const SizedBox(height: 8),
-            for (final d in c.topDebiteurs) _LigneDebiteur(debiteur: d),
+            const SizedBox(height: 2),
+            for (final d in c.topDebiteurs.take(_maxDebiteurs))
+              _LigneDebiteur(debiteur: d),
           ],
         ],
       ),
-    );
-  }
-}
-
-/// Répartition de l'encours par ancienneté : une barre segmentée vaut mieux
-/// que trois nombres, parce que c'est la *proportion* de vieux qui alerte.
-class _BarreAnciennete extends StatelessWidget {
-  final CashCreances cash;
-  const _BarreAnciennete({required this.cash});
-
-  @override
-  Widget build(BuildContext context) {
-    final total = cash.creancesBrutes;
-    if (total <= 0) {
-      return Text('Aucune créance ouverte',
-          style: TextStyle(fontSize: 12, color: AppColors.hint));
-    }
-
-    final segments = <(String, double, Color)>[
-      ('0 – 7 j', cash.creances0a7Jours, kTbVert),
-      ('8 – 30 j', cash.creances8a30Jours, kTbOrange),
-      ('> 30 j', cash.creancesPlus30Jours, kTbRouge),
-    ].where((s) => s.$2 > 0).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: SizedBox(
-            height: 10,
-            child: Row(
-              children: [
-                for (var i = 0; i < segments.length; i++) ...[
-                  // Filet de surface entre deux aplats : sans lui, deux
-                  // segments voisins se lisent comme un seul bloc.
-                  if (i > 0) const SizedBox(width: 2),
-                  Expanded(
-                    flex: (segments[i].$2 / total * 1000).round().clamp(1, 1000),
-                    child: ColoredBox(color: segments[i].$3),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 14,
-          runSpacing: 6,
-          children: [
-            for (final s in segments)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                          color: s.$3, borderRadius: BorderRadius.circular(2))),
-                  const SizedBox(width: 5),
-                  Text('${s.$1}  ',
-                      style:
-                          TextStyle(fontSize: 11, color: AppColors.label)),
-                  Text(tbMontantCourt(s.$2),
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.dark)),
-                ],
-              ),
-          ],
-        ),
-      ],
     );
   }
 }
@@ -787,154 +928,178 @@ class _LigneDebiteur extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ancien = debiteur.plus30Jours > 0;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(debiteur.nom.isEmpty ? 'Chauffeur' : debiteur.nom,
-                    style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.dark),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                Text(
-                  ancien
-                      ? '${debiteur.nbLignes} document${debiteur.nbLignes > 1 ? 's' : ''}'
-                          ' · ${tbMontantCourt(debiteur.plus30Jours)} de plus de 30 j'
-                      : '${debiteur.nbLignes} document${debiteur.nbLignes > 1 ? 's' : ''}',
-                  style: TextStyle(
-                      fontSize: 10.5,
-                      color: ancien ? kTbRouge : AppColors.hint),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(tbMontant(debiteur.total),
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.dark)),
-        ],
-      ),
+    final d = debiteur;
+    final ancien = d.plus30Jours > 0;
+    final nom = d.nom.isEmpty ? 'Chauffeur' : d.nom;
+    final id = d.chauffeurId;
+
+    return TbLigneLien(
+      icone: Icons.person_outline_rounded,
+      couleur: ancien ? kTbRouge : AppColors.info,
+      libelle: nom,
+      precision: ancien
+          ? '${tbMontantCourt(d.plus30Jours)} de plus de 30 j'
+          : '${d.nbLignes} document${d.nbLignes > 1 ? 's' : ''}',
+      couleurPrecision: ancien ? kTbRouge : null,
+      valeur: tbMontantCourt(d.total),
+      onTap: id == null
+          ? null
+          : () => tbPousser(
+              context, CreancesChauffeurPage(chauffeurId: id, chauffeurNom: nom)),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Bloc 3 — Performance de la flotte
+// Parc
 // ─────────────────────────────────────────────────────────────────────────
 
-class _SectionFlotte extends StatelessWidget {
-  final TableauBordModel data;
-  final bool isWide;
+/// Est-ce que mes véhicules produisent : la disponibilité en jauge, la
+/// répartition du parc, le rendement, et les véhicules à surveiller.
+class _SectionParc extends ConsumerWidget {
+  final PerformanceFlotte flotte;
 
-  const _SectionFlotte({required this.data, required this.isWide});
+  const _SectionParc({required this.flotte});
+
+  /// Véhicules « à surveiller » affichés : au-delà, l'état de parc et les
+  /// marges par véhicule prennent le relais.
+  static const _maxVehicules = 3;
 
   @override
-  Widget build(BuildContext context) {
-    final v = data.flotte;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final v = flotte;
+    final couleurDispo = tbCouleurTauxCroissant(v.tauxDisponibilite);
+    final mobilisables = v.enService + v.disponibles;
 
     return TbSection(
       icone: Icons.directions_car_filled_outlined,
-      titre: 'Performance du parc',
-      question: 'Est-ce que mes véhicules produisent ?',
-      accent: const Color(0xFF6A1B9A),
+      titre: 'Parc',
+      // Violet éclairci en sombre : le ton clair se perd sur fond nuit.
+      accent: AppColors.estSombre
+          ? const Color(0xFFCE93D8)
+          : const Color(0xFF6A1B9A),
+      libelleVoir: 'État de parc',
+      onVoir: () => tbOuvrirFlotte(context, ref, FleetTab.etatParc),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TbKpiPrincipal(
-            label: 'Revenu par véhicule actif',
-            valeur: tbMontantCourt(v.revenuParVehiculeActif),
-            couleur: AppColors.dark,
-            commentaire: '${v.parcActif} véhicule${v.parcActif > 1 ? 's' : ''} '
-                'au parc · ${tbMontantCourt(v.revenuJournalierMoyen)} par jour et par véhicule',
+          tbAvecAide(
+            'Part du parc actif en état de rouler, à cet instant : en service '
+            'ou disponible. Le reste est en maintenance ou immobilisé.',
+            Row(
+              children: [
+                TbJauge(taux: v.tauxDisponibilite, couleur: couleurDispo),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Disponibilité',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.dark)),
+                      const SizedBox(height: 2),
+                      Text(
+                          '$mobilisables / ${v.parcActif} véhicule'
+                          '${v.parcActif > 1 ? 's' : ''} prêts à rouler',
+                          style: TextStyle(
+                              fontSize: 11.5, color: AppColors.label)),
+                      // Avertissement de lecture : l'occupation est l'état du
+                      // parc maintenant, pas une moyenne de la période.
+                      Row(
+                        children: [
+                          Icon(Icons.schedule_rounded,
+                              size: 11, color: AppColors.hint),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text('à l\'instant, quel que soit le mois',
+                                style: TextStyle(
+                                    fontSize: 10.5, color: AppColors.hint)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
-          // Avertissement de lecture : disponibilité et utilisation sont l'état
-          // du parc maintenant, pas une moyenne de la période. Sur un mois
-          // passé, les confondre ferait juger mai avec la flotte d'aujourd'hui.
-          Row(
-            children: [
-              Icon(Icons.schedule_rounded, size: 12, color: AppColors.hint),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Text(
-                    'Occupation du parc à l\'instant ; montants sur la période',
-                    style: TextStyle(fontSize: 10.5, color: AppColors.hint)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          TbGrilleTuiles(isWide: isWide, tuiles: [
-            TbKpiTuile(
-              label: 'Disponibilité',
-              valeur: tbPourcent(v.tauxDisponibilite),
-              couleur: tbCouleurTauxCroissant(v.tauxDisponibilite),
-              sousLabel: '${v.enService + v.disponibles} / ${v.parcActif} mobilisables',
-              aide: 'Part du parc actif en état de rouler, à cet instant : en '
-                  'service ou disponible. Le reste est en maintenance ou '
-                  'immobilisé.',
+          TbBarreSegments(segments: [
+            (
+              libelle: 'En service',
+              valeur: v.enService.toDouble(),
+              texte: '${v.enService}',
+              couleur: kTbVert,
             ),
-            TbKpiTuile(
-              label: 'Utilisation',
-              valeur: tbPourcent(v.tauxUtilisation),
-              couleur: tbCouleurTauxCroissant(v.tauxUtilisation),
-              sousLabel: '${v.enService} en service',
-              aide: 'Part du parc actif effectivement affectée à un chauffeur. '
-                  'Un véhicule disponible mais sans chauffeur ne produit rien.',
+            (
+              libelle: 'Disponibles',
+              valeur: v.disponibles.toDouble(),
+              texte: '${v.disponibles}',
+              couleur: AppColors.info,
             ),
+            (
+              libelle: 'Maintenance',
+              valeur: v.enMaintenance.toDouble(),
+              texte: '${v.enMaintenance}',
+              couleur: kTbOrange,
+            ),
+            (
+              libelle: 'Immobilisés',
+              valeur: v.immobilises.toDouble(),
+              texte: '${v.immobilises}',
+              couleur: kTbRouge,
+            ),
+          ]),
+          const SizedBox(height: 14),
+          TbGrilleTuiles(isWide: false, tuiles: [
             TbKpiTuile(
-              label: 'Immobilisation',
-              valeur: tbPourcent(v.tauxImmobilisation),
-              couleur: tbCouleurTauxDecroissant(v.tauxImmobilisation,
-                  bon: 5, moyen: 15),
-              sousLabel: '${v.joursImmobilisation} jour'
-                  '${v.joursImmobilisation > 1 ? 's' : ''} d\'arrêt',
-              aide: 'Jours d\'arrêt cumulés rapportés au potentiel du parc '
-                  '(véhicules × jours). Mesure le temps de flotte perdu.',
+              label: 'Revenu / véhicule',
+              valeur: tbMontantCourt(v.revenuParVehiculeActif),
+              sousLabel: '${tbMontantCourt(v.revenuJournalierMoyen)} par jour',
+              aide: 'Produits de la période rapportés au parc actif, puis '
+                  'ramenés à la journée.',
             ),
             TbKpiTuile(
               label: 'Manque à gagner',
               valeur: tbMontantCourt(v.manqueAGagnerImmobilisation),
               couleur: v.manqueAGagnerImmobilisation > 0 ? kTbRouge : kTbNeutre,
-              sousLabel: 'arrêts valorisés',
+              sousLabel: '${v.joursImmobilisation} jour'
+                  '${v.joursImmobilisation > 1 ? 's' : ''} d\'arrêt',
               aide: 'Jours d\'arrêt valorisés au revenu journalier moyen d\'un '
                   'véhicule : ce que l\'immobilisation a coûté en produits.',
             ),
           ]),
-          if (v.nbVehiculesEvalues > 0) ...[
-            const SizedBox(height: 14),
-            const TbFilet(),
-            TbLigneDetail(
-              libelle: 'Marge nette moyenne par véhicule',
-              sousLibelle: 'Après charges variables et amortissement',
-              valeur: tbMontant(v.margeNetteMoyenne),
-              couleurValeur: tbCouleurMontant(v.margeNetteMoyenne),
-              forte: true,
-            ),
-            const TbFilet(),
-            TbLigneDetail(
-              libelle: 'Véhicules déficitaires',
-              sousLibelle: 'Ils coûtent plus qu\'ils ne rapportent',
-              valeur: '${v.nbVehiculesDeficitaires} / ${v.nbVehiculesEvalues}',
-              couleurValeur:
-                  v.nbVehiculesDeficitaires > 0 ? kTbRouge : kTbVert,
-            ),
-          ],
-          if (v.meilleurs.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _Palmares(titre: 'Meilleures marges', vehicules: v.meilleurs),
-          ],
           if (v.moinsBons.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _Palmares(titre: 'Marges les plus faibles', vehicules: v.moinsBons),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('À surveiller',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.label),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ),
+                if (v.nbVehiculesEvalues > 0)
+                  Text(
+                      '${v.nbVehiculesDeficitaires} déficitaire'
+                      '${v.nbVehiculesDeficitaires > 1 ? 's' : ''} '
+                      'sur ${v.nbVehiculesEvalues}',
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: v.nbVehiculesDeficitaires > 0
+                              ? kTbRouge
+                              : kTbVert)),
+              ],
+            ),
+            const SizedBox(height: 2),
+            for (final vp in v.moinsBons.take(_maxVehicules))
+              _LigneVehicule(vehicule: vp),
           ],
         ],
       ),
@@ -942,175 +1107,28 @@ class _SectionFlotte extends StatelessWidget {
   }
 }
 
-class _Palmares extends StatelessWidget {
-  final String titre;
-  final List<VehiculePerformance> vehicules;
-
-  const _Palmares({required this.titre, required this.vehicules});
+class _LigneVehicule extends StatelessWidget {
+  final VehiculePerformance vehicule;
+  const _LigneVehicule({required this.vehicule});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(titre,
-            style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: AppColors.label)),
-        const SizedBox(height: 8),
-        for (final v in vehicules)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(v.immatriculation,
-                          style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.dark)),
-                      Text(
-                        v.joursImmobilisation > 0
-                            ? '${tbMontantCourt(v.produits)} de produits · '
-                                '${v.joursImmobilisation} j d\'arrêt'
-                            : '${tbMontantCourt(v.produits)} de produits',
-                        style: TextStyle(
-                            fontSize: 10.5, color: AppColors.hint),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(tbMontant(v.margeNette),
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: tbCouleurMontant(v.margeNette))),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
+    final v = vehicule;
+    final id = v.vehiculeId;
 
-// ─────────────────────────────────────────────────────────────────────────
-// Bloc 4 — Alertes
-// ─────────────────────────────────────────────────────────────────────────
-
-class _SectionAlertes extends StatelessWidget {
-  final AlertesTableauBord alertes;
-  final bool isWide;
-
-  const _SectionAlertes({required this.alertes, required this.isWide});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = <(String, int, IconData, String)>[
-      ('Documents à renouveler', alertes.documentsExpirantSous30Jours,
-          Icons.description_outlined, 'expirent sous 30 jours'),
-      ('Permis expirés', alertes.permisExpires, Icons.badge_outlined,
-          'chauffeurs bloqués'),
-      ('Maintenances dues', alertes.maintenancesDuesSous7Jours,
-          Icons.build_outlined, 'sous 7 jours'),
-      ('Vidanges dues', alertes.vidangesDues, Icons.opacity_outlined,
-          'date ou kilométrage atteint'),
-      ('Arrêts longs', alertes.immobilisationsLongues, Icons.timer_off_outlined,
-          'plus de 15 jours'),
-      ('Sans chauffeur', alertes.vehiculesSansChauffeur,
-          Icons.person_off_outlined, 'véhicules non affectés'),
-    ];
-    final ouverts = items.where((i) => i.$2 > 0).toList();
-
-    return TbSection(
-      icone: Icons.warning_amber_rounded,
-      titre: 'Points de vigilance',
-      question: 'Qu\'est-ce qui menace la suite ?',
-      accent: alertes.total > 0 ? kTbOrange : AppColors.primary,
-      child: ouverts.isEmpty
-          ? Row(
-              children: [
-                Icon(Icons.check_circle_outline_rounded,
-                    size: 18, color: kTbVert),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text('Aucun point de vigilance ouvert',
-                      style:
-                          TextStyle(fontSize: 12.5, color: AppColors.label)),
-                ),
-              ],
-            )
-          : TbGrilleTuiles(
-              isWide: isWide,
-              tuiles: [
-                for (final a in ouverts)
-                  _TuileAlerte(
-                      libelle: a.$1,
-                      nombre: a.$2,
-                      icone: a.$3,
-                      precision: a.$4),
-              ],
-            ),
-    );
-  }
-}
-
-class _TuileAlerte extends StatelessWidget {
-  final String libelle;
-  final int nombre;
-  final IconData icone;
-  final String precision;
-
-  const _TuileAlerte({
-    required this.libelle,
-    required this.nombre,
-    required this.icone,
-    required this.precision,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      decoration: BoxDecoration(
-        color: kTbOrange.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kTbOrange.withValues(alpha: 0.22)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(icone, size: 14, color: kTbOrange),
-              const SizedBox(width: 6),
-              Text('$nombre',
-                  style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      color: kTbOrange,
-                      height: 1.1)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(libelle,
-              style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.dark),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis),
-          Text(precision,
-              style: TextStyle(fontSize: 10, color: AppColors.hint),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
-        ],
-      ),
+    return TbLigneLien(
+      icone: Icons.directions_car_outlined,
+      couleur: tbCouleurMontant(v.margeNette),
+      libelle: v.immatriculation,
+      precision: v.joursImmobilisation > 0
+          ? '${tbMontantCourt(v.produits)} de produits · '
+              '${v.joursImmobilisation} j d\'arrêt'
+          : '${tbMontantCourt(v.produits)} de produits',
+      valeur: tbMontantCourt(v.margeNette),
+      couleurValeur: tbCouleurMontant(v.margeNette),
+      onTap: id == null
+          ? null
+          : () => tbPousser(context, VehiculeDetailPage(vehiculeId: id)),
     );
   }
 }
