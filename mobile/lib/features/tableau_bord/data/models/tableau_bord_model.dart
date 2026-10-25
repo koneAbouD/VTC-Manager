@@ -373,13 +373,22 @@ class AlertesTableauBord {
 /// sinon le dernier jour de la période —, lus dans la même base que le mois.
 class JourneeTableauBord {
   final DateTime? date;
+
+  /// Argent réellement versé ce jour-là : produits et cotisations.
   final double encaisse;
 
-  /// Reste dû sur les recettes et amendes de la veille — celles qu'on
-  /// encaisse ce jour-là. Jamais négatif.
+  /// Reste à encaisser sur les recettes, cotisations et amendes de la
+  /// veille — celles qu'on encaisse ce jour-là. Jamais négatif.
   final double manquant;
   final double depenses;
   final double beneficeNet;
+
+  /// Même reste à encaisser sur tout le mois, cotisations comprises. Null avec
+  /// un serveur antérieur.
+  final double? manquantMois;
+
+  /// Encaissé du mois, cotisations comprises. Null avec un serveur antérieur.
+  final double? encaisseMois;
 
   const JourneeTableauBord({
     required this.date,
@@ -387,6 +396,8 @@ class JourneeTableauBord {
     required this.manquant,
     required this.depenses,
     required this.beneficeNet,
+    this.manquantMois,
+    this.encaisseMois,
   });
 
   factory JourneeTableauBord.fromJson(Map<String, dynamic> json) =>
@@ -396,6 +407,8 @@ class JourneeTableauBord {
         manquant: (json['manquant'] as num?)?.toDouble() ?? 0,
         depenses: (json['depenses'] as num?)?.toDouble() ?? 0,
         beneficeNet: (json['beneficeNet'] as num?)?.toDouble() ?? 0,
+        manquantMois: (json['manquantMois'] as num?)?.toDouble(),
+        encaisseMois: (json['encaisseMois'] as num?)?.toDouble(),
       );
 }
 

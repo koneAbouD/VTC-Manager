@@ -284,7 +284,44 @@ void main() {
       await _pump(tester, _modele(journee: _journee(manquant: 15000)));
 
       expect(find.text('15 k'), findsOneWidget);
-      expect(find.text('recettes du 30 mai non versées'), findsOneWidget);
+      expect(find.text('dû du 30 mai non versé'), findsOneWidget);
+    });
+
+    testWidgets('le total du mois de l\'encaissé compte les cotisations',
+        (tester) async {
+      // 800 k de produits encaissés (bloc cash) + cotisations : le serveur
+      // sert 944 k, c'est lui qu'on lit.
+      await _pump(
+          tester,
+          _modele(
+              journee: JourneeTableauBord(
+                  date: DateTime(2026, 5, 31),
+                  encaisse: 45000,
+                  manquant: 15000,
+                  depenses: 12000,
+                  beneficeNet: 30000,
+                  encaisseMois: 944000)));
+
+      expect(find.text('944 k'), findsOneWidget);
+      expect(find.text('800 k'), findsNothing);
+    });
+
+    testWidgets('le total du mois du manquant compte les cotisations',
+        (tester) async {
+      // Le serveur sert le reste à encaisser du mois, cotisations comprises :
+      // c'est lui qu'on lit (333 k), et non le reste des seuls produits (200 k).
+      await _pump(
+          tester,
+          _modele(
+              journee: JourneeTableauBord(
+                  date: DateTime(2026, 5, 31),
+                  encaisse: 45000,
+                  manquant: 15000,
+                  depenses: 12000,
+                  beneficeNet: 30000,
+                  manquantMois: 333000)));
+
+      expect(find.text('333 k'), findsOneWidget);
     });
 
     testWidgets('un manquant négatif (serveur antérieur) s\'affiche 0',
@@ -292,7 +329,7 @@ void main() {
       await _pump(tester, _modele(journee: _journee(manquant: -290000)));
 
       expect(find.text('-290 k'), findsNothing);
-      expect(find.text('recettes du 30 mai toutes versées'), findsOneWidget);
+      expect(find.text('dû du 30 mai entièrement versé'), findsOneWidget);
     });
 
     testWidgets('au mois en cours, le manquant parle des recettes d\'hier',
@@ -303,7 +340,7 @@ void main() {
               periode: _periode(moisEnCours: true, cloture: false),
               journee: _journee(manquant: 0)));
 
-      expect(find.text('recettes d\'hier toutes versées'), findsOneWidget);
+      expect(find.text('dû d\'hier entièrement versé'), findsOneWidget);
     });
 
     testWidgets('un mois clos annonce des chiffres définitifs', (tester) async {

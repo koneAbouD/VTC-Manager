@@ -241,8 +241,9 @@ class _BandeauEssentiel extends ConsumerWidget {
     final c = data.cash;
     final mois = data.periode.label;
 
-    // Le manquant du jour porte sur les recettes de la veille, celles qu'on
-    // encaisse ce jour-là (elles naissent le lendemain matin) : on le dit.
+    // Le manquant du jour porte sur le dû de la veille — recettes, cotisations
+    // et amendes —, celui qu'on encaisse ce jour-là (il naît le lendemain
+    // matin) : on le dit.
     // Un manquant n'est jamais négatif. Le serveur ne peut plus en produire,
     // mais un serveur antérieur envoyait encore l'ancien calcul (dus du jour −
     // versés du jour), négatif dès qu'on encaissait la veille : plancher à 0.
@@ -276,9 +277,12 @@ class _BandeauEssentiel extends ConsumerWidget {
             couleur: kTbVert,
             sousLabel: 'versé ce jour',
             libelleMois: mois,
-            valeurMois: tbMontantCourt(c.produitsEncaissesPeriode),
-            aide: 'Argent réellement versé : recettes, pénalités et autres '
-                'produits d\'exploitation encaissés, arriérés compris.',
+            // Cotisations comprises ; un serveur antérieur ne sert pas ce total,
+            // on retombe alors sur les seuls produits encaissés.
+            valeurMois:
+                tbMontantCourt(j.encaisseMois ?? c.produitsEncaissesPeriode),
+            aide: 'Argent réellement versé : recettes, cotisations, pénalités '
+                'et autres produits encaissés, arriérés compris.',
             onTap: () => tbOuvrirFinances(context, ref, FinanceTab.operations,
                 typeOperation: 'REVENU'),
           ),
@@ -288,12 +292,15 @@ class _BandeauEssentiel extends ConsumerWidget {
             valeur: tbMontantCourt(manquant),
             couleur: manquant > 0 ? kTbRouge : kTbVert,
             sousLabel: manquant > 0
-                ? 'recettes $veille non versées'
-                : 'recettes $veille toutes versées',
+                ? 'dû $veille non versé'
+                : 'dû $veille entièrement versé',
             libelleMois: mois,
-            valeurMois: tbMontantCourt(c.resteAEncaisserPeriode),
-            aide: 'Produits dus et pas encore encaissés : l\'écart entre ce '
-                'que les chauffeurs devaient et ce qu\'ils ont versé.',
+            // Cotisations comprises ; un serveur antérieur ne sert pas ce total,
+            // on retombe alors sur le reste à encaisser des seuls produits.
+            valeurMois: tbMontantCourt(j.manquantMois ?? c.resteAEncaisserPeriode),
+            aide: 'Recettes, cotisations et amendes dues et pas encore '
+                'versées : l\'écart entre ce que les chauffeurs devaient et ce '
+                'qu\'ils ont versé.',
             onTap: () => tbOuvrirFinances(context, ref, FinanceTab.creances),
           ),
           _CarteEssentiel(

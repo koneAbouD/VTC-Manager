@@ -11,11 +11,14 @@ import java.time.LocalDate;
 public record JourneeDto(
         /** Aujourd'hui pour le mois en cours, sinon le dernier jour de la période. */
         LocalDate date,
-        /** Produits réellement versés ce jour-là, arriérés rattrapés compris. */
+        /**
+         * Argent réellement versé ce jour-là : produits (arriérés rattrapés
+         * compris) et cotisations.
+         */
         BigDecimal encaisse,
         /**
-         * Reste dû, à l'instant, sur les recettes et amendes de la veille —
-         * celles qu'on encaisse ce jour-là. Jamais négatif.
+         * Reste à encaisser, à l'instant, sur les recettes, cotisations et
+         * amendes de la veille — celles qu'on encaisse ce jour-là. Jamais négatif.
          */
         BigDecimal manquant,
         /** Charges variables et fixes du jour, hors amortissements. */
@@ -24,5 +27,12 @@ public record JourneeDto(
          * Résultat du jour : produits − dépenses − quote-part d'amortissement. Sans
          * dotation aux provisions, qui ne se mesure qu'au mois.
          */
-        BigDecimal beneficeNet
+        BigDecimal beneficeNet,
+        /**
+         * Total du mois de la carte « Manquant » : même reste à encaisser
+         * (cotisations comprises), sur toutes les lignes de la période.
+         */
+        BigDecimal manquantMois,
+        /** Total du mois de la carte « Encaissé » : produits et cotisations. */
+        BigDecimal encaisseMois
 ) {}

@@ -192,16 +192,30 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
     }
 
     @Override
-    public BigDecimal getRestantRecettesEtAmendes(LocalDate dateReference) {
-        // Même restant que la balance âgée (vue v_creances_chauffeurs), borné
-        // aux deux documents qui font le produit d'exploitation.
+    public BigDecimal getResteAEncaisser(LocalDate debut, LocalDate fin) {
+        // Recettes et amendes : même restant que la balance âgée (vue
+        // v_creances_chauffeurs). Cotisations : la vue ne les porte plus, leur
+        // restant se recompte de la même façon — dû moins encaissements non
+        // annulés, ce qui est échu seulement, ni annulé ni restitué.
         BigDecimal montant = jdbcTemplate.queryForObject("""
-                SELECT COALESCE(SUM(v.restant), 0)
-                FROM v_creances_chauffeurs v
-                WHERE v.sens = 'ILS_ME_DOIVENT'
-                  AND v.document IN ('RECETTE', 'PENALITE')
-                  AND v.date_reference = ?
-                """, BigDecimal.class, dateReference);
+                SELECT COALESCE((SELECT SUM(v.restant)
+                                 FROM v_creances_chauffeurs v
+                                 WHERE v.sens = 'ILS_ME_DOIVENT'
+                                   AND v.document IN ('RECETTE', 'PENALITE')
+                                   AND v.date_reference BETWEEN ? AND ?), 0)
+                     + COALESCE((SELECT SUM(GREATEST(lc.montant_du - enc.regle, 0))
+                                 FROM lignes_cotisation lc
+                                 CROSS JOIN LATERAL (
+                                     SELECT COALESCE(SUM(e.montant), 0) AS regle
+                                     FROM encaissements_cotisation e
+                                     WHERE e.ligne_cotisation_id = lc.id
+                                       AND e.annule_le IS NULL
+                                 ) enc
+                                 WHERE lc.statut NOT IN ('ANNULEE', 'RESTITUEE')
+                                   AND lc.annule_le IS NULL
+                                   AND lc.date_cotisation <= CURRENT_DATE
+                                   AND lc.date_cotisation BETWEEN ? AND ?), 0)
+                """, BigDecimal.class, debut, fin, debut, fin);
         return montant == null ? BigDecimal.ZERO : montant;
     }
 

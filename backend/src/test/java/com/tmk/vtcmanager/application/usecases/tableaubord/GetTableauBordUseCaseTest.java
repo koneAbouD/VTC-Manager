@@ -81,8 +81,9 @@ class GetTableauBordUseCaseTest {
         when(etatParc.execute(any(), any())).thenReturn(parc(10, 7, 1, 1, 1));
         when(compteTresorerieRepository.findAllAvecSoldes(true)).thenReturn(List.of());
         when(creanceRepository.getMontantAReverserEtat()).thenReturn(BigDecimal.ZERO);
-        when(creanceRepository.getRestantRecettesEtAmendes(any())).thenReturn(BigDecimal.ZERO);
+        when(creanceRepository.getResteAEncaisser(any(), any())).thenReturn(BigDecimal.ZERO);
         when(reportingRepository.totauxCaisseParNature(any(), any())).thenReturn(Map.of());
+        when(reportingRepository.cotisationsEncaissees(any(), any())).thenReturn(BigDecimal.ZERO);
         when(etatsClotureRepository.findByPeriode(anyInt(), anyInt())).thenReturn(Optional.empty());
     }
 
@@ -94,7 +95,7 @@ class GetTableauBordUseCaseTest {
         // les recettes de la veille.
         when(compteResultat.executerJournee(any(), any()))
                 .thenReturn(resultat("50000", "10000", "5000", "10000"));
-        when(creanceRepository.getRestantRecettesEtAmendes(any()))
+        when(creanceRepository.getResteAEncaisser(any(), any()))
                 .thenReturn(new BigDecimal("8000"));
 
         var jour = executer().journee();
@@ -123,18 +124,48 @@ class GetTableauBordUseCaseTest {
         // lendemain : le manquant du jour est le reste dû sur celles de la
         // veille. Comparer les dus du jour à ses versements donnait toujours 0.
         LocalDate veille = YearMonth.of(ANNEE, MOIS).atEndOfMonth().minusDays(1);
-        when(creanceRepository.getRestantRecettesEtAmendes(veille))
+        when(creanceRepository.getResteAEncaisser(veille, veille))
                 .thenReturn(new BigDecimal("15000"));
 
         var jour = executer().journee();
 
         assertThat(jour.manquant()).isEqualByComparingTo("15000");
-        verify(creanceRepository).getRestantRecettesEtAmendes(veille);
+        verify(creanceRepository).getResteAEncaisser(veille, veille);
+    }
+
+    @Test
+    void l_encaisse_compte_les_cotisations_versees_mais_pas_le_benefice() {
+        // 50 000 de produits encaissés le jour et 6 000 de cotisations ; le
+        // mois : 1 000 000 de produits et 120 000 de cotisations.
+        when(compteResultat.executerJournee(any(), any()))
+                .thenReturn(resultat("50000", "10000", "5000", "0"));
+        LocalDate jourJ = YearMonth.of(ANNEE, MOIS).atEndOfMonth();
+        when(reportingRepository.cotisationsEncaissees(jourJ, jourJ))
+                .thenReturn(new BigDecimal("6000"));
+        when(reportingRepository.cotisationsEncaissees(
+                YearMonth.of(ANNEE, MOIS).atDay(1), jourJ))
+                .thenReturn(new BigDecimal("120000"));
+
+        var jour = executer().journee();
+
+        assertThat(jour.encaisse()).isEqualByComparingTo("56000");
+        assertThat(jour.encaisseMois()).isEqualByComparingTo("1120000");
+        // Dépôt du chauffeur, pas un revenu : le bénéfice l'ignore.
+        assertThat(jour.beneficeNet()).isEqualByComparingTo("35000");
+    }
+
+    @Test
+    void le_manquant_du_mois_porte_sur_toute_la_periode() {
+        YearMonth periode = YearMonth.of(ANNEE, MOIS);
+        when(creanceRepository.getResteAEncaisser(periode.atDay(1), periode.atEndOfMonth()))
+                .thenReturn(new BigDecimal("250000"));
+
+        assertThat(executer().journee().manquantMois()).isEqualByComparingTo("250000");
     }
 
     @Test
     void le_manquant_du_jour_n_est_jamais_negatif() {
-        when(creanceRepository.getRestantRecettesEtAmendes(any()))
+        when(creanceRepository.getResteAEncaisser(any(), any()))
                 .thenReturn(new BigDecimal("-290000"));
 
         assertThat(executer().journee().manquant()).isEqualByComparingTo("0");

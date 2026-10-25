@@ -36,6 +36,14 @@ public interface FinanceReportingRepository {
      */
     BigDecimal produitsEngagement(LocalDate debut, LocalDate fin);
 
+    /**
+     * Cotisations encaissées sur la période, par date d'opération, nettes de
+     * leurs annulations (extournes négatives). Hors résultat — dépôt du
+     * chauffeur, pas un produit —, elles ne servent qu'aux montants
+     * d'encaissement affichés, jamais au compte de résultat.
+     */
+    BigDecimal cotisationsEncaissees(LocalDate debut, LocalDate fin);
+
     /** Dotation linéaire des véhicules amortissables sur la période. */
     BigDecimal dotationAmortissements(LocalDate debut, LocalDate fin);
 

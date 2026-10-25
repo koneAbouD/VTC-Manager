@@ -63,9 +63,14 @@ public interface CreanceRepository {
     BigDecimal getMontantAReverserEtatALaDate(LocalDate date);
 
     /**
-     * Reste dû, à l'instant, sur les recettes et les amendes nées à
-     * {@code dateReference}, tous chauffeurs confondus. Les contraventions de
-     * l'État n'y entrent pas : ce ne sont pas des produits de l'entreprise.
+     * Reste à encaisser, à l'instant, sur les recettes, les cotisations et les
+     * amendes nées entre {@code debut} et {@code fin} (incluses), tous
+     * chauffeurs confondus : le « manquant » du tableau de bord.
+     *
+     * <p>La cotisation y entre alors qu'elle n'est pas une créance (épargne du
+     * chauffeur, absente de la vue et de la balance âgée) : non versée, elle
+     * manque pourtant à l'encaissement du jour. Les contraventions de l'État
+     * n'y entrent pas : ce n'est pas l'entreprise qu'on paie.
      */
-    BigDecimal getRestantRecettesEtAmendes(LocalDate dateReference);
+    BigDecimal getResteAEncaisser(LocalDate debut, LocalDate fin);
 }

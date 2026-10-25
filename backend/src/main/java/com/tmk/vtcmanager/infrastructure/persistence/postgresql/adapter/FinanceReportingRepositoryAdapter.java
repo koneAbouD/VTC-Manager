@@ -162,6 +162,21 @@ public class FinanceReportingRepositoryAdapter implements FinanceReportingReposi
     }
 
     @Override
+    public BigDecimal cotisationsEncaissees(LocalDate debut, LocalDate fin) {
+        // Même lecture caisse que les produits (opérations terminées, à leur
+        // date) : l'extourne d'un encaissement, négative, s'y retranche.
+        BigDecimal total = jdbcTemplate.queryForObject("""
+                SELECT COALESCE(SUM(o.montant), 0)
+                FROM operations_financieres o
+                JOIN categories_operation c ON c.id = o.categorie_id
+                WHERE c.code = 'ENCAISSEMENT_COTISATIONS'
+                  AND o.statut IN ('ENCAISSE', 'PAYE')
+                  AND o.date_operation BETWEEN ? AND ?
+                """, BigDecimal.class, debut, fin);
+        return total == null ? BigDecimal.ZERO : total;
+    }
+
+    @Override
     public BigDecimal dotationAmortissements(LocalDate debut, LocalDate fin) {
         // Quote-part de la période dans le plan : jours amortis du mois rapportés
         // aux jours du plan entier. Le mois d'entrée et le mois de sortie sont

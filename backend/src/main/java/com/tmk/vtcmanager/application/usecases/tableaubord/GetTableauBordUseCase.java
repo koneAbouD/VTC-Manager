@@ -108,7 +108,7 @@ public class GetTableauBordUseCase {
 
         return new TableauBordResponse(
                 periodeDto,
-                journee(arreteAu, base),
+                journee(arreteAu, periode, base, resultat),
                 sante(resultat, precedent, periode),
                 cash(resultat, joursEcoules),
                 flotte(parc, resultat, marges, joursEcoules),
@@ -126,24 +126,44 @@ public class GetTableauBordUseCase {
      * <p>Le manquant fait exception. Les recettes d'un jour sont générées le
      * lendemain matin et versées ce lendemain : comparer les dus du jour à ses
      * versements opposait des recettes pas encore nées à l'argent de la veille,
-     * et donnait toujours zéro. Le manquant du jour est donc ce qui reste dû sur
-     * les recettes et amendes de la veille — celles qu'on encaisse ce jour-là —
-     * lu dans la balance des créances.
+     * et donnait toujours zéro. Le manquant du jour est donc ce qui reste à
+     * encaisser sur les recettes, cotisations et amendes de la veille — celles
+     * qu'on encaisse ce jour-là ; celui du mois, sur celles de toute la période.
+     *
+     * <p>L'encaissé, lui, ajoute aux produits encaissés les cotisations versées :
+     * c'est l'argent réellement reçu. Le bénéfice n'en tient pas compte — une
+     * cotisation est un dépôt restitué au chauffeur, pas un revenu.
      */
-    private JourneeDto journee(LocalDate jour, BaseComptable base) {
+    private JourneeDto journee(LocalDate jour, YearMonth periode, BaseComptable base,
+                               CompteResultat resultatMois) {
         CompteResultat r = getCompteResultatUseCase.executerJournee(jour, base);
-        BigDecimal produits = nz(r.getProduitsExploitation());
-        BigDecimal pont = nz(r.getPontCreances());
-        BigDecimal encaisse = base == BaseComptable.ENGAGEMENT ? produits.subtract(pont) : produits;
+        BigDecimal encaisse = produitsEncaisses(r, base)
+                .add(nz(financeReportingRepository.cotisationsEncaissees(jour, jour)));
+        BigDecimal encaisseMois = produitsEncaisses(resultatMois, base)
+                .add(nz(financeReportingRepository.cotisationsEncaissees(
+                        periode.atDay(1), periode.atEndOfMonth())));
         return new JourneeDto(
                 jour,
                 encaisse,
-                // Jamais négatif : un reste dû ne peut pas l'être (la vue ne
-                // retient que les restants positifs), le plancher le garantit.
-                nz(creanceRepository.getRestantRecettesEtAmendes(jour.minusDays(1)))
-                        .max(BigDecimal.ZERO),
+                // Jamais négatif : un reste à encaisser ne peut pas l'être, le
+                // plancher le garantit.
+                resteAEncaisser(jour.minusDays(1), jour.minusDays(1)),
                 nz(r.getChargesVariables()).add(nz(r.getChargesFixes())),
-                nz(r.getResultatGestion()));
+                nz(r.getResultatGestion()),
+                resteAEncaisser(periode.atDay(1), periode.atEndOfMonth()),
+                encaisseMois);
+    }
+
+    /** Produits réellement encaissés : en engagement, les dus moins le pont. */
+    private static BigDecimal produitsEncaisses(CompteResultat r, BaseComptable base) {
+        BigDecimal produits = nz(r.getProduitsExploitation());
+        return base == BaseComptable.ENGAGEMENT
+                ? produits.subtract(nz(r.getPontCreances()))
+                : produits;
+    }
+
+    private BigDecimal resteAEncaisser(LocalDate debut, LocalDate fin) {
+        return nz(creanceRepository.getResteAEncaisser(debut, fin)).max(BigDecimal.ZERO);
     }
 
     // ─────────────────────────────────────────────────────────────────────
