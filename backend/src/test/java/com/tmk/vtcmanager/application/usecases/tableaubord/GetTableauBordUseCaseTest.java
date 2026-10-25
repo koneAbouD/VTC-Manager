@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class GetTableauBordUseCaseTest {
@@ -80,6 +81,7 @@ class GetTableauBordUseCaseTest {
         when(etatParc.execute(any(), any())).thenReturn(parc(10, 7, 1, 1, 1));
         when(compteTresorerieRepository.findAllAvecSoldes(true)).thenReturn(List.of());
         when(creanceRepository.getMontantAReverserEtat()).thenReturn(BigDecimal.ZERO);
+        when(creanceRepository.getRestantRecettesEtAmendes(any())).thenReturn(BigDecimal.ZERO);
         when(reportingRepository.totauxCaisseParNature(any(), any())).thenReturn(Map.of());
         when(etatsClotureRepository.findByPeriode(anyInt(), anyInt())).thenReturn(Optional.empty());
     }
@@ -88,14 +90,17 @@ class GetTableauBordUseCaseTest {
 
     @Test
     void sert_les_quatre_montants_du_jour_en_base_caisse() {
-        // 60 000 dus, 50 000 encaissés (pont 10 000) ; 10 000 + 5 000 de charges.
+        // 50 000 encaissés ; 10 000 + 5 000 de charges ; 8 000 restent dus sur
+        // les recettes de la veille.
         when(compteResultat.executerJournee(any(), any()))
                 .thenReturn(resultat("50000", "10000", "5000", "10000"));
+        when(creanceRepository.getRestantRecettesEtAmendes(any()))
+                .thenReturn(new BigDecimal("8000"));
 
         var jour = executer().journee();
 
         assertThat(jour.encaisse()).isEqualByComparingTo("50000");
-        assertThat(jour.manquant()).isEqualByComparingTo("10000");
+        assertThat(jour.manquant()).isEqualByComparingTo("8000");
         assertThat(jour.depenses()).isEqualByComparingTo("15000");
         assertThat(jour.beneficeNet()).isEqualByComparingTo("35000");
     }
@@ -110,7 +115,21 @@ class GetTableauBordUseCaseTest {
         var jour = useCase.executer(ANNEE, MOIS, BaseComptable.ENGAGEMENT, null, null).journee();
 
         assertThat(jour.encaisse()).isEqualByComparingTo("50000");
-        assertThat(jour.manquant()).isEqualByComparingTo("10000");
+    }
+
+    @Test
+    void le_manquant_du_jour_porte_sur_les_recettes_de_la_veille() {
+        // Les recettes d'un jour naissent le lendemain matin et se versent ce
+        // lendemain : le manquant du jour est le reste dû sur celles de la
+        // veille. Comparer les dus du jour à ses versements donnait toujours 0.
+        LocalDate veille = YearMonth.of(ANNEE, MOIS).atEndOfMonth().minusDays(1);
+        when(creanceRepository.getRestantRecettesEtAmendes(veille))
+                .thenReturn(new BigDecimal("15000"));
+
+        var jour = executer().journee();
+
+        assertThat(jour.manquant()).isEqualByComparingTo("15000");
+        verify(creanceRepository).getRestantRecettesEtAmendes(veille);
     }
 
     @Test

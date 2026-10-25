@@ -120,9 +120,15 @@ public class GetTableauBordUseCase {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * La journée lue par le compte de résultat lui-même, restreint à un jour :
-     * encaissé et manquant y sont dérivés comme ceux du mois (pont créances),
+     * La journée lue par le compte de résultat lui-même, restreint à un jour,
      * pour que le jour et le mois se lisent de la même façon.
+     *
+     * <p>Le manquant fait exception. Les recettes d'un jour sont générées le
+     * lendemain matin et versées ce lendemain : comparer les dus du jour à ses
+     * versements opposait des recettes pas encore nées à l'argent de la veille,
+     * et donnait toujours zéro. Le manquant du jour est donc ce qui reste dû sur
+     * les recettes et amendes de la veille — celles qu'on encaisse ce jour-là —
+     * lu dans la balance des créances.
      */
     private JourneeDto journee(LocalDate jour, BaseComptable base) {
         CompteResultat r = getCompteResultatUseCase.executerJournee(jour, base);
@@ -132,7 +138,7 @@ public class GetTableauBordUseCase {
         return new JourneeDto(
                 jour,
                 encaisse,
-                pont,
+                nz(creanceRepository.getRestantRecettesEtAmendes(jour.minusDays(1))),
                 nz(r.getChargesVariables()).add(nz(r.getChargesFixes())),
                 nz(r.getResultatGestion()));
     }

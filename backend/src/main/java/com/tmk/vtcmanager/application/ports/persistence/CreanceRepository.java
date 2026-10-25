@@ -61,4 +61,11 @@ public interface CreanceRepository {
      * cette date et pas encore reversées ce jour-là.
      */
     BigDecimal getMontantAReverserEtatALaDate(LocalDate date);
+
+    /**
+     * Reste dû, à l'instant, sur les recettes et les amendes nées à
+     * {@code dateReference}, tous chauffeurs confondus. Les contraventions de
+     * l'État n'y entrent pas : ce ne sont pas des produits de l'entreprise.
+     */
+    BigDecimal getRestantRecettesEtAmendes(LocalDate dateReference);
 }

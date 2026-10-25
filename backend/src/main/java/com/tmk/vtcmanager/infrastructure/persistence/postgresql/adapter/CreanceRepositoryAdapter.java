@@ -192,6 +192,20 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
     }
 
     @Override
+    public BigDecimal getRestantRecettesEtAmendes(LocalDate dateReference) {
+        // Même restant que la balance âgée (vue v_creances_chauffeurs), borné
+        // aux deux documents qui font le produit d'exploitation.
+        BigDecimal montant = jdbcTemplate.queryForObject("""
+                SELECT COALESCE(SUM(v.restant), 0)
+                FROM v_creances_chauffeurs v
+                WHERE v.sens = 'ILS_ME_DOIVENT'
+                  AND v.document IN ('RECETTE', 'PENALITE')
+                  AND v.date_reference = ?
+                """, BigDecimal.class, dateReference);
+        return montant == null ? BigDecimal.ZERO : montant;
+    }
+
+    @Override
     public BigDecimal getMontantAReverserEtatALaDate(LocalDate date) {
         // Encaissé du chauffeur au plus tard ce jour-là, et pas encore reversé
         // à cette date : une contravention reversée depuis était bien une dette

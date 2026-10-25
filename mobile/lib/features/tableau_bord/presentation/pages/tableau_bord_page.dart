@@ -292,9 +292,11 @@ class _BandeauEssentiel extends ConsumerWidget {
     final c = data.cash;
     final mois = data.periode.label;
 
-    // Un manquant négatif : les versements du jour ont aussi soldé des
-    // arriérés. On n'affiche pas « -20 k manquant », on dit ce qui s'est passé.
-    final rattrapage = j.manquant < 0;
+    // Le manquant du jour porte sur les recettes de la veille, celles qu'on
+    // encaisse ce jour-là (elles naissent le lendemain matin) : on le dit.
+    final veille = j.date == null || data.periode.moisEnCours
+        ? 'd\'hier'
+        : 'du ${DateFormat('d MMMM', 'fr_FR').format(j.date!.subtract(const Duration(days: 1)))}';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,11 +332,11 @@ class _BandeauEssentiel extends ConsumerWidget {
           _CarteEssentiel(
             icone: Icons.money_off_outlined,
             label: 'Manquant',
-            valeur: tbMontantCourt(rattrapage ? 0 : j.manquant),
+            valeur: tbMontantCourt(j.manquant),
             couleur: j.manquant > 0 ? kTbRouge : kTbVert,
-            sousLabel: rattrapage
-                ? '+${tbMontantCourt(-j.manquant)} d\'arriérés rattrapés'
-                : (j.manquant > 0 ? 'dû, pas encore versé' : 'aucun manquant'),
+            sousLabel: j.manquant > 0
+                ? 'recettes $veille non versées'
+                : 'recettes $veille toutes versées',
             libelleMois: mois,
             valeurMois: tbMontantCourt(c.resteAEncaisserPeriode),
             aide: 'Produits dus et pas encore encaissés : l\'écart entre ce '

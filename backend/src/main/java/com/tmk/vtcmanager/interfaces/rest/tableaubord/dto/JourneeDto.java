@@ -14,8 +14,8 @@ public record JourneeDto(
         /** Produits réellement versés ce jour-là, arriérés rattrapés compris. */
         BigDecimal encaisse,
         /**
-         * Produits dus ce jour-là moins ce qui a été encaissé. Négatif quand les
-         * versements du jour ont aussi soldé des dettes plus anciennes.
+         * Reste dû, à l'instant, sur les recettes et amendes de la veille —
+         * celles qu'on encaisse ce jour-là. Jamais négatif.
          */
         BigDecimal manquant,
         /** Charges variables et fixes du jour, hors amortissements. */

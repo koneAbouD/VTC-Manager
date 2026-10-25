@@ -277,12 +277,25 @@ void main() {
       expect(find.text('Aujourd\'hui'), findsOneWidget);
     });
 
-    testWidgets('un manquant négatif se lit comme un rattrapage d\'arriérés',
+    testWidgets('le manquant nomme les recettes de la veille qu\'il compte',
         (tester) async {
-      await _pump(tester, _modele(journee: _journee(manquant: -20000)));
+      // Les recettes d'un jour se versent le lendemain : le manquant du 31 mai
+      // est ce qui reste dû sur celles du 30.
+      await _pump(tester, _modele(journee: _journee(manquant: 15000)));
 
-      expect(find.text('+20 k d\'arriérés rattrapés'), findsOneWidget);
-      expect(find.text('-20 k'), findsNothing);
+      expect(find.text('15 k'), findsOneWidget);
+      expect(find.text('recettes du 30 mai non versées'), findsOneWidget);
+    });
+
+    testWidgets('au mois en cours, le manquant parle des recettes d\'hier',
+        (tester) async {
+      await _pump(
+          tester,
+          _modele(
+              periode: _periode(moisEnCours: true, cloture: false),
+              journee: _journee(manquant: 0)));
+
+      expect(find.text('recettes d\'hier toutes versées'), findsOneWidget);
     });
 
     testWidgets('un mois clos annonce des chiffres définitifs', (tester) async {

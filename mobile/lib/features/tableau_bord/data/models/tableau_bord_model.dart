@@ -375,8 +375,8 @@ class JourneeTableauBord {
   final DateTime? date;
   final double encaisse;
 
-  /// Dû du jour moins encaissé. Négatif quand les versements du jour ont
-  /// aussi soldé des arriérés.
+  /// Reste dû sur les recettes et amendes de la veille — celles qu'on
+  /// encaisse ce jour-là. Jamais négatif.
   final double manquant;
   final double depenses;
   final double beneficeNet;
