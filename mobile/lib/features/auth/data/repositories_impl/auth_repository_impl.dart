@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/session_manager.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../domain/entities/token.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -80,6 +81,11 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return Right(model);
     } on ApiException catch (e) {
+      // Serveur indisponible (redéploiement, Keycloak injoignable) : la session
+      // n'est pas en cause, on la conserve comme sur une coupure réseau.
+      if (!SessionManager.refusDefinitif(e.statusCode)) {
+        return Left(NetworkFailure(e.message));
+      }
       await _storage.clearTokens();
       return Left(AuthFailure(e.message));
     } on NetworkException catch (e) {

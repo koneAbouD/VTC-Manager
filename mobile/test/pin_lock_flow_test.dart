@@ -2,6 +2,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tmk_pin/tmk_pin.dart';
+import 'package:vtc_manager/core/error/exception.dart';
+import 'package:vtc_manager/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:vtc_manager/features/auth/data/models/token_model.dart';
 import 'package:vtc_manager/features/auth/presentation/pages/login_page.dart';
 import 'package:vtc_manager/features/auth/presentation/pages/pin_lock_page.dart';
 import 'package:vtc_manager/features/auth/presentation/providers/auth_provider.dart';
@@ -68,6 +71,19 @@ class _FakeDeviceLockChannel {
   }
 }
 
+/// Serveur d'authentification qui refuse le refresh avec [statusCode].
+class _RefreshRefuse implements AuthRemoteDatasource {
+  final int statusCode;
+  const _RefreshRefuse(this.statusCode);
+
+  @override
+  Future<TokenModel> refreshToken(String refreshToken) async =>
+      throw ApiException(statusCode, 'Erreur serveur ($statusCode).');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   late _FakeSecureStorageChannel storage;
   late _FakeDeviceLockChannel deviceLock;
@@ -87,10 +103,16 @@ void main() {
     deviceLock.remove();
   });
 
-  Future<void> bootApp(WidgetTester tester) async {
+  Future<void> bootApp(
+    WidgetTester tester, {
+    List<Override> overrides = const [],
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [pinServiceProvider.overrideWith((_) => fastPin())],
+        overrides: [
+          pinServiceProvider.overrideWith((_) => fastPin()),
+          ...overrides,
+        ],
         child: const VtcManagerApp(),
       ),
     );
@@ -175,5 +197,47 @@ void main() {
       storage.values.values.any((v) => v.contains('refresh-token-abc')),
       isFalse,
     );
+  });
+
+  group('refresh refusé au déverrouillage', () {
+    Future<void> configurer() => fastPin().configure(
+          code: '48213',
+          refreshToken: 'refresh-token-abc',
+          account: 'akone',
+          displayName: 'Abou-dramane',
+        );
+
+    testWidgets(
+        'un serveur indisponible (503) laisse le code en place et l\'écran '
+        'verrouillé', (tester) async {
+      await tester.runAsync(configurer);
+      await bootApp(tester, overrides: [
+        authRemoteDatasourceProvider
+            .overrideWithValue(const _RefreshRefuse(503)),
+      ]);
+      await tapCode(tester, '48213');
+
+      expect(find.byType(PinLockPage), findsOneWidget);
+      expect(find.text('Erreur serveur (503).'), findsOneWidget);
+      expect(await tester.runAsync(() => fastPin().isConfigured()), isTrue);
+      expect(storage.values['session_logged_out'], isNull);
+    });
+
+    testWidgets(
+        'une session révoquée (401) renvoie à la connexion sans effacer le code',
+        (tester) async {
+      await tester.runAsync(configurer);
+      await bootApp(tester, overrides: [
+        authRemoteDatasourceProvider
+            .overrideWithValue(const _RefreshRefuse(401)),
+      ]);
+      await tapCode(tester, '48213');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginPage), findsOneWidget);
+      // Le coffre survit : la reconnexion redemandera ce même code.
+      expect(await tester.runAsync(() => fastPin().isConfigured()), isTrue);
+      expect(storage.values['session_logged_out'], 'true');
+    });
   });
 }

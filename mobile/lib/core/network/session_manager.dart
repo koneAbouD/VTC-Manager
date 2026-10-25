@@ -60,6 +60,16 @@ class SessionManager with WidgetsBindingObserver {
   static const _msgSessionExpiree =
       'Votre session a expiré. Veuillez vous reconnecter.';
 
+  /// Le serveur a-t-il réellement refusé le refresh token ?
+  ///
+  /// Seuls 400, 401 et 403 disent « session morte » : le backend traduit tout
+  /// refus de Keycloak en 401. Le reste — 5xx du reverse proxy pendant un
+  /// redéploiement, 503 quand Keycloak est injoignable, 429 — n'est qu'une
+  /// panne passagère : conclure à une révocation ferait perdre la session (et
+  /// le code d'accès) à chaque redémarrage du serveur.
+  static bool refusDefinitif(int statusCode) =>
+      statusCode == 400 || statusCode == 401 || statusCode == 403;
+
   /// Verrou : mutualise un refresh en cours entre tous les appelants.
   Completer<bool>? _refreshing;
   Timer? _proactiveTimer;
@@ -278,6 +288,10 @@ class SessionManager with WidgetsBindingObserver {
         _emitExpired(_msgSessionExpiree);
         return false;
       }
+
+      // Serveur indisponible : comme une coupure réseau, on conserve les
+      // tokens et on retentera plus tard.
+      if (!refusDefinitif(response.statusCode)) return false;
 
       // Refus du serveur (401/400 invalide ou expiré) → session perdue.
       await _storage.clearTokens();

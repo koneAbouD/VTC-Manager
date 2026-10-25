@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:tmk_pin/tmk_pin.dart';
 import 'package:vtc_chauffeur/core/network/session_manager.dart';
 import 'package:vtc_chauffeur/features/auth/presentation/pages/login_page.dart';
@@ -237,5 +239,64 @@ void main() {
 
     expect(find.text('Code incorrect. 4 essais restants.'), findsOneWidget);
     expect(find.byType(PinLockPage), findsOneWidget);
+  });
+
+  group('refresh refusé au déverrouillage', () {
+    Future<void> configurer() => fastPin().configure(
+          code: '48213',
+          refreshToken: 'refresh-token-abc',
+          account: '+2250708090910',
+          displayName: 'Abou-dramane',
+        );
+
+    void serveurRepond(int statusCode) {
+      SessionManager.instance.httpClient =
+          MockClient((_) async => http.Response('', statusCode));
+    }
+
+    tearDown(() {
+      SessionManager.instance.stop();
+      SessionManager.instance.httpClient = http.Client();
+    });
+
+    Future<void> saisirCode(WidgetTester tester) async {
+      for (final digit in '48213'.split('')) {
+        await tester.tap(find.text(digit));
+        await tester.pump();
+      }
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 400)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+        'un serveur indisponible (502) laisse le code en place et l\'écran '
+        'verrouillé', (tester) async {
+      await tester.runAsync(configurer);
+      serveurRepond(502);
+      await bootApp(tester);
+      await saisirCode(tester);
+
+      expect(find.byType(PinLockPage), findsOneWidget);
+      expect(find.textContaining('Connexion au serveur impossible'),
+          findsOneWidget);
+      expect(await tester.runAsync(() => fastPin().isConfigured()), isTrue);
+      expect(storage.values['session_logged_out'], isNull);
+    });
+
+    testWidgets(
+        'une session révoquée (401) renvoie à la connexion sans effacer le code',
+        (tester) async {
+      await tester.runAsync(configurer);
+      serveurRepond(401);
+      await bootApp(tester);
+      await saisirCode(tester);
+
+      expect(find.byType(LoginPage), findsOneWidget);
+      // Le coffre survit : la reconnexion redemandera ce même code.
+      expect(await tester.runAsync(() => fastPin().isConfigured()), isTrue);
+      expect(storage.values['session_logged_out'], 'true');
+    });
   });
 }

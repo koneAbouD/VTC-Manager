@@ -470,8 +470,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
               )),
             );
 
-        return refreshed.fold(
-          (failure) {
+        return refreshed.fold<Future<UnlockOutcome>>(
+          (failure) async {
             if (failure is NetworkFailure) {
               // Le code était bon, mais la session n'a pas pu être rouverte :
               // on reverrouille pour ne rien laisser en clair, sans compter
@@ -480,14 +480,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
               unawaited(_storage.clearTokens());
               return UnlockOffline(failure.message);
             }
-            // Session révoquée côté serveur : le code ne peut plus rien rouvrir.
-            unawaited(_pin.reset());
+            // Session révoquée côté serveur : le code ne peut plus rien rouvrir,
+            // mais il reste celui de l'utilisateur. Comme après une
+            // déconnexion, on garde le coffre : la reconnexion redemandera ce
+            // code ([AuthPinResume]) au lieu d'en faire choisir un nouveau.
+            // Le drapeau est attendu : sans lui, le prochain démarrage
+            // proposerait de nouveau un déverrouillage voué à l'échec.
+            _pin.lock();
+            await _storage.clearTokens();
+            await _storage.setLoggedOut(true);
             state = const AuthUnauthenticated(
               'Votre session a expiré. Veuillez vous reconnecter.',
             );
             return const UnlockRequiresLogin();
           },
-          (_) {
+          (_) async {
             SessionManager.instance.start();
             unawaited(_syncVaultWithStoredToken());
             state = AuthAuthenticated(nom ?? '');

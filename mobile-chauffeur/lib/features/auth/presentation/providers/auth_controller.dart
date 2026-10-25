@@ -416,7 +416,7 @@ class AuthController extends Notifier<AuthState> {
         }
 
         // Échec : le SessionManager purge les tokens quand le serveur refuse le
-        // refresh, et les conserve sur une simple panne réseau. La présence du
+        // refresh, et les conserve sur une panne réseau ou serveur. La présence du
         // refresh token distingue donc les deux cas.
         final encorePresent = await _storage.getRefreshToken();
         if (encorePresent != null && encorePresent.isNotEmpty) {
@@ -424,11 +424,17 @@ class AuthController extends Notifier<AuthState> {
           _pin.lock();
           await _storage.clearTokens();
           return const UnlockOffline(
-            'Connexion impossible. Vérifiez votre réseau et réessayez.',
+            'Connexion au serveur impossible. Vérifiez votre réseau, puis '
+            'réessayez dans un instant.',
           );
         }
 
-        await _pin.reset();
+        // Session révoquée côté serveur : le code ne peut plus rien rouvrir,
+        // mais il reste celui de l'utilisateur. Comme après une déconnexion, on
+        // garde le coffre : la reconnexion redemandera ce code
+        // ([AuthPinResume]) au lieu d'en faire choisir un nouveau.
+        _pin.lock();
+        await _storage.setLoggedOut(true);
         state = const AuthUnauthenticated(
           'Votre session a expiré. Veuillez vous reconnecter.',
         );
