@@ -16,6 +16,16 @@ class ThemeSettings {
     this.mode = ThemeMode.light,
   });
 
+  /// Apparence d'origine de l'application, rien n'ayant été choisi.
+  bool get estParDefaut => this == const ThemeSettings();
+
+  @override
+  bool operator ==(Object other) =>
+      other is ThemeSettings && other.accent == accent && other.mode == mode;
+
+  @override
+  int get hashCode => Object.hash(accent, mode);
+
   ThemeSettings copyWith({AppAccent? accent, ThemeMode? mode}) =>
       ThemeSettings(accent: accent ?? this.accent, mode: mode ?? this.mode);
 
@@ -60,6 +70,13 @@ class ThemeController extends Notifier<ThemeSettings> {
     state = state.copyWith(mode: mode);
     await _ecrire(
         () => ref.read(secureStorageProvider).setThemeMode(mode.name));
+  }
+
+  /// Retour à l'apparence d'origine (vert, clair).
+  Future<void> reinitialiser() async {
+    const defaut = ThemeSettings();
+    await choisirAccent(defaut.accent);
+    await choisirMode(defaut.mode);
   }
 
   /// L'apparence est déjà appliquée : un échec d'écriture n'a pas à la défaire,

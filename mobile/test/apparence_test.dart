@@ -100,13 +100,28 @@ void main() {
       child: const MaterialApp(home: ApparencePage()),
     ));
 
+    // Rien n'a été changé : rien à rétablir.
+    final retablir = find.text("Rétablir l'apparence d'origine");
+    expect(retablir, findsNothing);
+
+    // L'aperçu occupe le haut de la page : les choix sont plus bas.
+    await tester.ensureVisible(find.text('Violet'));
+    await tester.pump();
     await tester.tap(find.text('Violet'));
     await tester.pump();
     expect(container.read(themeControllerProvider).accent, AppAccent.violet);
 
+    await tester.ensureVisible(find.text('Sombre'));
+    await tester.pump();
     await tester.tap(find.text('Sombre'));
     await tester.pump();
     expect(container.read(themeControllerProvider).mode, ThemeMode.dark);
+
+    await tester.scrollUntilVisible(retablir, 200);
+    await tester.tap(retablir);
+    await tester.pump();
+    expect(container.read(themeControllerProvider), const ThemeSettings());
+    expect(retablir, findsNothing);
   });
 
   testWidgets(

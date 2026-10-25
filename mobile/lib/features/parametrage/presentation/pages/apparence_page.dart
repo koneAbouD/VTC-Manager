@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/detail_premium.dart';
 
 /// Libellé court d'un mode d'éclairage, pour le sélecteur comme pour le
 /// résumé affiché dans les réglages.
@@ -14,12 +16,15 @@ String libelleModeTheme(ThemeMode mode) => switch (mode) {
       ThemeMode.system => 'Système',
     };
 
+/// Durée des bascules de la page (segment actif, pastille choisie).
+const _kTransition = Duration(milliseconds: 220);
+
 /// Réglages › Configurations › Apparence : mode clair / sombre / système et
 /// couleur d'accent.
 ///
-/// Le choix s'applique à l'instant — la page se redessine sous les yeux de
-/// l'utilisateur, sans bouton « Enregistrer » — et reste mémorisé sur
-/// l'appareil.
+/// Le choix s'applique à l'instant — sans bouton « Enregistrer » — et reste
+/// mémorisé sur l'appareil. L'aperçu est posé en tête : sur un téléphone, il
+/// reste sous les yeux pendant qu'on choisit, au lieu de fuir sous le pli.
 class ApparencePage extends ConsumerWidget {
   const ApparencePage({super.key});
 
@@ -35,55 +40,192 @@ class ApparencePage extends ConsumerWidget {
         padding: EdgeInsets.fromLTRB(
             16, 8, 16, 24 + MediaQuery.of(context).padding.bottom),
         children: [
-          const _Titre('Mode'),
-          _SelecteurMode(
-            valeur: apparence.mode,
-            onChanged: controleur.choisirMode,
+          _CarteApercu(apparence: apparence),
+          const SizedBox(height: 16),
+          PremiumSection(
+            title: "Mode d'affichage",
+            icon: Icons.contrast_rounded,
+            children: [
+              const SizedBox(height: 4),
+              _SelecteurMode(
+                valeur: apparence.mode,
+                onChanged: (mode) {
+                  HapticFeedback.selectionClick();
+                  controleur.choisirMode(mode);
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 10, 2, 10),
+                child: Text(
+                  apparence.mode == ThemeMode.system
+                      ? "L'application suit le réglage de votre téléphone, "
+                          'même quand il bascule en cours de journée.'
+                      : 'Système : suit le réglage de votre téléphone.',
+                  style: TextStyle(
+                      fontSize: 12, height: 1.35, color: AppColors.label),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              apparence.mode == ThemeMode.system
-                  ? "L'application suit le réglage de votre téléphone."
-                  : 'Le mode Système suit le réglage de votre téléphone.',
-              style: TextStyle(fontSize: 12, color: AppColors.label),
+          PremiumSection(
+            title: "Couleur d'accent",
+            icon: Icons.palette_outlined,
+            children: [
+              const SizedBox(height: 6),
+              _GrilleAccents(
+                valeur: apparence.accent,
+                onChanged: (accent) {
+                  HapticFeedback.selectionClick();
+                  controleur.choisirAccent(accent);
+                },
+              ),
+            ],
+          ),
+          // Rien à rétablir tant que rien n'a été changé.
+          if (!apparence.estParDefaut)
+            PremiumButton(
+              label: "Rétablir l'apparence d'origine",
+              icon: Icons.restart_alt_rounded,
+              filled: false,
+              color: AppColors.label,
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                controleur.reinitialiser();
+              },
             ),
-          ),
-          const SizedBox(height: 24),
-          const _Titre("Couleur d'accent"),
-          _GrilleAccents(
-            valeur: apparence.accent,
-            onChanged: controleur.choisirAccent,
-          ),
-          const SizedBox(height: 24),
-          const _Titre('Aperçu'),
-          const _Apercu(),
         ],
       ),
     );
   }
 }
 
-class _Titre extends StatelessWidget {
-  final String texte;
-  const _Titre(this.texte);
+/// Carte en relief (même filet dégradé que le solde de l'accueil) : résumé du
+/// choix et maquette des éléments courants — montant, puce de statut, lignes
+/// de détail, bouton — pour juger du résultat d'un coup d'œil.
+class _CarteApercu extends StatelessWidget {
+  final ThemeSettings apparence;
+
+  const _CarteApercu({required this.apparence});
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-        child: Text(
-          texte,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: AppColors.dark,
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppColors.cardBorderGradient,
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
+      ),
+      padding: const EdgeInsets.all(1.5),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppColors.cardInnerRadius),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardTint,
+            borderRadius: BorderRadius.circular(AppColors.cardInnerRadius),
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.auto_awesome_rounded,
+                        size: 20, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Aperçu',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                  ),
+                  PremiumChip(
+                    '${libelleModeTheme(apparence.mode)} · '
+                    '${apparence.accent.libelle}',
+                    AppColors.primary,
+                    icon: AppColors.estSombre
+                        ? Icons.dark_mode_rounded
+                        : Icons.light_mode_rounded,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // Fausse fiche de recette, construite avec les mêmes briques que
+              // les vraies pages de détail.
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.local_taxi_rounded,
+                            size: 18, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Recette du jour',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.label,
+                            ),
+                          ),
+                        ),
+                        PremiumChip('Encaissé', AppColors.positive,
+                            icon: Icons.check_circle_rounded),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '45 000 FCFA',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const PremiumRow('Véhicule', 'AB-123-CD'),
+                    PremiumRow('Reste dû', '5 000 FCFA',
+                        valueColor: AppColors.warning),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              PremiumButton(
+                label: 'Encaisser',
+                icon: Icons.payments_outlined,
+                onPressed: () {},
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
-/// Trois choix côte à côte, le retenu mis en avant par la couleur d'accent.
+/// Contrôle segmenté : rail grisé, segment actif détaché en surface claire,
+/// icône et libellé à la couleur d'accent.
 class _SelecteurMode extends StatelessWidget {
   final ThemeMode valeur;
   final ValueChanged<ThemeMode> onChanged;
@@ -101,31 +243,37 @@ class _SelecteurMode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (final mode in _ordre) ...[
-          if (mode != _ordre.first) const SizedBox(width: 10),
-          Expanded(
-            child: _ChoixMode(
-              libelle: libelleModeTheme(mode),
-              icone: _icones[mode]!,
-              selectionne: mode == valeur,
-              onTap: () => onChanged(mode),
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.fieldFill,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          for (final mode in _ordre)
+            Expanded(
+              child: _Segment(
+                libelle: libelleModeTheme(mode),
+                icone: _icones[mode]!,
+                selectionne: mode == valeur,
+                onTap: () => onChanged(mode),
+              ),
             ),
-          ),
         ],
-      ],
+      ),
     );
   }
 }
 
-class _ChoixMode extends StatelessWidget {
+class _Segment extends StatelessWidget {
   final String libelle;
   final IconData icone;
   final bool selectionne;
   final VoidCallback onTap;
 
-  const _ChoixMode({
+  const _Segment({
     required this.libelle,
     required this.icone,
     required this.selectionne,
@@ -139,35 +287,43 @@ class _ChoixMode extends StatelessWidget {
       button: true,
       selected: selectionne,
       label: 'Mode $libelle',
-      child: Material(
-        color: selectionne ? AppColors.primaryTint : AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: selectionne ? AppColors.primary : AppColors.border,
-                width: selectionne ? 1.6 : 1,
-              ),
-            ),
-            child: Column(
-              children: [
-                Icon(icone, size: 24, color: couleur),
-                const SizedBox(height: 6),
-                Text(
-                  libelle,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: couleur,
-                  ),
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: _kTransition,
+          curve: Curves.easeOutCubic,
+          // 56 px : la cible tactile reste confortable au pouce.
+          height: 56,
+          decoration: BoxDecoration(
+            color: selectionne ? AppColors.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: selectionne
+                ? [
+                    BoxShadow(
+                      color: Colors.black
+                          .withValues(alpha: AppColors.estSombre ? 0.4 : 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icone, size: 20, color: couleur),
+              const SizedBox(height: 3),
+              Text(
+                libelle,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: selectionne ? FontWeight.w800 : FontWeight.w600,
+                  color: couleur,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -185,31 +341,23 @@ class _GrilleAccents extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 14, 8, 6),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: LayoutBuilder(builder: (context, c) {
-        const colonnes = 4;
-        final largeur = c.maxWidth / colonnes;
-        return Wrap(
-          children: [
-            for (final accent in AppAccent.values)
-              SizedBox(
-                width: largeur,
-                child: _Pastille(
-                  accent: accent,
-                  selectionne: accent == valeur,
-                  onTap: () => onChanged(accent),
-                ),
+    return LayoutBuilder(builder: (context, c) {
+      const colonnes = 4;
+      final largeur = c.maxWidth / colonnes;
+      return Wrap(
+        children: [
+          for (final accent in AppAccent.values)
+            SizedBox(
+              width: largeur,
+              child: _Pastille(
+                accent: accent,
+                selectionne: accent == valeur,
+                onTap: () => onChanged(accent),
               ),
-          ],
-        );
-      }),
-    );
+            ),
+        ],
+      );
+    });
   }
 }
 
@@ -231,29 +379,59 @@ class _Pastille extends StatelessWidget {
       button: true,
       selected: selectionne,
       label: 'Accent ${accent.libelle}',
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 10, top: 2),
+          padding: const EdgeInsets.only(top: 4, bottom: 12),
           child: Column(
             children: [
+              // Anneau à la couleur de l'accent, détaché de la pastille par un
+              // liseré de la couleur du fond : la sélection se lit sans
+              // recouvrir la teinte.
               AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 46,
-                height: 46,
+                duration: _kTransition,
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
-                  color: couleur,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: selectionne ? AppColors.dark : Colors.transparent,
-                    width: 2.5,
+                    color: selectionne ? couleur : Colors.transparent,
+                    width: 2,
                   ),
                 ),
-                child: selectionne
-                    ? const Icon(Icons.check_rounded,
-                        color: Colors.white, size: 24)
-                    : null,
+                child: AnimatedScale(
+                  duration: _kTransition,
+                  curve: Curves.easeOutBack,
+                  scale: selectionne ? 1 : 0.9,
+                  child: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: couleur,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: couleur.withValues(alpha: 0.35),
+                          blurRadius: selectionne ? 10 : 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: _kTransition,
+                      transitionBuilder: (enfant, anim) =>
+                          ScaleTransition(scale: anim, child: enfant),
+                      child: selectionne
+                          ? const Icon(Icons.check_rounded,
+                              key: ValueKey('coche'),
+                              color: Colors.white,
+                              size: 22)
+                          : const SizedBox.shrink(key: ValueKey('vide')),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 6),
               Text(
@@ -269,79 +447,6 @@ class _Pastille extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Maquette des éléments courants (bouton, pastille de statut, champ) pour
-/// juger du résultat sans quitter la page.
-class _Apercu extends StatelessWidget {
-  const _Apercu();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.local_taxi_rounded, color: AppColors.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Recette du jour',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.dark,
-                  ),
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.positiveTint,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Encaissé',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.positive,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '45 000 FCFA attendus sur 3 véhicules.',
-            style: TextStyle(fontSize: 13, color: AppColors.label),
-          ),
-          const SizedBox(height: 14),
-          const TextField(
-            readOnly: true,
-            decoration: InputDecoration(labelText: 'Montant versé'),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () {},
-              child: const Text('Encaisser'),
-            ),
-          ),
-        ],
       ),
     );
   }
