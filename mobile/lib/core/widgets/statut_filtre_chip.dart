@@ -7,10 +7,11 @@ import 'long_press_info_bubble.dart';
 /// maintenances, contraventions), posée dans une rangée horizontale de hauteur
 /// fixe.
 ///
-/// Sélectionnée, elle se remplit de la **couleur d'accent** choisie dans
-/// Réglages › Apparence : c'est un contrôle de l'interface, pas un statut, il
-/// suit donc le thème. La couleur du statut ([color]) ne colore plus que la
-/// bulle d'info de l'appui long, qui parle du montant de ce statut.
+/// Sélectionnée, elle se **teinte** de la couleur d'accent choisie dans
+/// Réglages › Apparence — fond clair, bordure et texte à l'accent — plutôt que
+/// de s'en remplir : c'est un contrôle de l'interface, pas un statut, il suit
+/// donc le thème. La couleur du statut ([color]) ne colore plus que la bulle
+/// d'info de l'appui long, qui parle du montant de ce statut.
 class StatutFiltreChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -44,18 +45,20 @@ class StatutFiltreChip extends StatelessWidget {
       curve: Curves.easeOutCubic,
       margin: margin,
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? accent : AppColors.surface,
+        color: selected ? accent.withValues(alpha: 0.12) : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: selected ? accent : AppColors.border),
+        border: Border.all(
+          color: selected ? accent.withValues(alpha: 0.5) : AppColors.border,
+        ),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 12.5,
+          fontSize: 12,
           fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          color: selected ? AppColors.onPrimary : AppColors.label,
+          color: selected ? accent : AppColors.label,
         ),
       ),
     );
