@@ -78,6 +78,19 @@ void main() {
       }
     });
 
+    test('une page de proxy en Latin-1 ne fait pas planter le décodage',
+        () async {
+      // Sans charset UTF-8, les accents partent en Latin-1 : illisibles en
+      // UTF-8, ils ne doivent plus lever de FormatException.
+      await expectLater(
+        _client(502,
+                corps: '<html><body>Accès refusé</body></html>',
+                entetes: {'content-type': 'text/html; charset=iso-8859-1'})
+            .get('/vehicules'),
+        _api(502, kMsgServeurIndisponible),
+      );
+    });
+
     test('un 503 du backend garde son propre message', () async {
       const motif = "Service d'authentification indisponible.";
       await expectLater(

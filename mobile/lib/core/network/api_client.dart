@@ -98,7 +98,7 @@ class ApiClient {
       if (result.statusCode >= 200 && result.statusCode < 300) {
         return result.bytes;
       }
-      throw _erreurHttp(result.statusCode, utf8.decode(result.bytes));
+      throw _erreurHttp(result.statusCode, result.bytes);
     } on TimeoutException {
       throw const NetworkException(kMsgServeurTimeout);
     } on ApiException {
@@ -142,7 +142,7 @@ class ApiClient {
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         return bodyBytes;
       }
-      throw _erreurHttp(streamed.statusCode, utf8.decode(bodyBytes));
+      throw _erreurHttp(streamed.statusCode, bodyBytes);
     } on TimeoutException {
       throw const NetworkException(kMsgServeurTimeout);
     } on http.ClientException {
@@ -503,7 +503,7 @@ class ApiClient {
       if (response.bodyBytes.isEmpty) return null;
       return jsonDecode(utf8.decode(response.bodyBytes));
     }
-    throw _erreurHttp(status, utf8.decode(response.bodyBytes));
+    throw _erreurHttp(status, response.bodyBytes);
   }
 
   /// Exception à lever pour une réponse hors 2xx.
@@ -512,10 +512,15 @@ class ApiClient {
   /// pas : c'est le réseau qui a intercepté l'appel. Elle remonte donc comme
   /// une [NetworkException] — l'écran la traite comme « serveur injoignable »
   /// (à la connexion : la saisie n'est pas en cause).
-  Exception _erreurHttp(int status, String rawBody) {
+  ///
+  /// Le corps est décodé en tolérant un encodage autre que l'UTF-8 (page de
+  /// proxy en Latin-1…) : un caractère illisible vaut mieux qu'un plantage du
+  /// décodage, qui remonterait à l'écran sous forme d'exception technique.
+  Exception _erreurHttp(int status, List<int> corps) {
     if (status >= 300 && status < 400) {
       return const NetworkException(kMsgAccesDetourne);
     }
+    final rawBody = utf8.decode(corps, allowMalformed: true);
     final parsedBody = _corpsJson(rawBody);
     return ApiException(
       status,

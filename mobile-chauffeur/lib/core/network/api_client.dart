@@ -9,10 +9,43 @@ import '../storage/secure_storage.dart';
 import 'api_config.dart';
 import 'session_manager.dart';
 
+/// Messages réseau présentés au chauffeur — clairs et sans détail technique
+/// (type d'exception, hôte, code HTTP), qui n'aident pas et font « bug ».
+/// Mêmes textes que l'app gestionnaire.
+const String kMsgServeurTimeout =
+    'Le serveur met trop de temps à répondre. Vérifiez votre connexion, puis réessayez.';
+const String kMsgServeurInjoignable =
+    'Impossible de joindre le serveur. Vérifiez votre connexion internet, puis réessayez.';
+
+/// Réponse 3xx : l'appel a été détourné avant d'atteindre le serveur — portail
+/// d'un Wi-Fi public, forfait épuisé, proxy. C'est un problème d'accès au
+/// réseau, pas une erreur du serveur : on dit quoi faire.
+const String kMsgAccesDetourne =
+    'Le serveur est inaccessible depuis ce réseau. Sur un Wi-Fi public, '
+    'ouvrez votre navigateur pour vous connecter, ou passez sur les données '
+    'mobiles, puis réessayez.';
+
+/// 502, 503, 504 : le proxy est joignable mais le serveur derrière ne répond
+/// pas (redémarrage, maintenance).
+const String kMsgServeurIndisponible =
+    'Le serveur est momentanément indisponible. Réessayez dans quelques '
+    'instants.';
+
+/// Autre 5xx sans message du backend.
+const String kMsgErreurServeur =
+    'Une erreur est survenue sur le serveur. Réessayez ; si le problème '
+    'persiste, contactez le support.';
+
+/// Code inattendu sans message du backend.
+const String kMsgReponseInattendue =
+    'Réponse inattendue du serveur. Réessayez dans un instant.';
+
 /// Client HTTP de l'app chauffeur (lecture seule + auth OTP).
 /// - Injecte le Bearer token.
 /// - Sur un 401 (hors /auth/*), tente un refresh puis rejoue une seule fois.
-/// - Lance [ApiException] / [NetworkException].
+/// - Lance [ApiException] pour les erreurs HTTP et [NetworkException] pour
+///   les erreurs réseau (timeout, pas de connexion, appel détourné par une
+///   redirection 3xx).
 class ApiClient {
   final SecureStorage _storage;
   final http.Client _http;
@@ -51,13 +84,11 @@ class ApiClient {
       }
       final bytes = await streamed.stream.toBytes();
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) return bytes;
-      final raw = utf8.decode(bytes);
-      throw ApiException(streamed.statusCode,
-          raw.trim().isEmpty ? 'Erreur ${streamed.statusCode}' : raw.trim());
+      throw _erreurHttp(streamed.statusCode, bytes);
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
-    } on http.ClientException catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : ${e.message}');
+      throw const NetworkException(kMsgServeurTimeout);
+    } on http.ClientException {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 
@@ -84,9 +115,9 @@ class ApiClient {
       }
       return _handle(response);
     } on TimeoutException {
-      throw const NetworkException('Le serveur ne répond pas (timeout).');
-    } on http.ClientException catch (e) {
-      throw NetworkException('Impossible de joindre le serveur : ${e.message}');
+      throw const NetworkException(kMsgServeurTimeout);
+    } on http.ClientException {
+      throw const NetworkException(kMsgServeurInjoignable);
     }
   }
 
@@ -96,29 +127,69 @@ class ApiClient {
       if (response.bodyBytes.isEmpty) return null;
       return jsonDecode(utf8.decode(response.bodyBytes));
     }
-    final rawBody = utf8.decode(response.bodyBytes);
-    Map<String, dynamic>? parsedBody;
-    try {
-      parsedBody = jsonDecode(rawBody) as Map<String, dynamic>?;
-    } catch (_) {}
+    throw _erreurHttp(status, response.bodyBytes);
+  }
 
+  /// Exception à lever pour une réponse hors 2xx.
+  ///
+  /// Une redirection (3xx) n'est jamais une réponse du backend, qui n'en émet
+  /// pas : c'est le réseau qui a intercepté l'appel. Elle remonte donc comme
+  /// une [NetworkException] — l'écran la traite comme « serveur injoignable ».
+  ///
+  /// Le corps est décodé en tolérant un encodage autre que l'UTF-8 (page de
+  /// proxy en Latin-1…) : un caractère illisible vaut mieux qu'un plantage du
+  /// décodage, qui remonterait à l'écran sous forme d'exception technique.
+  Exception _erreurHttp(int status, List<int> corps) {
+    if (status >= 300 && status < 400) {
+      return const NetworkException(kMsgAccesDetourne);
+    }
+    final rawBody = utf8.decode(corps, allowMalformed: true);
+    final parsedBody = _corpsJson(rawBody);
     final message = _extractMessage(parsedBody, rawBody) ??
         switch (status) {
+          400 => 'Requête invalide.',
           401 => 'Session expirée, veuillez vous reconnecter.',
           403 => 'Action non autorisée.',
           404 => 'Ressource introuvable.',
-          >= 500 => 'Erreur serveur ($status).',
-          _ => 'Erreur serveur ($status)',
+          502 || 503 || 504 => kMsgServeurIndisponible,
+          >= 500 => kMsgErreurServeur,
+          _ => kMsgReponseInattendue,
         };
-    throw ApiException(status, message, body: parsedBody);
+    return ApiException(status, message, body: parsedBody);
   }
 
+  /// Corps d'erreur JSON du backend, ou null s'il n'en est pas un (page HTML
+  /// d'un proxy, corps vide).
+  Map<String, dynamic>? _corpsJson(String rawBody) {
+    try {
+      final decode = jsonDecode(rawBody);
+      return decode is Map<String, dynamic> ? decode : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Message applicatif du backend s'il est présent. Un corps texte court est
+  /// repris tel quel ; un corps HTML (page de proxy, erreur nginx…) ou un JSON
+  /// sans message ne l'est jamais : le message générique prend le relais.
   String? _extractMessage(Map<String, dynamic>? parsed, String rawBody) {
     if (parsed != null) {
       final msg = parsed['message'] ?? parsed['error'] ?? parsed['detail'];
       if (msg is String && msg.trim().isNotEmpty) return msg.trim();
+      return null;
     }
-    return rawBody.trim().isNotEmpty ? rawBody.trim() : null;
+    final body = rawBody.trim();
+    if (body.isEmpty || _ressembleAHtml(body)) return null;
+    return body;
+  }
+
+  bool _ressembleAHtml(String body) {
+    if (!body.startsWith('<')) return false;
+    final debut = body.toLowerCase();
+    return debut.startsWith('<!doctype') ||
+        debut.startsWith('<html') ||
+        debut.contains('<body') ||
+        debut.contains('</');
   }
 
   Uri _buildUri(String path, Map<String, String>? query) =>
