@@ -106,6 +106,11 @@ abstract final class AppColors {
   /// Texte ou icône « noir » (équivalent de `Colors.black87`).
   static Color get noir87 => estSombre ? _palette.dark : Colors.black87;
 
+  /// Ambre des statuts intermédiaires (« Partiel », « À rembourser ») : brun
+  /// en clair, ambre lumineux en sombre où le brun ne se lirait pas.
+  static Color get ambre =>
+      estSombre ? const Color(0xFFE3A857) : const Color(0xFF854F0B);
+
   static Color get grey50 =>
       estSombre ? const Color(0xFF20242C) : Colors.grey.shade50;
   static Color get grey100 =>

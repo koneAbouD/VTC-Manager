@@ -244,7 +244,8 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
           padding: const EdgeInsets.symmetric(vertical: 9),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: actif ? Colors.white : Colors.transparent,
+            // Même indicateur que les onglets d'Indisponibilités.
+            color: actif ? AppColors.blanc : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             boxShadow: actif
                 ? [

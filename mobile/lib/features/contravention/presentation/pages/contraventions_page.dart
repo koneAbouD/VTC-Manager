@@ -769,6 +769,10 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                 children: [
                   FloatingActionButton.extended(
                     heroTag: 'importPdf',
+                    // Pas d'ombre en sombre : elle y cerne le bouton d'un halo
+                    // noir ; légère en clair.
+                    elevation: AppColors.estSombre ? 0 : 2,
+                    highlightElevation: AppColors.estSombre ? 0 : 4,
                     onPressed: () async {
                       await Navigator.push(
                         context,
@@ -783,6 +787,10 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                   const SizedBox(height: 12),
                   FloatingActionButton.extended(
                     heroTag: 'ajouterContravention',
+                    // Pas d'ombre en sombre : elle y cerne le bouton d'un halo
+                    // noir ; légère en clair.
+                    elevation: AppColors.estSombre ? 0 : 2,
+                    highlightElevation: AppColors.estSombre ? 0 : 4,
                     onPressed: () async {
                       await Navigator.push(
                         context,
@@ -978,7 +986,7 @@ class _StatutChips extends StatelessWidget {
   });
 
   // Couleurs alignées sur les badges de statut de ContraventionCard.
-  static const _ambre = Color(0xFF854F0B);
+  static Color get _ambre => AppColors.ambre;
   static Color get _vert => AppColors.positive;
   static Color get _hint => AppColors.hint;
 

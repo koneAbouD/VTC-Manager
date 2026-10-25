@@ -759,7 +759,7 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
   /// Palette des chips de statut, alignée sur celle de ContraventionsPage :
   /// trois teintes seulement — l'attente et les fins de course neutres en gris,
   /// l'ambre pour ce qui est en cours, le vert pour ce qui est soldé.
-  static const _ambre = Color(0xFF854F0B);
+  static Color get _ambre => AppColors.ambre;
   static Color get _vert => AppColors.positive;
   static Color get _hint => AppColors.hint;
 

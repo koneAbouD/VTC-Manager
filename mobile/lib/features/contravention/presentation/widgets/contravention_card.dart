@@ -45,17 +45,19 @@ class ContraventionCard extends StatelessWidget {
 
   // Fonds de la pastille d'infraction, par gravité — pastel volontairement
   // désaturé : la couleur situe, elle n'alerte pas.
-  static const _graveBg = Color(0xFFFBE9E9);
-  static const _moyenneBg = Color(0xFFFAF0DE);
-  static const _legereBg = Color(0xFFEDF3E6);
-  static const _ambre = Color(0xFF854F0B);
+  static Color get _graveBg => AppColors.fond(0xFFFBE9E9);
+  static Color get _moyenneBg => AppColors.fond(0xFFFAF0DE);
+  static Color get _legereBg => AppColors.fond(0xFFEDF3E6);
+  static Color get _ambre => AppColors.ambre;
   static Color get _vert => AppColors.positive;
   static Color get _ink => AppColors.dark;
   static Color get _label => AppColors.label;
   static Color get _hint => AppColors.hint;
   static Color get _border => AppColors.border;
   static Color get _primary => AppColors.primary;
-  static const _selBg = Color(0xFFF3FAF4);
+  // Fond d'une carte sélectionnée : la teinte de l'accent, comme les autres
+  // listes à sélection.
+  static Color get _selBg => AppColors.primaryTint;
 
   /// Gravité de l'infraction, lue dans le montant : le barème de l'État suit
   /// la gravité, et c'est la seule donnée toujours renseignée.
@@ -161,7 +163,9 @@ class ContraventionCard extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         padding: const EdgeInsets.fromLTRB(14, 13, 8, 12),
         decoration: BoxDecoration(
-          color: selected ? _selBg : Colors.white,
+          // Même surface que les cartes d'Indisponibilités : blanc en clair,
+          // surface sombre en sombre.
+          color: selected ? _selBg : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
               color: selected ? _primary : _border,
