@@ -20,6 +20,7 @@ import com.tmk.vtcmanager.interfaces.rest.etatparc.dto.VehiculeExceptionDto;
 import com.tmk.vtcmanager.interfaces.rest.tableaubord.dto.AlertesTableauBordDto;
 import com.tmk.vtcmanager.interfaces.rest.tableaubord.dto.CashCreancesDto;
 import com.tmk.vtcmanager.interfaces.rest.tableaubord.dto.DebiteurDto;
+import com.tmk.vtcmanager.interfaces.rest.tableaubord.dto.JourneeDto;
 import com.tmk.vtcmanager.interfaces.rest.tableaubord.dto.PerformanceFlotteDto;
 import com.tmk.vtcmanager.interfaces.rest.tableaubord.dto.PeriodeDto;
 import com.tmk.vtcmanager.interfaces.rest.tableaubord.dto.PointSerieDto;
@@ -107,10 +108,33 @@ public class GetTableauBordUseCase {
 
         return new TableauBordResponse(
                 periodeDto,
+                journee(arreteAu, base),
                 sante(resultat, precedent, periode),
                 cash(resultat, joursEcoules),
                 flotte(parc, resultat, marges, joursEcoules),
                 alertes(parc));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // L'essentiel — la journée
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * La journée lue par le compte de résultat lui-même, restreint à un jour :
+     * encaissé et manquant y sont dérivés comme ceux du mois (pont créances),
+     * pour que le jour et le mois se lisent de la même façon.
+     */
+    private JourneeDto journee(LocalDate jour, BaseComptable base) {
+        CompteResultat r = getCompteResultatUseCase.executerJournee(jour, base);
+        BigDecimal produits = nz(r.getProduitsExploitation());
+        BigDecimal pont = nz(r.getPontCreances());
+        BigDecimal encaisse = base == BaseComptable.ENGAGEMENT ? produits.subtract(pont) : produits;
+        return new JourneeDto(
+                jour,
+                encaisse,
+                pont,
+                nz(r.getChargesVariables()).add(nz(r.getChargesFixes())),
+                nz(r.getResultatGestion()));
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -240,6 +264,7 @@ public class GetTableauBordUseCase {
                 nz(provision.getProvisionTotale()),
                 nz(provision.getCreancesNettes()),
                 pourcentage(encaisse, produitsDus),
+                encaisse,
                 produitsDus.subtract(encaisse),
                 dso,
                 nz(creanceRepository.getMontantAReverserEtat()),

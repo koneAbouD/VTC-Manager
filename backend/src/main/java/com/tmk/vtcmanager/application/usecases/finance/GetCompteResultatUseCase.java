@@ -43,9 +43,30 @@ public class GetCompteResultatUseCase {
         }
 
         YearMonth periode = YearMonth.of(annee, mois);
-        LocalDate debut = periode.atDay(1);
-        LocalDate fin = periode.atEndOfMonth();
 
+        // Perte attendue sur les impayés : la variation du stock de provision,
+        // pas le stock lui-même. Le stock n'étant connu qu'à l'instant présent,
+        // la dotation n'a de sens que pour le mois en cours ou le dernier mois
+        // non clos ; les mois antérieurs la lisent dans leur photo de clôture.
+        BigDecimal dotationProvisions = dotationProvisionService.calculer(
+                periode, getProvisionCreancesUseCase.executer().getProvisionTotale());
+
+        return calculer(periode.atDay(1), periode.atEndOfMonth(), base, dotationProvisions);
+    }
+
+    /**
+     * Même cascade, sur une seule journée. Aucune archive ne la couvre (la
+     * clôture photographie des mois), elle est donc toujours recalculée. La
+     * dotation aux provisions, variation mensuelle d'un stock, n'a pas de
+     * quote-part journalière : elle vaut zéro ici et reste portée par le mois.
+     */
+    @Transactional(readOnly = true)
+    public CompteResultat executerJournee(LocalDate jour, BaseComptable base) {
+        return calculer(jour, jour, base, BigDecimal.ZERO);
+    }
+
+    private CompteResultat calculer(LocalDate debut, LocalDate fin, BaseComptable base,
+                                    BigDecimal dotationProvisions) {
         Map<String, BigDecimal> caisse = reportingRepository.totauxCaisseParNature(debut, fin);
         BigDecimal produitsCaisse = caisse.getOrDefault("PRODUIT_EXPLOITATION", BigDecimal.ZERO);
         BigDecimal produitsEngagement = reportingRepository.produitsEngagement(debut, fin);
@@ -75,16 +96,9 @@ public class GetCompteResultatUseCase {
         BigDecimal ebe = marge.subtract(chargesFixes);
         BigDecimal amortissements = reportingRepository.dotationAmortissements(debut, fin);
 
-        // Perte attendue sur les impayés : la variation du stock de provision,
-        // pas le stock lui-même. Le stock n'étant connu qu'à l'instant présent,
-        // la dotation n'a de sens que pour le mois en cours ou le dernier mois
-        // non clos ; les mois antérieurs la lisent dans leur photo de clôture.
-        BigDecimal dotationProvisions = dotationProvisionService.calculer(
-                periode, getProvisionCreancesUseCase.executer().getProvisionTotale());
-
         return CompteResultat.builder()
-                .annee(annee)
-                .mois(mois)
+                .annee(debut.getYear())
+                .mois(debut.getMonthValue())
                 .base(base)
                 .produitsExploitation(produits)
                 .chargesVariables(chargesVariables)

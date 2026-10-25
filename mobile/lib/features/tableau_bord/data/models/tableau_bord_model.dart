@@ -171,6 +171,7 @@ class CashCreances {
   final double provisionCreances;
   final double creancesNettes;
   final double? tauxRecouvrement;
+  final double produitsEncaissesPeriode;
   final double resteAEncaisserPeriode;
   final double? dso;
   final double aReverserEtat;
@@ -187,6 +188,7 @@ class CashCreances {
     required this.provisionCreances,
     required this.creancesNettes,
     required this.tauxRecouvrement,
+    required this.produitsEncaissesPeriode,
     required this.resteAEncaisserPeriode,
     required this.dso,
     required this.aReverserEtat,
@@ -206,6 +208,8 @@ class CashCreances {
         provisionCreances: (json['provisionCreances'] as num?)?.toDouble() ?? 0,
         creancesNettes: (json['creancesNettes'] as num?)?.toDouble() ?? 0,
         tauxRecouvrement: (json['tauxRecouvrement'] as num?)?.toDouble(),
+        produitsEncaissesPeriode:
+            (json['produitsEncaissesPeriode'] as num?)?.toDouble() ?? 0,
         resteAEncaisserPeriode:
             (json['resteAEncaisserPeriode'] as num?)?.toDouble() ?? 0,
         dso: (json['dso'] as num?)?.toDouble(),
@@ -365,9 +369,40 @@ class AlertesTableauBord {
       vehiculesSansChauffeur;
 }
 
+/// Les quatre montants d'une journée — aujourd'hui pour le mois en cours,
+/// sinon le dernier jour de la période —, lus dans la même base que le mois.
+class JourneeTableauBord {
+  final DateTime? date;
+  final double encaisse;
+
+  /// Dû du jour moins encaissé. Négatif quand les versements du jour ont
+  /// aussi soldé des arriérés.
+  final double manquant;
+  final double depenses;
+  final double beneficeNet;
+
+  const JourneeTableauBord({
+    required this.date,
+    required this.encaisse,
+    required this.manquant,
+    required this.depenses,
+    required this.beneficeNet,
+  });
+
+  factory JourneeTableauBord.fromJson(Map<String, dynamic> json) =>
+      JourneeTableauBord(
+        date: DateTime.tryParse(json['date'] as String? ?? ''),
+        encaisse: (json['encaisse'] as num?)?.toDouble() ?? 0,
+        manquant: (json['manquant'] as num?)?.toDouble() ?? 0,
+        depenses: (json['depenses'] as num?)?.toDouble() ?? 0,
+        beneficeNet: (json['beneficeNet'] as num?)?.toDouble() ?? 0,
+      );
+}
+
 /// Réponse complète de `GET /tableau-bord`.
 class TableauBordModel {
   final PeriodeTableauBord periode;
+  final JourneeTableauBord journee;
   final SanteFinanciere finance;
   final CashCreances cash;
   final PerformanceFlotte flotte;
@@ -375,6 +410,7 @@ class TableauBordModel {
 
   const TableauBordModel({
     required this.periode,
+    required this.journee,
     required this.finance,
     required this.cash,
     required this.flotte,
@@ -385,6 +421,8 @@ class TableauBordModel {
       TableauBordModel(
         periode: PeriodeTableauBord.fromJson(
             json['periode'] as Map<String, dynamic>? ?? const {}),
+        journee: JourneeTableauBord.fromJson(
+            json['journee'] as Map<String, dynamic>? ?? const {}),
         finance: SanteFinanciere.fromJson(
             json['finance'] as Map<String, dynamic>? ?? const {}),
         cash: CashCreances.fromJson(

@@ -71,6 +71,8 @@ class GetTableauBordUseCaseTest {
         // Valeurs par défaut : chaque test ne renseigne que ce qu'il éprouve.
         when(compteResultat.executer(anyInt(), anyInt(), any())).thenReturn(resultat(
                 "1000000", "400000", "300000", "0"));
+        when(compteResultat.executerJournee(any(), any())).thenReturn(resultat(
+                "50000", "10000", "5000", "0"));
         when(marges.executer(anyInt(), anyInt(), any())).thenReturn(List.of());
         when(balanceAgee.executer()).thenReturn(List.of());
         when(provision.executer()).thenReturn(ProvisionCreances.builder()
@@ -80,6 +82,42 @@ class GetTableauBordUseCaseTest {
         when(creanceRepository.getMontantAReverserEtat()).thenReturn(BigDecimal.ZERO);
         when(reportingRepository.totauxCaisseParNature(any(), any())).thenReturn(Map.of());
         when(etatsClotureRepository.findByPeriode(anyInt(), anyInt())).thenReturn(Optional.empty());
+    }
+
+    // ── L'essentiel : la journée ────────────────────────────────────────
+
+    @Test
+    void sert_les_quatre_montants_du_jour_en_base_caisse() {
+        // 60 000 dus, 50 000 encaissés (pont 10 000) ; 10 000 + 5 000 de charges.
+        when(compteResultat.executerJournee(any(), any()))
+                .thenReturn(resultat("50000", "10000", "5000", "10000"));
+
+        var jour = executer().journee();
+
+        assertThat(jour.encaisse()).isEqualByComparingTo("50000");
+        assertThat(jour.manquant()).isEqualByComparingTo("10000");
+        assertThat(jour.depenses()).isEqualByComparingTo("15000");
+        assertThat(jour.beneficeNet()).isEqualByComparingTo("35000");
+    }
+
+    @Test
+    void deduit_l_encaisse_du_jour_du_pont_en_base_engagement() {
+        // En engagement, les produits sont les 60 000 dus : l'encaissé s'en
+        // déduit par le pont, comme pour le mois.
+        when(compteResultat.executerJournee(any(), any()))
+                .thenReturn(resultat("60000", "10000", "5000", "10000"));
+
+        var jour = useCase.executer(ANNEE, MOIS, BaseComptable.ENGAGEMENT, null, null).journee();
+
+        assertThat(jour.encaisse()).isEqualByComparingTo("50000");
+        assertThat(jour.manquant()).isEqualByComparingTo("10000");
+    }
+
+    @Test
+    void lit_le_dernier_jour_d_un_mois_passe() {
+        var jour = executer().journee();
+
+        assertThat(jour.date()).isEqualTo(YearMonth.of(ANNEE, MOIS).atEndOfMonth());
     }
 
     // ── Bloc finance ────────────────────────────────────────────────────
@@ -196,6 +234,7 @@ class GetTableauBordUseCaseTest {
         var cash = executer().cash();
 
         assertThat(cash.tauxRecouvrement()).isEqualByComparingTo("80.0");
+        assertThat(cash.produitsEncaissesPeriode()).isEqualByComparingTo("800000");
         assertThat(cash.resteAEncaisserPeriode()).isEqualByComparingTo("200000");
     }
 
@@ -210,6 +249,7 @@ class GetTableauBordUseCaseTest {
         var cash = useCase.executer(ANNEE, MOIS, BaseComptable.ENGAGEMENT, null, null).cash();
 
         assertThat(cash.tauxRecouvrement()).isEqualByComparingTo("75.0");
+        assertThat(cash.produitsEncaissesPeriode()).isEqualByComparingTo("750000");
         assertThat(cash.resteAEncaisserPeriode()).isEqualByComparingTo("250000");
     }
 

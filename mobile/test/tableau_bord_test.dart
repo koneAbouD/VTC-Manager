@@ -71,6 +71,7 @@ CashCreances _cash({
       provisionCreances: 40000,
       creancesNettes: 150000,
       tauxRecouvrement: tauxRecouvrement,
+      produitsEncaissesPeriode: 800000,
       resteAEncaisserPeriode: 200000,
       dso: dso,
       aReverserEtat: 0,
@@ -114,8 +115,17 @@ AlertesTableauBord _alertes({int documents = 3, int arretsLongs = 2}) =>
       vehiculesSansChauffeur: 0,
     );
 
+JourneeTableauBord _journee({double manquant = 15000}) => JourneeTableauBord(
+      date: DateTime(2026, 5, 31),
+      encaisse: 45000,
+      manquant: manquant,
+      depenses: 12000,
+      beneficeNet: 30000,
+    );
+
 TableauBordModel _modele({
   PeriodeTableauBord? periode,
+  JourneeTableauBord? journee,
   SanteFinanciere? finance,
   CashCreances? cash,
   PerformanceFlotte? flotte,
@@ -123,6 +133,7 @@ TableauBordModel _modele({
 }) =>
     TableauBordModel(
       periode: periode ?? _periode(),
+      journee: journee ?? _journee(),
       finance: finance ?? _finance(),
       cash: cash ?? _cash(),
       flotte: flotte ?? _flotte(),
@@ -230,6 +241,35 @@ void main() {
       expect(find.text('Points de vigilance'), findsOneWidget);
     });
 
+    testWidgets('l\'essentiel met le jour en avant et rappelle le mois',
+        (tester) async {
+      await _pump(tester, _modele());
+
+      expect(find.text('Le 31 mai'), findsOneWidget);
+      expect(find.text('Recettes encaissées'), findsOneWidget);
+      expect(find.text('Bénéfice net'), findsOneWidget);
+      expect(find.text('Dépenses'), findsWidgets);
+      // Montant du jour en gros (45 k), total du mois en pied (800 k).
+      expect(find.text('45 k'), findsOneWidget);
+      expect(find.text('800 k'), findsWidgets);
+    });
+
+    testWidgets('l\'essentiel du mois en cours parle d\'aujourd\'hui',
+        (tester) async {
+      await _pump(tester,
+          _modele(periode: _periode(moisEnCours: true, cloture: false)));
+
+      expect(find.text('Aujourd\'hui'), findsOneWidget);
+    });
+
+    testWidgets('un manquant négatif se lit comme un rattrapage d\'arriérés',
+        (tester) async {
+      await _pump(tester, _modele(journee: _journee(manquant: -20000)));
+
+      expect(find.text('+20 k d\'arriérés rattrapés'), findsOneWidget);
+      expect(find.text('-20 k'), findsNothing);
+    });
+
     testWidgets('un mois clos annonce des chiffres définitifs', (tester) async {
       await _pump(tester, _modele());
 
@@ -291,6 +331,7 @@ void main() {
         provisionCreances: 0,
         creancesNettes: 0,
         tauxRecouvrement: 100,
+        produitsEncaissesPeriode: 0,
         resteAEncaisserPeriode: 0,
         dso: null,
         aReverserEtat: 0,

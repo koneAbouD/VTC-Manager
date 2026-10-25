@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_error_banner.dart';
@@ -65,6 +66,8 @@ class TableauBordPage extends ConsumerWidget {
                 16, 12, 16, 24 + MediaQuery.of(context).padding.bottom),
             children: [
               _BandeauPeriode(data: data),
+              const SizedBox(height: 12),
+              _BandeauEssentiel(data: data, isWide: isWide),
               const SizedBox(height: 12),
               _SectionFinance(data: data, isWide: isWide),
               const SizedBox(height: 12),
@@ -235,6 +238,224 @@ class _BasculeBase extends StatelessWidget {
           pilule('ENGAGEMENT', 'Dû',
               'Base engagement : ce qui était dû sur la période, encaissé ou non.'),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// L'essentiel — les quatre montants qu'on vient chercher
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Les quatre montants qu'on vient chercher — encaissé, manquant, dépenses,
+/// bénéfice net —, posés avant tout bloc d'analyse : celui du jour en gros,
+/// celui du mois juste dessous.
+///
+/// Aucun chiffre n'est calculé ici. Le jour vient du bloc `journee` du
+/// backend ; le mois est repris tel quel des blocs plus bas (encaissé et
+/// manquant du bloc cash, dépenses et bénéfice du compte de résultat), pour
+/// qu'un total en tête ne contredise jamais son détail.
+class _BandeauEssentiel extends StatelessWidget {
+  final TableauBordModel data;
+  final bool isWide;
+
+  const _BandeauEssentiel({required this.data, required this.isWide});
+
+  @override
+  Widget build(BuildContext context) {
+    final j = data.journee;
+    final f = data.finance;
+    final c = data.cash;
+    final mois = data.periode.label;
+
+    // Un manquant négatif : les versements du jour ont aussi soldé des
+    // arriérés. On n'affiche pas « -20 k manquant », on dit ce qui s'est passé.
+    final rattrapage = j.manquant < 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.today_outlined, size: 16, color: AppColors.label),
+              const SizedBox(width: 6),
+              Text(_libelleJour(j.date, data.periode.moisEnCours),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.label)),
+            ],
+          ),
+        ),
+        TbGrilleTuiles(isWide: isWide, tuiles: [
+          _CarteEssentiel(
+            icone: Icons.payments_outlined,
+            label: 'Recettes encaissées',
+            valeur: tbMontantCourt(j.encaisse),
+            couleur: kTbVert,
+            sousLabel: 'versé ce jour',
+            libelleMois: mois,
+            valeurMois: tbMontantCourt(c.produitsEncaissesPeriode),
+            aide: 'Argent réellement versé : recettes, pénalités et autres '
+                'produits d\'exploitation encaissés, arriérés compris.',
+          ),
+          _CarteEssentiel(
+            icone: Icons.money_off_outlined,
+            label: 'Manquant',
+            valeur: tbMontantCourt(rattrapage ? 0 : j.manquant),
+            couleur: j.manquant > 0 ? kTbRouge : kTbVert,
+            sousLabel: rattrapage
+                ? '+${tbMontantCourt(-j.manquant)} d\'arriérés rattrapés'
+                : (j.manquant > 0 ? 'dû, pas encore versé' : 'aucun manquant'),
+            libelleMois: mois,
+            valeurMois: tbMontantCourt(c.resteAEncaisserPeriode),
+            aide: 'Produits dus et pas encore encaissés : l\'écart entre ce '
+                'que les chauffeurs devaient et ce qu\'ils ont versé.',
+          ),
+          _CarteEssentiel(
+            icone: Icons.shopping_cart_outlined,
+            label: 'Dépenses',
+            valeur: tbMontantCourt(j.depenses),
+            couleur: kTbOrange,
+            sousLabel: 'sorties du jour',
+            libelleMois: mois,
+            valeurMois: tbMontantCourt(f.chargesTotales),
+            aide: 'Charges variables (carburant, entretien…) et charges fixes '
+                '(assurances, salaires…), hors amortissements.',
+          ),
+          _CarteEssentiel(
+            icone: Icons.trending_up_rounded,
+            label: 'Bénéfice net',
+            valeur: tbMontantCourt(j.beneficeNet),
+            couleur: j.beneficeNet < 0 ? kTbRouge : const Color(0xFF1565C0),
+            sousLabel: j.beneficeNet < 0 ? 'perte du jour' : 'après toutes charges',
+            libelleMois: mois,
+            valeurMois: tbMontantCourt(f.resultatGestion),
+            aide: 'Produits moins charges et amortissements. La dotation aux '
+                'provisions ne se mesure qu\'au mois : elle ne pèse que sur '
+                'le chiffre mensuel.',
+          ),
+        ]),
+      ],
+    );
+  }
+
+  /// « Aujourd'hui » pour le mois en cours ; sinon la date lue, qui est le
+  /// dernier jour du mois choisi.
+  static String _libelleJour(DateTime? date, bool moisEnCours) {
+    if (moisEnCours || date == null) return 'Aujourd\'hui';
+    return 'Le ${DateFormat('d MMMM', 'fr_FR').format(date)}';
+  }
+}
+
+/// Carte mise en évidence : fond teinté de sa couleur, pictogramme, montant
+/// du jour en gros, total du mois en pied. Plus appuyée qu'une [TbKpiTuile],
+/// parce que c'est le premier regard sur la page.
+class _CarteEssentiel extends StatelessWidget {
+  final IconData icone;
+  final String label;
+  final String valeur;
+  final Color couleur;
+  final String sousLabel;
+  final String libelleMois;
+  final String valeurMois;
+  final String aide;
+
+  const _CarteEssentiel({
+    required this.icone,
+    required this.label,
+    required this.valeur,
+    required this.couleur,
+    required this.sousLabel,
+    required this.libelleMois,
+    required this.valeurMois,
+    required this.aide,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: aide,
+      triggerMode: TooltipTriggerMode.longPress,
+      showDuration: const Duration(seconds: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      textStyle: const TextStyle(fontSize: 12, color: Colors.white),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+        decoration: BoxDecoration(
+          color: couleur.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: couleur.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: couleur.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icone, size: 16, color: couleur),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(label,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.label),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(valeur,
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: couleur,
+                      height: 1.1)),
+            ),
+            const SizedBox(height: 4),
+            Text(sousLabel,
+                style: const TextStyle(fontSize: 10.5, color: AppColors.hint),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Divider(
+                  height: 1, color: couleur.withValues(alpha: 0.2)),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(libelleMois,
+                      style: const TextStyle(
+                          fontSize: 10.5, color: AppColors.hint),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ),
+                const SizedBox(width: 6),
+                Text(valeurMois,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.label)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

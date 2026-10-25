@@ -30,6 +30,8 @@ public record CashCreancesDto(
 
         /** Produits encaissés / produits dus de la période, en %. Null si rien n'était dû. */
         BigDecimal tauxRecouvrement,
+        /** Produits de la période réellement encaissés, quelle que soit la base lue. */
+        BigDecimal produitsEncaissesPeriode,
         /** Produits dus non encore encaissés sur la période (le pont créances). */
         BigDecimal resteAEncaisserPeriode,
         /** Jours de production que représente l'encours. Null si aucun produit sur la période. */

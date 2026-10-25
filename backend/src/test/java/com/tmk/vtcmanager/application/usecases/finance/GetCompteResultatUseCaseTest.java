@@ -223,4 +223,20 @@ class GetCompteResultatUseCaseTest {
 
         assertThat(apres).isEqualByComparingTo(avant);
     }
+
+    @Test
+    @DisplayName("Journée : cascade sur un seul jour, sans dotation aux provisions")
+    void journee_lit_un_seul_jour_sans_dotation() {
+        LocalDate jour = LocalDate.of(2026, 10, 25);
+
+        CompteResultat r = useCase.executerJournee(jour, BaseComptable.CAISSE);
+
+        verify(reportingRepository).totauxCaisseParNature(jour, jour);
+        verify(reportingRepository).dotationAmortissements(jour, jour);
+        verify(dotationProvisionService, never()).calculer(any(), any());
+        assertThat(r.getDotationProvisions()).isEqualByComparingTo("0");
+        // 800 000 − 100 000 − 200 000 − 50 000 d'amortissement.
+        assertThat(r.getResultatGestion()).isEqualByComparingTo("450000");
+        assertThat(r.getPontCreances()).isEqualByComparingTo("30000");
+    }
 }

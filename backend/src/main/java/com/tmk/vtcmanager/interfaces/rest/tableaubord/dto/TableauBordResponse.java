@@ -12,6 +12,7 @@ package com.tmk.vtcmanager.interfaces.rest.tableaubord.dto;
  */
 public record TableauBordResponse(
         PeriodeDto periode,
+        JourneeDto journee,
         SanteFinanciereDto finance,
         CashCreancesDto cash,
         PerformanceFlotteDto flotte,
