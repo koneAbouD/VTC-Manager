@@ -143,7 +143,9 @@ class AppPalette {
         hint: const Color(0xFF8A94A6),
         label: const Color(0xFF6B7280),
         border: const Color(0xFFE4E9EE),
-        fieldFill: const Color(0xFFF3F6F4),
+        // Gris neutre des champs premium : aucune teinte de marque, le champ
+        // ne doit pas se lire comme un élément coloré.
+        fieldFill: const Color(0xFFF2F3F5),
         success: const Color(0xFF1B5E20),
         error: const Color(0xFFB71C1C),
         warning: const Color(0xFFE65100),

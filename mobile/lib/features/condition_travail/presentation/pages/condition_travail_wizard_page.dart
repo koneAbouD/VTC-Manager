@@ -994,7 +994,7 @@ class _ConditionTravailWizardPageState
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: AppColors.positiveTint,
+                      color: AppColors.primaryTint,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(Icons.savings_rounded,
@@ -1047,7 +1047,7 @@ class _ConditionTravailWizardPageState
                     width: 1.5,
                     style: BorderStyle.solid),
                 borderRadius: BorderRadius.circular(14),
-                color: AppColors.positiveTint,
+                color: AppColors.primaryTint,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1832,7 +1832,7 @@ class _HintBanner extends StatelessWidget {
     Color? color,
     Color? iconColor,
     this.icon = Icons.info_outline_rounded,
-  })  : color = color ?? AppColors.positiveTint,
+  })  : color = color ?? AppColors.primaryTint,
         iconColor = iconColor ?? _kPrimary;
 
   @override
@@ -1893,7 +1893,7 @@ class _CotisationTile extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: AppColors.positiveTint,
+              color: AppColors.primaryTint,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(

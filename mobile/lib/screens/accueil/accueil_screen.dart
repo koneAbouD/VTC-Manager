@@ -176,8 +176,8 @@ class _AccueilScreenState extends ConsumerState<AccueilScreen> {
                 icon: const Icon(Icons.unfold_more_rounded, size: 16),
                 label: const Text("Plus d'opérations"),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.positive,
-                  backgroundColor: AppColors.positiveTint,
+                  foregroundColor: AppColors.primaryDark,
+                  backgroundColor: AppColors.primaryTint,
                   textStyle: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600),
                   padding: const EdgeInsets.symmetric(

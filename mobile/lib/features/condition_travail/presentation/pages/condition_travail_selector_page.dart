@@ -281,7 +281,7 @@ class _ConditionTravailSelectorPageState
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: AppColors.positiveTint,
+                color: AppColors.primaryTint,
                 borderRadius: BorderRadius.circular(36),
               ),
               child: Icon(

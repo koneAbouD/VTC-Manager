@@ -107,7 +107,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           width: 92,
           height: 92,
           decoration: BoxDecoration(
-            color: AppColors.positiveTint,
+            color: AppColors.primaryTint,
             shape: BoxShape.circle,
           ),
           child: Icon(Icons.mark_email_read_rounded,

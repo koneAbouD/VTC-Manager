@@ -27,10 +27,17 @@ abstract final class AppTheme {
       outline: p.border,
     );
 
+    // Gabarit des champs premium (formulaires véhicule, chauffeur…) : fond
+    // gris neutre sans contour au repos, contour à l'accent une fois actif.
+    // Tout champ sans décoration propre en hérite.
     OutlineInputBorder border(Color c, [double w = 1.2]) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: c, width: w),
         );
+    final sansContour = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -92,14 +99,23 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: p.fieldFill,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        hintStyle: TextStyle(color: p.hint, fontSize: 15),
+        // Icônes neutres : sans cela, Material les teinte de la couleur de
+        // marque (gris-vert en thème vert).
+        prefixIconColor: p.hint,
+        suffixIconColor: p.hint,
         labelStyle: TextStyle(color: p.hint),
         floatingLabelStyle:
             TextStyle(color: p.primary, fontWeight: FontWeight.w600),
-        enabledBorder: border(p.border),
-        border: border(p.border),
-        focusedBorder: border(p.primary, 1.6),
+        enabledBorder: sansContour,
+        disabledBorder: sansContour,
+        border: sansContour,
+        focusedBorder: border(p.primary, 1.5),
         errorBorder: border(p.error),
-        focusedErrorBorder: border(p.error, 1.6),
+        focusedErrorBorder: border(p.error, 1.5),
+        errorStyle: const TextStyle(fontSize: 11),
       ),
     );
   }

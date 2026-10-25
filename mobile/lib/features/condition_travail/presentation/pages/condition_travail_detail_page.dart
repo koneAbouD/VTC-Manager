@@ -375,7 +375,7 @@ class _CotisationsSection extends StatelessWidget {
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: AppColors.positiveTint,
+                    color: AppColors.primaryTint,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.savings_rounded,
@@ -396,7 +396,7 @@ class _CotisationsSection extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.positiveTint,
+                    color: AppColors.primaryTint,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

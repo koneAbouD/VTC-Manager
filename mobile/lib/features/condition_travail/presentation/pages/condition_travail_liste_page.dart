@@ -489,7 +489,7 @@ class _ObjectifBand extends StatelessWidget {
   Widget build(BuildContext context) {
     final isReel = typeRecette == 'MONTANT_REEL';
 
-    final bg = isReel ? const Color(0xFFFFF8E1) : AppColors.positiveTint;
+    final bg = isReel ? const Color(0xFFFFF8E1) : AppColors.primaryTint;
     final color = isReel ? AppColors.warning : AppColors.primary;
     final icon = isReel ? Icons.show_chart_rounded : Icons.trending_up_rounded;
     final label = isReel
@@ -575,7 +575,7 @@ class _CardFooter extends StatelessWidget {
             label:
                 '$nbCotisations cotisation${nbCotisations > 1 ? 's' : ''} · ${totalCotis.toStringAsFixed(0)} XOF',
             color: AppColors.primary,
-            bg: AppColors.positiveTint,
+            bg: AppColors.primaryTint,
           ),
         if (nbPenalites > 0)
           _FooterTag(
