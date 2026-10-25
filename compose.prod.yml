@@ -76,6 +76,16 @@ services:
     restart: unless-stopped
     networks:
       - infra
+    # Redéclaré ici pour ne pas dépendre de la version de l'image tirée : une
+    # ancienne image visait « localhost », que le wget de busybox résout en ::1
+    # alors que gunicorn n'écoute qu'en IPv4 → unhealthy permanent (faux négatif)
+    # et redémarrages en boucle par le watchdog. Toujours 127.0.0.1.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8884/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     deploy:
       resources:
         limits:
