@@ -65,7 +65,7 @@ class LigneRecetteDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text(e.toString().replaceFirst('Exception: ', ''),
-              style: const TextStyle(color: AppColors.error)),
+              style: TextStyle(color: AppColors.error)),
         ),
         data: (ligne) => _DetailBody(ligne: ligne, ligneId: ligneId),
       ),
@@ -214,7 +214,7 @@ class _DetailBody extends ConsumerWidget {
       titre:          'Recette',
       sousTitre:      (nom != null && nom.isNotEmpty) ? '$immat - $nom' : immat,
       montantRestant: ligne.montantRestant,
-      couleur:        const Color(0xFF2E7D32),
+      couleur:        AppColors.positive,
       icone:          Icons.account_balance_wallet_outlined,
       jumelle:        jumelle,
       onEncaisser: (saisie) async {

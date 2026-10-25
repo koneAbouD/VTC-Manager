@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
 /// Ouvre une image en aperçu premium : arrière-plan flouté laissant deviner
 /// l'écran courant, image centrée dans une carte contrainte aux marges de
 /// l'application (elle ne déborde jamais du cadre), zoomable (pincer /
@@ -134,12 +135,12 @@ class _ImageViewerOverlay extends StatelessWidget {
                       titre!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         shadows: [
-                          Shadow(color: Colors.black54, blurRadius: 8),
+                          Shadow(color: AppColors.grey600, blurRadius: 8),
                         ],
                       ),
                     ),

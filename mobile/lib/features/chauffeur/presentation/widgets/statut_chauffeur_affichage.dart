@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/chauffeur.dart';
 import '../../domain/enums/chauffeur_status.dart';
 
+import '../../../../core/theme/app_colors.dart';
 /// Couleur du point posé devant un libellé de statut chauffeur.
 ///
 /// Les pastilles de statut sont toutes grises : le fond ne distingue plus rien,
@@ -10,18 +11,18 @@ import '../../domain/enums/chauffeur_status.dart';
 /// même — le libellé lève le reste de l'ambiguïté.
 abstract final class PointStatutChauffeur {
   /// En service et attendu au volant aujourd'hui.
-  static const auVolant = Color(0xFF2E7D32);
+  static Color get auVolant => AppColors.positive;
 
   /// En service mais pas au planning du jour : c'est le tour de son binôme, ou
   /// son véhicule ne roule pas aujourd'hui.
-  static const auRepos = Color(0xFFC62828);
+  static Color get auRepos => AppColors.error;
 
   /// Actif sans véhicule affecté : disponible, en attente d'une affectation.
   /// Le bleu que « En service » portait avant de passer au gris.
   static const disponible = Color(0xFF1565C0);
 
   /// En congé — absence connue et datée, d'où l'ambre des indisponibilités.
-  static const enConge = Color(0xFFE65100);
+  static Color get enConge => AppColors.warning;
 
   /// Suspendu — décision humaine. Le pourpre le sépare du rouge du repos : la
   /// sanction et le tour de repos n'ont rien à voir.
@@ -52,9 +53,9 @@ class StatutChauffeurAffichage {
   factory StatutChauffeurAffichage.of(Chauffeur chauffeur) {
     if (chauffeur.statut == ChauffeurStatus.enService) {
       return switch (chauffeur.auProgrammeAujourdhui) {
-        true => const StatutChauffeurAffichage(
+        true => StatutChauffeurAffichage(
             libelle: 'En service', point: PointStatutChauffeur.auVolant),
-        false => const StatutChauffeurAffichage(
+        false => StatutChauffeurAffichage(
             libelle: 'Au repos', point: PointStatutChauffeur.auRepos),
         null => const StatutChauffeurAffichage(libelle: 'En service'),
       };
@@ -62,7 +63,7 @@ class StatutChauffeurAffichage {
     return switch (chauffeur.statut) {
       ChauffeurStatus.actif => const StatutChauffeurAffichage(
           libelle: 'Actif', point: PointStatutChauffeur.disponible),
-      ChauffeurStatus.enConge => const StatutChauffeurAffichage(
+      ChauffeurStatus.enConge => StatutChauffeurAffichage(
           libelle: 'En congé', point: PointStatutChauffeur.enConge),
       ChauffeurStatus.suspendu => const StatutChauffeurAffichage(
           libelle: 'Suspendu', point: PointStatutChauffeur.suspendu),

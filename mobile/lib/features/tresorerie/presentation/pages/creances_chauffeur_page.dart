@@ -38,7 +38,7 @@ class CreancesChauffeurPage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Impossible de charger le détail',
-                  style: TextStyle(color: Colors.grey.shade600)),
+                  style: TextStyle(color: AppColors.grey600)),
               TextButton.icon(
                 onPressed: () =>
                     ref.invalidate(creancesChauffeurProvider(chauffeurId)),
@@ -52,7 +52,7 @@ class CreancesChauffeurPage extends ConsumerWidget {
           if (lignes.isEmpty) {
             return Center(
               child: Text('Aucune créance en cours',
-                  style: TextStyle(color: Colors.grey.shade600)),
+                  style: TextStyle(color: AppColors.grey600)),
             );
           }
           final total = lignes.fold<double>(0, (s, l) => s + l.restant);
@@ -75,11 +75,11 @@ class CreancesChauffeurPage extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Restant dû',
+                      Text('Restant dû',
                           style: TextStyle(
                               fontSize: 14, color: AppColors.label)),
                       Text(CurrencyFormatter.format(total),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                               color: AppColors.dark)),
@@ -174,7 +174,7 @@ class _LigneCreanceTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('$libelle · $date',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: AppColors.dark)),
@@ -182,7 +182,7 @@ class _LigneCreanceTile extends StatelessWidget {
                     Text(
                       'Dû ${CurrencyFormatter.format(ligne.montantDu)}'
                       ' · réglé ${CurrencyFormatter.format(ligne.montantRegle)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11.5, color: AppColors.label),
                     ),
                   ],
@@ -197,7 +197,7 @@ class _LigneCreanceTile extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: Colors.red.shade900)),
                   const SizedBox(height: 2),
-                  const Text('Encaisser →',
+                  Text('Encaisser →',
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,

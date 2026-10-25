@@ -24,14 +24,14 @@ import '../../../etat_parc/presentation/providers/etat_parc_provider.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const _kPrimary = AppColors.primary;
-const _kAccent = Color(0xFFE65100);
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint = Color(0xFF9AA0AE);
-const _kLabel = Color(0xFF6B7280);
-const _kBorder = Color(0xFFE3E6EE);
-const _kDark = Color(0xFF1A1A2E);
-const _kError = Color(0xFFE03131);
+Color get _kPrimary => AppColors.primary;
+Color get _kAccent => AppColors.warning;
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kLabel => AppColors.label;
+Color get _kBorder => AppColors.border;
+Color get _kDark => AppColors.dark;
+Color get _kError => AppColors.error;
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -57,7 +57,7 @@ void _showToast(BuildContext context, String message, {bool error = false}) {
         ),
       ]),
       backgroundColor:
-          error ? const Color(0xFFB71C1C) : const Color(0xFF1B5E20),
+          error ? AppColors.error : AppColors.success,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -334,7 +334,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: _isEdit ? 'Modifier maintenance' : 'Nouvelle maintenance',
         action: AppHeaderAction(
@@ -364,7 +364,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
             // ne se distinguant plus que par leur en-tête et un filet.
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.blanc,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: _kBorder),
               ),
@@ -416,7 +416,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                                 child: TextFormField(
                                   controller: _dureeCtrl,
                                   keyboardType: TextInputType.number,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 15, color: _kDark),
                                   decoration: _fieldDeco('ex: 3'),
                                 ),
@@ -472,7 +472,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                               color: _kAccent.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.checklist_rounded,
+                            child: Icon(Icons.checklist_rounded,
                                 size: 18, color: _kAccent),
                           ),
                           const SizedBox(width: 10),
@@ -480,7 +480,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Éléments concernés',
                                   style: TextStyle(
                                       fontSize: 14,
@@ -494,7 +494,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                                     '${_elements.length > 1 ? 's' : ''} · '
                                     '${_totalElements.toStringAsFixed(0)}'
                                     ' XOF',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 12,
                                         color: _kAccent,
                                         fontWeight: FontWeight.w500),
@@ -505,7 +505,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                           AnimatedRotation(
                             turns: _elementsExpanded ? 0.5 : 0.0,
                             duration: const Duration(milliseconds: 250),
-                            child: const Icon(
+                            child: Icon(
                                 Icons.keyboard_arrow_down_rounded,
                                 size: 20,
                                 color: _kHint),
@@ -557,7 +557,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                           child: TextFormField(
                             controller: _descriptionCtrl,
                             maxLines: 3,
-                            style: const TextStyle(fontSize: 15, color: _kDark),
+                            style: TextStyle(fontSize: 15, color: _kDark),
                             decoration: _fieldDeco('Travaux prévus…'),
                           ),
                         ),
@@ -585,7 +585,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(children: [
-          const Icon(Icons.calendar_today_outlined, size: 17, color: _kPrimary),
+          Icon(Icons.calendar_today_outlined, size: 17, color: _kPrimary),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -596,7 +596,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                   fontSize: 15, color: _datePrevue != null ? _kDark : _kHint),
             ),
           ),
-          const Icon(Icons.keyboard_arrow_down, size: 18, color: _kHint),
+          Icon(Icons.keyboard_arrow_down, size: 18, color: _kHint),
         ]),
       ),
     );
@@ -629,9 +629,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
           if (value != null && onClear != null)
             GestureDetector(
                 onTap: onClear,
-                child: const Icon(Icons.close, size: 18, color: _kHint))
+                child: Icon(Icons.close, size: 18, color: _kHint))
           else
-            const Icon(Icons.chevron_right, size: 20, color: _kHint),
+            Icon(Icons.chevron_right, size: 20, color: _kHint),
         ]),
       ),
     );
@@ -647,18 +647,18 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3EB),
+                  color: AppColors.fond(0xFFFFF3EB),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: _kAccent.withValues(alpha: 0.20)),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.build_circle_outlined,
+                  Icon(Icons.build_circle_outlined,
                       size: 15, color: _kAccent),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       el.libelleAvecQuantite,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: _kDark),
@@ -666,7 +666,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                   ),
                   Text(
                     '${el.montant.toStringAsFixed(0)} XOF',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
                         color: _kAccent,
                         fontWeight: FontWeight.w600),
@@ -684,7 +684,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(children: [
-              const Icon(Icons.checklist_rounded, size: 17, color: _kPrimary),
+              Icon(Icons.checklist_rounded, size: 17, color: _kPrimary),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -707,14 +707,14 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                   ),
                   child: Text(
                     '${_elements.length}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: _kAccent,
                         fontWeight: FontWeight.w700,
                         fontSize: 13),
                   ),
                 )
               else
-                const Icon(Icons.chevron_right_rounded,
+                Icon(Icons.chevron_right_rounded,
                     size: 20, color: _kHint),
             ]),
           ),
@@ -755,13 +755,13 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.groups_2_outlined, size: 18, color: _kAccent),
+          Icon(Icons.groups_2_outlined, size: 18, color: _kAccent),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Prestataires définis par élément',
+                Text('Prestataires définis par élément',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -769,7 +769,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                 if (noms.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(noms.join(' · '),
-                      style: const TextStyle(fontSize: 11.5, color: _kLabel)),
+                      style: TextStyle(fontSize: 11.5, color: _kLabel)),
                 ],
               ],
             ),
@@ -789,7 +789,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
       error: (e, _) => Text('Partenaires indisponibles : $e',
-          style: const TextStyle(fontSize: 12, color: AppColors.error)),
+          style: TextStyle(fontSize: 12, color: AppColors.error)),
       data: (liste) {
         // Un partenaire désactivé depuis la saisie reste affiché, sinon
         // l'intervention perdrait son prestataire à la première modification.
@@ -825,7 +825,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
   InputDecoration _fieldDeco(String hint) => InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+        hintStyle: TextStyle(color: _kHint, fontSize: 15),
         filled: true,
         fillColor: _kFieldFill,
         contentPadding:
@@ -840,15 +840,15 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+          borderSide: BorderSide(color: _kPrimary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kError, width: 1.5),
+          borderSide: BorderSide(color: _kError, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kError, width: 1.5),
+          borderSide: BorderSide(color: _kError, width: 1.5),
         ),
       );
 }
@@ -901,7 +901,7 @@ class _TypeDropdownState extends ConsumerState<_TypeDropdown> {
           border: Border.all(color: _kBorder),
         ),
         child: Row(children: [
-          const Expanded(
+          Expanded(
             child: Text('Sélectionner un type',
                 style: TextStyle(color: _kHint, fontSize: 14)),
           ),
@@ -909,7 +909,7 @@ class _TypeDropdownState extends ConsumerState<_TypeDropdown> {
             width: 15,
             height: 15,
             child: CircularProgressIndicator(
-                strokeWidth: 1.8, color: Colors.grey.shade400),
+                strokeWidth: 1.8, color: AppColors.grey400),
           ),
         ]),
       );
@@ -969,7 +969,7 @@ class _FormSection extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(title,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: _kDark,
@@ -1011,11 +1011,11 @@ class _LabeledField extends StatelessWidget {
       children: [
         Row(children: [
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5, fontWeight: FontWeight.w600, color: _kLabel)),
           if (isRequired) ...[
             const SizedBox(width: 3),
-            const Text('*',
+            Text('*',
                 style: TextStyle(
                     color: _kError, fontSize: 13, fontWeight: FontWeight.w700)),
           ],

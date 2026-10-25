@@ -117,16 +117,16 @@ class _ContraventionDetailPageState
                 child: Container(
                   width: 56,
                   height: 56,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.primaryTint,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.account_balance_outlined,
+                  child: Icon(Icons.account_balance_outlined,
                       size: 28, color: AppColors.primaryDark),
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
+              Text(
                 'Reverser à l\'État',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -136,7 +136,7 @@ class _ContraventionDetailPageState
                     letterSpacing: -0.4),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Le montant total de la contravention sera reversé à l\'État. '
                 'Une opération « Reversement contravention » sera enregistrée.',
                 textAlign: TextAlign.center,
@@ -158,11 +158,11 @@ class _ContraventionDetailPageState
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.surface,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.lock_outline,
+                      child: Icon(Icons.lock_outline,
                           size: 18, color: AppColors.primaryDark),
                     ),
                     const SizedBox(width: 12),
@@ -170,14 +170,14 @@ class _ContraventionDetailPageState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Montant à reverser',
+                          Text('Montant à reverser',
                               style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primaryDark)),
                           const SizedBox(height: 2),
                           Text(_fmtXof(montant),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 21,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.primaryDark,
@@ -198,7 +198,7 @@ class _ContraventionDetailPageState
                         onPressed: () => Navigator.pop(ctx, false),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.label,
-                          side: const BorderSide(color: AppColors.border),
+                          side: BorderSide(color: AppColors.border),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
                         ),
@@ -308,7 +308,7 @@ class _ContraventionDetailPageState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Elle restera au registre, datée et motivée, mais cessera '
               "d'être due à compter d'aujourd'hui.",
               style: TextStyle(fontSize: 13, color: AppColors.label),
@@ -518,11 +518,11 @@ class _ContraventionDetailPageState
                 color: AppColors.primaryTint,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.picture_as_pdf_outlined,
+              child: Icon(Icons.picture_as_pdf_outlined,
                   size: 22, color: AppColors.primaryDark),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -531,13 +531,13 @@ class _ContraventionDetailPageState
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: AppColors.dark)),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text('Relevé PDF · appuyer pour visualiser',
                       style: TextStyle(fontSize: 12, color: AppColors.label)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
+            Icon(Icons.chevron_right_rounded,
                 size: 22, color: AppColors.hint),
           ]),
         ),

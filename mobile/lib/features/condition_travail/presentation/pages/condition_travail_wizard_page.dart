@@ -10,16 +10,17 @@ import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/app_header.dart';
 import 'condition_travail_models.dart';
 
+import '../../../../core/theme/app_colors.dart';
 // ── Toast helpers ──────────────────────────────────────────────────────────────
 enum _ToastType { success, error, warning, info }
 
 void _appToast(BuildContext context, String message,
     {_ToastType type = _ToastType.success, Duration? duration}) {
   final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.success => (AppColors.success, Icons.check_circle_outline_rounded),
+    _ToastType.error   => (AppColors.error, Icons.error_outline_rounded),
+    _ToastType.warning => (AppColors.warning, Icons.warning_amber_rounded),
+    _ToastType.info    => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -59,9 +60,9 @@ final _sanctionTypesProvider =
 
 // ── Constantes de design ──────────────────────────────────────────────────────
 
-const _kPrimary = Color(0xFF43A047);
-const _kBg = Color(0xFFF4F6FB);
-const _kDark = Color(0xFF1A1A2E);
+Color get _kPrimary => AppColors.primary;
+Color get _kBg => AppColors.scaffold;
+Color get _kDark => AppColors.dark;
 
 // ── Page principale ───────────────────────────────────────────────────────────
 
@@ -408,7 +409,7 @@ class _ConditionTravailWizardPageState
       animation: _tabCtrl,
       builder: (context, _) {
         return Container(
-          color: Colors.white,
+          color: AppColors.blanc,
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
           child: Column(
             children: [
@@ -428,7 +429,7 @@ class _ConditionTravailWizardPageState
                         decoration: BoxDecoration(
                           color: selected
                               ? _kPrimary
-                              : const Color(0xFFF0F2F8),
+                              : AppColors.headerButton,
                           borderRadius: BorderRadius.circular(22),
                         ),
                         child: Row(
@@ -438,7 +439,7 @@ class _ConditionTravailWizardPageState
                                 size: 15,
                                 color: selected
                                     ? Colors.white
-                                    : const Color(0xFF8A94A6)),
+                                    : AppColors.hint),
                             const SizedBox(width: 6),
                             Text(
                               label,
@@ -449,7 +450,7 @@ class _ConditionTravailWizardPageState
                                     : FontWeight.w500,
                                 color: selected
                                     ? Colors.white
-                                    : const Color(0xFF8A94A6),
+                                    : AppColors.hint,
                               ),
                             ),
                           ],
@@ -460,7 +461,7 @@ class _ConditionTravailWizardPageState
                 ),
               ),
               const SizedBox(height: 10),
-              const Divider(height: 1, color: Color(0xFFF0F2F8)),
+              Divider(height: 1, color: AppColors.headerButton),
             ],
           ),
         );
@@ -489,9 +490,9 @@ class _ConditionTravailWizardPageState
             : 'Suivant';
 
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Color(0xFFF0F2F8))),
+          decoration: BoxDecoration(
+            color: AppColors.blanc,
+            border: Border(top: BorderSide(color: AppColors.headerButton)),
           ),
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
           child: SizedBox(
@@ -625,7 +626,7 @@ class _ConditionTravailWizardPageState
           // Alternance (visible si 2 chauffeurs)
           if (_nbChauffeurs == 2) ...[
             const SizedBox(height: 16),
-            const Divider(color: Color(0xFFF0F2F8)),
+            Divider(color: AppColors.headerButton),
             const SizedBox(height: 12),
             const _FieldLabel("Mode d'alternance"),
             const SizedBox(height: 8),
@@ -687,7 +688,7 @@ class _ConditionTravailWizardPageState
             const _CardSectionTitle('Jours de travail', Icons.calendar_month_rounded),
             const SizedBox(height: 6),
             Text('Sélectionnez les jours où le chauffeur travaille.',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                style: TextStyle(fontSize: 12, color: AppColors.grey500)),
             const SizedBox(height: 16),
             _InlineDaySelector(
               selected: _joursSlot1,
@@ -700,7 +701,7 @@ class _ConditionTravailWizardPageState
             const SizedBox(height: 6),
             Text(
                 'Jours de travail partagés par les deux chauffeurs en alternance.',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                style: TextStyle(fontSize: 12, color: AppColors.grey500)),
             const SizedBox(height: 16),
             _InlineDaySelector(
               selected: _joursPartages,
@@ -713,7 +714,7 @@ class _ConditionTravailWizardPageState
                 'Première alternance', Icons.swap_horiz_rounded),
             const SizedBox(height: 6),
             Text('Choisissez quel chauffeur commence la première période.',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                style: TextStyle(fontSize: 12, color: AppColors.grey500)),
             const SizedBox(height: 14),
             _PillSelector(
               options: const {
@@ -733,7 +734,7 @@ class _ConditionTravailWizardPageState
             const SizedBox(height: 6),
             Text(
                 'Sélectionnez les jours du chauffeur 1. Ne peuvent pas se chevaucher avec le chauffeur 2.',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                style: TextStyle(fontSize: 12, color: AppColors.grey500)),
             const SizedBox(height: 16),
             _InlineDaySelector(
               selected: _joursSlot1,
@@ -748,7 +749,7 @@ class _ConditionTravailWizardPageState
             const SizedBox(height: 6),
             Text(
                 'Sélectionnez les jours du chauffeur 2. Ne peuvent pas se chevaucher avec le chauffeur 1.',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                style: TextStyle(fontSize: 12, color: AppColors.grey500)),
             const SizedBox(height: 16),
             _InlineDaySelector(
               selected: _joursSlot2,
@@ -764,7 +765,7 @@ class _ConditionTravailWizardPageState
           const SizedBox(height: 6),
           Text(
             'Jour où les chauffeurs travaillent à leur propre compte.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: 12, color: AppColors.grey500),
           ),
           const SizedBox(height: 14),
           _PillSelector(
@@ -797,7 +798,7 @@ class _ConditionTravailWizardPageState
           Text(
             'Applique une recette spécifique les jours fériés. Les cotisations '
             'restent dues comme un jour ordinaire.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: 12, color: AppColors.grey500),
           ),
           const SizedBox(height: 14),
           _PillSelector(
@@ -811,7 +812,7 @@ class _ConditionTravailWizardPageState
         ]),
         // Rappel config si pas encore rempli
         if (_nbChauffeurs == 1 && _joursSlot1.isEmpty)
-          const _HintBanner('Sélectionnez au moins un jour de travail.'),
+          _HintBanner('Sélectionnez au moins un jour de travail.'),
       ],
     );
   }
@@ -853,7 +854,7 @@ class _ConditionTravailWizardPageState
           const SizedBox(height: 6),
           Text(
             'Montant réel : le chauffeur verse ce qu\'il a encaissé.\nMontant fixe : un objectif précis est défini.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500, height: 1.5),
+            style: TextStyle(fontSize: 12, color: AppColors.grey500, height: 1.5),
           ),
           const SizedBox(height: 14),
           _PillSelector(
@@ -993,11 +994,11 @@ class _ConditionTravailWizardPageState
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
+                      color: AppColors.positiveTint,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.savings_rounded,
-                        color: Color(0xFF43A047), size: 20),
+                    child: Icon(Icons.savings_rounded,
+                        color: AppColors.primary, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1005,14 +1006,14 @@ class _ConditionTravailWizardPageState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('${_cotisations.length} cotisation(s)',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
                                 color: _kDark)),
                         Text(
                           'Total : ${_cotisations.fold<double>(0, (s, c) => s + c.montant).toStringAsFixed(0)} XOF',
                           style: TextStyle(
-                              fontSize: 12, color: Colors.grey.shade600),
+                              fontSize: 12, color: AppColors.grey600),
                         ),
                       ],
                     ),
@@ -1046,13 +1047,13 @@ class _ConditionTravailWizardPageState
                     width: 1.5,
                     style: BorderStyle.solid),
                 borderRadius: BorderRadius.circular(14),
-                color: const Color(0xFFE8F5E9),
+                color: AppColors.positiveTint,
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.add_circle_rounded, color: _kPrimary, size: 20),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text('Ajouter une cotisation',
                       style: TextStyle(
                           color: _kPrimary,
@@ -1120,7 +1121,7 @@ class _ConditionTravailWizardPageState
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
@@ -1156,13 +1157,13 @@ class _ConditionTravailWizardPageState
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    side: BorderSide(color: Colors.grey.shade300),
+                    side: BorderSide(color: AppColors.grey300),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Annuler',
-                      style: TextStyle(color: Colors.black87)),
+                  child: Text('Annuler',
+                      style: TextStyle(color: AppColors.noir87)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1201,7 +1202,7 @@ class _ConditionTravailWizardPageState
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
@@ -1279,7 +1280,7 @@ class _ConditionTravailWizardPageState
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => _SanctionSheet(
@@ -1298,7 +1299,7 @@ class _ConditionTravailWizardPageState
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => _SanctionSheet(
@@ -1330,7 +1331,7 @@ class _FormCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1369,7 +1370,7 @@ class _CardSectionTitle extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Text(title,
-            style: const TextStyle(
+            style: TextStyle(
                 fontWeight: FontWeight.w700, fontSize: 14, color: _kDark)),
       ],
     );
@@ -1391,7 +1392,7 @@ class _FieldLabel extends StatelessWidget {
           text: label,
           style: TextStyle(
               fontSize: 13,
-              color: Colors.grey.shade600,
+              color: AppColors.grey600,
               fontWeight: FontWeight.w500),
           children: required
               ? const [TextSpan(text: ' *', style: TextStyle(color: Colors.red))]
@@ -1426,11 +1427,11 @@ class _PillSelector extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? _kPrimary : const Color(0xFFF0F2F8),
+          color: isSelected ? _kPrimary : AppColors.headerButton,
           borderRadius: BorderRadius.circular(22),
           border: isSelected
               ? null
-              : Border.all(color: const Color(0xFFE4E7EC)),
+              : Border.all(color: AppColors.border),
         ),
         child: Row(
           mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
@@ -1439,7 +1440,7 @@ class _PillSelector extends StatelessWidget {
             if (icon != null) ...[
               Icon(icon,
                   size: 15,
-                  color: isSelected ? Colors.white : Colors.grey.shade500),
+                  color: isSelected ? Colors.white : AppColors.grey500),
               const SizedBox(width: 6),
             ],
             Flexible(
@@ -1451,7 +1452,7 @@ class _PillSelector extends StatelessWidget {
                   fontWeight:
                       isSelected ? FontWeight.w700 : FontWeight.w500,
                   color:
-                      isSelected ? Colors.white : Colors.grey.shade700,
+                      isSelected ? Colors.white : AppColors.grey700,
                 ),
               ),
             ),
@@ -1554,17 +1555,17 @@ class _InlineDaySelector extends StatelessWidget {
                     height: diameter,
                     decoration: BoxDecoration(
                       color: isDisabled
-                          ? const Color(0xFFF0F0F0)
+                          ? AppColors.fond(0xFFF0F0F0)
                           : isSelected
                               ? _kPrimary
-                              : const Color(0xFFF0F2F8),
+                              : AppColors.headerButton,
                       shape: BoxShape.circle,
                       border: isSelected && !isDisabled
                           ? null
                           : Border.all(
                               color: isDisabled
                                   ? Colors.transparent
-                                  : const Color(0xFFC8E6C9),
+                                  : AppColors.fond(0xFFC8E6C9),
                             ),
                     ),
                     child: Center(
@@ -1574,10 +1575,10 @@ class _InlineDaySelector extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: isDisabled
-                              ? Colors.grey.shade300
+                              ? AppColors.grey300
                               : isSelected
                                   ? Colors.white
-                                  : Colors.grey.shade500,
+                                  : AppColors.grey500,
                         ),
                       ),
                     ),
@@ -1588,10 +1589,10 @@ class _InlineDaySelector extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       color: isDisabled
-                          ? Colors.grey.shade300
+                          ? AppColors.grey300
                           : isSelected
                               ? _kPrimary
-                              : Colors.grey.shade400,
+                              : AppColors.grey400,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
                     ),
                   ),
@@ -1628,7 +1629,7 @@ class _InlineDaySelector extends StatelessWidget {
                 'Tous les jours',
                 style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: AppColors.grey600,
                     fontWeight: FontWeight.w500),
               ),
             ],
@@ -1662,9 +1663,9 @@ class _PenaliteDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F6FB),
+        color: AppColors.scaffold,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
+        border: Border.all(color: AppColors.border),
       ),
       child: DropdownButtonHideUnderline(
         child: ButtonTheme(
@@ -1673,7 +1674,7 @@ class _PenaliteDropdown extends StatelessWidget {
             value: selected,
             isExpanded: true,
             borderRadius: BorderRadius.circular(12),
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kPrimary),
+            icon: Icon(Icons.keyboard_arrow_down_rounded, color: _kPrimary),
             onChanged: (v) { if (v != null) onSelected(v); },
             selectedItemBuilder: (context) => groups.map((g) {
               final ico = _icons[g.typePenalite] ?? Icons.warning_rounded;
@@ -1685,7 +1686,7 @@ class _PenaliteDropdown extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(g.label,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: _kDark)),
@@ -1699,7 +1700,7 @@ class _PenaliteDropdown extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text('$nb',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: _kPrimary)),
@@ -1715,7 +1716,7 @@ class _PenaliteDropdown extends StatelessWidget {
                 value: g.typePenalite,
                 child: Row(children: [
                   Icon(ico, size: 18,
-                      color: isSel ? _kPrimary : Colors.grey.shade500),
+                      color: isSel ? _kPrimary : AppColors.grey500),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(g.label,
@@ -1735,7 +1736,7 @@ class _PenaliteDropdown extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text('$nb',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: _kPrimary)),
@@ -1776,9 +1777,9 @@ class _TimeCard extends StatelessWidget {
         width: fullWidth ? double.infinity : null,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F2F8),
+          color: AppColors.headerButton,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE4E7EC)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
@@ -1800,17 +1801,17 @@ class _TimeCard extends StatelessWidget {
                   Text(label,
                       style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey.shade500,
+                          color: AppColors.grey500,
                           fontWeight: FontWeight.w500)),
                   Text('$h:$m',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: _kDark)),
                 ],
               ),
             ),
-            Icon(Icons.edit_rounded, size: 14, color: Colors.grey.shade400),
+            Icon(Icons.edit_rounded, size: 14, color: AppColors.grey400),
           ],
         ),
       ),
@@ -1826,12 +1827,13 @@ class _HintBanner extends StatelessWidget {
   final Color iconColor;
   final IconData icon;
 
-  const _HintBanner(
+  _HintBanner(
     this.message, {
-    this.color = const Color(0xFFE8F5E9),
-    this.iconColor = _kPrimary,
+    Color? color,
+    Color? iconColor,
     this.icon = Icons.info_outline_rounded,
-  });
+  })  : color = color ?? AppColors.positiveTint,
+        iconColor = iconColor ?? _kPrimary;
 
   @override
   Widget build(BuildContext context) {
@@ -1876,7 +1878,7 @@ class _CotisationTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -1891,16 +1893,16 @@ class _CotisationTile extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
+              color: AppColors.positiveTint,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
               child: Text(
                 '$index',
-                style: const TextStyle(
+                style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
-                    color: Color(0xFF43A047)),
+                    color: AppColors.primary),
               ),
             ),
           ),
@@ -1910,19 +1912,19 @@ class _CotisationTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(cotisation.nom,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: _kDark)),
                 Text('${cotisation.montant.toStringAsFixed(0)} XOF',
                     style: TextStyle(
-                        fontSize: 12, color: Colors.grey.shade600)),
+                        fontSize: 12, color: AppColors.grey600)),
               ],
             ),
           ),
           IconButton(
             icon: Icon(Icons.edit_outlined,
-                color: Colors.grey.shade500, size: 18),
+                color: AppColors.grey500, size: 18),
             onPressed: onEdit,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -2017,9 +2019,9 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
     final isEdit = widget.initial != null;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppColors.blanc,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom +
@@ -2053,7 +2055,7 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
                     margin: const EdgeInsets.only(top: 12, bottom: 20),
                     width: 36, height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE0E0E0),
+                      color: AppColors.fond(0xFFE0E0E0),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -2065,20 +2067,20 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
                       color: _kPrimary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.gavel_rounded,
+                    child: Icon(Icons.gavel_rounded,
                         color: _kPrimary, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(
                       isEdit ? 'Modifier la sanction' : 'Nouvelle sanction',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 17, fontWeight: FontWeight.w700,
                           color: _kDark),
                     ),
                     Text(
                       'Configurez le type et le paramètre',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      style: TextStyle(fontSize: 12, color: AppColors.grey500),
                     ),
                   ]),
                 ]),
@@ -2112,13 +2114,13 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        side: BorderSide(color: Colors.grey.shade300),
+                        side: BorderSide(color: AppColors.grey300),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Annuler',
-                          style: TextStyle(color: Colors.black87)),
+                      child: Text('Annuler',
+                          style: TextStyle(color: AppColors.noir87)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -2248,9 +2250,9 @@ class _SanctionTypeDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F6FB),
+        color: AppColors.scaffold,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
+        border: Border.all(color: AppColors.border),
       ),
       child: DropdownButtonHideUnderline(
         child: ButtonTheme(
@@ -2259,13 +2261,13 @@ class _SanctionTypeDropdown extends StatelessWidget {
             value: selected,
             isExpanded: true,
             hint: Row(children: [
-              Icon(Icons.gavel_rounded, size: 18, color: Colors.grey.shade400),
+              Icon(Icons.gavel_rounded, size: 18, color: AppColors.grey400),
               const SizedBox(width: 10),
               Text('Choisir un type',
-                  style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+                  style: TextStyle(color: AppColors.grey400, fontSize: 14)),
             ]),
             borderRadius: BorderRadius.circular(12),
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kPrimary),
+            icon: Icon(Icons.keyboard_arrow_down_rounded, color: _kPrimary),
             onChanged: (v) { if (v != null) onSelected(v); },
             selectedItemBuilder: (context) => types.map((t) {
               final icon = _kSanctionIcons[t.code] ?? Icons.warning_rounded;
@@ -2275,7 +2277,7 @@ class _SanctionTypeDropdown extends StatelessWidget {
                   Icon(icon, size: 18, color: _kPrimary),
                   const SizedBox(width: 10),
                   Text(t.label,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: _kDark)),
@@ -2294,11 +2296,11 @@ class _SanctionTypeDropdown extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isSel
                           ? _kPrimary.withValues(alpha: 0.12)
-                          : const Color(0xFFF0F2F8),
+                          : AppColors.headerButton,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Icon(icon, size: 18,
-                        color: isSel ? _kPrimary : Colors.grey.shade500),
+                        color: isSel ? _kPrimary : AppColors.grey500),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -2317,12 +2319,12 @@ class _SanctionTypeDropdown extends StatelessWidget {
                           Text(desc,
                               style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.grey.shade500)),
+                                  color: AppColors.grey500)),
                       ],
                     ),
                   ),
                   if (isSel)
-                    const Icon(Icons.check_rounded, size: 18, color: _kPrimary),
+                    Icon(Icons.check_rounded, size: 18, color: _kPrimary),
                 ]),
               );
             }).toList(),
@@ -2344,7 +2346,7 @@ class _SheetLabel extends StatelessWidget {
       style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: Colors.grey.shade600));
+          color: AppColors.grey600));
 }
 
 class _ParamSection extends StatelessWidget {
@@ -2372,19 +2374,19 @@ class _ParamSection extends StatelessWidget {
         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey.shade400,
+          hintStyle: TextStyle(color: AppColors.grey400,
               fontWeight: FontWeight.normal),
           suffixText: suffix,
           suffixStyle: TextStyle(
-              color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+              color: AppColors.grey500, fontWeight: FontWeight.w500),
           filled: true,
-          fillColor: const Color(0xFFF4F6FB),
+          fillColor: AppColors.scaffold,
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _kPrimary, width: 1.5)),
+              borderSide: BorderSide(color: _kPrimary, width: 1.5)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
@@ -2421,11 +2423,11 @@ class _DureeMinutesSection extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? _kPrimary : const Color(0xFFF4F6FB),
+                color: isSelected ? _kPrimary : AppColors.scaffold,
                 borderRadius: BorderRadius.circular(22),
                 border: isSelected
                     ? null
-                    : Border.all(color: const Color(0xFFE4E7EC)),
+                    : Border.all(color: AppColors.border),
               ),
               child: Text(e.value,
                   style: TextStyle(
@@ -2434,7 +2436,7 @@ class _DureeMinutesSection extends StatelessWidget {
                           ? FontWeight.w700
                           : FontWeight.w500,
                       color:
-                          isSelected ? Colors.white : Colors.grey.shade700)),
+                          isSelected ? Colors.white : AppColors.grey700)),
             ),
           );
         }).toList(),
@@ -2475,7 +2477,7 @@ class _WizGroupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -2506,12 +2508,12 @@ class _WizGroupCard extends StatelessWidget {
                 _KV('Heure de fin de service', heureFin),
               ]),
             ),
-          const Divider(height: 1, color: Color(0xFFE4E7EC)),
+          Divider(height: 1, color: AppColors.border),
           if (group.sanctions.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Text('Aucune sanction — ajoutez-en une ci-dessous.',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                  style: TextStyle(fontSize: 13, color: AppColors.grey500)),
             )
           else
             for (int i = 0; i < group.sanctions.length; i++)
@@ -2522,7 +2524,7 @@ class _WizGroupCard extends StatelessWidget {
                 showDivider: i < group.sanctions.length - 1,
               ),
           if (canAdd) ...[
-          const Divider(height: 1, color: Color(0xFFE4E7EC)),
+          Divider(height: 1, color: AppColors.border),
           InkWell(
             onTap: onAddSanction,
             borderRadius:
@@ -2534,13 +2536,13 @@ class _WizGroupCard extends StatelessWidget {
                   Container(
                     width: 22,
                     height: 22,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                         color: _kPrimary, shape: BoxShape.circle),
                     child:
                         const Icon(Icons.add, color: Colors.white, size: 14),
                   ),
                   const SizedBox(width: 10),
-                  const Text('Ajouter une sanction',
+                  Text('Ajouter une sanction',
                       style: TextStyle(
                           color: _kPrimary,
                           fontWeight: FontWeight.w600,
@@ -2582,7 +2584,7 @@ class _WizGroupHeader extends StatelessWidget {
           child: Icon(icon, size: 18, color: _kPrimary),
         ),
         const SizedBox(width: 10),
-        const Expanded(
+        Expanded(
           child: Text('Sanctions',
               style: TextStyle(
                   fontSize: 14,
@@ -2603,7 +2605,7 @@ class _ContextCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: AppColors.scaffold,
           borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
@@ -2629,7 +2631,7 @@ class _KV extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(key_,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            style: TextStyle(color: AppColors.grey600, fontSize: 13)),
         Text(value,
             style: TextStyle(
                 fontWeight: FontWeight.w600,
@@ -2679,13 +2681,13 @@ class _WizSanctionRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(penalite.resume,
                         style: TextStyle(
-                            fontSize: 13, color: Colors.grey.shade600)),
+                            fontSize: 13, color: AppColors.grey600)),
                   ],
                 ),
               ),
               IconButton(
                 onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined, color: _kPrimary, size: 18),
+                icon: Icon(Icons.edit_outlined, color: _kPrimary, size: 18),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -2701,7 +2703,7 @@ class _WizSanctionRow extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Divider(height: 1, indent: 16, color: Color(0xFFE4E7EC)),
+          Divider(height: 1, indent: 16, color: AppColors.border),
       ],
     );
   }
@@ -2733,20 +2735,20 @@ class _Field extends StatelessWidget {
       inputFormatters: inputFormatters,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey.shade400),
+        hintStyle: TextStyle(color: AppColors.grey400),
         filled: true,
-        fillColor: const Color(0xFFF5F5F5),
+        fillColor: AppColors.scaffold,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+          borderSide: BorderSide(color: _kPrimary, width: 1.5),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -2770,16 +2772,16 @@ class _DateField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: AppColors.scaffold,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE4E7EC)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
             Expanded(
                 child: Text(label, style: const TextStyle(fontSize: 15))),
             Icon(Icons.calendar_today_outlined,
-                color: Colors.grey.shade500, size: 18),
+                color: AppColors.grey500, size: 18),
           ],
         ),
       ),
@@ -2796,7 +2798,7 @@ class _AmberCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: const Color(0xFFFFF8E1),
+          color: AppColors.fond(0xFFFFF8E1),
           borderRadius: BorderRadius.circular(10)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

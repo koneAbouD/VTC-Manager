@@ -180,7 +180,7 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
             icon: Icons.arrow_back_rounded,
             onTap: () => Navigator.pop(context),
           ),
-          const Expanded(
+          Expanded(
             child: Text('Contraventions',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -207,7 +207,7 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
         width: 56,
         height: 38,
         decoration: BoxDecoration(
-          color: tinted ? AppColors.primaryTint : const Color(0xFFF0F2F8),
+          color: tinted ? AppColors.primaryTint : AppColors.headerButton,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Icon(icon,
@@ -221,7 +221,7 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
   Widget _segmented() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: AppColors.grey100,
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(4),
@@ -260,7 +260,7 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: actif ? const Color(0xFF43A047) : Colors.grey.shade600)),
+                  color: actif ? AppColors.primary : AppColors.grey600)),
         ),
       ),
     );
@@ -274,13 +274,13 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
         width: 56,
         height: 38,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F2F8),
+          color: AppColors.headerButton,
           borderRadius: BorderRadius.circular(20),
         ),
         child: AnimatedRotation(
           turns: _addOpen ? 0.125 : 0,
           duration: const Duration(milliseconds: 180),
-          child: const Icon(Icons.add_rounded, size: 18, color: AppColors.dark),
+          child: Icon(Icons.add_rounded, size: 18, color: AppColors.dark),
         ),
       ),
     );
@@ -305,7 +305,7 @@ class _ContraventionsHubPageState extends ConsumerState<ContraventionsHubPage> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(label,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: AppColors.dark)),

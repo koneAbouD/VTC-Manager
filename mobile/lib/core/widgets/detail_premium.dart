@@ -37,7 +37,7 @@ class PremiumHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(amount,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   color: AppColors.dark,
@@ -52,7 +52,7 @@ class PremiumHero extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(footer,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w600,
                       color: AppColors.dark)),
@@ -72,13 +72,13 @@ class PremiumSection extends StatelessWidget {
   final List<Widget> children;
   final Color accent;
 
-  const PremiumSection({
+  PremiumSection({
     super.key,
     required this.title,
     required this.icon,
     required this.children,
-    this.accent = AppColors.primary,
-  });
+    Color? accent,
+  }) : accent = accent ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +98,7 @@ class PremiumSection extends StatelessWidget {
             Icon(icon, size: 18, color: accent),
             const SizedBox(width: 8),
             Text(title,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.dark)),
@@ -132,7 +132,7 @@ class PremiumRow extends StatelessWidget {
           SizedBox(
             width: 120,
             child: Text(label,
-                style: const TextStyle(fontSize: 12.5, color: AppColors.label)),
+                style: TextStyle(fontSize: 12.5, color: AppColors.label)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -188,7 +188,7 @@ class PremiumListHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8, left: 2),
       child: Text(title,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.dark)),
     );
   }
@@ -228,7 +228,7 @@ class PremiumEncaissementTile extends StatelessWidget {
   /// n'offre aucun geste — elle ne se défait qu'en annulant l'arrêté.
   final String? arreteCompensation;
 
-  const PremiumEncaissementTile({
+  PremiumEncaissementTile({
     super.key,
     required this.montant,
     required this.meta,
@@ -238,9 +238,9 @@ class PremiumEncaissementTile extends StatelessWidget {
     this.motifAnnulation,
     this.onModifierDate,
     this.motifDateNonModifiable,
-    this.accent = AppColors.primaryDark,
+    Color? accent,
     this.arreteCompensation,
-  });
+  }) : accent = accent ?? AppColors.primaryDark;
 
   bool get _compensation => arreteCompensation != null;
 
@@ -266,8 +266,8 @@ class PremiumEncaissementTile extends StatelessWidget {
     return LongPressInfoBubble(
       infoText: motifDateNonModifiable!,
       color: AppColors.warning,
-      child: const Padding(
-        padding: EdgeInsets.all(6),
+      child: Padding(
+        padding: const EdgeInsets.all(6),
         child: Icon(Icons.lock_outline_rounded,
             size: 14, color: AppColors.hint),
       ),
@@ -330,7 +330,7 @@ class PremiumEncaissementTile extends StatelessWidget {
                         color: AppColors.error.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text('Annulé',
+                      child: Text('Annulé',
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -346,7 +346,7 @@ class PremiumEncaissementTile extends StatelessWidget {
                         color: AppColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text('Compensé',
+                      child: Text('Compensé',
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -357,7 +357,7 @@ class PremiumEncaissementTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(meta,
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.label)),
+                        TextStyle(fontSize: 12, color: AppColors.label)),
                 if (commentaire != null && commentaire!.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(commentaire!,
@@ -372,7 +372,7 @@ class PremiumEncaissementTile extends StatelessWidget {
                     motifAnnulation!.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text('Motif : ${motifAnnulation!}',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12, height: 1.3, color: AppColors.error)),
                 ],
               ],
@@ -406,7 +406,7 @@ class PremiumEmpty extends StatelessWidget {
         Icon(icon, size: 26, color: AppColors.hint),
         const SizedBox(height: 6),
         Text(message,
-            style: const TextStyle(fontSize: 12.5, color: AppColors.label)),
+            style: TextStyle(fontSize: 12.5, color: AppColors.label)),
       ]),
     );
   }
@@ -423,15 +423,15 @@ class PremiumButton extends StatelessWidget {
   final bool expanded;
   final VoidCallback onPressed;
 
-  const PremiumButton({
+  PremiumButton({
     super.key,
     required this.label,
     required this.icon,
     required this.onPressed,
-    this.color = AppColors.primary,
+    Color? color,
     this.filled = true,
     this.expanded = false,
-  });
+  }) : color = color ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {

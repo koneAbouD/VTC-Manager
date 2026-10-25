@@ -116,11 +116,11 @@ class _Groupe {
   final Color accent;
   final List<ParametreGeneral> parametres;
 
-  const _Groupe({
+  _Groupe({
     required this.titre,
     required this.parametres,
-    this.accent = AppColors.primary,
-  });
+    Color? accent,
+  }) : accent = accent ?? AppColors.primary;
 }
 
 /// Range les paramètres par domaine, dans un ordre fixe.
@@ -243,7 +243,7 @@ class _SectionGroupe extends StatelessWidget {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             groupe.titre.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.6,
@@ -263,7 +263,7 @@ class _SectionGroupe extends StatelessWidget {
               children: [
                 for (var i = 0; i < groupe.parametres.length; i++) ...[
                   if (i > 0)
-                    const Divider(
+                    Divider(
                       height: 1,
                       thickness: 1,
                       indent: 14,
@@ -436,7 +436,7 @@ class _LigneParametreState extends State<_LigneParametre> {
                           children: [
                             Text(
                               parametre.libelle,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14.5,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.dark,
@@ -448,7 +448,7 @@ class _LigneParametreState extends State<_LigneParametre> {
                                 parametre.description,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10.5,
                                   height: 1.3,
                                   color: AppColors.hint,
@@ -476,7 +476,7 @@ class _LigneParametreState extends State<_LigneParametre> {
                         const SizedBox(height: 3),
                         Text(
                           annees,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 10.5, color: AppColors.hint),
                         ),
                       ],
@@ -540,7 +540,7 @@ class _LigneParametreState extends State<_LigneParametre> {
                 child: Text(
                   '${_erreur!} Valeur en vigueur : '
                   '${_valeurAffichee(_enregistree, type)}.',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11.5, height: 1.35, color: AppColors.error),
                 ),
               ),
@@ -678,7 +678,7 @@ class _RouletteState extends State<_Roulette> {
           child: Text(
             _valeurAffichee('${widget.options[i]}', widget.type),
             maxLines: 1,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.dark,
@@ -721,7 +721,7 @@ class _ChampLibreState extends State<_ChampLibre> {
     return TextField(
       controller: _controleur,
       onChanged: widget.onChange,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w700,
         color: AppColors.dark,
@@ -734,7 +734,7 @@ class _ChampLibreState extends State<_ChampLibre> {
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -770,7 +770,7 @@ class _EtatVide extends StatelessWidget {
             const SizedBox(height: 12),
             Text(message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.label)),
+                style: TextStyle(color: AppColors.label)),
             if (onReessayer != null) ...[
               const SizedBox(height: 16),
               FilledButton.icon(

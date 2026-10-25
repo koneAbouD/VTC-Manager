@@ -8,6 +8,8 @@ class SecureStorage {
   static const _kAccessExpiry = 'access_token_expiry'; // epoch ms
   static const _kLoggedOut = 'session_logged_out';
   static const _kNotificationsCoupees = 'notifications_coupees';
+  static const _kThemeAccent = 'theme_accent';
+  static const _kThemeMode = 'theme_mode';
 
   final FlutterSecureStorage _storage;
 
@@ -99,4 +101,19 @@ class SecureStorage {
       await _storage.delete(key: _kNotificationsCoupees);
     }
   }
+
+  /// Apparence choisie depuis les réglages : couleur d'accent et mode
+  /// (clair / sombre / système), stockés par leur nom.
+  ///
+  /// Comme les notifications, le choix vaut pour cet appareil et survit à la
+  /// déconnexion : l'écran de connexion lui-même doit déjà être à son goût.
+  /// Absent = valeurs par défaut (vert, clair).
+  Future<String?> getThemeAccent() => _storage.read(key: _kThemeAccent);
+  Future<String?> getThemeMode() => _storage.read(key: _kThemeMode);
+
+  Future<void> setThemeAccent(String nom) =>
+      _storage.write(key: _kThemeAccent, value: nom);
+
+  Future<void> setThemeMode(String nom) =>
+      _storage.write(key: _kThemeMode, value: nom);
 }

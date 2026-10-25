@@ -163,7 +163,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Déjà un compte ?',
+                Text('Déjà un compte ?',
                     style: TextStyle(color: kAuthHint, fontSize: 14)),
                 TextButton(
                   onPressed: () => Navigator.of(context).maybePop(),

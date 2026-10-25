@@ -6,6 +6,7 @@ import '../../domain/entities/vehicule.dart';
 import '../providers/vehicule_provider.dart';
 import '../providers/vehicule_state.dart';
 
+import '../../../../core/theme/app_colors.dart';
 class VehiculeSelectorPage extends ConsumerStatefulWidget {
   const VehiculeSelectorPage({super.key});
 
@@ -38,7 +39,7 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
             .toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       appBar: const AppHeader(title: 'Sélectionner un véhicule'),
       body: Column(
         children: [
@@ -49,9 +50,9 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
               onChanged: (v) => setState(() => _query = v),
               decoration: InputDecoration(
                 hintText: 'Rechercher un véhicule...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                prefixIcon: Icon(Icons.search, color: AppColors.grey500),
                 filled: true,
-                fillColor: const Color(0xFFF5F5F5),
+                fillColor: AppColors.scaffold,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -69,14 +70,14 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.directions_car_outlined,
-                          size: 64, color: Colors.grey.shade300),
+                          size: 64, color: AppColors.grey300),
                       const SizedBox(height: 12),
                       const Text('Aucun véhicule trouvé',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text('Aucun véhicule disponible',
                           style: TextStyle(
-                              color: Colors.grey.shade500, fontSize: 13)),
+                              color: AppColors.grey500, fontSize: 13)),
                     ],
                   )
                 : ListView.builder(
@@ -95,9 +96,9 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 14),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.blanc,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFE4E7EC)),
+                            border: Border.all(color: AppColors.border),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.03),
@@ -114,10 +115,10 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                                   children: [
                                     Text(
                                       v.immatriculation,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 14,
-                                        color: Color(0xFF1A1A2E),
+                                        color: AppColors.dark,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -125,7 +126,7 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
                                       v.displayName,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey.shade600,
+                                        color: AppColors.grey600,
                                       ),
                                     ),
                                   ],

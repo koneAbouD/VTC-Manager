@@ -41,15 +41,15 @@ void _appToast(
 }) {
   final (Color bg, IconData icon) = switch (type) {
     _ToastType.success => (
-        const Color(0xFF1B5E20),
+        AppColors.success,
         Icons.check_circle_outline_rounded
       ),
-    _ToastType.error => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
+    _ToastType.error => (AppColors.error, Icons.error_outline_rounded),
     _ToastType.warning => (
-        const Color(0xFFE65100),
+        AppColors.warning,
         Icons.warning_amber_rounded
       ),
-    _ToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.info => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -337,19 +337,19 @@ class _CotisationsTab extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF4FF),
+                color: AppColors.infoTint,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFD8E4FF)),
+                border: Border.all(color: AppColors.fond(0xFFD8E4FF)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.calculate_outlined,
+                  Icon(Icons.calculate_outlined,
                       color: AppColors.primary, size: 18),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Total : ${_formatAmount(condition.totalCotisations)} XOF / versement',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
@@ -428,7 +428,7 @@ class _PenalitesTab extends ConsumerWidget {
                   child: _SectionCard(
                     title: _typePenaliteLabel(g.typePenalite),
                     icon: Icons.gavel_outlined,
-                    accent: const Color(0xFFE65100),
+                    accent: AppColors.warning,
                     children: g.sanctions
                         .map((p) => _InfoRow(
                               label: _sanctionLabel(p.typeSanction),
@@ -555,9 +555,9 @@ class _ConditionTravailBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF4FF),
+        color: AppColors.infoTint,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD8E4FF)),
+        border: Border.all(color: AppColors.fond(0xFFD8E4FF)),
       ),
       child: Row(
         children: [
@@ -567,7 +567,7 @@ class _ConditionTravailBanner extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(Icons.work_outline,
+            child: Icon(Icons.work_outline,
                 color: AppColors.primary, size: 16),
           ),
           const SizedBox(width: 10),
@@ -585,10 +585,10 @@ class _ConditionTravailBanner extends StatelessWidget {
                 ),
                 Text(
                   condition.nom,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A2E),
+                    color: AppColors.dark,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -706,15 +706,15 @@ class _DocumentCard extends StatelessWidget {
         ? Colors.red.shade200
         : _isExpiringSoon
             ? Colors.orange.shade200
-            : const Color(0xFFE4E9F5);
+            : AppColors.border;
     final expiryColor = _isExpired
         ? Colors.red.shade400
         : _isExpiringSoon
             ? Colors.orange.shade400
-            : Colors.grey.shade500;
+            : AppColors.grey500;
 
     return Material(
-      color: Colors.white,
+      color: AppColors.blanc,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -753,10 +753,10 @@ class _DocumentCard extends StatelessWidget {
                     children: [
                       Text(
                         document.displayName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A2E),
+                          color: AppColors.dark,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -765,12 +765,12 @@ class _DocumentCard extends StatelessWidget {
                       Row(
                         children: [
                           Icon(Icons.calendar_today_outlined,
-                              size: 11, color: Colors.grey.shade400),
+                              size: 11, color: AppColors.grey400),
                           const SizedBox(width: 4),
                           Text(
                             'Émis ${_fmtDate(document.dateEmission)}',
                             style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade500),
+                                fontSize: 12, color: AppColors.grey500),
                           ),
                         ],
                       ),
@@ -903,7 +903,7 @@ class _DocumentViewerDialogState extends ConsumerState<_DocumentViewerDialog> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: Container(
-          color: const Color(0xFF1A1A2E),
+          color: AppColors.dark,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1199,7 +1199,7 @@ class _NoConditionView extends StatelessWidget {
               width: 84,
               height: 84,
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF4FF),
+                color: AppColors.infoTint,
                 borderRadius: BorderRadius.circular(42),
               ),
               child: Icon(icon, size: 38, color: AppColors.primary),
@@ -1208,10 +1208,10 @@ class _NoConditionView extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 17,
-                color: Color(0xFF1A1A2E),
+                color: AppColors.dark,
               ),
             ),
             const SizedBox(height: 8),
@@ -1219,7 +1219,7 @@ class _NoConditionView extends StatelessWidget {
               description,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.grey.shade600,
+                color: AppColors.grey600,
                 fontSize: 13.5,
                 height: 1.5,
               ),
@@ -1229,14 +1229,14 @@ class _NoConditionView extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3E0),
+                  color: AppColors.warningTint,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   errorDetails!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 11.5, color: Color(0xFFE65100), height: 1.4),
+                  style: TextStyle(
+                      fontSize: 11.5, color: AppColors.warning, height: 1.4),
                 ),
               ),
             ],
@@ -1248,7 +1248,7 @@ class _NoConditionView extends StatelessWidget {
                 label: const Text('Recharger'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary),
+                  side: BorderSide(color: AppColors.primary),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   shape: RoundedRectangleBorder(
@@ -1426,7 +1426,7 @@ class _InfoGeneralesTab extends ConsumerWidget {
                       ),
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     "Voir l'historique de vidange",
                     style: TextStyle(
                       color: AppColors.primary,
@@ -1441,7 +1441,7 @@ class _InfoGeneralesTab extends ConsumerWidget {
                       color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(9),
                     ),
-                    child: const Icon(Icons.arrow_forward,
+                    child: Icon(Icons.arrow_forward,
                         color: AppColors.primary, size: 16),
                   ),
                 ],
@@ -1454,7 +1454,7 @@ class _InfoGeneralesTab extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.blanc,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -1469,7 +1469,7 @@ class _InfoGeneralesTab extends ConsumerWidget {
                     Text(
                       '${vehicule.photos!.length} photo${vehicule.photos!.length > 1 ? 's' : ''}',
                       style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                          TextStyle(fontSize: 12, color: AppColors.grey500),
                     ),
                   ],
                 ),
@@ -1502,7 +1502,7 @@ class _InfoGeneralesTab extends ConsumerWidget {
                                     : Container(
                                         width: 100,
                                         height: 100,
-                                        color: Colors.grey.shade100,
+                                        color: AppColors.grey100,
                                         child: const Center(
                                           child: CircularProgressIndicator(
                                               strokeWidth: 2),
@@ -1511,9 +1511,9 @@ class _InfoGeneralesTab extends ConsumerWidget {
                             errorBuilder: (_, __, ___) => Container(
                               width: 100,
                               height: 100,
-                              color: Colors.grey.shade100,
+                              color: AppColors.grey100,
                               child: Icon(Icons.broken_image_outlined,
-                                  color: Colors.grey.shade400),
+                                  color: AppColors.grey400),
                             ),
                           ),
                         ),
@@ -1613,11 +1613,11 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
             Container(
               padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.blanc,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1A1A2E).withValues(alpha: 0.06),
+                    color: AppColors.dark.withValues(alpha: 0.06),
                     blurRadius: 14,
                     offset: const Offset(0, 4),
                   ),
@@ -1634,10 +1634,10 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
                           DateFormat('MMMM yyyy', 'fr_FR')
                               .format(_focusedMonth),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF1A1A2E),
+                            color: AppColors.dark,
                           ),
                         ),
                       ),
@@ -1655,7 +1655,7 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.grey.shade500,
+                                  color: AppColors.grey500,
                                 ),
                               ),
                             ))
@@ -1701,7 +1701,7 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFF4FF),
+                      color: AppColors.infoTint,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Text(
@@ -1738,23 +1738,23 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0),
+        color: AppColors.warningTint,
         borderRadius: BorderRadius.circular(14),
         border:
-            Border.all(color: const Color(0xFFE65100).withValues(alpha: 0.30)),
+            Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.swap_horiz_rounded,
-                  size: 18, color: Color(0xFFE65100)),
-              SizedBox(width: 8),
+                  size: 18, color: AppColors.warning),
+              const SizedBox(width: 8),
               Text('Remplacement en cours',
                   style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFE65100),
+                      color: AppColors.warning,
                       fontSize: 13)),
             ],
           ),
@@ -1814,9 +1814,9 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
         : null;
 
     final initialsColor = estRemplace
-        ? const Color(0xFFE65100) // remplacement → orange
+        ? AppColors.warning // remplacement → orange
         : isSalaryDay
-            ? const Color(0xFF2E7D32)
+            ? AppColors.positive
             : const Color(0xFF3158B6);
 
     return Material(
@@ -1828,7 +1828,7 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
           decoration: BoxDecoration(
             border: Border.all(
               color:
-                  isToday ? const Color(0xFF8BA4E8) : const Color(0xFFEEEEEE),
+                  isToday ? const Color(0xFF8BA4E8) : AppColors.fond(0xFFEEEEEE),
               width: 0.5,
             ),
           ),
@@ -1869,21 +1869,21 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
   ) {
     final isSalaryDay = schedule.salaryDriver != null;
     final rowColor =
-        isSalaryDay ? const Color(0xFF2E7D32) : const Color(0xFF3158B6);
+        isSalaryDay ? AppColors.positive : const Color(0xFF3158B6);
     final rowBg =
-        isSalaryDay ? const Color(0xFFE8F5E9) : const Color(0xFFEAF1FF);
+        isSalaryDay ? AppColors.positiveTint : const Color(0xFFEAF1FF);
     final borderColor =
-        isSalaryDay ? const Color(0xFFC8E6C9) : const Color(0xFFE4E9F5);
+        isSalaryDay ? const Color(0xFFC8E6C9) : AppColors.border;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.05),
+            color: AppColors.dark.withValues(alpha: 0.05),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -1894,10 +1894,10 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
         children: [
           Text(
             DateFormat('EEEE d MMMM yyyy', 'fr_FR').format(schedule.date),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 14,
-              color: Color(0xFF1A1A2E),
+              color: AppColors.dark,
             ),
           ),
           const SizedBox(height: 12),
@@ -1911,10 +1911,10 @@ class _ChauffeursTabState extends ConsumerState<_ChauffeursTab> {
                 : schedule.serviceDriver.nomComplet,
             detail: _timeRange(programme),
             color: schedule.remplacantNom != null
-                ? const Color(0xFFE65100)
+                ? AppColors.warning
                 : rowColor,
             bg: schedule.remplacantNom != null
-                ? const Color(0xFFFFF3E0)
+                ? AppColors.warningTint
                 : rowBg,
             onTap: schedule.serviceDriver.chauffeurId > 0
                 ? () {
@@ -2169,7 +2169,7 @@ class _LegendChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
+            color: AppColors.grey700,
           ),
         ),
       ],
@@ -2265,25 +2265,25 @@ class _EmptyProgrammeView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.blanc,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Programme de travail',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: AppColors.grey500,
                     letterSpacing: 0.5,
                   ),
                 ),
               ),
               GestureDetector(
                 onTap: onConfigure,
-                child: const Icon(Icons.edit_outlined,
+                child: Icon(Icons.edit_outlined,
                     color: AppColors.primary, size: 20),
               ),
             ],
@@ -2293,20 +2293,20 @@ class _EmptyProgrammeView extends StatelessWidget {
         const Icon(Icons.event_note_outlined,
             size: 64, color: Color(0xFFBBC4E0)),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'Aucun programme configuré',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 18,
-            color: Color(0xFF1A1A2E),
+            color: AppColors.dark,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Configurez le programme de travail de ce véhicule\npour gérer les chauffeurs et le calendrier.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+          style: TextStyle(color: AppColors.grey500, fontSize: 14, height: 1.5),
         ),
         const SizedBox(height: 32),
         SizedBox(
@@ -2375,13 +2375,13 @@ class _VehiculeHeroCard extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFFFFFF), Color(0xFFF6F8FF)],
+          colors: [AppColors.fond(0xFFFFFFFF), AppColors.fond(0xFFF6F8FF)],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE4E9F5)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.05),
@@ -2406,14 +2406,14 @@ class _VehiculeHeroCard extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: estClaire
-                          ? const Color(0xFFDDE1EA)
+                          ? AppColors.border
                           : couleur.withValues(alpha: 0.35),
                       width: 1,
                     ),
                   ),
                   child: Icon(
                     Icons.directions_car_rounded,
-                    color: estClaire ? const Color(0xFF6B7280) : couleur,
+                    color: estClaire ? AppColors.label : couleur,
                     size: 34,
                   ),
                 );
@@ -2425,10 +2425,10 @@ class _VehiculeHeroCard extends ConsumerWidget {
                   children: [
                     Text(
                       vehicule.immatriculation,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 19,
-                        color: Color(0xFF1A1A2E),
+                        color: AppColors.dark,
                         letterSpacing: -0.3,
                       ),
                     ),
@@ -2437,7 +2437,7 @@ class _VehiculeHeroCard extends ConsumerWidget {
                       vehicule.displayName,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey.shade600,
+                        color: AppColors.grey600,
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
@@ -2485,7 +2485,7 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFEFEF),
+        color: AppColors.fond(0xFFEFEFEF),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -2500,10 +2500,10 @@ class _StatusBadge extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             visual.label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF616161),
+              color: AppColors.label,
             ),
           ),
         ],
@@ -2569,7 +2569,7 @@ class _ConfigureButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               colors: [AppColors.primary, AppColors.primaryDark],
             ),
             borderRadius: BorderRadius.circular(20),
@@ -2623,9 +2623,9 @@ class _PillTabBar extends StatelessWidget {
       height: 44,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE4E9F5)),
+        border: Border.all(color: AppColors.border),
       ),
       child: TabBar(
         controller: controller,
@@ -2683,9 +2683,9 @@ class _SectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE4E9F5)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2706,10 +2706,10 @@ class _SectionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
-                    color: Color(0xFF1A1A2E),
+                    color: AppColors.dark,
                     letterSpacing: -0.2,
                   ),
                 ),
@@ -2752,14 +2752,14 @@ class _InfoRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 15, color: Colors.grey.shade500),
+            Icon(icon, size: 15, color: AppColors.grey500),
             const SizedBox(width: 8),
           ],
           Expanded(
             child: Text(
               label,
               style: TextStyle(
-                  color: Colors.grey.shade600,
+                  color: AppColors.grey600,
                   fontSize: 13.5,
                   fontWeight: FontWeight.w500),
             ),
@@ -2773,7 +2773,7 @@ class _InfoRow extends StatelessWidget {
                 fontWeight: hasValue ? FontWeight.w700 : FontWeight.normal,
                 fontSize: 14,
                 color:
-                    hasValue ? const Color(0xFF1A1A2E) : Colors.grey.shade400,
+                    hasValue ? AppColors.dark : AppColors.grey400,
               ),
             ),
           ),

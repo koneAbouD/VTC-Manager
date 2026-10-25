@@ -105,7 +105,7 @@ Future<void> showEnvoiWhatsAppSheet<T extends DestinataireWhatsApp>(
 }) {
   return showModalBottomSheet<void>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.blanc,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -207,13 +207,13 @@ class _EnvoiSheetState<T extends DestinataireWhatsApp>
             width: 36,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0xFFE3E6EE),
+              color: AppColors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(height: 14),
           Text(widget.titre,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppColors.dark)),
@@ -223,7 +223,7 @@ class _EnvoiSheetState<T extends DestinataireWhatsApp>
             child: Text(
               reste == 0 ? widget.consigneTerminee : widget.consigne,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12.5, color: AppColors.hint),
+              style: TextStyle(fontSize: 12.5, color: AppColors.hint),
             ),
           ),
           const SizedBox(height: 10),
@@ -251,7 +251,7 @@ class _EnvoiSheetState<T extends DestinataireWhatsApp>
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(reste == 0 ? 'Terminé' : 'Plus tard',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppColors.label)),
@@ -326,7 +326,7 @@ class _DestinataireTile extends StatelessWidget {
                     : AppColors.primaryDark),
       ),
       title: Text(destinataire.nom,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
               color: AppColors.dark)),
@@ -344,10 +344,10 @@ class _DestinataireTile extends StatelessWidget {
               : ouvert
                   ? TextButton(
                       onPressed: onEnvoyer,
-                      child: const Text('Renvoyer',
+                      child: Text('Renvoyer',
                           style:
                               TextStyle(fontSize: 12.5, color: AppColors.label)))
-                  : const Icon(Icons.chevron_right_rounded,
+                  : Icon(Icons.chevron_right_rounded,
                       color: AppColors.hint),
       onTap: enCours ? null : onEnvoyer,
     );

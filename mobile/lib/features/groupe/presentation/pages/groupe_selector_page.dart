@@ -15,10 +15,10 @@ enum _ToastType { success, error, warning, info }
 void _appToast(BuildContext context, String message,
     {_ToastType type = _ToastType.success, Duration? duration}) {
   final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.success => (AppColors.success, Icons.check_circle_outline_rounded),
+    _ToastType.error   => (AppColors.error, Icons.error_outline_rounded),
+    _ToastType.warning => (AppColors.warning, Icons.warning_amber_rounded),
+    _ToastType.info    => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -145,8 +145,8 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               Container(
                 width: 36,
                 height: 36,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFF3CD),
+                decoration: BoxDecoration(
+                  color: AppColors.fond(0xFFFFF3CD),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.warning_amber_rounded,
@@ -162,8 +162,8 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
           ),
           content: RichText(
             text: TextSpan(
-              style: const TextStyle(
-                  fontSize: 14, color: Colors.black87, height: 1.6),
+              style: TextStyle(
+                  fontSize: 14, color: AppColors.noir87, height: 1.6),
               children: [
                 const TextSpan(
                     text: 'Ce groupe est actuellement assigné à '),
@@ -208,12 +208,12 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
             Container(
               width: 36,
               height: 36,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFEBEE),
+              decoration: BoxDecoration(
+                color: AppColors.fond(0xFFFFEBEE),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.delete_outline_rounded,
-                  color: Color(0xFFE53935), size: 20),
+              child: Icon(Icons.delete_outline_rounded,
+                  color: AppColors.error, size: 20),
             ),
             const SizedBox(width: 12),
             const Expanded(
@@ -232,8 +232,8 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
           OutlinedButton(
             onPressed: () => Navigator.pop(ctx, false),
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.black54,
-              side: const BorderSide(color: Color(0xFFE4E7EC)),
+              foregroundColor: AppColors.grey600,
+              side: BorderSide(color: AppColors.border),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(
@@ -244,7 +244,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFE53935),
+              backgroundColor: AppColors.error,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(
@@ -285,7 +285,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
     final async = ref.watch(_groupesProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       // Le bas est laissé à découvert (edge-to-edge) : la liste défile sous la
       // barre de navigation Android, et c'est son propre retrait qui dégage la
       // dernière carte — même rendu que les sélecteurs chauffeur et véhicule.
@@ -342,14 +342,14 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               width: 56,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F2F8),
+                color: AppColors.headerButton,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.arrow_back_rounded,
-                  size: 18, color: Color(0xFF1A1A2E)),
+              child: Icon(Icons.arrow_back_rounded,
+                  size: 18, color: AppColors.dark),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -359,18 +359,18 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF1A1A2E),
+                    color: AppColors.dark,
                     letterSpacing: -0.3,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   'Sélectionner un groupe de véhicules',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFF6B7280),
+                    color: AppColors.label,
                   ),
                 ),
               ],
@@ -382,11 +382,11 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               width: 56,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F2F8),
+                color: AppColors.headerButton,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.add_rounded,
-                  size: 20, color: Color(0xFF1A1A2E)),
+              child: Icon(Icons.add_rounded,
+                  size: 20, color: AppColors.dark),
             ),
           ),
         ],
@@ -405,13 +405,13 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
         decoration: InputDecoration(
           hintText: 'Rechercher un groupe…',
           hintStyle:
-              TextStyle(color: Colors.grey.shade400, fontSize: 14),
+              TextStyle(color: AppColors.grey400, fontSize: 14),
           prefixIcon: Icon(Icons.search_rounded,
-              color: Colors.grey.shade400, size: 20),
+              color: AppColors.grey400, size: 20),
           suffixIcon: _query.isNotEmpty
               ? IconButton(
                   icon: Icon(Icons.close_rounded,
-                      color: Colors.grey.shade500, size: 18),
+                      color: AppColors.grey500, size: 18),
                   onPressed: () {
                     _searchCtrl.clear();
                     setState(() => _query = '');
@@ -419,19 +419,19 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
                 )
               : null,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: AppColors.blanc,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: AppColors.grey200),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: AppColors.grey200),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide:
-                const BorderSide(color: AppColors.primary, width: 1.5),
+                BorderSide(color: AppColors.primary, width: 1.5),
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -463,11 +463,11 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEBEE),
+                color: AppColors.fond(0xFFFFEBEE),
                 borderRadius: BorderRadius.circular(32),
               ),
-              child: const Icon(Icons.wifi_off_rounded,
-                  color: Color(0xFFE53935), size: 30),
+              child: Icon(Icons.wifi_off_rounded,
+                  color: AppColors.error, size: 30),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -479,7 +479,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
             const SizedBox(height: 8),
             Text(
               'Vérifiez votre connexion et réessayez.',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              style: TextStyle(color: AppColors.grey600, fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -489,7 +489,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               label: const Text('Réessayer'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
+                side: BorderSide(color: AppColors.primary),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(
@@ -540,7 +540,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF4FF),
+                color: AppColors.infoTint,
                 borderRadius: BorderRadius.circular(36),
               ),
               child: Icon(
@@ -563,7 +563,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
                   ? 'Commencez par créer votre\npremier groupe de véhicules.'
                   : 'Aucun groupe ne correspond\nà « $_query ».',
               style:
-                  TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                  TextStyle(color: AppColors.grey500, fontSize: 14),
               textAlign: TextAlign.center,
             ),
             if (noData) ...[
@@ -609,7 +609,7 @@ class _GroupeCard extends StatelessWidget {
     final initiales = _initiales(groupe.nom);
 
     return Material(
-      color: Colors.white,
+      color: AppColors.blanc,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: () => Navigator.pop(context, groupe),
@@ -618,7 +618,7 @@ class _GroupeCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: const Color(0xFFE4E7EC),
+              color: AppColors.border,
             ),
           ),
           padding: const EdgeInsets.all(16),
@@ -653,10 +653,10 @@ class _GroupeCard extends StatelessWidget {
                     // Nom
                     Text(
                       groupe.nom,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.noir87,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -678,18 +678,18 @@ class _GroupeCard extends StatelessWidget {
                   width: 26,
                   height: 26,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: AppColors.grey100,
                     shape: BoxShape.circle,
                   ),
                   child: deleting
-                      ? const Padding(
-                          padding: EdgeInsets.all(5),
+                      ? Padding(
+                          padding: const EdgeInsets.all(5),
                           child: CircularProgressIndicator(
                               strokeWidth: 1.5,
-                              color: Color(0xFF9AA0AE)),
+                              color: AppColors.hint),
                         )
                       : Icon(Icons.close_rounded,
-                          color: Colors.grey.shade400, size: 14),
+                          color: AppColors.grey400, size: 14),
                 ),
               ),
             ],
@@ -750,9 +750,9 @@ class _SkeletonCard extends StatelessWidget {
     return Container(
       height: 84,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
+        border: Border.all(color: AppColors.border),
       ),
       padding: const EdgeInsets.all(16),
       child: const Row(
@@ -790,7 +790,7 @@ class _Shimmer extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: AppColors.grey200,
         borderRadius: BorderRadius.circular(radius),
       ),
     );

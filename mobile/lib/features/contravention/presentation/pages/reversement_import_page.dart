@@ -88,7 +88,7 @@ class _ReversementImportPageState extends ConsumerState<ReversementImportPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 'Téléversez la quittance de paiement (PDF) délivrée par l\'État. '
                 'Les contraventions réglées seront rapprochées de la base, puis '
                 'vous confirmerez leur reversement.',
@@ -134,14 +134,14 @@ class _ReversementImportPageState extends ConsumerState<ReversementImportPage> {
                       Text(
                         aUnFichier ? _fileName! : 'Choisir un PDF ou une photo',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.dark),
                       ),
                       if (!aUnFichier) ...[
                         const SizedBox(height: 4),
-                        const Text('Quittance QuiPux / DGI (PDF ou photo)',
+                        Text('Quittance QuiPux / DGI (PDF ou photo)',
                             style:
                                 TextStyle(fontSize: 12, color: AppColors.hint)),
                       ],

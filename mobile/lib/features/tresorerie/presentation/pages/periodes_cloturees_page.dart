@@ -37,7 +37,7 @@ class PeriodesClotureesPage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Impossible de charger les périodes',
-                  style: TextStyle(color: Colors.grey.shade600)),
+                  style: TextStyle(color: AppColors.grey600)),
               TextButton.icon(
                 onPressed: () => ref.invalidate(cloturesPeriodeProvider),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -85,11 +85,11 @@ class _NoteAttestation extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.info_outline_rounded, size: 15, color: AppColors.hint),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Un mois clos ne bouge plus : les chiffres ci-dessous sont ceux '
@@ -138,18 +138,18 @@ class _CartePeriode extends ConsumerWidget {
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 14),
           childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-          leading: const Icon(Icons.lock_clock_rounded,
+          leading: Icon(Icons.lock_clock_rounded,
               size: 20, color: AppColors.primary),
           title: Text(
             libelle[0].toUpperCase() + libelle.substring(1),
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w700,
                 color: AppColors.dark),
           ),
           subtitle: Text(
             'Clôturé le ${DateFormat('dd/MM/yyyy').format(cloture.dateCloture)}',
-            style: const TextStyle(fontSize: 11.5, color: AppColors.hint),
+            style: TextStyle(fontSize: 11.5, color: AppColors.hint),
           ),
           children: [
             _SoldesArchives(
@@ -189,15 +189,15 @@ class _SoldesArchives extends ConsumerWidget {
               child: CircularProgressIndicator(strokeWidth: 2.2)),
         ),
       ),
-      error: (e, _) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text('Détail indisponible',
             style: TextStyle(fontSize: 12.5, color: AppColors.hint)),
       ),
       data: (soldes) {
         if (soldes.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               'Cette clôture est antérieure à l\'archivage du détail par '
               'compte : seuls ses états globaux ont été conservés.',
@@ -211,7 +211,7 @@ class _SoldesArchives extends ConsumerWidget {
           children: [
             Text(
               'Trésorerie arrêtée au ${DateFormat('dd/MM/yyyy').format(finPeriode)}',
-              style: const TextStyle(fontSize: 11.5, color: AppColors.hint),
+              style: TextStyle(fontSize: 11.5, color: AppColors.hint),
             ),
             const SizedBox(height: 8),
             for (final s in soldes)
@@ -276,7 +276,7 @@ class _LigneSolde extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(solde.libelleCompte,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppColors.dark)),
@@ -290,7 +290,7 @@ class _LigneSolde extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             CurrencyFormatter.format(solde.solde),
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w700,
                 color: AppColors.dark),
@@ -319,17 +319,17 @@ class _AucunePeriode extends StatelessWidget {
                 color: AppColors.primary.withValues(alpha: 0.10),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.lock_clock_rounded,
+              child: Icon(Icons.lock_clock_rounded,
                   size: 28, color: AppColors.primary),
             ),
             const SizedBox(height: 14),
-            const Text('Aucun mois clôturé',
+            Text('Aucun mois clôturé',
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.dark)),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Tant qu\'aucune période n\'est close, les états se recalculent '
               'à chaque consultation et peuvent donc changer.',
               textAlign: TextAlign.center,

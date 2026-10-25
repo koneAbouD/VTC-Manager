@@ -205,7 +205,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Text('Pas encore de compte ?',
+                Text('Pas encore de compte ?',
                     style: TextStyle(color: kAuthHint, fontSize: 14)),
                 TextButton(
                   onPressed: () => Navigator.push(

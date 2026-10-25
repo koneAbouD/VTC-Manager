@@ -33,12 +33,12 @@ import '../../../../core/widgets/premium_select_field.dart';
 import '../../../../core/widgets/responsive_field_row.dart';
 import '../../../../core/theme/app_colors.dart';
 
-const _kPrimary = AppColors.primary;
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint = Color(0xFF9AA0AE);
-const _kLabel = Color(0xFF6B7280);
-const _kBorder = Color(0xFFE3E6EE);
-const _kDark = Color(0xFF1A1A2E);
+Color get _kPrimary => AppColors.primary;
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kLabel => AppColors.label;
+Color get _kBorder => AppColors.border;
+Color get _kDark => AppColors.dark;
 
 // ── Toast helpers ─────────────────────────────────────────────────────────────
 
@@ -52,15 +52,15 @@ void _appToast(
 }) {
   final (Color bg, IconData icon) = switch (type) {
     _ToastType.success => (
-        const Color(0xFF1B5E20),
+        AppColors.success,
         Icons.check_circle_outline_rounded
       ),
-    _ToastType.error => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
+    _ToastType.error => (AppColors.error, Icons.error_outline_rounded),
     _ToastType.warning => (
-        const Color(0xFFE65100),
+        AppColors.warning,
         Icons.warning_amber_rounded
       ),
-    _ToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.info => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -104,18 +104,18 @@ class _InlineToastBanner extends StatelessWidget {
     if (message == null) return const SizedBox.shrink();
     final (Color bg, IconData icon) = switch (type) {
       _ToastType.success => (
-          const Color(0xFF1B5E20),
+          AppColors.success,
           Icons.check_circle_outline_rounded
         ),
       _ToastType.error => (
-          const Color(0xFFB71C1C),
+          AppColors.error,
           Icons.error_outline_rounded
         ),
       _ToastType.warning => (
-          const Color(0xFFE65100),
+          AppColors.warning,
           Icons.warning_amber_rounded
         ),
-      _ToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+      _ToastType.info => (AppColors.info, Icons.info_outline_rounded),
     };
     return Container(
       width: double.infinity,
@@ -519,7 +519,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
         : const AsyncValue<List<DocumentChauffeurLocal>>.data([]);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: _isEditing ? 'Modifier le chauffeur' : 'Nouveau chauffeur',
         action: !_hasChanges
@@ -564,14 +564,14 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: const Color(0xFFF2F3F5),
+          color: AppColors.fieldFill,
           borderRadius: BorderRadius.circular(12),
         ),
         child: TabBar(
           controller: _tabCtrl,
           dividerColor: Colors.transparent,
           indicator: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.blanc,
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
@@ -582,8 +582,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
             ],
           ),
           indicatorSize: TabBarIndicatorSize.tab,
-          labelColor: const Color(0xFF1A1A2E),
-          unselectedLabelColor: const Color(0xFF9AA0AE),
+          labelColor: AppColors.dark,
+          unselectedLabelColor: AppColors.hint,
           labelStyle: const TextStyle(
             fontSize: 13.5,
             fontWeight: FontWeight.w600,
@@ -655,7 +655,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
       );
     } else {
       avatarContent = Container(
-        color: const Color(0xFFEEF2FF),
+        color: AppColors.infoTint,
         child: const Icon(Icons.person_rounded,
             color: Color(0xFFBBC4E8), size: 52),
       );
@@ -704,7 +704,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
             hasPhoto
                 ? 'Appuyez pour voir ou modifier'
                 : 'Appuyez pour ajouter une photo',
-            style: const TextStyle(fontSize: 12, color: _kHint),
+            style: TextStyle(fontSize: 12, color: _kHint),
           ),
         ],
       ),
@@ -867,7 +867,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
             error: (_, __) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text('Impossible de charger les documents.',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                  style: TextStyle(color: AppColors.grey500, fontSize: 13)),
             ),
             data: (docs) {
               // Filtrer seulement la photo d'identité (le permis est maintenant un doc)
@@ -884,7 +884,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text('Aucune pièce enregistrée.',
                       style:
-                          TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                          TextStyle(color: AppColors.grey500, fontSize: 13)),
                 );
               }
               return Column(
@@ -921,7 +921,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
           label: const Text('Ajouter une pièce'),
           style: OutlinedButton.styleFrom(
             foregroundColor: _kPrimary,
-            side: const BorderSide(color: _kPrimary),
+            side: BorderSide(color: _kPrimary),
             padding: const EdgeInsets.symmetric(vertical: 14),
             minimumSize: const Size(double.infinity, 0),
             shape:
@@ -945,7 +945,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     final result = await showModalBottomSheet<_PendingDocument>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1010,11 +1010,11 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3F3),
+                  color: AppColors.fond(0xFFFFF3F3),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.delete_outline,
-                    color: Color(0xFFE03131), size: 22),
+                child: Icon(Icons.delete_outline,
+                    color: AppColors.error, size: 22),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -1032,10 +1032,10 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
               Text(
                 'Le document sera définitivement supprimé. Cette action est irréversible.',
                 style: TextStyle(
-                    fontSize: 13.5, color: Colors.grey.shade600, height: 1.4),
+                    fontSize: 13.5, color: AppColors.grey600, height: 1.4),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Motif *',
                 style: TextStyle(
                     fontSize: 12.5,
@@ -1050,7 +1050,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                 style: const TextStyle(fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Ex : Document expiré, remplacé…',
-                  hintStyle: const TextStyle(color: _kHint, fontSize: 14),
+                  hintStyle: TextStyle(color: _kHint, fontSize: 14),
                   filled: true,
                   fillColor: _kFieldFill,
                   border: OutlineInputBorder(
@@ -1071,8 +1071,8 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
               style: OutlinedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                side: const BorderSide(color: _kBorder),
-                foregroundColor: Colors.black87,
+                side: BorderSide(color: _kBorder),
+                foregroundColor: AppColors.noir87,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
@@ -1087,9 +1087,9 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                       Navigator.pop(ctx);
                     },
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFE03131),
+                backgroundColor: AppColors.error,
                 disabledBackgroundColor:
-                    const Color(0xFFE03131).withValues(alpha: 0.35),
+                    AppColors.error.withValues(alpha: 0.35),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -1123,7 +1123,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     final result = await showModalBottomSheet<_PendingDocument>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1158,7 +1158,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
     final result = await showModalBottomSheet<_PendingDocument>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1225,7 +1225,7 @@ class _ChauffeurFormCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
@@ -1245,7 +1245,7 @@ class _ChauffeurFormCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: _kDark,
@@ -1271,10 +1271,10 @@ class _ChauffeurSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: Color(0xFF1A1A2E),
+        color: AppColors.dark,
         letterSpacing: 0.2,
       ),
     );
@@ -1303,10 +1303,10 @@ class _PillField extends StatelessWidget {
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(fontSize: 15, color: Colors.black87),
+      style: TextStyle(fontSize: 15, color: AppColors.noir87),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+        hintStyle: TextStyle(color: _kHint, fontSize: 15),
         filled: true,
         fillColor: _kFieldFill,
         isDense: true,
@@ -1363,13 +1363,13 @@ class _PhonePill extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     country.dial,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
-                      color: Colors.black87,
+                      color: AppColors.noir87,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const Icon(Icons.keyboard_arrow_down,
+                  Icon(Icons.keyboard_arrow_down,
                       size: 18, color: _kHint),
                 ],
               ),
@@ -1383,18 +1383,18 @@ class _PhonePill extends StatelessWidget {
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
                 const PhoneInputFormatter(),
               ],
-              style: const TextStyle(fontSize: 15, color: Colors.black87),
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 15, color: AppColors.noir87),
+              decoration: InputDecoration(
                 hintText: '07 00 00 00 00',
                 hintStyle: TextStyle(color: _kHint, fontSize: 15),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 18),
+                contentPadding: const EdgeInsets.symmetric(vertical: 18),
                 border: InputBorder.none,
               ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 12),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
             child: Icon(Icons.phone_iphone_outlined, color: _kHint, size: 22),
           ),
         ],
@@ -1423,8 +1423,8 @@ class _RemoteChauffeurPhotoState extends State<_RemoteChauffeurPhoto> {
   }
 
   Widget _fallback() => Container(
-        color: const Color(0xFFF2F3F5),
-        child: const Center(
+        color: AppColors.fieldFill,
+        child: Center(
           child: Icon(Icons.person_outline, color: _kBorder, size: 36),
         ),
       );
@@ -1467,7 +1467,7 @@ class _XFileImage extends StatelessWidget {
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
           return Container(
-            color: const Color(0xFFF2F3F5),
+            color: AppColors.fieldFill,
             child: const Center(
               child: SizedBox(
                 width: 20,
@@ -1479,8 +1479,8 @@ class _XFileImage extends StatelessWidget {
         }
         if (snap.hasError || snap.data == null) {
           return Container(
-            color: const Color(0xFFF2F3F5),
-            child: const Icon(Icons.broken_image_outlined,
+            color: AppColors.fieldFill,
+            child: Icon(Icons.broken_image_outlined,
                 color: _kBorder, size: 28),
           );
         }
@@ -1567,7 +1567,7 @@ class _ChauffeurFieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12.5,
         fontWeight: FontWeight.w600,
         color: _kLabel,
@@ -1596,7 +1596,7 @@ class _ChauffeurLabeledField extends StatelessWidget {
             ? RichText(
                 text: TextSpan(
                   text: label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: _kLabel,
@@ -1637,7 +1637,7 @@ class _ChauffeurPhotoViewer extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: Container(
-          decoration: const BoxDecoration(color: Color(0xFF1A1A2E)),
+          decoration: BoxDecoration(color: AppColors.dark),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1732,7 +1732,7 @@ Future<_Country?> _showCountryPicker(BuildContext context) {
   return showModalBottomSheet<_Country>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.blanc,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -1789,17 +1789,17 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE3E6EE),
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Indicatif / code du pays',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: AppColors.noir87,
               ),
             ),
             const SizedBox(height: 12),
@@ -1809,8 +1809,8 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                 onChanged: (v) => setState(() => _query = v),
                 decoration: InputDecoration(
                   hintText: 'Rechercher',
-                  hintStyle: const TextStyle(color: _kHint),
-                  prefixIcon: const Icon(Icons.search, color: _kHint),
+                  hintStyle: TextStyle(color: _kHint),
+                  prefixIcon: Icon(Icons.search, color: _kHint),
                   filled: true,
                   fillColor: _kFieldFill,
                   contentPadding:
@@ -1827,9 +1827,9 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 itemCount: filtered.length,
-                separatorBuilder: (_, __) => const Divider(
+                separatorBuilder: (_, __) => Divider(
                   height: 1,
-                  color: Color(0xFFF0F1F4),
+                  color: AppColors.fond(0xFFF0F1F4),
                 ),
                 itemBuilder: (_, i) {
                   final c = filtered[i];
@@ -1838,13 +1838,13 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                     title: Text(
                       c.name,
                       style:
-                          const TextStyle(fontSize: 14, color: Colors.black87),
+                          TextStyle(fontSize: 14, color: AppColors.noir87),
                     ),
                     trailing: Text(
                       c.dial,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF6B7280),
+                        color: AppColors.label,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -2114,33 +2114,33 @@ class _EmptyDocState extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E6EE)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF2F3F5),
+            decoration: BoxDecoration(
+              color: AppColors.fieldFill,
               shape: BoxShape.circle,
             ),
             child:
-                const Icon(Icons.description_outlined, size: 32, color: _kHint),
+                Icon(Icons.description_outlined, size: 32, color: _kHint),
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'Aucune pièce ajoutée',
             style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A2E)),
+                color: AppColors.dark),
           ),
           const SizedBox(height: 6),
           Text(
             "Permis, carte d'identité, contrat…",
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: 13, color: AppColors.grey500),
           ),
         ],
       ),
@@ -2166,9 +2166,9 @@ class _PendingDocCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E6EE)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2176,10 +2176,10 @@ class _PendingDocCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFEEF2FF),
+                color: AppColors.infoTint,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.description_outlined,
+              child: Icon(Icons.description_outlined,
                   color: _kPrimary, size: 20),
             ),
             const SizedBox(width: 12),
@@ -2189,36 +2189,36 @@ class _PendingDocCard extends StatelessWidget {
                 children: [
                   Text(
                     doc.typeNom,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A2E)),
+                        color: AppColors.dark),
                   ),
                   if (doc.reference != null && doc.reference!.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text('Réf : ${doc.reference}',
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600)),
+                            fontSize: 12, color: AppColors.grey600)),
                   ],
                   if (doc.dateExpiration != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       'Exp : ${doc.dateExpiration!.day.toString().padLeft(2, '0')}/${doc.dateExpiration!.month.toString().padLeft(2, '0')}/${doc.dateExpiration!.year}',
                       style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          TextStyle(fontSize: 12, color: AppColors.grey600),
                     ),
                   ],
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.attach_file,
-                          size: 12, color: Colors.grey.shade400),
+                          size: 12, color: AppColors.grey400),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           doc.filename,
                           style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade400),
+                              fontSize: 11, color: AppColors.grey400),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -2230,7 +2230,7 @@ class _PendingDocCard extends StatelessWidget {
             IconButton(
               onPressed: onRemove,
               icon: const Icon(Icons.close, size: 18),
-              color: Colors.grey.shade400,
+              color: AppColors.grey400,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),
@@ -2258,9 +2258,9 @@ class _ExistingDocCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E6EE)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2268,10 +2268,10 @@ class _ExistingDocCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFF2F3F5),
+                color: AppColors.fieldFill,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.description_outlined,
+              child: Icon(Icons.description_outlined,
                   color: _kHint, size: 20),
             ),
             const SizedBox(width: 12),
@@ -2281,10 +2281,10 @@ class _ExistingDocCard extends StatelessWidget {
                 children: [
                   Text(
                     doc.displayName,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A2E)),
+                        color: AppColors.dark),
                   ),
                   if (doc.dateEmission != null ||
                       doc.dateExpiration != null) ...[
@@ -2296,7 +2296,7 @@ class _ExistingDocCard extends StatelessWidget {
                           Text(
                             'Ém : ${doc.dateEmission!.day.toString().padLeft(2, '0')}/${doc.dateEmission!.month.toString().padLeft(2, '0')}/${doc.dateEmission!.year}',
                             style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade600),
+                                fontSize: 12, color: AppColors.grey600),
                           ),
                         if (doc.dateExpiration != null)
                           Text(
@@ -2304,8 +2304,8 @@ class _ExistingDocCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               color: (doc.statut == 'EXPIRE')
-                                  ? const Color(0xFFE03131)
-                                  : Colors.grey.shade600,
+                                  ? AppColors.error
+                                  : AppColors.grey600,
                             ),
                           ),
                       ],
@@ -2316,13 +2316,13 @@ class _ExistingDocCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(Icons.attach_file,
-                            size: 12, color: Colors.grey.shade400),
+                            size: 12, color: AppColors.grey400),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             doc.fichierNom!,
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey.shade400),
+                                fontSize: 11, color: AppColors.grey400),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -2464,7 +2464,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
   Future<void> _pickFile() async {
     final action = await showModalBottomSheet<int>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -2477,21 +2477,21 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE3E6EE),
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 4),
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined,
-                  color: Colors.black87),
+              leading: Icon(Icons.photo_camera_outlined,
+                  color: AppColors.noir87),
               title: const Text('Appareil photo',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(ctx, 0),
             ),
             ListTile(
               leading:
-                  const Icon(Icons.folder_open_outlined, color: Colors.black87),
+                  Icon(Icons.folder_open_outlined, color: AppColors.noir87),
               title: const Text('Fichier (PDF, image)',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(ctx, 1),
@@ -2593,7 +2593,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDDE1EA),
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -2659,7 +2659,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                               borderRadius: BorderRadius.circular(10),
                               border: sel
                                   ? null
-                                  : Border.all(color: const Color(0xFFE3E6EE)),
+                                  : Border.all(color: AppColors.border),
                             ),
                             child: Text(
                               cat,
@@ -2667,7 +2667,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                                 fontSize: 15,
                                 fontWeight:
                                     sel ? FontWeight.w600 : FontWeight.w400,
-                                color: sel ? Colors.white : Colors.black87,
+                                color: sel ? Colors.white : AppColors.noir87,
                               ),
                             ),
                           ),
@@ -2693,7 +2693,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Permanent',
                       style: TextStyle(
                         fontSize: 13,
@@ -2755,7 +2755,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                           horizontal: 16, vertical: 16),
                       decoration: BoxDecoration(
                         color: _fileBytes != null
-                            ? const Color(0xFFEEF2FF)
+                            ? AppColors.infoTint
                             : _kFieldFill,
                         borderRadius: BorderRadius.circular(12),
                         border: _fileBytes != null
@@ -2787,7 +2787,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                             GestureDetector(
                               onTap: _pickFile,
                               child: Icon(Icons.edit_outlined,
-                                  size: 16, color: Colors.grey.shade400),
+                                  size: 16, color: AppColors.grey400),
                             ),
                         ],
                       ),
@@ -2892,7 +2892,7 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: Container(
-          color: const Color(0xFF1A1A2E),
+          color: AppColors.dark,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2987,7 +2987,7 @@ class _DocLabeledField extends StatelessWidget {
             ? RichText(
                 text: TextSpan(
                   text: label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: _kLabel,
@@ -3003,7 +3003,7 @@ class _DocLabeledField extends StatelessWidget {
               )
             : Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: _kLabel,
@@ -3026,10 +3026,10 @@ class _DocPlainField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      style: const TextStyle(fontSize: 15, color: Colors.black87),
+      style: TextStyle(fontSize: 15, color: AppColors.noir87),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+        hintStyle: TextStyle(color: _kHint, fontSize: 15),
         filled: true,
         fillColor: _kFieldFill,
         isDense: true,
@@ -3045,7 +3045,7 @@ class _DocPlainField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kPrimary, width: 1.2),
+          borderSide: BorderSide(color: _kPrimary, width: 1.2),
         ),
       ),
     );
@@ -3082,11 +3082,11 @@ class _DocDateField extends StatelessWidget {
                 value != null ? formatter(value!) : label,
                 style: TextStyle(
                   fontSize: 15,
-                  color: value != null ? Colors.black87 : _kHint,
+                  color: value != null ? AppColors.noir87 : _kHint,
                 ),
               ),
             ),
-            const Icon(Icons.calendar_today_outlined, size: 16, color: _kHint),
+            Icon(Icons.calendar_today_outlined, size: 16, color: _kHint),
           ],
         ),
       ),

@@ -114,7 +114,7 @@ class _TotalDuCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text('Dettes partenaires',
                     style: TextStyle(
                         fontSize: 13,
@@ -128,7 +128,7 @@ class _TotalDuCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(CurrencyFormatter.format(total),
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
                   color: AppColors.dark)),
@@ -137,20 +137,20 @@ class _TotalDuCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: const Color(0xFFFBE9E9),
+                color: AppColors.fond(0xFFFBE9E9),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                   'Dont ${CurrencyFormatter.format(enRetard)} en retard',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFB71C1C))),
+                      color: AppColors.error)),
             ),
           ],
           const SizedBox(height: 4),
           Text('${factures.length} facture(s) à payer',
-              style: const TextStyle(fontSize: 11.5, color: AppColors.hint)),
+              style: TextStyle(fontSize: 11.5, color: AppColors.hint)),
         ],
       ),
     );
@@ -177,11 +177,11 @@ class _SelecteurVue extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(vue.label,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primaryDark)),
-            const Icon(Icons.arrow_drop_down,
+            Icon(Icons.arrow_drop_down,
                 size: 18, color: AppColors.primaryDark),
           ],
         ),
@@ -208,7 +208,7 @@ class _GroupeCardState extends State<_GroupeCard> {
   Widget build(BuildContext context) {
     final groupe = widget.groupe;
     final retard = groupe.joursDeRetard(DateTime.now());
-    final couleur = groupe.enRetard ? const Color(0xFFB71C1C) : AppColors.label;
+    final couleur = groupe.enRetard ? AppColors.error : AppColors.label;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -243,7 +243,7 @@ class _GroupeCardState extends State<_GroupeCard> {
                         Text(groupe.titre,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.dark)),
@@ -251,7 +251,7 @@ class _GroupeCardState extends State<_GroupeCard> {
                         Text(_sousTitre,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 11, color: AppColors.hint)),
                         const SizedBox(height: 3),
                         Text(
@@ -269,7 +269,7 @@ class _GroupeCardState extends State<_GroupeCard> {
                   ),
                   const SizedBox(width: 8),
                   Text(CurrencyFormatter.format(groupe.restantDu),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.bold,
                           color: AppColors.dark)),
@@ -334,7 +334,7 @@ class _BlocFacture extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final couleur = facture.enRetard ? const Color(0xFFB71C1C) : AppColors.hint;
+    final couleur = facture.enRetard ? AppColors.error : AppColors.hint;
 
     return InkWell(
       onTap: () => Navigator.of(context).push(
@@ -343,7 +343,7 @@ class _BlocFacture extends ConsumerWidget {
       ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.border, width: 0.6)),
         ),
         child: Row(
@@ -366,7 +366,7 @@ class _BlocFacture extends ConsumerWidget {
                   Text(_titre,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                           color: AppColors.dark)),
@@ -385,7 +385,7 @@ class _BlocFacture extends ConsumerWidget {
                                 ? FontWeight.w600
                                 : FontWeight.w400,
                             color: facture.enRetard
-                                ? const Color(0xFFB71C1C)
+                                ? AppColors.error
                                 : AppColors.hint)),
                   ],
                   // Ce que la dette paie : le montant seul ne dit pas pourquoi
@@ -398,7 +398,7 @@ class _BlocFacture extends ConsumerWidget {
                     Text(_complement,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11, color: AppColors.hint)),
                   ],
                 ],
@@ -409,7 +409,7 @@ class _BlocFacture extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(CurrencyFormatter.format(facture.restantDu),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: AppColors.dark)),
@@ -417,7 +417,7 @@ class _BlocFacture extends ConsumerWidget {
                 if (facture.montantPaye > 0)
                   Text('sur ${CurrencyFormatter.format(facture.montant)}',
                       style:
-                          const TextStyle(fontSize: 10, color: AppColors.hint)),
+                          TextStyle(fontSize: 10, color: AppColors.hint)),
                 const SizedBox(height: 6),
                 // Payer est le geste le plus fréquent : il reste à un clic.
                 _BoutonRegler(facture: facture),
@@ -496,21 +496,21 @@ class _PostesDette extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF3EB),
+              color: AppColors.fond(0xFFFFF3EB),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: const Color(0x33E65100)),
             ),
             child: Text(
               l.libelle,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 10,
-                  color: Color(0xFFE65100),
+                  color: AppColors.warning,
                   fontWeight: FontWeight.w600),
             ),
           ),
         if (reste > 0)
           Text('+$reste',
-              style: const TextStyle(fontSize: 10, color: AppColors.hint)),
+              style: TextStyle(fontSize: 10, color: AppColors.hint)),
       ],
     );
   }
@@ -531,7 +531,7 @@ class _BoutonRegler extends ConsumerWidget {
           color: AppColors.primaryTint,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Text('Régler',
+        child: Text('Régler',
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -546,18 +546,18 @@ class _Vide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(top: 48),
+    return Padding(
+      padding: const EdgeInsets.only(top: 48),
       child: Column(
         children: [
           Icon(Icons.check_circle_outline_rounded,
               size: 40, color: AppColors.hint),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Text('Vous ne devez rien à vos partenaires',
               style: TextStyle(color: AppColors.label)),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Text(
                 'Une dette apparaît ici dès qu\'une maintenance ou une '
                 'dépense est enregistrée « à payer » : la charge compte pour '
@@ -585,7 +585,7 @@ class _Erreur extends StatelessWidget {
         children: [
           Text(message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.label)),
+              style: TextStyle(color: AppColors.label)),
           TextButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),

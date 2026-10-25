@@ -22,6 +22,7 @@ import '../../features/vehicule/presentation/pages/vehicule_form_page.dart';
 import '../../features/vehicule/presentation/pages/vehicule_detail_page.dart';
 import '../home_nav_provider.dart';
 
+import '../../core/theme/app_colors.dart';
 // ── Bouton d'ajout (barre de recherche des onglets Véhicules/Chauffeurs) ─────
 
 /// Ouvre le formulaire de création de l'onglet courant (véhicule ou chauffeur).
@@ -43,11 +44,11 @@ class _AddButton extends StatelessWidget {
           // Mêmes couleurs que l'ancien bouton d'export : carré blanc bordé de
           // gris, icône grise — le bouton se fond dans la barre de recherche.
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.blanc,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200, width: 1),
+            border: Border.all(color: AppColors.grey200, width: 1),
           ),
-          child: Icon(Icons.add_rounded, size: 22, color: Colors.grey.shade600),
+          child: Icon(Icons.add_rounded, size: 22, color: AppColors.grey600),
         ),
       ),
     );
@@ -62,7 +63,7 @@ class _AddButton extends StatelessWidget {
 /// neutre et l'état tient dans le point, seul élément coloré. Côté chauffeur la
 /// teinte vient de [PointStatutChauffeur], côté véhicule du référentiel des
 /// statuts, qui la porte déjà.
-const _cStatutFond = Colors.grey;
+Color get _cStatutFond => AppColors.grey500;
 
 // ── Écran principal ──────────────────────────────────────────────────────────
 
@@ -207,7 +208,7 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
     final primary = Theme.of(context).colorScheme.primary;
     final hasFilter = _statutFilter != null;
     return Container(
-      color: const Color(0xFFF5F6FA),
+      color: AppColors.fond(0xFFF5F6FA),
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -226,7 +227,7 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
                 border: Border.all(
                   color: hasFilter
                       ? primary.withValues(alpha: 0.6)
-                      : Colors.grey.shade200,
+                      : AppColors.grey200,
                   width: hasFilter ? 1.5 : 1,
                 ),
               ),
@@ -238,9 +239,9 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
                     Icons.keyboard_arrow_down_rounded,
                     size: 16,
                     color:
-                        hasFilter ? primary : Colors.grey.shade400,
+                        hasFilter ? primary : AppColors.grey400,
                   ),
-                  dropdownColor: Colors.white,
+                  dropdownColor: AppColors.blanc,
                   borderRadius: BorderRadius.circular(12),
                   menuMaxHeight: 280,
                   style: TextStyle(
@@ -249,7 +250,7 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
                         ? FontWeight.w600
                         : FontWeight.w500,
                     color:
-                        hasFilter ? primary : Colors.grey.shade600,
+                        hasFilter ? primary : AppColors.grey600,
                   ),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Tous')),
@@ -270,13 +271,13 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
               height: 46,
               child: TextField(
                 controller: _searchCtrl,
-                style: const TextStyle(
-                    fontSize: 14, color: Color(0xFF1A1A2E)),
+                style: TextStyle(
+                    fontSize: 14, color: AppColors.dark),
                 decoration: InputDecoration(
                   hintText: 'Immatriculation, modèle…',
                   hintStyle: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade400,
+                    color: AppColors.grey400,
                     fontWeight: FontWeight.w400,
                   ),
                   prefixIcon: Icon(
@@ -284,18 +285,18 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
                     size: 18,
                     color: _query.isNotEmpty
                         ? primary
-                        : Colors.grey.shade400,
+                        : AppColors.grey400,
                   ),
                   suffixIcon: _query.isNotEmpty
                       ? IconButton(
                           icon: Icon(Icons.close_rounded,
-                              size: 16, color: Colors.grey.shade400),
+                              size: 16, color: AppColors.grey400),
                           onPressed: _searchCtrl.clear,
                           splashRadius: 16,
                         )
                       : null,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: AppColors.blanc,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 4),
                   border: OutlineInputBorder(
@@ -305,7 +306,7 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        BorderSide(color: Colors.grey.shade200, width: 1),
+                        BorderSide(color: AppColors.grey200, width: 1),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -406,7 +407,7 @@ class _VehiculeCard extends ConsumerWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -439,10 +440,10 @@ class _VehiculeCard extends ConsumerWidget {
                             Expanded(
                               child: Text(
                                 vehicule.immatriculation,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 15,
-                                  color: Color(0xFF1A1A2E),
+                                  color: AppColors.dark,
                                   letterSpacing: -0.2,
                                 ),
                               ),
@@ -463,7 +464,7 @@ class _VehiculeCard extends ConsumerWidget {
                           vehicule.displayName,
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey.shade600,
+                            color: AppColors.grey600,
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -499,14 +500,14 @@ class _VehiculeCouleurIcon extends StatelessWidget {
         color: color.withValues(alpha: estClaire ? 1 : 0.12),
         shape: BoxShape.circle,
         border: Border.all(
-          color: estClaire ? const Color(0xFFDDE1EA) : color.withValues(alpha: 0.35),
+          color: estClaire ? AppColors.border : color.withValues(alpha: 0.35),
           width: 1,
         ),
       ),
       child: Icon(
         Icons.directions_car_rounded,
         size: 22,
-        color: estClaire ? const Color(0xFF6B7280) : color,
+        color: estClaire ? AppColors.label : color,
       ),
     );
   }
@@ -605,7 +606,7 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
     final primary = Theme.of(context).colorScheme.primary;
     final hasFilter = _statutFilter != null;
     return Container(
-      color: const Color(0xFFF5F6FA),
+      color: AppColors.fond(0xFFF5F6FA),
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -624,7 +625,7 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
                 border: Border.all(
                   color: hasFilter
                       ? primary.withValues(alpha: 0.6)
-                      : Colors.grey.shade200,
+                      : AppColors.grey200,
                   width: hasFilter ? 1.5 : 1,
                 ),
               ),
@@ -636,9 +637,9 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
                     Icons.keyboard_arrow_down_rounded,
                     size: 16,
                     color:
-                        hasFilter ? primary : Colors.grey.shade400,
+                        hasFilter ? primary : AppColors.grey400,
                   ),
-                  dropdownColor: Colors.white,
+                  dropdownColor: AppColors.blanc,
                   borderRadius: BorderRadius.circular(12),
                   menuMaxHeight: 280,
                   style: TextStyle(
@@ -647,7 +648,7 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
                         ? FontWeight.w600
                         : FontWeight.w500,
                     color:
-                        hasFilter ? primary : Colors.grey.shade600,
+                        hasFilter ? primary : AppColors.grey600,
                   ),
                   items: const [
                     DropdownMenuItem(value: null, child: Text('Tous')),
@@ -678,13 +679,13 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
               height: 46,
               child: TextField(
                 controller: _searchCtrl,
-                style: const TextStyle(
-                    fontSize: 14, color: Color(0xFF1A1A2E)),
+                style: TextStyle(
+                    fontSize: 14, color: AppColors.dark),
                 decoration: InputDecoration(
                   hintText: 'Nom, téléphone…',
                   hintStyle: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade400,
+                    color: AppColors.grey400,
                     fontWeight: FontWeight.w400,
                   ),
                   prefixIcon: Icon(
@@ -692,18 +693,18 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
                     size: 18,
                     color: _query.isNotEmpty
                         ? primary
-                        : Colors.grey.shade400,
+                        : AppColors.grey400,
                   ),
                   suffixIcon: _query.isNotEmpty
                       ? IconButton(
                           icon: Icon(Icons.close_rounded,
-                              size: 16, color: Colors.grey.shade400),
+                              size: 16, color: AppColors.grey400),
                           onPressed: _searchCtrl.clear,
                           splashRadius: 16,
                         )
                       : null,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: AppColors.blanc,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 4),
                   border: OutlineInputBorder(
@@ -713,7 +714,7 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        BorderSide(color: Colors.grey.shade200, width: 1),
+                        BorderSide(color: AppColors.grey200, width: 1),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -827,7 +828,7 @@ class _ChauffeurCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -878,10 +879,10 @@ class _ChauffeurCard extends StatelessWidget {
                                     children: [
                                       Text(
                                         chauffeur.displayName,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             fontWeight: FontWeight.w700,
                                             fontSize: 14,
-                                            color: Color(0xFF1A1A2E)),
+                                            color: AppColors.dark),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -891,7 +892,7 @@ class _ChauffeurCard extends StatelessWidget {
                                           icon: Icons.phone_outlined,
                                           label: PhoneFormatter.format(
                                               chauffeur.telephone),
-                                          color: Colors.grey.shade700,
+                                          color: AppColors.grey700,
                                         ),
                                     ],
                                   ),
@@ -913,7 +914,7 @@ class _ChauffeurCard extends StatelessWidget {
                                         _MetaChip(
                                           icon: Icons.directions_car_outlined,
                                           label: vehiculeLabel,
-                                          color: Colors.grey.shade700,
+                                          color: AppColors.grey700,
                                         ),
                                       ],
                                     ],
@@ -1011,12 +1012,12 @@ class _ChauffeurThumbnailState extends State<_ChauffeurThumbnail> {
   Widget _initialsWidget(double size) => Container(
         width: size,
         height: size,
-        color: const Color(0xFFF2F3F5),
+        color: AppColors.fieldFill,
         child: Center(
           child: Text(
             widget.initials,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
+            style: TextStyle(
+              color: AppColors.label,
               fontWeight: FontWeight.w700,
               fontSize: 18,
             ),
@@ -1066,10 +1067,10 @@ class _StatusChip extends StatelessWidget {
               child: Text(label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A2E))),
+                      color: AppColors.dark)),
             ),
           ],
         ),
@@ -1164,7 +1165,7 @@ class _SkeletonCardState extends State<_SkeletonCard>
       builder: (_, __) => Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(16),
         ),
         child: ClipRRect(
@@ -1218,7 +1219,7 @@ class _Bone extends StatelessWidget {
         width: w,
         height: h,
         decoration: BoxDecoration(
-          color: Colors.grey.shade300.withValues(alpha: opacity),
+          color: AppColors.grey300.withValues(alpha: opacity),
           borderRadius: BorderRadius.circular(r),
         ),
       );
@@ -1286,7 +1287,7 @@ class _EmptyState extends StatelessWidget {
             Text(subtitle,
                 textAlign: TextAlign.center,
                 style:
-                    TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    TextStyle(color: AppColors.grey600, fontSize: 13)),
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: onAction,
@@ -1328,7 +1329,7 @@ class _NoResultState extends StatelessWidget {
                   'Essayez un autre terme ou réinitialisez les filtres.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: Colors.grey.shade600, fontSize: 13)),
+                      color: AppColors.grey600, fontSize: 13)),
               const SizedBox(height: 20),
               OutlinedButton.icon(
                 onPressed: onClear,
@@ -1369,7 +1370,7 @@ class _ErrorState extends StatelessWidget {
               Text(message,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: Colors.grey.shade600, fontSize: 13)),
+                      color: AppColors.grey600, fontSize: 13)),
               const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: onRetry,

@@ -14,20 +14,20 @@ class ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDECEC),
+        color: AppColors.fond(0xFFFDECEC),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFF3C0C0)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline_rounded,
+          Icon(Icons.error_outline_rounded,
               size: 20, color: AppColors.error),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13, height: 1.35, color: AppColors.error),
             ),
           ),

@@ -25,7 +25,7 @@ class BilanPage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Impossible de charger la situation',
-                  style: TextStyle(color: Colors.grey.shade600)),
+                  style: TextStyle(color: AppColors.grey600)),
               TextButton.icon(
                 onPressed: () => ref.invalidate(bilanProvider),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -41,7 +41,7 @@ class BilanPage extends ConsumerWidget {
             children: [
               Text(
                 'Au ${DateFormat('dd/MM/yyyy').format(bilan.date)}',
-                style: const TextStyle(fontSize: 12, color: AppColors.label),
+                style: TextStyle(fontSize: 12, color: AppColors.label),
               ),
               const SizedBox(height: 10),
               _Section(
@@ -78,7 +78,7 @@ class BilanPage extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: bilan.situationNette >= 0
                       ? AppColors.primaryTint
-                      : const Color(0xFFFDECEA),
+                      : AppColors.errorTint,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
@@ -102,7 +102,7 @@ class BilanPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Bilan de gestion dérivé des données de l\'application — '
                 'le bilan comptable officiel reste établi par votre cabinet '
                 'à partir de l\'export.',
@@ -136,7 +136,7 @@ class _Section extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(titre,
-              style: const TextStyle(fontSize: 13, color: AppColors.label)),
+              style: TextStyle(fontSize: 13, color: AppColors.label)),
           const SizedBox(height: 8),
           for (final (libelle, montant, detail) in lignes)
             Padding(
@@ -154,7 +154,7 @@ class _Section extends StatelessWidget {
                     ],
                   ),
                   Text(detail,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11, color: AppColors.hint)),
                 ],
               ),

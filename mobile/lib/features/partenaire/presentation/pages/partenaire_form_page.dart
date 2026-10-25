@@ -131,7 +131,7 @@ class _PartenaireFormPageState extends ConsumerState<PartenaireFormPage> {
             if (_erreur != null) ...[
               const SizedBox(height: 12),
               Text(_erreur!,
-                  style: const TextStyle(fontSize: 12, color: AppColors.error)),
+                  style: TextStyle(fontSize: 12, color: AppColors.error)),
             ],
           ],
         ),
@@ -149,7 +149,7 @@ class _PartenaireFormPageState extends ConsumerState<PartenaireFormPage> {
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
       error: (e, _) => Text('Types indisponibles : $e',
-          style: const TextStyle(fontSize: 12, color: AppColors.error)),
+          style: TextStyle(fontSize: 12, color: AppColors.error)),
       data: (liste) {
         // Le type d'un partenaire existant peut avoir été désactivé depuis :
         // on l'ajoute aux options pour ne pas le perdre à la modification.
@@ -180,11 +180,11 @@ class _PartenaireFormPageState extends ConsumerState<PartenaireFormPage> {
         fillColor: AppColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
       );
 }

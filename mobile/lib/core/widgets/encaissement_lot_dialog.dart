@@ -8,16 +8,17 @@ import 'encaissement_ligne_dialog.dart' show ModeEncaissementSaisie;
 import 'montant_field.dart';
 import 'premium_select_field.dart';
 
+import '../../core/theme/app_colors.dart';
 // ── Palette (cohérente avec les autres feuilles d'encaissement) ───────────────
 
 const _kPrimary = Color(0xFF3B5BDB);
-const _kGreen = Color(0xFF2E7D32);
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint = Color(0xFF9AA0AE);
-const _kLabel = Color(0xFF6B7280);
-const _kBorder = Color(0xFFE3E6EE);
-const _kDark = Color(0xFF1A1A2E);
-const _kError = Color(0xFFE03131);
+Color get _kGreen => AppColors.positive;
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kLabel => AppColors.label;
+Color get _kBorder => AppColors.border;
+Color get _kDark => AppColors.dark;
+Color get _kError => AppColors.error;
 
 // ── Entrées / sorties ─────────────────────────────────────────────────────────
 
@@ -127,7 +128,7 @@ Future<bool?> showEncaissementLotDialog(
   required String titre,
   required List<LigneLotEncaissable> lignes,
   required Future<IssueLot> Function(SaisieLot saisie) onEncaisser,
-  Color couleur = _kGreen,
+  Color? couleur,
   IconData icone = Icons.receipt_long_outlined,
 }) {
   return showModalBottomSheet<bool>(
@@ -135,14 +136,14 @@ Future<bool?> showEncaissementLotDialog(
     isScrollControlled: true,
     useSafeArea: true,
     isDismissible: false,
-    backgroundColor: const Color(0xFFF8F9FB),
+    backgroundColor: AppColors.scaffold,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (_) => _EncaissementLotSheet(
       titre: titre,
       lignes: lignes,
-      couleur: couleur,
+      couleur: couleur ?? _kGreen,
       icone: icone,
       onEncaisser: onEncaisser,
     ),
@@ -396,7 +397,7 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: AppColors.grey300,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -407,7 +408,7 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                 child: Text(
                   widget.titre,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
                       color: _kDark,
@@ -435,7 +436,7 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                   children: [
                     for (var i = 0; i < restantes.length; i++) ...[
                       if (i > 0)
-                        Divider(height: 20, color: Colors.grey.shade100),
+                        Divider(height: 20, color: AppColors.grey100),
                       _LigneLotTile(
                         ligne: restantes[i],
                         controller: _montants[restantes[i].id]!,
@@ -498,7 +499,7 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                         label: 'Référence Mobile Money',
                         child: TextFormField(
                           controller: _refCtrl,
-                          style: const TextStyle(fontSize: 15, color: _kDark),
+                          style: TextStyle(fontSize: 15, color: _kDark),
                           decoration: _fieldDeco('N° de transaction'),
                         ),
                       ),
@@ -514,7 +515,7 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                       child: TextFormField(
                         controller: _commentCtrl,
                         maxLines: 2,
-                        style: const TextStyle(fontSize: 15, color: _kDark),
+                        style: TextStyle(fontSize: 15, color: _kDark),
                         decoration: _fieldDeco('Remarques éventuelles…'),
                       ),
                     ),
@@ -539,7 +540,7 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                       onPressed: _submitting ? null : _fermer,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _kLabel,
-                        side: const BorderSide(color: _kBorder),
+                        side: BorderSide(color: _kBorder),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                       ),
@@ -575,7 +576,7 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                       style: FilledButton.styleFrom(
                         backgroundColor: _kGreen,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey.shade200,
+                        disabledBackgroundColor: AppColors.grey200,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                       ),
@@ -644,7 +645,7 @@ class _LigneLotTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(ligne.titre,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: _kDark)),
@@ -652,7 +653,7 @@ class _LigneLotTile extends StatelessWidget {
                 Text(
                     '${ligne.sousTitre} · reste '
                     '${fmt.format(restantPrincipal)}',
-                    style: const TextStyle(fontSize: 11, color: _kHint)),
+                    style: TextStyle(fontSize: 11, color: _kHint)),
                 // La créance du même jour entre dans le versement tant qu'elle
                 // est cochée : le chauffeur règle le plus souvent les deux
                 // d'un seul coup, mais peut n'en régler qu'une.
@@ -669,7 +670,7 @@ class _LigneLotTile extends StatelessWidget {
                           value: jumelleIncluse,
                           onChanged: actif ? onJumelleChanged : null,
                           activeColor: couleur,
-                          side: const BorderSide(color: _kHint, width: 1.5),
+                          side: BorderSide(color: _kHint, width: 1.5),
                           visualDensity: VisualDensity.compact,
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
@@ -707,7 +708,7 @@ class _LigneLotTile extends StatelessWidget {
               // Le champ est étroit : un message court y tient.
               messageDepassement: (max) => 'Max ${formatMontantCourt(max)}',
               textAlign: TextAlign.right,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 14, fontWeight: FontWeight.w700, color: _kDark),
               decoration: _fieldDeco('0').copyWith(
                 isDense: true,
@@ -774,7 +775,7 @@ class _TotalCard extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text('Total du versement · $lignes ligne(s)',
-              style: const TextStyle(fontSize: 12, color: _kLabel)),
+              style: TextStyle(fontSize: 12, color: _kLabel)),
         ),
         Text(fmt.format(total),
             style: TextStyle(
@@ -846,16 +847,16 @@ class _DateField extends StatelessWidget {
           Expanded(
             child: Text(
               DateFormat('dd/MM/yyyy').format(date),
-              style: const TextStyle(fontSize: 15, color: _kDark),
+              style: TextStyle(fontSize: 15, color: _kDark),
             ),
           ),
           if (estAujourdHui)
-            const Padding(
-              padding: EdgeInsets.only(right: 8),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
               child: Text("Aujourd'hui",
                   style: TextStyle(fontSize: 12, color: _kHint)),
             ),
-          const Icon(Icons.calendar_today_rounded, size: 16, color: _kLabel),
+          Icon(Icons.calendar_today_rounded, size: 16, color: _kLabel),
         ]),
       ),
     );
@@ -883,7 +884,7 @@ class _FormCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
@@ -902,7 +903,7 @@ class _FormCard extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(title,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: _kDark,
@@ -935,11 +936,11 @@ class _LabeledField extends StatelessWidget {
       children: [
         Row(children: [
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5, fontWeight: FontWeight.w600, color: _kLabel)),
           if (isRequired) ...[
             const SizedBox(width: 3),
-            const Text('*',
+            Text('*',
                 style: TextStyle(
                     color: _kError, fontSize: 13, fontWeight: FontWeight.w700)),
           ],
@@ -953,7 +954,7 @@ class _LabeledField extends StatelessWidget {
 
 InputDecoration _fieldDeco(String hint) => InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+      hintStyle: TextStyle(color: _kHint, fontSize: 15),
       filled: true,
       fillColor: _kFieldFill,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
@@ -971,10 +972,10 @@ InputDecoration _fieldDeco(String hint) => InputDecoration(
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kError, width: 1.5),
+        borderSide: BorderSide(color: _kError, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kError, width: 1.5),
+        borderSide: BorderSide(color: _kError, width: 1.5),
       ),
     );

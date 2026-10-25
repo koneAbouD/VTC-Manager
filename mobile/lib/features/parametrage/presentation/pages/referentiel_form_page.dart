@@ -11,7 +11,7 @@ import '../providers/parametrage_providers.dart';
 
 // Fond des champs, aligné sur VehiculeFormPage (au lieu de AppColors.fieldFill,
 // une nuance de gris légèrement différente).
-const _kFieldFill = Color(0xFFF2F3F5);
+Color get _kFieldFill => AppColors.fieldFill;
 
 /// Formulaire générique de création / édition d'une valeur de référentiel.
 /// Les champs sont générés à partir du schéma du référentiel (meta-catalogue).
@@ -269,7 +269,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         ),
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.scaffold,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
@@ -321,7 +321,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
             width: 46,
             height: 46,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,
             ),
@@ -337,7 +337,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_edition ? 'Modifier' : 'Nouvel enregistrement',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: AppColors.dark)),
@@ -345,7 +345,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
                 Text(
                   d.description.isNotEmpty ? d.description : d.libelle,
                   style:
-                      const TextStyle(fontSize: 12.5, color: AppColors.label),
+                      TextStyle(fontSize: 12.5, color: AppColors.label),
                 ),
               ],
             ),
@@ -427,7 +427,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         height: 172,
         width: double.infinity,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [AppColors.primaryTint, _kFieldFill],
@@ -452,17 +452,17 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
                   ),
                 ],
               ),
-              child: const Icon(Icons.add_photo_alternate_rounded,
+              child: Icon(Icons.add_photo_alternate_rounded,
                   size: 27, color: AppColors.primary),
             ),
             const SizedBox(height: 12),
-            const Text('Ajouter une image',
+            Text('Ajouter une image',
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: AppColors.dark)),
             const SizedBox(height: 3),
-            const Text('JPG ou PNG · appuyez pour parcourir',
+            Text('JPG ou PNG · appuyez pour parcourir',
                 style: TextStyle(fontSize: 12, color: AppColors.label)),
           ],
         ),
@@ -499,7 +499,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
                   if (progress == null) return child;
                   return Container(
                     color: _kFieldFill,
-                    child: const Center(
+                    child: Center(
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: AppColors.primary),
                     ),
@@ -507,13 +507,13 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
                 },
                 errorBuilder: (_, __, ___) => Container(
                   color: _kFieldFill,
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.broken_image_outlined,
                             color: AppColors.hint, size: 30),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text('Image indisponible',
                             style:
                                 TextStyle(color: AppColors.hint, fontSize: 12)),
@@ -595,12 +595,12 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text('Téléversement…',
                 style: TextStyle(color: AppColors.label, fontSize: 12.5)),
           ],
@@ -614,7 +614,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
     required IconData icon,
     required String tooltip,
     required VoidCallback onTap,
-    Color couleur = AppColors.dark,
+    Color? couleur,
   }) {
     return Material(
       color: Colors.white.withValues(alpha: 0.92),
@@ -629,7 +629,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           child: SizedBox(
             width: 38,
             height: 38,
-            child: Icon(icon, size: 19, color: couleur),
+            child: Icon(icon, size: 19, color: couleur ?? AppColors.dark),
           ),
         ),
       ),
@@ -641,12 +641,12 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         child: RichText(
           text: TextSpan(
             text: c.label,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: AppColors.dark),
             children: c.obligatoire
-                ? const [
+                ? [
                     TextSpan(
                         text: ' *', style: TextStyle(color: AppColors.error))
                   ]
@@ -662,11 +662,11 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.6),
         ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       );
@@ -702,7 +702,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
         children: [
           Expanded(
               child: Text(c.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.dark))),
@@ -734,7 +734,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           loading: () => _selecteurSquelette(),
           error: (_, __) => Text(
               'Impossible de charger « ${refDesc.libelle} ».',
-              style: const TextStyle(color: AppColors.error, fontSize: 12)),
+              style: TextStyle(color: AppColors.error, fontSize: 12)),
           data: (items) {
             final titreChamp = refDesc.champTitre?.nom ?? 'nom';
             // Valeurs restreintes au choix du champ parent (ex. modèles de la
@@ -795,13 +795,13 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
         ),
-        child: const Row(children: [
+        child: Row(children: [
           SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(
                   strokeWidth: 2, color: AppColors.primary)),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Text('Chargement…',
               style: TextStyle(color: AppColors.hint, fontSize: 14)),
         ]),
@@ -820,7 +820,7 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(_valText(c).isEmpty ? '—' : _valText(c),
-              style: const TextStyle(color: AppColors.label)),
+              style: TextStyle(color: AppColors.label)),
         ),
       ],
     );

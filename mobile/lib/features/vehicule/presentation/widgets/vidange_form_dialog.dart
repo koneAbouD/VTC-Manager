@@ -8,16 +8,17 @@ import '../../../../core/widgets/app_error_banner.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../providers/vidanges_provider.dart';
 
+import '../../../../core/theme/app_colors.dart';
 // ── Palette (cohérente avec EncaissementLigneDialog / MaintenanceFormPage) ────
 
 const _kPrimary = Color(0xFF3B5BDB);
-const _kGreen = Color(0xFF2E7D32);
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint = Color(0xFF9AA0AE);
-const _kLabel = Color(0xFF6B7280);
-const _kBorder = Color(0xFFE3E6EE);
-const _kDark = Color(0xFF1A1A2E);
-const _kError = Color(0xFFE03131);
+Color get _kGreen => AppColors.positive;
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kLabel => AppColors.label;
+Color get _kBorder => AppColors.border;
+Color get _kDark => AppColors.dark;
+Color get _kError => AppColors.error;
 
 String _grouped(int n) => n
     .toString()
@@ -47,7 +48,7 @@ void _showToast(BuildContext context, String message, {bool error = false}) {
         ),
       ]),
       backgroundColor:
-          error ? const Color(0xFFB71C1C) : const Color(0xFF1B5E20),
+          error ? AppColors.error : AppColors.success,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -69,7 +70,7 @@ Future<bool?> showVidangeFormDialog(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: const Color(0xFFF8F9FB),
+    backgroundColor: AppColors.scaffold,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -203,15 +204,15 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppColors.grey300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
 
             // ── Titre ─────────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.only(bottom: 14),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
               child: Text(
                 'Enregistrer une vidange',
                 textAlign: TextAlign.center,
@@ -259,10 +260,10 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
                       controller: _kmVidangeCtrl,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      style: TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco('0').copyWith(
                         suffixText: 'km',
-                        suffixStyle: const TextStyle(
+                        suffixStyle: TextStyle(
                             color: _kLabel,
                             fontSize: 13,
                             fontWeight: FontWeight.w600),
@@ -308,10 +309,10 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
                       controller: _kmProchaineCtrl,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      style: TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco('Ex. 150 000').copyWith(
                         suffixText: 'km',
-                        suffixStyle: const TextStyle(
+                        suffixStyle: TextStyle(
                             color: _kLabel,
                             fontSize: 13,
                             fontWeight: FontWeight.w600),
@@ -364,7 +365,7 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: _kGreen,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey.shade200,
+                  disabledBackgroundColor: AppColors.grey200,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
@@ -406,7 +407,7 @@ class _DateBox extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(children: [
-          const Icon(Icons.calendar_today_outlined, size: 17, color: _kHint),
+          Icon(Icons.calendar_today_outlined, size: 17, color: _kHint),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -422,10 +423,10 @@ class _DateBox extends StatelessWidget {
           if (onClear != null)
             GestureDetector(
               onTap: onClear,
-              child: const Icon(Icons.close_rounded, size: 17, color: _kHint),
+              child: Icon(Icons.close_rounded, size: 17, color: _kHint),
             )
           else
-            const Icon(Icons.expand_more_rounded, size: 20, color: _kHint),
+            Icon(Icons.expand_more_rounded, size: 20, color: _kHint),
         ]),
       ),
     );
@@ -454,7 +455,7 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _kBorder),
       ),
@@ -473,13 +474,13 @@ class _InfoCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(titre,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: _kDark)),
               if (sousTitre != null)
                 Text(sousTitre!,
-                    style: const TextStyle(fontSize: 11, color: _kHint)),
+                    style: TextStyle(fontSize: 11, color: _kHint)),
             ],
           ),
         ),
@@ -524,7 +525,7 @@ class _FormCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
@@ -543,7 +544,7 @@ class _FormCard extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(title,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: _kDark,
@@ -576,11 +577,11 @@ class _LabeledField extends StatelessWidget {
       children: [
         Row(children: [
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5, fontWeight: FontWeight.w600, color: _kLabel)),
           if (isRequired) ...[
             const SizedBox(width: 3),
-            const Text('*',
+            Text('*',
                 style: TextStyle(
                     color: _kError, fontSize: 13, fontWeight: FontWeight.w700)),
           ],
@@ -594,7 +595,7 @@ class _LabeledField extends StatelessWidget {
 
 InputDecoration _fieldDeco(String hint) => InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+      hintStyle: TextStyle(color: _kHint, fontSize: 15),
       filled: true,
       fillColor: _kFieldFill,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
@@ -612,10 +613,10 @@ InputDecoration _fieldDeco(String hint) => InputDecoration(
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kError, width: 1.5),
+        borderSide: BorderSide(color: _kError, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kError, width: 1.5),
+        borderSide: BorderSide(color: _kError, width: 1.5),
       ),
     );

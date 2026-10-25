@@ -168,7 +168,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                   width: 210,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.blanc,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -201,8 +201,8 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                                     : Icons.radio_button_off_outlined,
                                 size: 18,
                                 color: sel
-                                    ? const Color(0xFF43A047)
-                                    : Colors.grey.shade400,
+                                    ? AppColors.primary
+                                    : AppColors.grey400,
                               ),
                               const SizedBox(width: 10),
                               Text(
@@ -212,8 +212,8 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                                   fontWeight:
                                       sel ? FontWeight.w600 : FontWeight.w400,
                                   color: sel
-                                      ? const Color(0xFF43A047)
-                                      : const Color(0xFF1A1A1A),
+                                      ? AppColors.primary
+                                      : AppColors.dark,
                                 ),
                               ),
                             ],
@@ -419,7 +419,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     final ok = await showEncaissementLotDialog(
       context,
       titre: 'Encaisser ${selection.length} recette(s)',
-      couleur: const Color(0xFF2E7D32),
+      couleur: AppColors.positive,
       icone: Icons.account_balance_wallet_outlined,
       lignes: lignes,
       onEncaisser: executeur.executer,
@@ -462,7 +462,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
       titre: 'Recette',
       sousTitre: _libelleVehiculeChauffeur(ligne),
       montantRestant: ligne.montantRestant,
-      couleur: const Color(0xFF2E7D32),
+      couleur: AppColors.positive,
       icone: Icons.account_balance_wallet_outlined,
       onEncaisser: (saisie) async {
         final enc = Encaissement(
@@ -547,7 +547,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
         if (!didPop) _quitterSelection();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FB),
+        backgroundColor: AppColors.scaffold,
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -570,7 +570,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                         width: 56,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF0F2F8),
+                          color: AppColors.headerButton,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Icon(
@@ -578,17 +578,17 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                                 ? Icons.close_rounded
                                 : Icons.arrow_back_rounded,
                             size: 18,
-                            color: const Color(0xFF1A1A2E)),
+                            color: AppColors.dark),
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Recettes',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF1A1A2E),
+                          color: AppColors.dark,
                           letterSpacing: -0.3,
                         ),
                       ),
@@ -599,11 +599,11 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                         width: 56,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF0F2F8),
+                          color: AppColors.headerButton,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Icon(Icons.auto_awesome_rounded,
-                            size: 18, color: Color(0xFF1A1A2E)),
+                        child: Icon(Icons.auto_awesome_rounded,
+                            size: 18, color: AppColors.dark),
                       ),
                     ),
                   ],
@@ -838,27 +838,27 @@ class _FiltreBar extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.blanc,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: AppColors.grey300),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.filter_list_rounded,
-                      size: 14, color: Color(0xFF43A047)),
+                  Icon(Icons.filter_list_rounded,
+                      size: 14, color: AppColors.primary),
                   const SizedBox(width: 5),
                   Text(
                     modeLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF43A047),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(width: 3),
-                  const Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 14, color: Color(0xFF43A047)),
+                  Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 14, color: AppColors.primary),
                 ],
               ),
             ),
@@ -886,19 +886,19 @@ class _DatePill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: AppColors.grey200,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 13, color: Colors.grey.shade600),
+            Icon(icon, size: 13, color: AppColors.grey600),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade700,
+                  color: AppColors.grey700,
                   fontWeight: FontWeight.w500,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -906,7 +906,7 @@ class _DatePill extends StatelessWidget {
             ),
             const SizedBox(width: 5),
             Icon(Icons.keyboard_arrow_down_rounded,
-                size: 14, color: Colors.grey.shade600),
+                size: 14, color: AppColors.grey600),
           ],
         ),
       ),
@@ -963,7 +963,7 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
           decoration: BoxDecoration(
             // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt
             // qu'un blanc avec ombre portée.
-            color: const Color(0xFFF2F3F5),
+            color: AppColors.fieldFill,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -971,11 +971,11 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
               _focus.hasFocus
                   ? GestureDetector(
                       onTap: _focus.unfocus,
-                      child: const Icon(Icons.close,
-                          color: Color(0xFF8A8A8E), size: 20),
+                      child: Icon(Icons.close,
+                          color: AppColors.hint, size: 20),
                     )
-                  : const Icon(Icons.search,
-                      color: Color(0xFF8A8A8E), size: 20),
+                  : Icon(Icons.search,
+                      color: AppColors.hint, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
@@ -983,12 +983,12 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
                   focusNode: _focus,
                   onChanged: widget.onSearchChanged,
                   style: const TextStyle(fontSize: 14),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Immatriculation, chauffeur…',
                     hintStyle:
-                        TextStyle(color: Color(0xFF8A8A8E), fontSize: 14),
+                        TextStyle(color: AppColors.hint, fontSize: 14),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
@@ -1003,8 +1003,8 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
                           widget.controller.clear();
                           widget.onSearchChanged('');
                         },
-                        child: const Icon(Icons.close_rounded,
-                            size: 18, color: Color(0xFF8A8A8E)),
+                        child: Icon(Icons.close_rounded,
+                            size: 18, color: AppColors.hint),
                       ),
               ),
             ],
@@ -1044,8 +1044,8 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
   /// l'attente et les fins de course neutres, bleu pour l'encaissement
   /// commencé mais pas terminé, vert pour ce qui est soldé.
   static const _bleu = Color(0xFF1565C0);
-  static const _vert = Color(0xFF2E7D32);
-  static const _hint = Color(0xFF8A94A6);
+  static Color get _vert => AppColors.positive;
+  static Color get _hint => AppColors.hint;
 
   Color _couleurStatut(StatutLigneRecette s) => switch (s) {
         StatutLigneRecette.enAttente => _hint,
@@ -1181,7 +1181,7 @@ class _LigneCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(12),
           border: coche
               ? Border.all(color: AppColors.primary.withValues(alpha: 0.55))
@@ -1233,16 +1233,16 @@ class _LigneCard extends StatelessWidget {
                 children: [
                   Text(
                     _libelleVehiculeChauffeur(ligne),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: Color(0xFF1A1A1A),
+                      color: AppColors.dark,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     _labelDate(ligne.dateRecette),
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 11, color: AppColors.grey500),
                   ),
                 ],
               ),
@@ -1258,7 +1258,7 @@ class _LigneCard extends StatelessWidget {
                 if (montantPrincipal != null)
                   Text(
                     '${NumberFormat('#,##0', 'fr_FR').format(montantPrincipal)} XOF',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.dark,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -1267,7 +1267,7 @@ class _LigneCard extends StatelessWidget {
                 else
                   Text(
                     '+${NumberFormat('#,##0', 'fr_FR').format(ligne.montantEncaisse)} XOF',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.dark,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -1276,7 +1276,7 @@ class _LigneCard extends StatelessWidget {
                 if (montantAttenduDifferent)
                   Text(
                     'sur ${NumberFormat('#,##0', 'fr_FR').format(ligne.montantAttendu)} XOF',
-                    style: TextStyle(fontSize: 10, color: Colors.grey.shade400),
+                    style: TextStyle(fontSize: 10, color: AppColors.grey400),
                   ),
                 if (onEncaisser != null) ...[
                   const SizedBox(height: 6),
@@ -1293,10 +1293,10 @@ class _LigneCard extends StatelessWidget {
   /// Même palette que les chips de filtre : la pastille d'icône reprend la
   /// couleur du statut telle qu'elle est présentée en haut de page.
   Color _couleurStatut(StatutLigneRecette s) => switch (s) {
-        StatutLigneRecette.enAttente => const Color(0xFF8A94A6),
+        StatutLigneRecette.enAttente => AppColors.hint,
         StatutLigneRecette.partiellementEncaisse => const Color(0xFF1565C0),
-        StatutLigneRecette.encaisse => const Color(0xFF2E7D32),
-        StatutLigneRecette.annulee => const Color(0xFF8A94A6),
+        StatutLigneRecette.encaisse => AppColors.positive,
+        StatutLigneRecette.annulee => AppColors.hint,
       };
 
   IconData _iconeStatut(StatutLigneRecette s) => switch (s) {
@@ -1325,12 +1325,12 @@ class _EmptyState extends StatelessWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: AppColors.grey100,
                   shape: BoxShape.circle,
                 ),
               ),
               Icon(Icons.receipt_long_outlined,
-                  size: 38, color: Colors.grey.shade300),
+                  size: 38, color: AppColors.grey300),
             ],
           ),
           const SizedBox(height: 16),
@@ -1339,13 +1339,13 @@ class _EmptyState extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.grey.shade600,
+              color: AppColors.grey600,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             'Appuyez sur ✨ pour générer les lignes du jour',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+            style: TextStyle(fontSize: 13, color: AppColors.grey400),
             textAlign: TextAlign.center,
           ),
         ],

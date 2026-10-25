@@ -5,6 +5,7 @@ import '../../../../core/widgets/extourne_badge.dart';
 
 import 'ligne_journal.dart';
 
+import '../../../../core/theme/app_colors.dart';
 /// Un versement dans le journal : le billet en tête, sa ventilation dessous.
 ///
 /// Même gabarit que la tuile d'une écriture — pastille, libellé, montant, puis
@@ -16,8 +17,8 @@ class VersementCard extends StatelessWidget {
 
   const VersementCard({super.key, required this.versement, required this.onTap});
 
-  static const _vert = Color(0xFF2E7D32);
-  static const _encre = Color(0xFF1A1A1A);
+  static Color get _vert => AppColors.positive;
+  static Color get _encre => AppColors.dark;
 
   static TextStyle _barre(TextStyle style, bool barree) => barree
       ? style.copyWith(
@@ -53,7 +54,7 @@ class VersementCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -89,7 +90,7 @@ class VersementCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: _barre(
-                              const TextStyle(
+                              TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
                                   color: _encre),
@@ -105,7 +106,7 @@ class VersementCard extends StatelessWidget {
                       Text(
                         '${montant.format(versement.total)} XOF',
                         style: _barre(
-                            const TextStyle(
+                            TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                                 color: _encre),
@@ -122,14 +123,14 @@ class VersementCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade500),
+                              fontSize: 11, color: AppColors.grey500),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         DateFormat('dd/MM', 'fr_FR').format(tete.dateOperation),
                         style:
-                            TextStyle(fontSize: 10, color: Colors.grey.shade400),
+                            TextStyle(fontSize: 10, color: AppColors.grey400),
                       ),
                     ],
                   ),
@@ -147,7 +148,7 @@ class VersementCard extends StatelessWidget {
                           style: _barre(
                               TextStyle(
                                   fontSize: 11,
-                                  color: Colors.grey.shade600,
+                                  color: AppColors.grey600,
                                   fontFeatures: const [
                                     FontFeature.tabularFigures()
                                   ]),

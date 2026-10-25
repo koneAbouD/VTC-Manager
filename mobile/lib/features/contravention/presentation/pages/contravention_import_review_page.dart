@@ -27,11 +27,11 @@ class _ContraventionImportReviewPageState
   static final _money = NumberFormat('#,##0', 'fr_FR');
 
   // Accents alignés sur la carte contravention.
-  static const _rouge = Color(0xFFB71C1C);
+  static Color get _rouge => AppColors.error;
   static const _rougeBg = Color(0xFFFCEBEB);
   static const _ambre = Color(0xFF854F0B);
   static const _ambreBg = Color(0xFFFAEEDA);
-  static const _vert = Color(0xFF2E7D32);
+  static Color get _vert => AppColors.positive;
   static const _vertBg = Color(0xFFEAF3DE);
 
   late final List<ContraventionModel> _items;
@@ -120,7 +120,7 @@ class _ContraventionImportReviewPageState
                       _resume(a, bloque),
                       if (!bloque) ...[
                         const SizedBox(height: 16),
-                        const Text('Contraventions détectées',
+                        Text('Contraventions détectées',
                             style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
@@ -175,14 +175,14 @@ class _ContraventionImportReviewPageState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(immat,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: AppColors.dark,
                             letterSpacing: -0.3)),
                     const SizedBox(height: 2),
                     Text('${_items.length} contravention(s) détectée(s)',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12.5, color: AppColors.label)),
                   ],
                 ),
@@ -201,12 +201,12 @@ class _ContraventionImportReviewPageState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Montant total à importer',
+                  Text('Montant total à importer',
                       style: TextStyle(
                           fontSize: 12, color: AppColors.primaryDark)),
                   const SizedBox(height: 2),
                   Text('${_money.format(_total)} XOF',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: AppColors.primaryDark,
@@ -295,7 +295,7 @@ class _ContraventionImportReviewPageState
               Expanded(
                 child: Text(
                   c.typeInfraction ?? c.description ?? 'Infraction',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.dark),
@@ -303,7 +303,7 @@ class _ContraventionImportReviewPageState
               ),
               const SizedBox(width: 8),
               Text('${_money.format(c.montant)} XOF',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: AppColors.dark)),
@@ -366,7 +366,7 @@ class _ContraventionImportReviewPageState
       Icon(icon, size: 13, color: AppColors.label),
       const SizedBox(width: 5),
       Text(text,
-          style: const TextStyle(fontSize: 11.5, color: AppColors.label)),
+          style: TextStyle(fontSize: 11.5, color: AppColors.label)),
     ]);
   }
 
@@ -376,7 +376,7 @@ class _ContraventionImportReviewPageState
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
@@ -417,14 +417,14 @@ class _ContraventionImportReviewPageState
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.inbox_outlined, size: 60, color: AppColors.hint),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Aucune nouvelle contravention à importer',
               textAlign: TextAlign.center,
@@ -433,7 +433,7 @@ class _EmptyState extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   color: AppColors.dark),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
               'Toutes les contraventions du relevé sont déjà enregistrées.',
               textAlign: TextAlign.center,

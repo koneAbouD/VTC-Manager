@@ -23,21 +23,22 @@ import '../../../etat_parc/presentation/providers/etat_parc_provider.dart';
 import 'categorie_operation_selector_page.dart';
 import 'elements_maintenance_page.dart';
 
+import '../../../../core/theme/app_colors.dart';
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const _kPrimary = Color(0xFF43A047);
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint = Color(0xFF9AA0AE);
-const _kLabel = Color(0xFF6B7280);
-const _kBorder = Color(0xFFE3E6EE);
-const _kDark = Color(0xFF1A1A2E);
+Color get _kPrimary => AppColors.primary;
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kLabel => AppColors.label;
+Color get _kBorder => AppColors.border;
+Color get _kDark => AppColors.dark;
 const _kRevenu = Color(0xFF2F9E44);
-const _kDepense = Color(0xFFE03131);
+Color get _kDepense => AppColors.error;
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
 void _showToast(BuildContext context, String message, {bool error = false}) {
-  final bg = error ? const Color(0xFFB71C1C) : const Color(0xFF1B5E20);
+  final bg = error ? AppColors.error : AppColors.success;
   final icon =
       error ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded;
   ScaffoldMessenger.of(context)
@@ -505,21 +506,21 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3EB),
+                  color: AppColors.fond(0xFFFFF3EB),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: const Color(0xFFE65100).withValues(alpha: 0.20),
+                    color: AppColors.warning.withValues(alpha: 0.20),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.build_circle_outlined,
-                        size: 15, color: Color(0xFFE65100)),
+                    Icon(Icons.build_circle_outlined,
+                        size: 15, color: AppColors.warning),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         el.libelleAvecQuantite,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: _kDark),
@@ -527,9 +528,9 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                     ),
                     Text(
                       '${el.montant.toStringAsFixed(0)} XOF',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFFE65100),
+                          color: AppColors.warning,
                           fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -547,7 +548,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.checklist_rounded, size: 17, color: _kPrimary),
+                Icon(Icons.checklist_rounded, size: 17, color: _kPrimary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -564,19 +565,19 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE65100).withValues(alpha: 0.10),
+                      color: AppColors.warning.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${_elements.length}',
-                      style: const TextStyle(
-                          color: Color(0xFFE65100),
+                      style: TextStyle(
+                          color: AppColors.warning,
                           fontWeight: FontWeight.w700,
                           fontSize: 13),
                     ),
                   )
                 else
-                  const Icon(Icons.chevron_right_rounded,
+                  Icon(Icons.chevron_right_rounded,
                       size: 20, color: _kHint),
               ],
             ),
@@ -616,10 +617,10 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
             if (value != null && onClear != null)
               GestureDetector(
                 onTap: onClear,
-                child: const Icon(Icons.close, size: 18, color: _kHint),
+                child: Icon(Icons.close, size: 18, color: _kHint),
               )
             else
-              const Icon(Icons.chevron_right, size: 20, color: _kHint),
+              Icon(Icons.chevron_right, size: 20, color: _kHint),
           ],
         ),
       ),
@@ -674,17 +675,17 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
       decoration: BoxDecoration(
-        color: _aPayer ? const Color(0xFFFFF4E5) : _kFieldFill,
+        color: _aPayer ? AppColors.fond(0xFFFFF4E5) : _kFieldFill,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: _aPayer ? const Color(0xFFE65100) : _kBorder,
+            color: _aPayer ? AppColors.warning : _kBorder,
             width: _aPayer ? 1.4 : 1),
       ),
       child: Row(
         children: [
           Icon(_aPayer ? Icons.schedule_outlined : Icons.payments_outlined,
               size: 19,
-              color: _aPayer ? const Color(0xFFE65100) : _kLabel),
+              color: _aPayer ? AppColors.warning : _kLabel),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -694,18 +695,18 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: _aPayer ? const Color(0xFFE65100) : _kDark)),
+                        color: _aPayer ? AppColors.warning : _kDark)),
                 Text(
                     _aPayer
                         ? 'Crée une dette chez le partenaire'
                         : 'Sort l\'argent de la caisse',
-                    style: const TextStyle(fontSize: 11.5, color: _kLabel)),
+                    style: TextStyle(fontSize: 11.5, color: _kLabel)),
               ],
             ),
           ),
           Switch(
             value: _aPayer,
-            activeThumbColor: const Color(0xFFE65100),
+            activeThumbColor: AppColors.warning,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             onChanged: (v) => setState(() => _aPayer = v),
           ),
@@ -738,10 +739,10 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
             Expanded(
               child: Text(
                 DateFormat('dd MMMM yyyy', 'fr_FR').format(_echeance),
-                style: const TextStyle(fontSize: 15, color: _kDark),
+                style: TextStyle(fontSize: 15, color: _kDark),
               ),
             ),
-            const Icon(Icons.event_outlined, size: 19, color: _kHint),
+            Icon(Icons.event_outlined, size: 19, color: _kHint),
           ],
         ),
       ),
@@ -759,15 +760,15 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined,
+            Icon(Icons.calendar_today_outlined,
                 size: 17, color: _kPrimary),
             const SizedBox(width: 10),
             Text(
               DateFormat('dd MMMM yyyy', 'fr_FR').format(_date),
-              style: const TextStyle(fontSize: 15, color: _kDark),
+              style: TextStyle(fontSize: 15, color: _kDark),
             ),
             const Spacer(),
-            const Icon(Icons.keyboard_arrow_down, size: 20, color: _kHint),
+            Icon(Icons.keyboard_arrow_down, size: 20, color: _kHint),
           ],
         ),
       ),
@@ -776,7 +777,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
 
   InputDecoration _fieldDeco(String hint) => InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+        hintStyle: TextStyle(color: _kHint, fontSize: 15),
         filled: true,
         fillColor: _kFieldFill,
         contentPadding:
@@ -791,15 +792,15 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+          borderSide: BorderSide(color: _kPrimary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kDepense, width: 1.5),
+          borderSide: BorderSide(color: _kDepense, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kDepense, width: 1.5),
+          borderSide: BorderSide(color: _kDepense, width: 1.5),
         ),
       );
 
@@ -808,7 +809,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: _isEdit ? 'Modifier opération' : 'Nouvelle opération',
         action: AppHeaderAction(
@@ -900,10 +901,10 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                     const SizedBox(height: 12),
                     Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE65100).withValues(alpha: 0.05),
+                        color: AppColors.warning.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: const Color(0xFFE65100)
+                            color: AppColors.warning
                                 .withValues(alpha: 0.18)),
                       ),
                       child: Column(children: [
@@ -919,15 +920,15 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                               Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE65100)
+                                  color: AppColors.warning
                                       .withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(Icons.build_outlined,
-                                    size: 15, color: Color(0xFFE65100)),
+                                child: Icon(Icons.build_outlined,
+                                    size: 15, color: AppColors.warning),
                               ),
                               const SizedBox(width: 8),
-                              const Expanded(
+                              Expanded(
                                 child: Text.rich(TextSpan(
                                   text: 'Éléments concernés',
                                   style: TextStyle(
@@ -950,7 +951,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                               AnimatedRotation(
                                 turns: _maintenanceExpanded ? 0.5 : 0.0,
                                 duration: const Duration(milliseconds: 250),
-                                child: const Icon(
+                                child: Icon(
                                     Icons.keyboard_arrow_down_rounded,
                                     size: 18,
                                     color: _kHint),
@@ -987,12 +988,12 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                         readOnly: _isMaintenance,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        style: const TextStyle(fontSize: 15, color: _kDark),
+                        style: TextStyle(fontSize: 15, color: _kDark),
                         decoration: _isMaintenance
                             ? _fieldDeco('0').copyWith(
-                                fillColor: const Color(0xFFEEF2FF),
-                                suffixIcon: const Padding(
-                                  padding: EdgeInsets.only(right: 10),
+                                fillColor: AppColors.infoTint,
+                                suffixIcon: Padding(
+                                  padding: const EdgeInsets.only(right: 10),
                                   child: Icon(
                                     Icons.calculate_outlined,
                                     size: 16,
@@ -1021,7 +1022,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                               controller: _dureeCtrl,
                               keyboardType: TextInputType.number,
                               style:
-                                  const TextStyle(fontSize: 15, color: _kDark),
+                                  TextStyle(fontSize: 15, color: _kDark),
                               decoration: _fieldDeco('ex : 2'),
                             ),
                           )
@@ -1065,7 +1066,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
                     child: TextFormField(
                       controller: _commentaireCtrl,
                       maxLines: 3,
-                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      style: TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco('Informations complémentaires…'),
                     ),
                   ),
@@ -1082,9 +1083,9 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
 // ── Widgets locaux ────────────────────────────────────────────────────────────
 
 /// Séparateur horizontal utilisé à l'intérieur d'une _FormCard fusionnée.
-const _kCardDivider = Padding(
-  padding: EdgeInsets.symmetric(vertical: 16),
-  child: Divider(color: Color(0xFFEEF0F6), thickness: 1, height: 1),
+Widget get _kCardDivider => Padding(
+  padding: const EdgeInsets.symmetric(vertical: 16),
+  child: Divider(color: AppColors.fond(0xFFEEF0F6), thickness: 1, height: 1),
 );
 
 class _FormCard extends StatelessWidget {
@@ -1106,7 +1107,7 @@ class _FormCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
@@ -1125,7 +1126,7 @@ class _FormCard extends StatelessWidget {
             const SizedBox(width: 10),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: _kDark,
@@ -1160,7 +1161,7 @@ class _LabeledField extends StatelessWidget {
         Row(children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: _kLabel,
@@ -1168,7 +1169,7 @@ class _LabeledField extends StatelessWidget {
           ),
           if (isRequired) ...[
             const SizedBox(width: 3),
-            const Text('*',
+            Text('*',
                 style: TextStyle(
                     color: _kDepense,
                     fontSize: 13,

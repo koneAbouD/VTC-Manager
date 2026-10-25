@@ -433,7 +433,7 @@ class _FormState extends ConsumerState<IndisponibiliteFormPage> {
   Widget _label(String text) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(text,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.label)),
@@ -486,15 +486,15 @@ class _SelectorField extends StatelessWidget {
               ),
             ),
             if (!enabled)
-              const Icon(Icons.lock_outline_rounded,
+              Icon(Icons.lock_outline_rounded,
                   size: 18, color: AppColors.hint)
             else if (hasValue && onClear != null)
               GestureDetector(
                 onTap: onClear,
-                child: const Icon(Icons.close, size: 18, color: AppColors.hint),
+                child: Icon(Icons.close, size: 18, color: AppColors.hint),
               )
             else
-              const Icon(Icons.chevron_right, size: 20, color: AppColors.hint),
+              Icon(Icons.chevron_right, size: 20, color: AppColors.hint),
           ],
         ),
       ),

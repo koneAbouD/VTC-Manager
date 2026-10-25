@@ -112,11 +112,11 @@ class _BoutonPeriode extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.calendar_month_outlined,
+            Icon(Icons.calendar_month_outlined,
                 size: 15, color: AppColors.label),
             const SizedBox(width: 6),
             Text(_libelleCourt(cadrage.mois, cadrage.annee),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: AppColors.dark)),
@@ -164,7 +164,7 @@ class _BandeauPeriode extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(p.label,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppColors.dark)),
@@ -175,7 +175,7 @@ class _BandeauPeriode extends ConsumerWidget {
                       : (p.moisEnCours
                           ? 'Mois en cours — ${p.joursEcoules} j sur ${p.joursPeriode}'
                           : 'Mois complet — non clôturé'),
-                  style: const TextStyle(fontSize: 11.5, color: AppColors.hint),
+                  style: TextStyle(fontSize: 11.5, color: AppColors.hint),
                 ),
               ],
             ),
@@ -279,10 +279,10 @@ class _BandeauEssentiel extends StatelessWidget {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Row(
             children: [
-              const Icon(Icons.today_outlined, size: 16, color: AppColors.label),
+              Icon(Icons.today_outlined, size: 16, color: AppColors.label),
               const SizedBox(width: 6),
               Text(_libelleJour(j.date, data.periode.moisEnCours),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.label)),
@@ -407,7 +407,7 @@ class _CarteEssentiel extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(label,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppColors.label),
@@ -429,7 +429,7 @@ class _CarteEssentiel extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(sousLabel,
-                style: const TextStyle(fontSize: 10.5, color: AppColors.hint),
+                style: TextStyle(fontSize: 10.5, color: AppColors.hint),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
             Padding(
@@ -441,14 +441,14 @@ class _CarteEssentiel extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(libelleMois,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 10.5, color: AppColors.hint),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ),
                 const SizedBox(width: 6),
                 Text(valeurMois,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppColors.label)),
@@ -693,7 +693,7 @@ class _SectionCash extends StatelessWidget {
           ],
           if (c.topDebiteurs.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text('Principaux débiteurs',
+            Text('Principaux débiteurs',
                 style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -717,7 +717,7 @@ class _BarreAnciennete extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = cash.creancesBrutes;
     if (total <= 0) {
-      return const Text('Aucune créance ouverte',
+      return Text('Aucune créance ouverte',
           style: TextStyle(fontSize: 12, color: AppColors.hint));
     }
 
@@ -766,9 +766,9 @@ class _BarreAnciennete extends StatelessWidget {
                   const SizedBox(width: 5),
                   Text('${s.$1}  ',
                       style:
-                          const TextStyle(fontSize: 11, color: AppColors.label)),
+                          TextStyle(fontSize: 11, color: AppColors.label)),
                   Text(tbMontantCourt(s.$2),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.dark)),
@@ -797,7 +797,7 @@ class _LigneDebiteur extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(debiteur.nom.isEmpty ? 'Chauffeur' : debiteur.nom,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.dark),
@@ -817,7 +817,7 @@ class _LigneDebiteur extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Text(tbMontant(debiteur.total),
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppColors.dark)),
@@ -860,10 +860,10 @@ class _SectionFlotte extends StatelessWidget {
           // Avertissement de lecture : disponibilité et utilisation sont l'état
           // du parc maintenant, pas une moyenne de la période. Sur un mois
           // passé, les confondre ferait juger mai avec la flotte d'aujourd'hui.
-          const Row(
+          Row(
             children: [
               Icon(Icons.schedule_rounded, size: 12, color: AppColors.hint),
-              SizedBox(width: 5),
+              const SizedBox(width: 5),
               Expanded(
                 child: Text(
                     'Occupation du parc à l\'instant ; montants sur la période',
@@ -954,7 +954,7 @@ class _Palmares extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(titre,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.label)),
@@ -969,7 +969,7 @@ class _Palmares extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(v.immatriculation,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: AppColors.dark)),
@@ -978,7 +978,7 @@ class _Palmares extends StatelessWidget {
                             ? '${tbMontantCourt(v.produits)} de produits · '
                                 '${v.joursImmobilisation} j d\'arrêt'
                             : '${tbMontantCourt(v.produits)} de produits',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 10.5, color: AppColors.hint),
                       ),
                     ],
@@ -1032,11 +1032,11 @@ class _SectionAlertes extends StatelessWidget {
       question: 'Qu\'est-ce qui menace la suite ?',
       accent: alertes.total > 0 ? kTbOrange : AppColors.primary,
       child: ouverts.isEmpty
-          ? const Row(
+          ? Row(
               children: [
                 Icon(Icons.check_circle_outline_rounded,
                     size: 18, color: kTbVert),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text('Aucun point de vigilance ouvert',
                       style:
@@ -1090,7 +1090,7 @@ class _TuileAlerte extends StatelessWidget {
               Icon(icone, size: 14, color: kTbOrange),
               const SizedBox(width: 6),
               Text('$nombre',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w800,
                       color: kTbOrange,
@@ -1099,14 +1099,14 @@ class _TuileAlerte extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(libelle,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.dark),
               maxLines: 2,
               overflow: TextOverflow.ellipsis),
           Text(precision,
-              style: const TextStyle(fontSize: 10, color: AppColors.hint),
+              style: TextStyle(fontSize: 10, color: AppColors.hint),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
         ],

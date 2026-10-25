@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
 /// Bandeau d'erreur persistant et lisible, à afficher au plus près de l'action
 /// qui a échoué (ex. en haut d'un formulaire après un refus serveur).
 ///
@@ -21,18 +22,18 @@ class AppErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const red = Color(0xFFC62828);
+    final red = AppColors.error;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDECEA),
+        color: AppColors.errorTint,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: red.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline_rounded, color: red, size: 20),
+          Icon(Icons.error_outline_rounded, color: red, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -50,7 +51,7 @@ class AppErrorBanner extends StatelessWidget {
             GestureDetector(
               onTap: onClose,
               behavior: HitTestBehavior.opaque,
-              child: const Icon(Icons.close_rounded, color: red, size: 18),
+              child: Icon(Icons.close_rounded, color: red, size: 18),
             ),
           ],
         ],

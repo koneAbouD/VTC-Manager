@@ -28,7 +28,7 @@ class ReleveChauffeurPage extends ConsumerWidget {
             const SizedBox(height: 120),
             Center(
                 child: Text('Impossible de charger le relevé',
-                    style: TextStyle(color: Colors.grey.shade600))),
+                    style: TextStyle(color: AppColors.grey600))),
           ]),
           data: (arretes) {
             if (arretes.isEmpty) {
@@ -37,7 +37,7 @@ class ReleveChauffeurPage extends ConsumerWidget {
                 Center(
                     child: Text('Aucun arrêté pour ce chauffeur',
                         style:
-                            TextStyle(fontSize: 15, color: Colors.grey.shade600))),
+                            TextStyle(fontSize: 15, color: AppColors.grey600))),
               ]);
             }
             final totalRestitue = arretes
@@ -60,11 +60,11 @@ class ReleveChauffeurPage extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Total restitué (${arretes.length} arrêté${arretes.length > 1 ? 's' : ''})',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 13, color: AppColors.primaryDark)),
                       const SizedBox(height: 4),
                       Text(CurrencyFormatter.format(totalRestitue),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
                               color: AppColors.primaryDark)),
@@ -84,7 +84,7 @@ class ReleveChauffeurPage extends ConsumerWidget {
                             color: AppColors.dark)),
                     subtitle: Text(
                         '${fmtDate(a.periodeDebut)} → ${fmtDate(a.periodeFin)}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.label)),
+                        style: TextStyle(fontSize: 12, color: AppColors.label)),
                     trailing: Text(
                         CurrencyFormatter.format(a.reglements
                             .where((r) => r.chauffeurId == chauffeurId)

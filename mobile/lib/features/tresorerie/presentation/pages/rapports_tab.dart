@@ -229,8 +229,9 @@ class RapportsTab extends ConsumerWidget {
       {required String titre,
       required String action,
       IconData icone = Icons.calendar_month_rounded,
-      Color accent = AppColors.primary,
+      Color? accent,
       String? avertissement}) async {
+    final couleurAccent = accent ?? AppColors.primary;
     final precedent = DateTime(DateTime.now().year, DateTime.now().month - 1);
     var annee = precedent.year;
     var mois = precedent.month;
@@ -251,23 +252,23 @@ class RapportsTab extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Icône dans une pastille teintée à l'accent.
+                // Icône dans une pastille teintée à l'couleurAccent.
                 Center(
                   child: Container(
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.12),
+                      color: couleurAccent.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(icone, size: 28, color: accent),
+                    child: Icon(icone, size: 28, color: couleurAccent),
                   ),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   titre,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: AppColors.dark,
@@ -277,7 +278,7 @@ class RapportsTab extends ConsumerWidget {
                 Text(
                   'Choisissez le mois à ${action.toLowerCase()}.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13.5, height: 1.4, color: AppColors.label),
                 ),
                 const SizedBox(height: 18),
@@ -295,16 +296,16 @@ class RapportsTab extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 11),
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.10),
+                      color: couleurAccent.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(14),
                       border:
-                          Border.all(color: accent.withValues(alpha: 0.25)),
+                          Border.all(color: couleurAccent.withValues(alpha: 0.25)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.warning_amber_rounded,
-                            size: 18, color: accent),
+                            size: 18, color: couleurAccent),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(avertissement,
@@ -312,7 +313,7 @@ class RapportsTab extends ConsumerWidget {
                                   fontSize: 12.5,
                                   height: 1.35,
                                   fontWeight: FontWeight.w500,
-                                  color: accent)),
+                                  color: couleurAccent)),
                         ),
                       ],
                     ),
@@ -328,7 +329,7 @@ class RapportsTab extends ConsumerWidget {
                           onPressed: () => Navigator.pop(ctx, false),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.label,
-                            side: const BorderSide(color: AppColors.border),
+                            side: BorderSide(color: AppColors.border),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14)),
                           ),
@@ -345,7 +346,7 @@ class RapportsTab extends ConsumerWidget {
                         child: FilledButton(
                           onPressed: () => Navigator.pop(ctx, true),
                           style: FilledButton.styleFrom(
-                            backgroundColor: accent,
+                            backgroundColor: couleurAccent,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14)),
@@ -412,18 +413,18 @@ class _RapportCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(titre,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: AppColors.dark)),
                     const SizedBox(height: 2),
                     Text(description,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11.5, color: AppColors.label)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
+              Icon(Icons.chevron_right_rounded,
                   size: 20, color: AppColors.hint),
             ],
           ),

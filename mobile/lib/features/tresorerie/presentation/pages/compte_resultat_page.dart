@@ -61,7 +61,7 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
           const SizedBox(height: 20),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text('Marge par véhicule',
                     style: TextStyle(
                         fontSize: 15,
@@ -82,7 +82,7 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
             '− charges variables − charges directes'
             '${_amorti ? ' − amortissement' : ''}, '
             'sans imputation des charges de structure',
-            style: const TextStyle(fontSize: 12, color: AppColors.label),
+            style: TextStyle(fontSize: 12, color: AppColors.label),
           ),
           const SizedBox(height: 8),
           asyncMarges.when(
@@ -90,8 +90,8 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
             error: (e, _) => _erreur('Impossible de charger les marges',
                 () => ref.invalidate(margesVehiculesProvider(margeParams))),
             data: (marges) => marges.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Text(
                         'Aucune opération rattachée à un véhicule sur la période',
                         style: TextStyle(fontSize: 13, color: AppColors.label)),
@@ -187,7 +187,7 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
     return Column(
       children: [
         const SizedBox(height: 16),
-        Text(message, style: TextStyle(color: Colors.grey.shade600)),
+        Text(message, style: TextStyle(color: AppColors.grey600)),
         TextButton.icon(
           onPressed: onRetry,
           icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -301,7 +301,7 @@ class _CascadeCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: cr.resultatGestion >= 0
                   ? AppColors.primaryTint
-                  : const Color(0xFFFDECEA),
+                  : AppColors.errorTint,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -329,13 +329,13 @@ class _CascadeCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text('Pont vers la caisse (variation des créances)',
                     style: TextStyle(fontSize: 11.5, color: AppColors.label)),
               ),
               const SizedBox(width: 8),
               Text(CurrencyFormatter.format(cr.pontCreances),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       color: AppColors.label)),
@@ -371,7 +371,7 @@ class _CascadeCard extends StatelessWidget {
           ),
           if (sousTitre != null)
             Text(sousTitre,
-                style: const TextStyle(fontSize: 11, color: AppColors.hint)),
+                style: TextStyle(fontSize: 11, color: AppColors.hint)),
         ],
       ),
     );
@@ -429,7 +429,7 @@ class _MargeTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.directions_car_outlined,
+          Icon(Icons.directions_car_outlined,
               size: 18, color: AppColors.label),
           const SizedBox(width: 10),
           Expanded(
@@ -442,21 +442,21 @@ class _MargeTile extends StatelessWidget {
                 Text(
                   '${CurrencyFormatter.format(marge.produits)} − '
                   '${CurrencyFormatter.format(marge.chargesVariables)}',
-                  style: const TextStyle(fontSize: 11, color: AppColors.label),
+                  style: TextStyle(fontSize: 11, color: AppColors.label),
                 ),
                 if (marge.chargesDirectes > 0)
                   Text(
                     '− Assurance et documents '
                     '${CurrencyFormatter.format(marge.chargesDirectes)}',
                     style:
-                        const TextStyle(fontSize: 11, color: AppColors.label),
+                        TextStyle(fontSize: 11, color: AppColors.label),
                   ),
                 if (aAmortissement)
                   Text(
                     '− Amortissement '
                     '${CurrencyFormatter.format(marge.dotationAmortissement)}',
                     style:
-                        const TextStyle(fontSize: 11, color: AppColors.label),
+                        TextStyle(fontSize: 11, color: AppColors.label),
                   ),
                 if (marge.joursImmobilisation > 0)
                   Text(

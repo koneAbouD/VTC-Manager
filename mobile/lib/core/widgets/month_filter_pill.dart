@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'date_filter_dialogs.dart';
 
+import '../../core/theme/app_colors.dart';
 /// Pastille de sélection de mois, dans le style du filtre par date
 /// d'`operations_financieres_page` (`_DatePill`).
 ///
@@ -49,20 +50,20 @@ class MonthFilterPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: AppColors.grey200,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
             Icon(Icons.calendar_month_outlined,
-                size: 13, color: Colors.grey.shade600),
+                size: 13, color: AppColors.grey600),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 libelle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade700,
+                  color: AppColors.grey700,
                   fontWeight: FontWeight.w500,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -74,11 +75,11 @@ class MonthFilterPill extends StatelessWidget {
                 onTap: onEfface,
                 behavior: HitTestBehavior.opaque,
                 child: Icon(Icons.close_rounded,
-                    size: 15, color: Colors.grey.shade600),
+                    size: 15, color: AppColors.grey600),
               )
             else
               Icon(Icons.keyboard_arrow_down_rounded,
-                  size: 14, color: Colors.grey.shade600),
+                  size: 14, color: AppColors.grey600),
           ],
         ),
       ),

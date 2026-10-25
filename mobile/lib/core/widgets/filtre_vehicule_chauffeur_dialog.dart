@@ -8,6 +8,7 @@ import '../../features/vehicule/domain/entities/vehicule.dart';
 import '../../features/vehicule/presentation/providers/vehicule_provider.dart';
 import '../../features/vehicule/presentation/providers/vehicule_state.dart';
 
+import '../../core/theme/app_colors.dart';
 // ── Type résultat ─────────────────────────────────────────────────────────────
 
 typedef FiltreVehiculeChauffeurResult
@@ -34,15 +35,15 @@ Future<FiltreVehiculeChauffeurResult?> showFiltreVehiculeChauffeurDialog(
 // ── Palette ───────────────────────────────────────────────────────────────────
 
 const _kPrimary   = Color(0xFF1565C0);
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint      = Color(0xFF9AA0AE);
-const _kDark      = Color(0xFF1A1A2E);
-const _kLabel     = Color(0xFF6B7280);
-const _kGreen     = Color(0xFF2E7D32);
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kDark => AppColors.dark;
+Color get _kLabel => AppColors.label;
+Color get _kGreen => AppColors.positive;
 
 InputDecoration _deco(String hint, {IconData? prefix}) => InputDecoration(
       hintText:   hint,
-      hintStyle:  const TextStyle(color: _kHint, fontSize: 14),
+      hintStyle:  TextStyle(color: _kHint, fontSize: 14),
       filled:     true,
       fillColor:  _kFieldFill,
       prefixIcon: prefix != null ? Icon(prefix, size: 18, color: _kHint) : null,
@@ -119,7 +120,7 @@ class _FiltreDialogState extends ConsumerState<_FiltreDialog> {
           borderRadius: BorderRadius.circular(16)),
       insetPadding:
           const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
         child: Column(
@@ -161,7 +162,7 @@ class _FiltreDialogState extends ConsumerState<_FiltreDialog> {
                   ? 'Affiner les résultats par véhicule et/ou chauffeur.'
                   : 'Affiner les résultats par véhicule.',
               style: TextStyle(
-                  fontSize: 12, color: Colors.grey.shade500),
+                  fontSize: 12, color: AppColors.grey500),
             ),
             const SizedBox(height: 18),
 
@@ -186,7 +187,7 @@ class _FiltreDialogState extends ConsumerState<_FiltreDialog> {
               fieldViewBuilder: (ctx, ctrl, focus, _) => TextFormField(
                 controller: ctrl,
                 focusNode:  focus,
-                style: const TextStyle(fontSize: 14, color: _kDark),
+                style: TextStyle(fontSize: 14, color: _kDark),
                 onChanged: (text) {
                   // Désélectionner si le texte ne correspond plus
                   if (_vehicule != null &&
@@ -254,7 +255,7 @@ class _FiltreDialogState extends ConsumerState<_FiltreDialog> {
                 fieldViewBuilder: (ctx, ctrl, focus, _) => TextFormField(
                   controller: ctrl,
                   focusNode:  focus,
-                  style: const TextStyle(fontSize: 14, color: _kDark),
+                  style: TextStyle(fontSize: 14, color: _kDark),
                   onChanged: (text) {
                     if (_chauffeur != null &&
                         text != _chauffeur!.displayName) {
@@ -323,7 +324,7 @@ class _FiltreDialogState extends ConsumerState<_FiltreDialog> {
                 ),
               ),
               Container(width: 1, height: 24,
-                  color: const Color(0xFFE3E6EE)),
+                  color: AppColors.border),
               Expanded(
                 child: TextButton(
                   onPressed: () => Navigator.pop(
@@ -358,7 +359,7 @@ class _FieldLabel extends StatelessWidget {
       Icon(icon, size: 14, color: _kDark),
       const SizedBox(width: 6),
       Text(label,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: _kLabel)),
@@ -398,7 +399,7 @@ class _DropdownList<T> extends StatelessWidget {
             shrinkWrap:      true,
             itemCount:       options.length,
             separatorBuilder: (_, __) =>
-                Divider(height: 1, color: Colors.grey.shade100),
+                Divider(height: 1, color: AppColors.grey100),
             itemBuilder: (_, i) {
               final item = options[i];
               final sub  = subtitleBuilder(item);
@@ -406,13 +407,13 @@ class _DropdownList<T> extends StatelessWidget {
                 dense:    true,
                 leading:  leadingBuilder(item),
                 title:    Text(titleBuilder(item),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize:     13,
                         fontWeight:   FontWeight.w600,
                         color:        _kDark)),
                 subtitle: sub != null
                     ? Text(sub,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11, color: _kHint))
                     : null,
                 onTap: () => onTap(item),
@@ -445,7 +446,7 @@ class TuneFilterButton extends StatelessWidget {
             Icon(Icons.tune_outlined,
                 color: active
                     ? const Color(0xFF1565C0)
-                    : const Color(0xFF8A8A8E),
+                    : AppColors.hint,
                 size: 20),
             if (active)
               Positioned(

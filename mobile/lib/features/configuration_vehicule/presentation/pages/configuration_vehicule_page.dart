@@ -282,8 +282,8 @@ class _ConfigurationVehiculePageState
         ),
         content: RichText(
           text: TextSpan(
-            style: const TextStyle(
-                fontSize: 14, color: Colors.black87, height: 1.6),
+            style: TextStyle(
+                fontSize: 14, color: AppColors.noir87, height: 1.6),
             children: [
               const TextSpan(text: 'Le chauffeur '),
               TextSpan(
@@ -626,7 +626,7 @@ class _ConfigurationVehiculePageState
                                 'Inverser le programme des chauffeurs'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
-                              side: const BorderSide(
+                              side: BorderSide(
                                   color: AppColors.primary),
                               padding: const EdgeInsets.symmetric(
                                   vertical: 13),
@@ -652,13 +652,13 @@ class _ConfigurationVehiculePageState
                       style: OutlinedButton.styleFrom(
                         padding:
                             const EdgeInsets.symmetric(vertical: 15),
-                        side: BorderSide(color: Colors.grey.shade300),
+                        side: BorderSide(color: AppColors.grey300),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                       ),
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Annuler',
-                          style: TextStyle(color: Colors.black54)),
+                      child: Text('Annuler',
+                          style: TextStyle(color: AppColors.grey600)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -731,7 +731,7 @@ class _ConditionTravailCard extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
+              color: AppColors.scaffold,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
@@ -739,11 +739,11 @@ class _ConditionTravailCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
+                    color: AppColors.grey200,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.work_outline,
-                      size: 18, color: Colors.grey.shade500),
+                      size: 18, color: AppColors.grey500),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -751,12 +751,12 @@ class _ConditionTravailCard extends StatelessWidget {
                     'Sélectionner une condition de travail',
                     style: TextStyle(
                       fontSize: 15,
-                      color: Colors.grey.shade400,
+                      color: AppColors.grey400,
                     ),
                   ),
                 ),
                 Icon(Icons.chevron_right,
-                    color: Colors.grey.shade400, size: 20),
+                    color: AppColors.grey400, size: 20),
               ],
             ),
           ),
@@ -766,7 +766,7 @@ class _ConditionTravailCard extends StatelessWidget {
 
     final isFixe = condition!.typeRecette == 'MONTANT_FIXE';
     final accent = isFixe ? AppColors.primary : const Color(0xFFE07B00);
-    final bg = isFixe ? AppColors.primaryTint : const Color(0xFFFFF3E0);
+    final bg = isFixe ? AppColors.primaryTint : AppColors.warningTint;
     final programmeBadge =
         condition!.typeProgramme == 'JOURNALIER' ? 'Journalier' : 'Hebdomadaire';
 
@@ -922,14 +922,14 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 15, color: Colors.grey.shade600),
+        Icon(icon, size: 15, color: AppColors.grey600),
         const SizedBox(width: 6),
         Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade600,
+            color: AppColors.grey600,
             letterSpacing: 0.2,
           ),
         ),
@@ -971,7 +971,7 @@ class _ChauffeurTile extends StatelessWidget {
             border: Border.all(
               color: selected
                   ? AppColors.primary.withValues(alpha: 0.35)
-                  : const Color(0xFFE4E7EC),
+                  : AppColors.border,
             ),
           ),
           child: Row(
@@ -981,7 +981,7 @@ class _ChauffeurTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: selected
                       ? AppColors.primary.withValues(alpha: 0.12)
-                      : Colors.grey.shade100,
+                      : AppColors.grey100,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -989,7 +989,7 @@ class _ChauffeurTile extends StatelessWidget {
                   size: 18,
                   color: selected
                       ? AppColors.primary
-                      : Colors.grey.shade500,
+                      : AppColors.grey500,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1004,7 +1004,7 @@ class _ChauffeurTile extends StatelessWidget {
                         selected ? FontWeight.w600 : FontWeight.normal,
                     color: selected
                         ? AppColors.primary
-                        : Colors.grey.shade400,
+                        : AppColors.grey400,
                   ),
                 ),
               ),
@@ -1014,7 +1014,7 @@ class _ChauffeurTile extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: Icon(Icons.close,
-                        size: 18, color: Colors.grey.shade400),
+                        size: 18, color: AppColors.grey400),
                   ),
                 )
               else
@@ -1023,7 +1023,7 @@ class _ChauffeurTile extends StatelessWidget {
                   size: 20,
                   color: selected
                       ? AppColors.primary
-                      : Colors.grey.shade400,
+                      : AppColors.grey400,
                 ),
             ],
           ),
@@ -1062,9 +1062,9 @@ class _DateTile extends StatelessWidget {
           padding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.blanc,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE4E7EC)),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             children: [
@@ -1073,7 +1073,7 @@ class _DateTile extends StatelessWidget {
                 size: 18,
                 color: selected
                     ? AppColors.primary
-                    : Colors.grey.shade400,
+                    : AppColors.grey400,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1082,7 +1082,7 @@ class _DateTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     color:
-                        selected ? Colors.black87 : Colors.grey.shade400,
+                        selected ? AppColors.noir87 : AppColors.grey400,
                   ),
                 ),
               ),
@@ -1092,7 +1092,7 @@ class _DateTile extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: Icon(Icons.close,
-                        size: 18, color: Colors.grey.shade400),
+                        size: 18, color: AppColors.grey400),
                   ),
                 ),
             ],

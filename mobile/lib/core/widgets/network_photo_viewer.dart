@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
 void showNetworkPhotoViewer(
   BuildContext context, {
   required List<String> urls,
@@ -58,7 +59,7 @@ class _NetworkPhotoViewerDialogState
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: Container(
-          color: const Color(0xFF1A1A2E),
+          color: AppColors.dark,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

@@ -31,11 +31,11 @@ import '../../../groupe/presentation/pages/groupe_selector_page.dart';
 import '../vehicule_couleurs.dart';
 import '../../../../core/theme/app_colors.dart';
 
-const _kPrimary = AppColors.primary;
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint = Color(0xFF9AA0AE);
-const _kLabel = Color(0xFF6B7280);
-const _kBorder = Color(0xFFE3E6EE);
+Color get _kPrimary => AppColors.primary;
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kLabel => AppColors.label;
+Color get _kBorder => AppColors.border;
 
 // ── Toast helpers ─────────────────────────────────────────────────────────────
 
@@ -49,15 +49,15 @@ void _appToast(
 }) {
   final (Color bg, IconData icon) = switch (type) {
     _ToastType.success => (
-        const Color(0xFF1B5E20),
+        AppColors.success,
         Icons.check_circle_outline_rounded
       ),
-    _ToastType.error => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
+    _ToastType.error => (AppColors.error, Icons.error_outline_rounded),
     _ToastType.warning => (
-        const Color(0xFFE65100),
+        AppColors.warning,
         Icons.warning_amber_rounded
       ),
-    _ToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.info => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -103,18 +103,18 @@ class _InlineToastBanner extends StatelessWidget {
     if (message == null) return const SizedBox.shrink();
     final (Color bg, IconData icon) = switch (type) {
       _ToastType.success => (
-          const Color(0xFF1B5E20),
+          AppColors.success,
           Icons.check_circle_outline_rounded
         ),
       _ToastType.error => (
-          const Color(0xFFB71C1C),
+          AppColors.error,
           Icons.error_outline_rounded
         ),
       _ToastType.warning => (
-          const Color(0xFFE65100),
+          AppColors.warning,
           Icons.warning_amber_rounded
         ),
-      _ToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+      _ToastType.info => (AppColors.info, Icons.info_outline_rounded),
     };
     return Container(
       width: double.infinity,
@@ -726,27 +726,27 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
             Container(
               width: 72,
               height: 72,
-              decoration: const BoxDecoration(
-                color: Color(0xFFEEF2FF),
+              decoration: BoxDecoration(
+                color: AppColors.infoTint,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_outline,
+              child: Icon(Icons.check_circle_outline,
                   color: _kPrimary, size: 40),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'Véhicule créé !',
               style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1A2E)),
+                  color: AppColors.dark),
             ),
             const SizedBox(height: 8),
             Text(
               'Le véhicule a bien été ajouté à la flotte.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  fontSize: 14, color: Colors.grey.shade600, height: 1.4),
+                  fontSize: 14, color: AppColors.grey600, height: 1.4),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -788,7 +788,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 },
                 child: Text('Configurer plus tard',
                     style:
-                        TextStyle(fontSize: 15, color: Colors.grey.shade600)),
+                        TextStyle(fontSize: 15, color: AppColors.grey600)),
               ),
             ),
           ],
@@ -815,11 +815,11 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3F3),
+                    color: AppColors.fond(0xFFFFF3F3),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.delete_outline,
-                      color: Color(0xFFE03131), size: 22),
+                  child: Icon(Icons.delete_outline,
+                      color: AppColors.error, size: 22),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -837,10 +837,10 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 Text(
                   'Le document sera définitivement supprimé. Cette action est irréversible.',
                   style: TextStyle(
-                      fontSize: 13.5, color: Colors.grey.shade600, height: 1.4),
+                      fontSize: 13.5, color: AppColors.grey600, height: 1.4),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Motif *',
                   style: TextStyle(
                       fontSize: 12.5,
@@ -855,7 +855,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                   style: const TextStyle(fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Ex : Document expiré, remplacé…',
-                    hintStyle: const TextStyle(color: _kHint, fontSize: 14),
+                    hintStyle: TextStyle(color: _kHint, fontSize: 14),
                     filled: true,
                     fillColor: _kFieldFill,
                     border: OutlineInputBorder(
@@ -876,8 +876,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 style: OutlinedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  side: const BorderSide(color: _kBorder),
-                  foregroundColor: Colors.black87,
+                  side: BorderSide(color: _kBorder),
+                  foregroundColor: AppColors.noir87,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -890,9 +890,9 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                     ? null
                     : () => Navigator.pop(ctx, motifCtrl.text.trim()),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFE03131),
+                  backgroundColor: AppColors.error,
                   disabledBackgroundColor:
-                      const Color(0xFFE03131).withValues(alpha: 0.35),
+                      AppColors.error.withValues(alpha: 0.35),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -972,7 +972,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     final result = await showModalBottomSheet<_PendingDocument>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -997,7 +997,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     final result = await showModalBottomSheet<_PendingDocument>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1058,7 +1058,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     final result = await showModalBottomSheet<_PendingDocument>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1082,14 +1082,14 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: const Color(0xFFF2F3F5),
+          color: AppColors.fieldFill,
           borderRadius: BorderRadius.circular(12),
         ),
         child: TabBar(
           controller: _tabCtrl,
           dividerColor: Colors.transparent,
           indicator: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.blanc,
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
@@ -1100,8 +1100,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
             ],
           ),
           indicatorSize: TabBarIndicatorSize.tab,
-          labelColor: const Color(0xFF1A1A2E),
-          unselectedLabelColor: const Color(0xFF9AA0AE),
+          labelColor: AppColors.dark,
+          unselectedLabelColor: AppColors.hint,
           labelStyle: const TextStyle(
             fontSize: 13.5,
             fontWeight: FontWeight.w600,
@@ -1141,7 +1141,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
             ),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FB),
+                color: AppColors.scaffold,
                 borderRadius: BorderRadius.circular(12),
               ),
               clipBehavior: Clip.antiAlias,
@@ -1155,9 +1155,9 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                         ? child
                         : const Center(
                             child: CircularProgressIndicator(strokeWidth: 2)),
-                    errorBuilder: (_, __, ___) => const Center(
+                    errorBuilder: (_, __, ___) => Center(
                         child: Icon(Icons.broken_image_outlined,
-                            color: Color(0xFFDDE1EA), size: 24)),
+                            color: AppColors.border, size: 24)),
                   ),
                   Positioned(
                     top: 4,
@@ -1186,7 +1186,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
             onTap: () => _openNewPhotoViewer(newIdx),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FB),
+                color: AppColors.scaffold,
                 borderRadius: BorderRadius.circular(12),
               ),
               clipBehavior: Clip.antiAlias,
@@ -1229,19 +1229,19 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
             onTap: () => _pickPhoto(newIdx),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FB),
+                color: AppColors.scaffold,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE3E6EE), width: 1.5),
+                border: Border.all(color: AppColors.border, width: 1.5),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.add_photo_alternate_outlined,
-                      size: 24, color: Colors.grey.shade300),
+                      size: 24, color: AppColors.grey300),
                   const SizedBox(height: 4),
                   Text(
                     '${i + 1}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                    style: TextStyle(fontSize: 11, color: AppColors.grey400),
                   ),
                 ],
               ),
@@ -1279,7 +1279,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
           .map((c) => SelectOption<String>(
                 value: c,
                 label: c,
-                couleur: kVehiculeCouleurMap[c] ?? Colors.grey,
+                couleur: kVehiculeCouleurMap[c] ?? AppColors.grey500,
               ))
           .toList(),
       onChanged: (v) => setState(() => _couleur = v),
@@ -1532,7 +1532,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
             error: (_, __) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text('Impossible de charger les Documents.',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                  style: TextStyle(color: AppColors.grey500, fontSize: 13)),
             ),
             data: (docs) {
               if (docs.isEmpty && _pendingDocuments.isEmpty) {
@@ -1543,7 +1543,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text('Aucune pièce enregistrée.',
                       style:
-                          TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                          TextStyle(color: AppColors.grey500, fontSize: 13)),
                 );
               }
               return Column(
@@ -1588,7 +1588,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
           label: const Text('Ajouter une pièce'),
           style: OutlinedButton.styleFrom(
             foregroundColor: _kPrimary,
-            side: const BorderSide(color: _kPrimary),
+            side: BorderSide(color: _kPrimary),
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1622,7 +1622,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
         : const AsyncValue<List<DocumentVehiculeLocal>>.data([]);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: _isEditing ? 'Modifier le véhicule' : 'Nouveau véhicule',
         action: !_hasChanges
@@ -1702,10 +1702,10 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: Color(0xFF1A1A2E),
+        color: AppColors.dark,
         letterSpacing: 0.2,
       ),
     );
@@ -1718,33 +1718,33 @@ class _EmptyDocState extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E6EE)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF2F3F5),
+            decoration: BoxDecoration(
+              color: AppColors.fieldFill,
               shape: BoxShape.circle,
             ),
             child:
-                const Icon(Icons.description_outlined, size: 32, color: _kHint),
+                Icon(Icons.description_outlined, size: 32, color: _kHint),
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'Aucune pièce ajoutée',
             style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A2E)),
+                color: AppColors.dark),
           ),
           const SizedBox(height: 6),
           Text(
             'Carte grise, assurance, contrôle technique…',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: 13, color: AppColors.grey500),
           ),
         ],
       ),
@@ -1770,9 +1770,9 @@ class _PendingDocCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E6EE)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1780,10 +1780,10 @@ class _PendingDocCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFEEF2FF),
+                color: AppColors.infoTint,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.description_outlined,
+              child: Icon(Icons.description_outlined,
                   color: _kPrimary, size: 20),
             ),
             const SizedBox(width: 12),
@@ -1793,36 +1793,36 @@ class _PendingDocCard extends StatelessWidget {
                 children: [
                   Text(
                     doc.typeNom,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A2E)),
+                        color: AppColors.dark),
                   ),
                   if (doc.reference != null && doc.reference!.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text('Réf : ${doc.reference}',
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600)),
+                            fontSize: 12, color: AppColors.grey600)),
                   ],
                   if (doc.dateExpiration != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       'Exp : ${doc.dateExpiration!.day.toString().padLeft(2, '0')}/${doc.dateExpiration!.month.toString().padLeft(2, '0')}/${doc.dateExpiration!.year}',
                       style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          TextStyle(fontSize: 12, color: AppColors.grey600),
                     ),
                   ],
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.attach_file,
-                          size: 12, color: Colors.grey.shade400),
+                          size: 12, color: AppColors.grey400),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           doc.filename,
                           style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade400),
+                              fontSize: 11, color: AppColors.grey400),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1834,7 +1834,7 @@ class _PendingDocCard extends StatelessWidget {
             IconButton(
               onPressed: onRemove,
               icon: const Icon(Icons.close, size: 18),
-              color: Colors.grey.shade400,
+              color: AppColors.grey400,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),
@@ -1863,9 +1863,9 @@ class _ExistingDocCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E6EE)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1873,10 +1873,10 @@ class _ExistingDocCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFF2F3F5),
+                color: AppColors.fieldFill,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.description_outlined,
+              child: Icon(Icons.description_outlined,
                   color: _kHint, size: 20),
             ),
             const SizedBox(width: 12),
@@ -1889,10 +1889,10 @@ class _ExistingDocCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           doc.displayName,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E)),
+                              color: AppColors.dark),
                         ),
                       ),
                     ],
@@ -1907,7 +1907,7 @@ class _ExistingDocCard extends StatelessWidget {
                           Text(
                             'Ém : ${doc.dateEmission!.day.toString().padLeft(2, '0')}/${doc.dateEmission!.month.toString().padLeft(2, '0')}/${doc.dateEmission!.year}',
                             style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade600),
+                                fontSize: 12, color: AppColors.grey600),
                           ),
                         if (doc.dateExpiration != null)
                           Text(
@@ -1915,8 +1915,8 @@ class _ExistingDocCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               color: (doc.statut == 'EXPIRE')
-                                  ? const Color(0xFFE03131)
-                                  : Colors.grey.shade600,
+                                  ? AppColors.error
+                                  : AppColors.grey600,
                             ),
                           ),
                       ],
@@ -1927,13 +1927,13 @@ class _ExistingDocCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(Icons.attach_file,
-                            size: 12, color: Colors.grey.shade400),
+                            size: 12, color: AppColors.grey400),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             doc.fichierNom!,
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey.shade400),
+                                fontSize: 11, color: AppColors.grey400),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -2086,7 +2086,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
   Future<void> _pickFile() async {
     final action = await showModalBottomSheet<int>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -2099,21 +2099,21 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE3E6EE),
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 4),
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined,
-                  color: Colors.black87),
+              leading: Icon(Icons.photo_camera_outlined,
+                  color: AppColors.noir87),
               title: const Text('Appareil photo',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(ctx, 0),
             ),
             ListTile(
               leading:
-                  const Icon(Icons.folder_open_outlined, color: Colors.black87),
+                  Icon(Icons.folder_open_outlined, color: AppColors.noir87),
               title: const Text('Fichier (PDF, image)',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(ctx, 1),
@@ -2210,7 +2210,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDDE1EA),
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -2265,7 +2265,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Permanent',
                       style: TextStyle(
                         fontSize: 13,
@@ -2329,7 +2329,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                           horizontal: 16, vertical: 16),
                       decoration: BoxDecoration(
                         color: _fileBytes != null
-                            ? const Color(0xFFEEF2FF)
+                            ? AppColors.infoTint
                             : _kFieldFill,
                         borderRadius: BorderRadius.circular(12),
                         border: _fileBytes != null
@@ -2338,7 +2338,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                             : null,
                       ),
                       child: _loadingFile
-                          ? const Row(
+                          ? Row(
                               children: [
                                 SizedBox(
                                   width: 18,
@@ -2348,7 +2348,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                                     color: _kPrimary,
                                   ),
                                 ),
-                                SizedBox(width: 10),
+                                const SizedBox(width: 10),
                                 Text(
                                   'Chargement du fichier…',
                                   style: TextStyle(fontSize: 15, color: _kHint),
@@ -2382,7 +2382,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                                   GestureDetector(
                                     onTap: _pickFile,
                                     child: Icon(Icons.edit_outlined,
-                                        size: 16, color: Colors.grey.shade400),
+                                        size: 16, color: AppColors.grey400),
                                   )
                                 ],
                               ],
@@ -2432,7 +2432,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12.5,
         fontWeight: FontWeight.w600,
         color: _kLabel,
@@ -2458,7 +2458,7 @@ class _LabeledField extends StatelessWidget {
             ? RichText(
                 text: TextSpan(
                   text: label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: _kLabel,
@@ -2522,7 +2522,7 @@ class _PhotoViewerState extends State<_PhotoViewer> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: Container(
-          decoration: const BoxDecoration(color: Color(0xFF1A1A2E)),
+          decoration: BoxDecoration(color: AppColors.dark),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2714,7 +2714,7 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: Container(
-          color: const Color(0xFF1A1A2E),
+          color: AppColors.dark,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2824,13 +2824,13 @@ class _DropdownField extends StatelessWidget {
         child: Row(children: [
           Expanded(
             child:
-                Text(hint, style: const TextStyle(color: _kHint, fontSize: 14)),
+                Text(hint, style: TextStyle(color: _kHint, fontSize: 14)),
           ),
           SizedBox(
             width: 15,
             height: 15,
             child: CircularProgressIndicator(
-                strokeWidth: 1.8, color: Colors.grey.shade400),
+                strokeWidth: 1.8, color: AppColors.grey400),
           ),
         ]),
       );
@@ -2878,10 +2878,10 @@ class _PlainField extends StatelessWidget {
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
-      style: const TextStyle(fontSize: 15, color: Colors.black87),
+      style: TextStyle(fontSize: 15, color: AppColors.noir87),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+        hintStyle: TextStyle(color: _kHint, fontSize: 15),
         filled: true,
         fillColor: _kFieldFill,
         border: OutlineInputBorder(
@@ -2894,7 +2894,7 @@ class _PlainField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+          borderSide: BorderSide(color: _kPrimary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -2943,11 +2943,11 @@ class _DateField extends StatelessWidget {
                 hasValue ? formatter(value!) : label,
                 style: TextStyle(
                   fontSize: 15,
-                  color: hasValue ? Colors.black87 : _kHint,
+                  color: hasValue ? AppColors.noir87 : _kHint,
                 ),
               ),
             ),
-            const Icon(
+            Icon(
               Icons.calendar_today_outlined,
               size: 16,
               color: _kHint,
@@ -2986,12 +2986,12 @@ class _FormSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE3E6EE)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.04),
+            color: AppColors.dark.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -3029,10 +3029,10 @@ class _FormSectionCard extends StatelessWidget {
                             Flexible(
                               child: Text(
                                 title,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1A1A2E),
+                                  color: AppColors.dark,
                                   letterSpacing: -0.1,
                                 ),
                               ),
@@ -3043,15 +3043,15 @@ class _FormSectionCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 7, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFFF0F0),
+                                  color: AppColors.fond(0xFFFFF0F0),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'Requis',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFFE03131),
+                                    color: AppColors.error,
                                     letterSpacing: 0.2,
                                   ),
                                 ),
@@ -3061,7 +3061,7 @@ class _FormSectionCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 7, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
+                                  color: AppColors.fond(0xFFF3F4F6),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -3069,7 +3069,7 @@ class _FormSectionCard extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade500,
+                                    color: AppColors.grey500,
                                   ),
                                 ),
                               ),
@@ -3082,7 +3082,7 @@ class _FormSectionCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade500,
+                                color: AppColors.grey500,
                               ),
                             ),
                           ],
@@ -3096,7 +3096,7 @@ class _FormSectionCard extends StatelessWidget {
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
                         size: 22,
-                        color: Colors.grey.shade400,
+                        color: AppColors.grey400,
                       ),
                     ),
                   ]),
@@ -3111,7 +3111,7 @@ class _FormSectionCard extends StatelessWidget {
                 alignment: Alignment.topCenter,
                 heightFactor: isExpanded ? 1.0 : 0.0,
                 child: Column(children: [
-                  Divider(height: 1, color: Colors.grey.shade100),
+                  Divider(height: 1, color: AppColors.grey100),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
                     child: child,
@@ -3137,12 +3137,12 @@ class _PhotosCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE3E6EE)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.04),
+            color: AppColors.dark.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -3164,17 +3164,17 @@ class _PhotosCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text(
+              Text(
                 'Photos du véhicule',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A2E),
+                  color: AppColors.dark,
                 ),
               ),
               Text(
                 'Optionnel · 4 photos maximum',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                style: TextStyle(fontSize: 11, color: AppColors.grey500),
               ),
             ]),
           ]),
@@ -3217,7 +3217,7 @@ class _GroupePickerField extends StatelessWidget {
                 groupe?.nom ?? 'Sélectionner un groupe',
                 style: TextStyle(
                   fontSize: 15,
-                  color: groupe != null ? Colors.black87 : _kHint,
+                  color: groupe != null ? AppColors.noir87 : _kHint,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -3225,10 +3225,10 @@ class _GroupePickerField extends StatelessWidget {
             if (groupe != null)
               GestureDetector(
                 onTap: onClear,
-                child: const Icon(Icons.close_rounded, size: 18, color: _kHint),
+                child: Icon(Icons.close_rounded, size: 18, color: _kHint),
               )
             else
-              const Icon(Icons.chevron_right_rounded, size: 20, color: _kHint),
+              Icon(Icons.chevron_right_rounded, size: 20, color: _kHint),
           ],
         ),
       ),

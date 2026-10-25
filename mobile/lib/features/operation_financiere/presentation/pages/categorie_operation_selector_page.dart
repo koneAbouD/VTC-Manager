@@ -6,6 +6,7 @@ import '../../domain/entities/categorie_operation.dart';
 import '../../domain/enums/type_operation.dart';
 import '../providers/categorie_operation_provider.dart';
 
+import '../../../../core/theme/app_colors.dart';
 class CategorieOperationSelectorPage extends ConsumerStatefulWidget {
   final TypeOperation typeOperation;
 
@@ -59,7 +60,7 @@ class _CategorieOperationSelectorPageState
         ref.watch(categoriesByTypeProvider(widget.typeOperation));
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       appBar: const AppHeader(title: 'Sélectionner une catégorie'),
       body: categoriesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -99,7 +100,7 @@ class _CategorieOperationSelectorPageState
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.category_outlined,
-                          size: 64, color: Colors.grey.shade300),
+                          size: 64, color: AppColors.grey300),
                       const SizedBox(height: 12),
                       const Text('Aucune catégorie trouvée',
                           style: TextStyle(fontWeight: FontWeight.bold)),
@@ -133,9 +134,9 @@ class _CategorieOperationSelectorPageState
         onChanged: (v) => setState(() => _query = v),
         decoration: InputDecoration(
           hintText: 'Rechercher une catégorie...',
-          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          prefixIcon: Icon(Icons.search, color: AppColors.grey500),
           filled: true,
-          fillColor: const Color(0xFFF5F5F5),
+          fillColor: AppColors.scaffold,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -155,9 +156,9 @@ class _CategorieOperationSelectorPageState
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE4E7EC)),
+          border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
@@ -171,17 +172,17 @@ class _CategorieOperationSelectorPageState
           children: [
             Text(
               c.libelle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: Color(0xFF1A1A2E),
+                color: AppColors.dark,
               ),
             ),
             if (sc != null) ...[
               const SizedBox(height: 6),
               Text(
                 sc.libelle,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 12, color: AppColors.grey600),
               ),
             ],
           ],

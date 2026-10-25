@@ -4,7 +4,7 @@ import 'package:tmk_pin/tmk_pin.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// Couleurs des écrans de code, tirées de la charte de l'application.
-const pinTheme = PinTheme(
+PinTheme get pinTheme => PinTheme(
   accent: AppColors.primary,
   digit: AppColors.dark,
   border: AppColors.border,

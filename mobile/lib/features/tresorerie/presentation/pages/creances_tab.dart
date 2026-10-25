@@ -244,7 +244,7 @@ class _EmptyList extends StatelessWidget {
               filtre
                   ? 'Aucune créance pour ce filtre'
                   : 'Aucune créance en cours',
-              style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
+              style: TextStyle(fontSize: 15, color: AppColors.grey600)),
         ),
       ],
     );
@@ -262,7 +262,7 @@ class _ErrorList extends StatelessWidget {
         const SizedBox(height: 120),
         Center(
             child: Text('Impossible de charger les créances',
-                style: TextStyle(color: Colors.grey.shade600))),
+                style: TextStyle(color: AppColors.grey600))),
         Center(
           child: TextButton.icon(
             onPressed: onRetry,
@@ -294,7 +294,7 @@ class _TotalDuCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDECEA),
+        color: AppColors.errorTint,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -320,7 +320,7 @@ class _TotalDuCard extends StatelessWidget {
                   padding: const EdgeInsets.only(
                       left: 12, right: 6, top: 6, bottom: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.blanc,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -379,7 +379,7 @@ class _CreanceChauffeurTile extends StatelessWidget {
         radius: 19,
         backgroundColor: AppColors.headerButton,
         child: Text(_initials,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: AppColors.label)),
@@ -402,7 +402,7 @@ class _CreanceVehiculeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CreanceRow(
-      leading: const CircleAvatar(
+      leading: CircleAvatar(
         radius: 19,
         backgroundColor: AppColors.headerButton,
         child: Icon(Icons.directions_car_rounded,
@@ -442,7 +442,7 @@ class _CreanceRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border:
               Border(bottom: BorderSide(color: AppColors.border, width: 0.6)),
         ),
@@ -455,13 +455,13 @@ class _CreanceRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppColors.dark)),
                   const SizedBox(height: 2),
                   Text(subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12, color: AppColors.label)),
                 ],
               ),
@@ -470,7 +470,7 @@ class _CreanceRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(CurrencyFormatter.format(total),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: AppColors.dark)),
@@ -492,8 +492,8 @@ class _TrancheBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, fg) = switch (tranche) {
-      TrancheAge.plus30 => (const Color(0xFFFDECEA), Colors.red.shade900),
-      TrancheAge.de8a30 => (const Color(0xFFFFF3E0), Colors.orange.shade900),
+      TrancheAge.plus30 => (AppColors.errorTint, Colors.red.shade900),
+      TrancheAge.de8a30 => (AppColors.warningTint, Colors.orange.shade900),
       TrancheAge.de0a7 => (AppColors.headerButton, AppColors.label),
     };
     return Container(

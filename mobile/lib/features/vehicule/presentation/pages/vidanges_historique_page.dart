@@ -142,7 +142,7 @@ class _Header extends StatelessWidget {
                   color: AppColors.headerButton,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(Icons.arrow_back_rounded,
+                child: Icon(Icons.arrow_back_rounded,
                     size: 18, color: AppColors.dark),
               ),
             ),
@@ -150,7 +150,7 @@ class _Header extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Historique des vidanges',
                     textAlign: TextAlign.center,
                     maxLines: 1,
@@ -169,7 +169,7 @@ class _Header extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12,
                           color: AppColors.hint,
                           fontWeight: FontWeight.w500),
@@ -223,13 +223,13 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.white, Color(0xFFF6FBF7)],
+          colors: [Colors.white, AppColors.fond(0xFFF6FBF7)],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE4EFE7)),
+        border: Border.all(color: AppColors.fond(0xFFE4EFE7)),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.06),
@@ -243,7 +243,7 @@ class _SummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('DERNIÈRE VIDANGE',
+              Text('DERNIÈRE VIDANGE',
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -259,15 +259,15 @@ class _SummaryCard extends StatelessWidget {
             children: [
               Text(
                 _grouped(derniere.kilometrageVidange),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w800,
                     height: 1,
                     color: AppColors.dark,
                     letterSpacing: -1),
               ),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 4, left: 4),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4, left: 4),
                 child: Text('km',
                     style: TextStyle(
                         fontSize: 14,
@@ -276,11 +276,11 @@ class _SummaryCard extends StatelessWidget {
               ),
               const Spacer(),
               Row(children: [
-                const Icon(Icons.event_rounded,
+                Icon(Icons.event_rounded,
                     size: 14, color: AppColors.hint),
                 const SizedBox(width: 5),
                 Text(_fmtDate(derniere.dateVidange),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppColors.label)),
@@ -328,7 +328,7 @@ class _SummaryCard extends StatelessWidget {
           Icon(icon, size: 14, color: AppColors.hint),
           const SizedBox(width: 6),
           Text(text,
-              style: const TextStyle(fontSize: 12.5, color: AppColors.hint)),
+              style: TextStyle(fontSize: 12.5, color: AppColors.hint)),
         ],
       );
 }
@@ -343,7 +343,7 @@ class _ProgressBar extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: Stack(children: [
-        Container(height: 9, color: const Color(0xFFEDF2EE)),
+        Container(height: 9, color: AppColors.fond(0xFFEDF2EE)),
         FractionallySizedBox(
           widthFactor: value == 0 ? 0.02 : value,
           child: Container(
@@ -395,7 +395,7 @@ class _TimelineHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      const Text('Chronologie',
+      Text('Chronologie',
           style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
@@ -408,7 +408,7 @@ class _TimelineHeader extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text('$count',
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: AppColors.primaryDark)),
@@ -444,7 +444,7 @@ class _TimelineTile extends StatelessWidget {
                 Container(
                   width: 2,
                   height: 6,
-                  color: isFirst ? Colors.transparent : const Color(0xFFDBE3EC),
+                  color: isFirst ? Colors.transparent : AppColors.fond(0xFFDBE3EC),
                 ),
                 Container(
                   width: derniere ? 16 : 12,
@@ -468,7 +468,7 @@ class _TimelineTile extends StatelessWidget {
                   child: Container(
                     width: 2,
                     color:
-                        isLast ? Colors.transparent : const Color(0xFFDBE3EC),
+                        isLast ? Colors.transparent : AppColors.fond(0xFFDBE3EC),
                   ),
                 ),
               ],
@@ -482,12 +482,12 @@ class _TimelineTile extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.blanc,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                       color: derniere
                           ? AppColors.primary.withValues(alpha: 0.35)
-                          : const Color(0xFFE9EDF3)),
+                          : AppColors.fond(0xFFE9EDF3)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.03),
@@ -501,7 +501,7 @@ class _TimelineTile extends StatelessWidget {
                   children: [
                     Row(children: [
                       Text(_fmtDate(vidange.dateVidange),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
                               color: AppColors.dark)),
@@ -514,7 +514,7 @@ class _TimelineTile extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(_fmtKm(vidange.kilometrageVidange),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.primaryDark)),
@@ -524,13 +524,13 @@ class _TimelineTile extends StatelessWidget {
                         vidange.kilometrageProchaineVidange != null) ...[
                       const SizedBox(height: 10),
                       Row(children: [
-                        const Icon(Icons.arrow_forward_rounded,
+                        Icon(Icons.arrow_forward_rounded,
                             size: 14, color: AppColors.hint),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'Prochaine : ${_fmtDate(vidange.dateProchaineVidange)} · ${_fmtKm(vidange.kilometrageProchaineVidange)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12.5, color: AppColors.hint),
                           ),
                         ),
@@ -546,7 +546,7 @@ class _TimelineTile extends StatelessWidget {
                         ),
                         child: Text(
                           vidange.commentaire!.trim(),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12.5,
                               color: AppColors.label,
                               height: 1.35),
@@ -587,18 +587,18 @@ class _EmptyView extends StatelessWidget {
             ),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.oil_barrel_rounded,
+          child: Icon(Icons.oil_barrel_rounded,
               size: 42, color: AppColors.primary),
         ),
         const SizedBox(height: 18),
-        const Text('Aucune vidange enregistrée',
+        Text('Aucune vidange enregistrée',
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.dark)),
         const SizedBox(height: 6),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 40),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Text(
             'Appuyez sur + en haut à droite pour consigner le premier entretien.',
             textAlign: TextAlign.center,
@@ -618,9 +618,9 @@ class _ErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.cloud_off_rounded, size: 44, color: AppColors.hint),
+        Icon(Icons.cloud_off_rounded, size: 44, color: AppColors.hint),
         const SizedBox(height: 14),
-        const Text('Impossible de charger les vidanges',
+        Text('Impossible de charger les vidanges',
             style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -631,7 +631,7 @@ class _ErrorView extends StatelessWidget {
           icon: const Icon(Icons.refresh_rounded, size: 18),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.primary),
+            side: BorderSide(color: AppColors.primary),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),

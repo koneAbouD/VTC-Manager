@@ -142,9 +142,9 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
             children: [
               Container(
                 padding: const EdgeInsets.all(9),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                     color: AppColors.primaryTint, shape: BoxShape.circle),
-                child: const Icon(Icons.receipt_long_outlined,
+                child: Icon(Icons.receipt_long_outlined,
                     size: 18, color: AppColors.primaryDark),
               ),
               const SizedBox(width: 10),
@@ -153,7 +153,7 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(a.numeroLiquidation ?? a.numeroDemande ?? 'Quittance',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: AppColors.dark)),
@@ -161,7 +161,7 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
                       Text(a.demandeur!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12, color: AppColors.label)),
                   ],
                 ),
@@ -169,7 +169,7 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
               if (a.dateQuittance != null)
                 Text(_date.format(a.dateQuittance!),
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.hint)),
+                        TextStyle(fontSize: 12, color: AppColors.hint)),
             ],
           ),
           const SizedBox(height: 12),
@@ -186,14 +186,14 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Total à reverser',
+                      Text('Total à reverser',
                           style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
                               color: AppColors.primaryDark)),
                       const SizedBox(height: 2),
                       Text('${_money.format(a.totalAReverser)} XOF',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primaryDark,
@@ -256,7 +256,7 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
                 Text(l.numeroContravention,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppColors.dark)),
@@ -269,11 +269,11 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
                     _pill(badgeLabel, badgeColor, badgeBg),
                     if (l.plaque != null)
                       Text(l.plaque!,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11.5, color: AppColors.label)),
                     if (l.codeInfraction != null)
                       Text('· ${l.codeInfraction}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11.5, color: AppColors.hint)),
                     if (l.montantDivergent)
                       _pill('Montant ≠', AppColors.warning,
@@ -286,7 +286,7 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
           const SizedBox(width: 8),
           Text(
             '${_money.format(l.montantSysteme ?? l.montantQuittance ?? 0)} XOF',
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: AppColors.dark),
@@ -325,7 +325,7 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
@@ -336,12 +336,12 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Sélection à reverser',
+                  Text('Sélection à reverser',
                       style:
                           TextStyle(fontSize: 11.5, color: AppColors.label)),
                   const SizedBox(height: 2),
                   Text('${_money.format(_totalSelection)} XOF',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: AppColors.dark)),
@@ -383,14 +383,14 @@ class _VideEtat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.search_off_rounded, size: 48, color: AppColors.hint),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text('Aucune contravention trouvée sur cette quittance.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.label)),

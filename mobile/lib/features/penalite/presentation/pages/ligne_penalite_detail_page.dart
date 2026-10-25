@@ -60,7 +60,7 @@ class LignePenaliteDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text(e.toString().replaceFirst('Exception: ', ''),
-              style: const TextStyle(color: AppColors.error)),
+              style: TextStyle(color: AppColors.error)),
         ),
         data: (ligne) => _DetailBody(ligne: ligne, ligneId: ligneId),
       ),
@@ -279,7 +279,7 @@ class _DetailBody extends ConsumerWidget {
       titre:          'Amende — ${_typePenaliteLabel(l.typePenalite)}',
       sousTitre:      (nom != null && nom.isNotEmpty) ? '$immat - $nom' : immat,
       montantRestant: l.montantRestant,
-      couleur:        const Color(0xFFB71C1C),
+      couleur:        AppColors.error,
       icone:          Icons.gavel_outlined,
       onEncaisser: (saisie) async {
         return notifier.createEncaissementDetail(l.id!, {

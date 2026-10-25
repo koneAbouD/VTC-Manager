@@ -27,8 +27,8 @@ final conditionsTravailListeProvider =
 
 // ── Constantes de design ──────────────────────────────────────────────────────
 
-const _kPrimary = Color(0xFF43A047);
-const _kDark = Color(0xFF1A1A2E);
+Color get _kPrimary => AppColors.primary;
+Color get _kDark => AppColors.dark;
 
 class _ProgrammeStyle {
   final Color accent;
@@ -46,18 +46,18 @@ class _ProgrammeStyle {
   });
 }
 
-const _programmeStyles = <String, _ProgrammeStyle>{
+Map<String, _ProgrammeStyle> get _programmeStyles => <String, _ProgrammeStyle>{
   'JOURNALIER': _ProgrammeStyle(
-    accent: Color(0xFF43A047),
-    bg: Color(0xFFE3F0FF),
-    text: Color(0xFF43A047),
+    accent: AppColors.primary,
+    bg: AppColors.fond(0xFFE3F0FF),
+    text: AppColors.primary,
     icon: Icons.wb_sunny_rounded,
     label: 'Journalier',
   ),
   'HEBDOMADAIRE': _ProgrammeStyle(
-    accent: Color(0xFF00695C),
-    bg: Color(0xFFE0F2F1),
-    text: Color(0xFF00695C),
+    accent: const Color(0xFF00695C),
+    bg: AppColors.fond(0xFFE0F2F1),
+    text: const Color(0xFF00695C),
     icon: Icons.date_range_rounded,
     label: 'Hebdomadaire',
   ),
@@ -65,9 +65,9 @@ const _programmeStyles = <String, _ProgrammeStyle>{
 
 _ProgrammeStyle _styleOf(String prog) =>
     _programmeStyles[prog] ??
-    const _ProgrammeStyle(
+    _ProgrammeStyle(
       accent: _kPrimary,
-      bg: Color(0xFFE3F0FF),
+      bg: AppColors.fond(0xFFE3F0FF),
       text: _kPrimary,
       icon: Icons.settings_rounded,
       label: 'Autre',
@@ -180,14 +180,14 @@ class _ConditionTravailListePageState
               width: 56,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F2F8),
+                color: AppColors.headerButton,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.arrow_back_rounded,
+              child: Icon(Icons.arrow_back_rounded,
                   size: 18, color: _kDark),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Conditions de travail',
               textAlign: TextAlign.center,
@@ -205,10 +205,10 @@ class _ConditionTravailListePageState
               width: 56,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F2F8),
+                color: AppColors.headerButton,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.add_rounded,
+              child: Icon(Icons.add_rounded,
                   size: 20, color: _kDark),
             ),
           ),
@@ -221,17 +221,17 @@ class _ConditionTravailListePageState
 
   Widget _buildSearchBar() {
     return Container(
-      color: Colors.white,
+      color: AppColors.blanc,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: TextField(
         controller: _searchCtrl,
         onChanged: (v) => setState(() => _search = v),
-        style: const TextStyle(fontSize: 14, color: _kDark),
+        style: TextStyle(fontSize: 14, color: _kDark),
         decoration: InputDecoration(
           hintText: 'Rechercher une configuration…',
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+          hintStyle: TextStyle(color: AppColors.grey400, fontSize: 14),
           prefixIcon:
-              Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 20),
+              Icon(Icons.search_rounded, color: AppColors.grey400, size: 20),
           suffixIcon: _search.isNotEmpty
               ? GestureDetector(
                   onTap: () {
@@ -239,7 +239,7 @@ class _ConditionTravailListePageState
                     setState(() => _search = '');
                   },
                   child: Icon(Icons.close_rounded,
-                      color: Colors.grey.shade400, size: 18),
+                      color: AppColors.grey400, size: 18),
                 )
               : null,
           filled: true,
@@ -252,11 +252,11 @@ class _ConditionTravailListePageState
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFEEF0F5)),
+            borderSide: BorderSide(color: AppColors.fond(0xFFEEF0F5)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+            borderSide: BorderSide(color: _kPrimary, width: 1.5),
           ),
         ),
       ),
@@ -331,7 +331,7 @@ class _ConditionCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -360,7 +360,7 @@ class _ConditionCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               condition.nom,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15,
                                 color: _kDark,
@@ -470,7 +470,7 @@ class _MetaChip extends StatelessWidget {
           label,
           style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade700,
+              color: AppColors.grey700,
               fontWeight: FontWeight.w500),
         ),
       ],
@@ -489,8 +489,8 @@ class _ObjectifBand extends StatelessWidget {
   Widget build(BuildContext context) {
     final isReel = typeRecette == 'MONTANT_REEL';
 
-    final bg = isReel ? const Color(0xFFFFF8E1) : const Color(0xFFE8F5E9);
-    final color = isReel ? const Color(0xFFE65100) : const Color(0xFF43A047);
+    final bg = isReel ? const Color(0xFFFFF8E1) : AppColors.positiveTint;
+    final color = isReel ? AppColors.warning : AppColors.primary;
     final icon = isReel ? Icons.show_chart_rounded : Icons.trending_up_rounded;
     final label = isReel
         ? 'Recette réelle'
@@ -520,15 +520,15 @@ class _ObjectifBand extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFFE65100).withValues(alpha: 0.12),
+                color: AppColors.warning.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text(
+              child: Text(
                 'Variable',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFE65100),
+                  color: AppColors.warning,
                 ),
               ),
             ),
@@ -556,11 +556,11 @@ class _CardFooter extends StatelessWidget {
       return Row(
         children: [
           Icon(Icons.info_outline_rounded,
-              size: 13, color: Colors.grey.shade400),
+              size: 13, color: AppColors.grey400),
           const SizedBox(width: 4),
           Text(
             'Aucune cotisation ni pénalité',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+            style: TextStyle(fontSize: 12, color: AppColors.grey400),
           ),
         ],
       );
@@ -574,16 +574,16 @@ class _CardFooter extends StatelessWidget {
             icon: Icons.payments_outlined,
             label:
                 '$nbCotisations cotisation${nbCotisations > 1 ? 's' : ''} · ${totalCotis.toStringAsFixed(0)} XOF',
-            color: const Color(0xFF43A047),
-            bg: const Color(0xFFE8F5E9),
+            color: AppColors.primary,
+            bg: AppColors.positiveTint,
           ),
         if (nbPenalites > 0)
           _FooterTag(
             icon: Icons.gavel_rounded,
             label:
                 '$nbPenalites pénalité${nbPenalites > 1 ? 's' : ''}',
-            color: const Color(0xFFE65100),
-            bg: const Color(0xFFFFF3E0),
+            color: AppColors.warning,
+            bg: AppColors.warningTint,
           ),
       ],
     );
@@ -673,7 +673,7 @@ class _SkeletonCardState extends State<_SkeletonCard>
       animation: _anim,
       builder: (_, __) => Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -736,7 +736,7 @@ class _Bone extends StatelessWidget {
         width: w == double.infinity ? null : w,
         height: h,
         decoration: BoxDecoration(
-          color: Colors.grey.shade300.withValues(alpha: opacity),
+          color: AppColors.grey300.withValues(alpha: opacity),
           borderRadius: BorderRadius.circular(r),
         ),
       );
@@ -759,13 +759,13 @@ class _EmptyState extends StatelessWidget {
             Container(
               width: 88,
               height: 88,
-              decoration: const BoxDecoration(
-                  color: Color(0xFFE3F0FF), shape: BoxShape.circle),
-              child: const Icon(Icons.shield_rounded,
+              decoration: BoxDecoration(
+                  color: AppColors.fond(0xFFE3F0FF), shape: BoxShape.circle),
+              child: Icon(Icons.shield_rounded,
                   size: 40, color: _kPrimary),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Aucune configuration',
               style: TextStyle(
                   fontWeight: FontWeight.w800,
@@ -776,7 +776,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               'Créez votre première condition de travail\npour l\'appliquer à vos véhicules.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.5),
+              style: TextStyle(color: AppColors.grey600, fontSize: 14, height: 1.5),
             ),
             const SizedBox(height: 28),
             FilledButton.icon(
@@ -808,19 +808,19 @@ class _NoResultState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade300),
+          Icon(Icons.search_off_rounded, size: 48, color: AppColors.grey300),
           const SizedBox(height: 12),
           Text(
             'Aucun résultat',
             style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 16,
-                color: Colors.grey.shade500),
+                color: AppColors.grey500),
           ),
           const SizedBox(height: 4),
           Text(
             'Essayez un autre filtre ou mot-clé.',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+            style: TextStyle(fontSize: 13, color: AppColors.grey400),
           ),
         ],
       ),
@@ -850,13 +850,13 @@ class _ErrorState extends StatelessWidget {
                   size: 32, color: Colors.red.shade400),
             ),
             const SizedBox(height: 16),
-            const Text('Erreur de chargement',
+            Text('Erreur de chargement',
                 style: TextStyle(
                     fontWeight: FontWeight.w700, fontSize: 16, color: _kDark)),
             const SizedBox(height: 8),
             Text(message,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                style: TextStyle(color: AppColors.grey600, fontSize: 13)),
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: onRetry,

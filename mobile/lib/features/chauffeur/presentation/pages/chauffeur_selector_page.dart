@@ -7,6 +7,7 @@ import '../providers/chauffeur_provider.dart';
 import '../providers/chauffeur_state.dart';
 import '../../../../core/widgets/app_header.dart';
 
+import '../../../../core/theme/app_colors.dart';
 class ChauffeurSelectorPage extends ConsumerStatefulWidget {
   /// Statuts dont les chauffeurs sont affichés mais **non sélectionnables**
   /// (grisés). Ex. {suspendu} pour la configuration véhicule. Vide par défaut.
@@ -59,7 +60,7 @@ class _ChauffeurSelectorPageState
             .toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       appBar: const AppHeader(title: 'Sélectionner un chauffeur'),
       body: Column(
         children: [
@@ -70,9 +71,9 @@ class _ChauffeurSelectorPageState
               onChanged: (v) => setState(() => _query = v),
               decoration: InputDecoration(
                 hintText: 'Rechercher un chauffeur...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                prefixIcon: Icon(Icons.search, color: AppColors.grey500),
                 filled: true,
-                fillColor: const Color(0xFFF5F5F5),
+                fillColor: AppColors.scaffold,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -90,14 +91,14 @@ class _ChauffeurSelectorPageState
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.person_off_outlined,
-                          size: 64, color: Colors.grey.shade300),
+                          size: 64, color: AppColors.grey300),
                       const SizedBox(height: 12),
                       const Text('Aucun chauffeur trouvé',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text('Aucun chauffeur disponible',
                           style: TextStyle(
-                              color: Colors.grey.shade500, fontSize: 13)),
+                              color: AppColors.grey500, fontSize: 13)),
                     ],
                   )
                 : ListView.builder(
@@ -132,10 +133,10 @@ class _ChauffeurSelectorPageState
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppColors.blanc,
                               borderRadius: BorderRadius.circular(14),
                               border:
-                                  Border.all(color: const Color(0xFFE4E7EC)),
+                                  Border.all(color: AppColors.border),
                               boxShadow: [
                                 BoxShadow(
                                   color:
@@ -148,7 +149,7 @@ class _ChauffeurSelectorPageState
                             child: Row(
                               children: [
                                 Icon(Icons.person_outline_rounded,
-                                    size: 22, color: Colors.grey.shade400),
+                                    size: 22, color: AppColors.grey400),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -157,10 +158,10 @@ class _ChauffeurSelectorPageState
                                     children: [
                                       Text(
                                         '${c.prenom} ${c.nom}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           fontSize: 14,
-                                          color: Color(0xFF1A1A2E),
+                                          color: AppColors.dark,
                                         ),
                                       ),
                                       if (sousTitre != null) ...[
@@ -170,8 +171,8 @@ class _ChauffeurSelectorPageState
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: bloque
-                                                ? const Color(0xFFC62828)
-                                                : Colors.grey.shade600,
+                                                ? AppColors.error
+                                                : AppColors.grey600,
                                           ),
                                         ),
                                       ],
@@ -219,7 +220,7 @@ class _ChauffeurSelectorPageState
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFFC62828),
+        backgroundColor: AppColors.error,
         content: Text(_motifNonSelectionnable(c)),
       ));
   }
@@ -235,12 +236,12 @@ class _StatutPill extends StatelessWidget {
   const _StatutPill({required this.statut});
 
   static Color _color(ChauffeurStatus? s) => switch (s) {
-        ChauffeurStatus.actif => const Color(0xFF2E7D32),
+        ChauffeurStatus.actif => AppColors.positive,
         ChauffeurStatus.enService => const Color(0xFF1565C0),
-        ChauffeurStatus.inactif => Colors.grey,
-        ChauffeurStatus.enConge => const Color(0xFFE65100),
-        ChauffeurStatus.suspendu => const Color(0xFFC62828),
-        null => Colors.grey,
+        ChauffeurStatus.inactif => AppColors.grey500,
+        ChauffeurStatus.enConge => AppColors.warning,
+        ChauffeurStatus.suspendu => AppColors.error,
+        null => AppColors.grey500,
       };
 
   @override

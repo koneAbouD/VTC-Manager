@@ -3,18 +3,19 @@ import 'dart:math' show pi, sin;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/theme/app_colors.dart';
 /// Kit d'UI partagé pour les écrans d'authentification (Login / Inscription /
 /// Mot de passe oublié) — rendu « premium » cohérent.
 
 // ── Palette ─────────────────────────────────────────────────────────────────
 
-const kAuthPrimary = Color(0xFF43A047);
-const kAuthPrimaryDark = Color(0xFF2E7D32);
-const kAuthDark = Color(0xFF1A1A2E);
-const kAuthHint = Color(0xFF8A94A6);
-const kAuthFieldFill = Color(0xFFF2F3F5);
-const kAuthBorder = Color(0xFFE4E9EE);
-const kAuthError = Color(0xFFE03131);
+Color get kAuthPrimary => AppColors.primary;
+Color get kAuthPrimaryDark => AppColors.positive;
+Color get kAuthDark => AppColors.dark;
+Color get kAuthHint => AppColors.hint;
+Color get kAuthFieldFill => AppColors.fieldFill;
+Color get kAuthBorder => AppColors.border;
+Color get kAuthError => AppColors.error;
 
 // ── Toast ─────────────────────────────────────────────────────────────────
 
@@ -28,11 +29,11 @@ void authToast(
 }) {
   final (Color bg, IconData icon) = switch (type) {
     AuthToastType.success =>
-      (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    AuthToastType.error => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
+      (AppColors.success, Icons.check_circle_outline_rounded),
+    AuthToastType.error => (AppColors.error, Icons.error_outline_rounded),
     AuthToastType.warning =>
-      (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    AuthToastType.info => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+      (AppColors.warning, Icons.warning_amber_rounded),
+    AuthToastType.info => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -214,9 +215,9 @@ class AuthScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       body: Container(
-        color: const Color(0xFFF8F9FB),
+        color: AppColors.scaffold,
         child: SafeArea(
           child: Stack(
             children: [
@@ -252,7 +253,7 @@ class _CircleBackButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -262,7 +263,7 @@ class _CircleBackButton extends StatelessWidget {
             ),
           ],
         ),
-        child: const Icon(Icons.arrow_back_rounded, size: 20, color: kAuthDark),
+        child: Icon(Icons.arrow_back_rounded, size: 20, color: kAuthDark),
       ),
     );
   }
@@ -296,7 +297,7 @@ class AuthBrand extends StatelessWidget {
       width: badge,
       height: badge,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [kAuthPrimary, kAuthPrimaryDark],
@@ -319,7 +320,7 @@ class AuthBrand extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(compact ? 12 : 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(compact ? 20 : 26),
         boxShadow: [
           BoxShadow(
@@ -364,7 +365,7 @@ class AuthBrand extends StatelessWidget {
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             color: kAuthHint,
             height: 1.4,
@@ -387,9 +388,9 @@ class AuthCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFEDF1F4)),
+        border: Border.all(color: AppColors.fond(0xFFEDF1F4)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -420,9 +421,9 @@ InputDecoration authInputDecoration({
     suffixIcon: suffixIcon,
     filled: true,
     fillColor: kAuthFieldFill,
-    labelStyle: const TextStyle(color: kAuthHint, fontSize: 14),
+    labelStyle: TextStyle(color: kAuthHint, fontSize: 14),
     floatingLabelStyle:
-        const TextStyle(color: kAuthPrimary, fontWeight: FontWeight.w600),
+        TextStyle(color: kAuthPrimary, fontWeight: FontWeight.w600),
     contentPadding:
         const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     enabledBorder: border(kAuthBorder),
@@ -458,7 +459,7 @@ class AuthPrimaryButton extends StatelessWidget {
         color: Colors.transparent,
         child: Ink(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               colors: [kAuthPrimary, kAuthPrimaryDark],
             ),
             borderRadius: BorderRadius.circular(14),

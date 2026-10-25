@@ -43,7 +43,7 @@ class SelectionActionBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
@@ -63,11 +63,11 @@ class SelectionActionBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Total à encaisser',
+                Text('Total à encaisser',
                     style: TextStyle(fontSize: 11.5, color: AppColors.label)),
                 const SizedBox(height: 2),
                 Text('${_money.format(total)} XOF',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: AppColors.dark)),
@@ -121,12 +121,12 @@ class SelectionCheckbox extends StatelessWidget {
   final ValueChanged<bool?> onChanged;
   final Color couleur;
 
-  const SelectionCheckbox({
+  SelectionCheckbox({
     super.key,
     required this.value,
     required this.onChanged,
-    this.couleur = AppColors.primary,
-  });
+    Color? couleur,
+  }) : couleur = couleur ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +137,7 @@ class SelectionCheckbox extends StatelessWidget {
         value: value,
         onChanged: onChanged,
         activeColor: couleur,
-        side: const BorderSide(color: AppColors.border, width: 1.6),
+        side: BorderSide(color: AppColors.border, width: 1.6),
         visualDensity: VisualDensity.compact,
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape:

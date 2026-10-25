@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/theme/app_colors.dart';
 /// Bottom-sheet réutilisable pour choisir la source d'une image (caméra ou galerie).
 ///
 /// Usage :
 /// ```dart
 /// final source = await showModalBottomSheet<ImageSource>(
 ///   context: context,
-///   backgroundColor: Colors.white,
+///   backgroundColor: AppColors.blanc,
 ///   shape: const RoundedRectangleBorder(
 ///     borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
 ///   ),
@@ -28,21 +29,21 @@ class ImageSourceBottomSheet extends StatelessWidget {
             width: 36,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0xFFE3E6EE),
+              color: AppColors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(height: 4),
           ListTile(
             leading:
-                const Icon(Icons.photo_camera_outlined, color: Colors.black87),
+                Icon(Icons.photo_camera_outlined, color: AppColors.noir87),
             title: const Text('Caméra',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
             onTap: () => Navigator.pop(context, ImageSource.camera),
           ),
           ListTile(
             leading:
-                const Icon(Icons.photo_library_outlined, color: Colors.black87),
+                Icon(Icons.photo_library_outlined, color: AppColors.noir87),
             title: const Text('Gallery',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
             onTap: () => Navigator.pop(context, ImageSource.gallery),
@@ -59,7 +60,7 @@ class ImageSourceBottomSheet extends StatelessWidget {
 Future<XFile?> pickImageFromSource(BuildContext context) async {
   final source = await showModalBottomSheet<ImageSource>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.blanc,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
 /// Champ de recherche au style des listes recettes/cotisations : fond gris,
 /// croix d'effacement dès qu'un mot-clé est saisi. Partagé par les créances et
 /// la restitution des cotisations.
@@ -20,11 +21,11 @@ class RechercheField extends StatelessWidget {
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F5),
+        color: AppColors.fieldFill,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(children: [
-        const Icon(Icons.search, color: Color(0xFF8A8A8E), size: 18),
+        Icon(Icons.search, color: AppColors.hint, size: 18),
         const SizedBox(width: 6),
         Expanded(
           child: TextField(
@@ -35,7 +36,7 @@ class RechercheField extends StatelessWidget {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle:
-                  const TextStyle(color: Color(0xFF8A8A8E), fontSize: 13.5),
+                  TextStyle(color: AppColors.hint, fontSize: 13.5),
               border: InputBorder.none,
               isDense: true,
             ),
@@ -50,8 +51,8 @@ class RechercheField extends StatelessWidget {
                     controller.clear();
                     onChanged('');
                   },
-                  child: const Icon(Icons.close_rounded,
-                      size: 18, color: Color(0xFF8A8A8E)),
+                  child: Icon(Icons.close_rounded,
+                      size: 18, color: AppColors.hint),
                 ),
         ),
       ]),

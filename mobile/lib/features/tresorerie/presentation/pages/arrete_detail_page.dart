@@ -59,7 +59,7 @@ class ArreteDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
             child: Text('Impossible de charger l\'arrêté',
-                style: TextStyle(color: Colors.grey.shade600))),
+                style: TextStyle(color: AppColors.grey600))),
         data: (a) {
           final concernes = chauffeursConcernes(a).length;
           return ListView(
@@ -235,7 +235,7 @@ class _Entete extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(arrete.reference ?? 'Arrêté #${arrete.id}',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primaryDark)),
@@ -243,18 +243,18 @@ class _Entete extends StatelessWidget {
           Text(
               '${arrete.perimetre == 'VEHICULE' ? 'Véhicule' : 'Chauffeur'}'
               '${arrete.perimetreLibelle != null ? ' · ${arrete.perimetreLibelle}' : ''}',
-              style: const TextStyle(fontSize: 12.5, color: AppColors.primaryDark)),
+              style: TextStyle(fontSize: 12.5, color: AppColors.primaryDark)),
           const SizedBox(height: 2),
           Text(
               'Période ${fmtDate(arrete.periodeDebut)} → ${fmtDate(arrete.periodeFin)}'
               ' · arrêté le ${fmtDate(arrete.dateArrete)}',
-              style: const TextStyle(fontSize: 12, color: AppColors.primaryDark)),
+              style: TextStyle(fontSize: 12, color: AppColors.primaryDark)),
           if (arrete.estAnnule) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                  color: const Color(0xFFFDECEA),
+                  color: AppColors.errorTint,
                   borderRadius: BorderRadius.circular(8)),
               child: Text(
                   'ARRÊTÉ ANNULÉ'
@@ -344,7 +344,7 @@ class _Synthese extends StatelessWidget {
                 if (aide != null)
                   Text(aide,
                       style:
-                          const TextStyle(fontSize: 10.5, color: AppColors.hint)),
+                          TextStyle(fontSize: 10.5, color: AppColors.hint)),
               ],
             ),
           ),
@@ -367,7 +367,7 @@ class _Section extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(titre,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
               color: AppColors.label)),
@@ -394,7 +394,7 @@ class _ReglementTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(reglement.chauffeurNom ?? 'Chauffeur #${reglement.chauffeurId}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.dark)),
@@ -406,7 +406,7 @@ class _ReglementTile extends StatelessWidget {
                       'cotisations ${CurrencyFormatter.format(reglement.totalCotisations)}',
                       'dettes réglées ${CurrencyFormatter.format(reglement.totalCreancesCompensees)}',
                     ].join(' · '),
-                    style: const TextStyle(fontSize: 11.5, color: AppColors.label)),
+                    style: TextStyle(fontSize: 11.5, color: AppColors.label)),
                 if (reglement.reliquatReporte > 0)
                   Text(
                       'reste dû ${CurrencyFormatter.format(reglement.reliquatReporte)}, '
@@ -429,7 +429,7 @@ class _ReglementTile extends StatelessWidget {
                   reglement.aRestitution
                       ? 'versé${reglement.modePaiement != null ? ' · ${reglement.modePaiement == 'MOBILE_MONEY' ? 'Mobile Money' : 'Espèces'}' : ''}'
                       : 'rien à verser',
-                  style: const TextStyle(fontSize: 10.5, color: AppColors.hint)),
+                  style: TextStyle(fontSize: 10.5, color: AppColors.hint)),
             ],
           ),
         ],
@@ -468,7 +468,7 @@ class _LigneTile extends StatelessWidget {
                     ligne.immatriculation != null
                         ? '$_label · ${ligne.immatriculation}'
                         : _label,
-                    style: const TextStyle(fontSize: 13, color: AppColors.dark)),
+                    style: TextStyle(fontSize: 13, color: AppColors.dark)),
                 // Le jour du document plutôt que son identifiant technique ;
                 // celui-ci ne reste qu'en repli si la date est introuvable.
                 Text(
@@ -479,7 +479,7 @@ class _LigneTile extends StatelessWidget {
                       // Dette du véhicule, payée par le fonds commun.
                       if (!credit && ligne.chauffeurId == null) 'dette du véhicule',
                     ].join(' · '),
-                    style: const TextStyle(fontSize: 11, color: AppColors.hint)),
+                    style: TextStyle(fontSize: 11, color: AppColors.hint)),
               ],
             ),
           ),
@@ -535,7 +535,7 @@ class _DetteTile extends StatelessWidget {
                     dette.immatriculation != null
                         ? '$_label · ${dette.immatriculation}'
                         : _label,
-                    style: const TextStyle(fontSize: 13, color: AppColors.dark)),
+                    style: TextStyle(fontSize: 13, color: AppColors.dark)),
                 Text(
                     [
                       dette.dateDocument != null
@@ -544,7 +544,7 @@ class _DetteTile extends StatelessWidget {
                       if (parVehicule && dette.chauffeurId == null)
                         'dette du véhicule',
                     ].join(' · '),
-                    style: const TextStyle(fontSize: 11, color: AppColors.hint)),
+                    style: TextStyle(fontSize: 11, color: AppColors.hint)),
               ],
             ),
           ),
@@ -558,7 +558,7 @@ class _DetteTile extends StatelessWidget {
                       color: Colors.red.shade900)),
               if (dette.entamee)
                 Text('sur ${CurrencyFormatter.format(dette.montantDu!)}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.hint)),
+                    style: TextStyle(fontSize: 11, color: AppColors.hint)),
             ],
           ),
         ],
@@ -578,7 +578,7 @@ class _TotalDettes extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('Reporté sur l\'arrêté suivant',
+          Text('Reporté sur l\'arrêté suivant',
               style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,

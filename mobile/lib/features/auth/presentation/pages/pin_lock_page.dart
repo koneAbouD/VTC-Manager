@@ -260,12 +260,12 @@ class _LogoutDialog extends StatelessWidget {
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text(
+      title: Text(
         'Se déconnecter ?',
         textAlign: TextAlign.center,
         style: TextStyle(fontSize: 18, color: AppColors.dark),
       ),
-      content: const Text(
+      content: Text(
         'Vous gardez votre code TMK : il vous sera simplement redemandé à la '
         'prochaine connexion.',
         textAlign: TextAlign.center,
@@ -287,7 +287,7 @@ class _LogoutDialog extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(false),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary),
+              side: BorderSide(color: AppColors.primary),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

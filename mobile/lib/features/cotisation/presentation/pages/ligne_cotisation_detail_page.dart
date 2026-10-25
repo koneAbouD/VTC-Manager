@@ -62,7 +62,7 @@ class LigneCotisationDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
             child: Text(e.toString().replaceFirst('Exception: ', ''),
-                style: const TextStyle(color: AppColors.error))),
+                style: TextStyle(color: AppColors.error))),
         data: (ligne) => _Body(ligne: ligne, ligneId: ligneId),
       ),
     );
@@ -117,7 +117,7 @@ class _Body extends ConsumerWidget {
           Icons.person_outline_rounded,
           'Chauffeur',
           ligne.chauffeurNom ?? 'Chauffeur #${ligne.chauffeurId}',
-          accent: const Color(0xFFE65100),
+          accent: AppColors.warning,
           verrouille: !ligne.reaffectable,
           motifVerrou: ligne.motifNonReaffectable,
           onTap: () => _reaffecter(context, ref),
@@ -167,7 +167,7 @@ class _Body extends ConsumerWidget {
               commentaire: e.commentaire,
               annule: e.estAnnule,
               motifAnnulation: e.motifAnnulation,
-              accent: const Color(0xFFE65100),
+              accent: AppColors.warning,
               onModifierDate: e.dateModifiable && e.id != null
                   ? () => _modifierDateEncaissement(context, ref, e)
                   : null,
@@ -196,7 +196,7 @@ class _Body extends ConsumerWidget {
       sousTitre: (nom != null && nom.isNotEmpty) ? '$immat - $nom' : immat,
       montantRestant: ligne.montantRestant ??
           (ligne.montantDu - ligne.montantEncaisse),
-      couleur: const Color(0xFFE65100),
+      couleur: AppColors.warning,
       icone:   Icons.analytics_outlined,
       jumelle: jumelle,
       onEncaisser: (saisie) async {
@@ -241,7 +241,7 @@ class _Body extends ConsumerWidget {
       sousTitre: '${ligne.nomCotisation} · $immat · '
           '${dateFmt.format(ligne.dateCotisation)}',
       chauffeurActuel: ligne.chauffeurNom ?? 'Chauffeur #${ligne.chauffeurId}',
-      accent: const Color(0xFFE65100),
+      accent: AppColors.warning,
       // Cf. la fiche recette : c'est le serveur qui juge et qui compte.
       chargerApercu: () async {
         final res = await repo.getApercuReaffectation(ligneId);

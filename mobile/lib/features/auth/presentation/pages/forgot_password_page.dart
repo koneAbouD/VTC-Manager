@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_ui.dart';
 
+import '../../../../core/theme/app_colors.dart';
 class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
 
@@ -105,15 +106,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         Container(
           width: 92,
           height: 92,
-          decoration: const BoxDecoration(
-            color: Color(0xFFE8F5E9),
+          decoration: BoxDecoration(
+            color: AppColors.positiveTint,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.mark_email_read_rounded,
+          child: Icon(Icons.mark_email_read_rounded,
               size: 46, color: kAuthPrimary),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Email envoyé',
           style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.w800, color: kAuthDark),
@@ -122,7 +123,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         Text(
           'Un lien de réinitialisation a été envoyé à\n${_email.text}',
           textAlign: TextAlign.center,
-          style: const TextStyle(color: kAuthHint, fontSize: 14, height: 1.5),
+          style: TextStyle(color: kAuthHint, fontSize: 14, height: 1.5),
         ),
         const SizedBox(height: 28),
         SizedBox(

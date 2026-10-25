@@ -55,9 +55,9 @@ class _PartenaireSheet extends ConsumerWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.7,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -71,8 +71,8 @@ class _PartenaireSheet extends ConsumerWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text('Prestataire de la ligne',
@@ -92,7 +92,7 @@ class _PartenaireSheet extends ConsumerWidget {
                 padding: EdgeInsets.fromLTRB(20, 12, 20, 32 + bottomSafe),
                 child: Text('Partenaires indisponibles : $e',
                     style:
-                        const TextStyle(fontSize: 13, color: AppColors.error)),
+                        TextStyle(fontSize: 13, color: AppColors.error)),
               ),
               data: (liste) => ListView(
                 shrinkWrap: true,
@@ -101,34 +101,34 @@ class _PartenaireSheet extends ConsumerWidget {
                   // Revenir au partenaire de l'intervention : la sortie la plus
                   // fréquente une fois qu'on a corrigé une ligne par erreur.
                   ListTile(
-                    leading: const Icon(Icons.undo_rounded,
+                    leading: Icon(Icons.undo_rounded,
                         size: 20, color: AppColors.hint),
                     title: Text(
                         libelleParDefaut == null
                             ? 'Partenaire de l\'intervention'
                             : 'Partenaire de l\'intervention ($libelleParDefaut)',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14, color: AppColors.dark)),
                     trailing: selectionId == null
-                        ? const Icon(Icons.check_rounded,
+                        ? Icon(Icons.check_rounded,
                             size: 18, color: AppColors.primary)
                         : null,
                     onTap: () =>
                         Navigator.pop(context, PartenaireChoix.parDefaut),
                   ),
-                  const Divider(height: 1, color: AppColors.border),
+                  Divider(height: 1, color: AppColors.border),
                   for (final p in liste.where((p) => p.id != null))
                     ListTile(
                       title: Text(p.nom,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 14, color: AppColors.dark)),
                       subtitle: p.typeNom.isEmpty
                           ? null
                           : Text(p.typeNom,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 11.5, color: AppColors.hint)),
                       trailing: selectionId == p.id
-                          ? const Icon(Icons.check_rounded,
+                          ? Icon(Icons.check_rounded,
                               size: 18, color: AppColors.primary)
                           : null,
                       onTap: () => Navigator.pop(context, PartenaireChoix(p)),

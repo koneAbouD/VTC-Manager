@@ -72,7 +72,7 @@ Future<bool?> showReaffectationChauffeurSheet(
           CandidatChauffeur choisi, String motif, bool avecLiees)
       onReaffecter,
   OptionReaffectationLiee? Function(ImpactsReaffectation impacts)? optionLiee,
-  Color accent = AppColors.primaryDark,
+  Color? accent,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -90,7 +90,7 @@ Future<bool?> showReaffectationChauffeurSheet(
       decrireImpacts: decrireImpacts,
       onReaffecter: onReaffecter,
       optionLiee: optionLiee,
-      accent: accent,
+      accent: accent ?? AppColors.primaryDark,
     ),
   );
 }
@@ -268,14 +268,14 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(widget.titre,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: AppColors.dark,
                       letterSpacing: -0.2)),
               const SizedBox(height: 2),
               Text(widget.sousTitre,
-                  style: const TextStyle(fontSize: 12, color: AppColors.hint)),
+                  style: TextStyle(fontSize: 12, color: AppColors.hint)),
             ],
           ),
         ),
@@ -284,18 +284,18 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
           child: TextField(
             controller: _rechercheCtrl,
             onChanged: (v) => setState(() => _q = v),
-            style: const TextStyle(fontSize: 14, color: AppColors.dark),
+            style: TextStyle(fontSize: 14, color: AppColors.dark),
             decoration: InputDecoration(
               hintText: 'Rechercher un chauffeur…',
-              hintStyle: const TextStyle(color: AppColors.hint, fontSize: 14),
+              hintStyle: TextStyle(color: AppColors.hint, fontSize: 14),
               prefixIcon:
-                  const Icon(Icons.search_rounded, size: 20, color: AppColors.hint),
+                  Icon(Icons.search_rounded, size: 20, color: AppColors.hint),
               filled: true,
               fillColor: AppColors.surface,
               contentPadding: EdgeInsets.zero,
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: AppColors.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -342,7 +342,7 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
     if (filtres.isEmpty) {
       return Padding(
         padding: EdgeInsets.fromLTRB(0, 44, 0, 44 + bottomSafe),
-        child: const Center(
+        child: Center(
           child: Text('Aucun chauffeur',
               style: TextStyle(color: AppColors.hint, fontSize: 14)),
         ),
@@ -462,10 +462,10 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
                   if (actuelle)
                     Icon(Icons.check_circle_rounded, color: widget.accent, size: 20)
                   else if (!c.eligible)
-                    const Icon(Icons.lock_outline_rounded,
+                    Icon(Icons.lock_outline_rounded,
                         color: AppColors.warning, size: 16)
                   else
-                    const Icon(Icons.chevron_right_rounded,
+                    Icon(Icons.chevron_right_rounded,
                         color: AppColors.hint, size: 20),
                 ],
               ),
@@ -569,7 +569,7 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
                       const SizedBox(width: 9),
                       Expanded(
                         child: Text(lignes[i].texte,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12.5,
                                 height: 1.42,
                                 color: AppColors.dark)),
@@ -611,10 +611,10 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
           onChanged: (_) {
             if (_motifManquant) setState(() => _motifManquant = false);
           },
-          style: const TextStyle(fontSize: 13.5, color: AppColors.dark),
+          style: TextStyle(fontSize: 13.5, color: AppColors.dark),
           decoration: InputDecoration(
             hintText: 'Pourquoi cette créance change-t-elle de chauffeur ?',
-            hintStyle: const TextStyle(color: AppColors.hint, fontSize: 13),
+            hintStyle: TextStyle(color: AppColors.hint, fontSize: 13),
             filled: true,
             fillColor: AppColors.fieldFill,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
@@ -632,13 +632,13 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: BorderSide(color: AppColors.border),
             ),
           ),
         ),
         if (_motifManquant)
-          const Padding(
-            padding: EdgeInsets.only(top: 6, left: 4),
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
             child: Text('Sans motif, la réaffectation ne pourra pas s’expliquer plus tard.',
                 style: TextStyle(color: AppColors.error, fontSize: 12)),
           ),
@@ -660,7 +660,7 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
                 onPressed: _envoi ? null : () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.label,
-                  side: const BorderSide(color: AppColors.border),
+                  side: BorderSide(color: AppColors.border),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -737,8 +737,8 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (!option.disponible)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 1, right: 5),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 1, right: 5),
                             child: Icon(Icons.lock_outline_rounded,
                                 size: 13, color: AppColors.warning),
                           ),
@@ -784,7 +784,7 @@ class _SectionLabel extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(dansCarte ? 4 : 2, dansCarte ? 12 : 0, 0, 8),
       child: Text(
         texte.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
             fontSize: 10,
             letterSpacing: 1.1,
             fontWeight: FontWeight.w700,

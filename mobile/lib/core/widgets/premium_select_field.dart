@@ -56,7 +56,7 @@ class PremiumSelectField<T> extends StatelessWidget {
   /// si [isRequired] est vrai.
   final String? Function(T?)? validator;
 
-  const PremiumSelectField({
+  PremiumSelectField({
     super.key,
     required this.value,
     required this.options,
@@ -66,10 +66,10 @@ class PremiumSelectField<T> extends StatelessWidget {
     this.isRequired = false,
     this.enabled = true,
     this.searchable,
-    this.accent = AppColors.primary,
+    Color? accent,
     this.fillColor,
     this.validator,
-  });
+  }) : accent = accent ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +144,7 @@ class PremiumSelectField<T> extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const Icon(Icons.keyboard_arrow_down_rounded,
+                        Icon(Icons.keyboard_arrow_down_rounded,
                             color: AppColors.hint),
                       ],
                     ),
@@ -157,7 +157,7 @@ class PremiumSelectField<T> extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 6, left: 4),
                 child: Text(state.errorText!,
                     style:
-                        const TextStyle(color: AppColors.error, fontSize: 12)),
+                        TextStyle(color: AppColors.error, fontSize: 12)),
               ),
           ],
         );
@@ -214,7 +214,7 @@ class _Pastille extends StatelessWidget {
           color: couleur,
           shape: BoxShape.circle,
           border: Border.all(
-              color: isPale ? const Color(0xFFDDE1EA) : Colors.transparent),
+              color: isPale ? AppColors.border : Colors.transparent),
         ),
       );
     }
@@ -324,19 +324,19 @@ class _SelectSheetState<T> extends State<_SelectSheet<T>> {
               child: TextField(
                 controller: _rechercheCtrl,
                 onChanged: (v) => setState(() => _q = v),
-                style: const TextStyle(fontSize: 14, color: AppColors.dark),
+                style: TextStyle(fontSize: 14, color: AppColors.dark),
                 decoration: InputDecoration(
                   hintText: 'Rechercher…',
                   hintStyle:
-                      const TextStyle(color: AppColors.hint, fontSize: 14),
-                  prefixIcon: const Icon(Icons.search_rounded,
+                      TextStyle(color: AppColors.hint, fontSize: 14),
+                  prefixIcon: Icon(Icons.search_rounded,
                       size: 20, color: AppColors.hint),
                   filled: true,
                   fillColor: AppColors.surface,
                   contentPadding: EdgeInsets.zero,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
+                    borderSide: BorderSide(color: AppColors.border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -351,7 +351,7 @@ class _SelectSheetState<T> extends State<_SelectSheet<T>> {
             child: filtres.isEmpty
                 ? Padding(
                     padding: EdgeInsets.fromLTRB(0, 44, 0, 44 + bottomSafe),
-                    child: const Text('Aucun résultat',
+                    child: Text('Aucun résultat',
                         style: TextStyle(color: AppColors.hint, fontSize: 14)),
                   )
                 : ListView.separated(
@@ -397,7 +397,7 @@ class _SelectSheetState<T> extends State<_SelectSheet<T>> {
                                       border: Border.all(
                                         color:
                                             o.couleur!.computeLuminance() > 0.85
-                                                ? const Color(0xFFDDE1EA)
+                                                ? AppColors.border
                                                 : Colors.transparent,
                                       ),
                                     ),
@@ -444,7 +444,7 @@ class _SelectSheetState<T> extends State<_SelectSheet<T>> {
                                           child: Text(o.sousTitre!,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                   fontSize: 11.5,
                                                   color: AppColors.hint)),
                                         ),

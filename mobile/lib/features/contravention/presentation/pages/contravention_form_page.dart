@@ -422,12 +422,12 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
             RichText(
               text: TextSpan(
                 text: title,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.dark),
                 children: obligatoire
-                    ? const [
+                    ? [
                         TextSpan(
                             text: ' *',
                             style: TextStyle(color: AppColors.error))
@@ -448,7 +448,7 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppColors.label)),
@@ -476,10 +476,10 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
           : TextInputType.text,
       inputFormatters:
           digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
-      style: const TextStyle(fontSize: 14, color: AppColors.dark),
+      style: TextStyle(fontSize: 14, color: AppColors.dark),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.hint, fontSize: 14),
+        hintStyle: TextStyle(color: AppColors.hint, fontSize: 14),
         filled: true,
         fillColor: AppColors.fieldFill,
         prefixIcon:
@@ -495,7 +495,7 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
             borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.4)),
+            borderSide: BorderSide(color: AppColors.primary, width: 1.4)),
       ),
     );
   }
@@ -517,13 +517,13 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
           const SizedBox(width: 10),
           Expanded(
             child: vide
-                ? const Text('Sélectionner véhicule et chauffeur',
+                ? Text('Sélectionner véhicule et chauffeur',
                     style: TextStyle(fontSize: 14, color: AppColors.hint))
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(_vehiculeLabel ?? 'Véhicule non défini',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: AppColors.dark)),
@@ -531,13 +531,13 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(_chauffeurLabel!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12.5, color: AppColors.label)),
                         ),
                     ],
                   ),
           ),
-          const Icon(Icons.chevron_right, size: 20, color: AppColors.hint),
+          Icon(Icons.chevron_right, size: 20, color: AppColors.hint),
         ]),
       ),
     );

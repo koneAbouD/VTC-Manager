@@ -15,11 +15,12 @@ DateTime mondayOf(DateTime d) => d.subtract(Duration(days: d.weekday - 1));
 // ── Chrome premium partagé (feuille ancrée en bas + molette) ──────────────────
 
 /// Style de texte commun aux molettes Cupertino de ce fichier.
-const _kWheelTheme = CupertinoThemeData(
-  textTheme: CupertinoTextThemeData(
-    dateTimePickerTextStyle: TextStyle(fontSize: 20, color: AppColors.dark),
-  ),
-);
+CupertinoThemeData get _kWheelTheme => CupertinoThemeData(
+      textTheme: CupertinoTextThemeData(
+        dateTimePickerTextStyle:
+            TextStyle(fontSize: 20, color: AppColors.dark),
+      ),
+    );
 
 /// Feuille ancrée en bas (poignée + contenu), sans titre ni boutons — à l'image
 /// du sélecteur de date. Le [entete] optionnel s'insère entre la poignée et la
@@ -105,9 +106,9 @@ class _WheelSheetState extends State<_WheelSheet> {
           color: Colors.transparent,
           child: Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppColors.blanc,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -194,7 +195,7 @@ class _WeekPickerDialogState extends State<WeekPickerDialog> {
           childCount: _totalWeeks,
           itemBuilder: (context, i) => Center(
             child: Text(_label(_mondayForIndex(i)),
-                style: const TextStyle(fontSize: 18, color: AppColors.dark)),
+                style: TextStyle(fontSize: 18, color: AppColors.dark)),
           ),
         ),
       ),
@@ -510,7 +511,7 @@ class _BasculeDebutFin extends StatelessWidget {
                         fontWeight: FontWeight.w600)),
                 const SizedBox(height: 1),
                 Text(_fmt(d),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         color: AppColors.dark,
                         fontWeight: FontWeight.w700)),

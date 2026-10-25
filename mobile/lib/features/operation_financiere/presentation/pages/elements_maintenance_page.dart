@@ -15,12 +15,12 @@ import '../../../../core/theme/app_colors.dart';
 
 // ── Palette (reprend la même que le formulaire) ───────────────────────────────
 
-const _kPrimary = AppColors.primary;
-const _kHint = Color(0xFF9AA0AE);
-const _kDark = Color(0xFF1A1A2E);
-const _kBorder = Color(0xFFE3E6EE);
-const _kAccent = Color(0xFFE65100);
-const _kFieldFill = Color(0xFFF2F3F5);
+Color get _kPrimary => AppColors.primary;
+Color get _kHint => AppColors.hint;
+Color get _kDark => AppColors.dark;
+Color get _kBorder => AppColors.border;
+Color get _kAccent => AppColors.warning;
+Color get _kFieldFill => AppColors.fieldFill;
 
 /// Sur tablette la ligne a de la largeur à revendre : la pilule « quantité »
 /// remonte alors à côté du montant plutôt que de s'empiler sous le libellé.
@@ -197,7 +197,7 @@ class _ElementsMaintenancePageState
             .toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       appBar: AppHeader(
         title: 'Éléments concernés',
         action: AppHeaderAction(
@@ -239,27 +239,27 @@ class _ElementsMaintenancePageState
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: TextField(
                     onChanged: (v) => setState(() => _query = v),
-                    style: const TextStyle(fontSize: 15, color: _kDark),
+                    style: TextStyle(fontSize: 15, color: _kDark),
                     decoration: InputDecoration(
                       hintText: 'Recherchez...',
-                      hintStyle: const TextStyle(color: _kHint, fontSize: 15),
-                      suffixIcon: const Icon(Icons.search, color: _kHint),
+                      hintStyle: TextStyle(color: _kHint, fontSize: 15),
+                      suffixIcon: Icon(Icons.search, color: _kHint),
                       filled: true,
-                      fillColor: const Color(0xFFF8F9FB),
+                      fillColor: AppColors.scaffold,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 13),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: _kBorder, width: 1),
+                        borderSide: BorderSide(color: _kBorder, width: 1),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: _kBorder, width: 1),
+                        borderSide: BorderSide(color: _kBorder, width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide:
-                            const BorderSide(color: _kPrimary, width: 1.5),
+                            BorderSide(color: _kPrimary, width: 1.5),
                       ),
                     ),
                   ),
@@ -275,14 +275,14 @@ class _ElementsMaintenancePageState
             // ── Liste ────────────────────────────────────────────────────
             Expanded(
               child: catalogueAsync.when(
-                loading: () => const Center(
+                loading: () => Center(
                   child: CircularProgressIndicator(
                       color: _kPrimary, strokeWidth: 2),
                 ),
                 error: (_, __) => Center(
                   child: Text(
                     'Impossible de charger le catalogue.',
-                    style: TextStyle(color: Colors.grey.shade500),
+                    style: TextStyle(color: AppColors.grey500),
                   ),
                 ),
                 data: (_) {
@@ -291,7 +291,7 @@ class _ElementsMaintenancePageState
                     return Center(
                       child: Text(
                         'Aucun élément trouvé',
-                        style: TextStyle(color: Colors.grey.shade500),
+                        style: TextStyle(color: AppColors.grey500),
                       ),
                     );
                   }
@@ -378,9 +378,9 @@ class _ElementsMaintenancePageState
       color: _kPrimary.withValues(alpha: 0.06),
       child: Row(
         children: [
-          const Icon(Icons.groups_2_outlined, size: 18, color: _kPrimary),
+          Icon(Icons.groups_2_outlined, size: 18, color: _kPrimary),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: Text(
               'Plusieurs prestataires',
               style: TextStyle(
@@ -433,8 +433,8 @@ class _ElementsMaintenancePageState
         _choisirPrestataireLibre(item);
       },
       child: Container(
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFF0F1F4))),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.fond(0xFFF0F1F4))),
         ),
         child: Row(
           children: [
@@ -461,7 +461,7 @@ class _ElementsMaintenancePageState
                       children: [
                         Text(
                           item.libelle,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 15,
                               color: _kDark,
                               fontWeight: FontWeight.w500),
@@ -488,7 +488,7 @@ class _ElementsMaintenancePageState
                       color: _kAccent.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Libre',
                       style: TextStyle(
                           fontSize: 10,
@@ -604,8 +604,8 @@ class _CatalogueRowState extends ConsumerState<_CatalogueRow> {
         _choisirPrestataire();
       },
       child: Container(
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFF0F1F4))),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.fond(0xFFF0F1F4))),
         ),
         child: Row(
           children: [
@@ -818,7 +818,7 @@ class _QuantiteLigne extends StatelessWidget {
                     '= ${CurrencyFormatter.format(_lirePrix(montantCtrl) * quantite)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: _kAccent),
@@ -878,9 +878,9 @@ class _PriceField extends StatelessWidget {
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               textAlign: TextAlign.right,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 17, fontWeight: FontWeight.w700, color: _kDark),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
                 border: UnderlineInputBorder(
                     borderSide: BorderSide(color: _kDark, width: 1)),
@@ -889,13 +889,13 @@ class _PriceField extends StatelessWidget {
                 focusedBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: _kPrimary, width: 1.5)),
                 contentPadding:
-                    EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
               ),
             ),
           ),
           const SizedBox(width: 5),
-          const Padding(
-            padding: EdgeInsets.only(bottom: 5),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5),
             child: Text(
               'XOF',
               style: TextStyle(
@@ -961,7 +961,7 @@ class PrestatairePuce extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(Icons.expand_more_rounded, size: 13, color: _kHint),
+              Icon(Icons.expand_more_rounded, size: 13, color: _kHint),
             ],
           ),
         ),

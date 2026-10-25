@@ -180,7 +180,7 @@ class _EnteteCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text('Fonds de cotisation détenu',
                     style:
                         TextStyle(fontSize: 13, color: AppColors.primaryDark)),
@@ -191,18 +191,18 @@ class _EnteteCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.blanc,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(parVehicule ? 'Par véhicule' : 'Par chauffeur',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: AppColors.primaryDark)),
-                      const Icon(Icons.arrow_drop_down,
+                      Icon(Icons.arrow_drop_down,
                           size: 18, color: AppColors.primaryDark),
                     ],
                   ),
@@ -212,7 +212,7 @@ class _EnteteCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(CurrencyFormatter.format(totalFonds),
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primaryDark)),
@@ -220,7 +220,7 @@ class _EnteteCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
                 'dont ${CurrencyFormatter.format(totalNet)} restituables (net des créances)',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12, color: AppColors.primaryDark)),
           ],
         ],
@@ -244,9 +244,9 @@ class _CompteRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final crediteur = compte.net > 0;
     final (netBg, netFg) = crediteur
-        ? (const Color(0xFFE8F5E9), Colors.green.shade800)
+        ? (AppColors.positiveTint, Colors.green.shade800)
         : compte.resteDu > 0
-            ? (const Color(0xFFFDECEA), Colors.red.shade900)
+            ? (AppColors.errorTint, Colors.red.shade900)
             : (AppColors.headerButton, AppColors.label);
     // Un véhicule peut porter les deux à la fois : un chauffeur créditeur, un
     // autre débiteur. Le badge annonce ce qui sera versé, la mention dessous ce
@@ -262,7 +262,7 @@ class _CompteRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border:
               Border(bottom: BorderSide(color: AppColors.border, width: 0.6)),
         ),
@@ -284,7 +284,7 @@ class _CompteRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(compte.libelle,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppColors.dark)),
@@ -292,7 +292,7 @@ class _CompteRow extends StatelessWidget {
                   Text(
                       'Fonds ${CurrencyFormatter.format(compte.fondsCotisation)}'
                       ' · Créances ${CurrencyFormatter.format(compte.totalCreances)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12, color: AppColors.label)),
                 ],
               ),
@@ -319,7 +319,7 @@ class _CompteRow extends StatelessWidget {
                             ? 'à restituer'
                             : 'reste dû',
                     style:
-                        const TextStyle(fontSize: 10.5, color: AppColors.hint)),
+                        TextStyle(fontSize: 10.5, color: AppColors.hint)),
                 if (compte.aDeuxFaces)
                   Text('+ ${CurrencyFormatter.format(compte.resteDu)} dû',
                       style: TextStyle(
@@ -344,13 +344,13 @@ class _Empty extends StatelessWidget {
       child: Column(
         children: [
           Icon(recherche ? Icons.search_off_rounded : Icons.savings_outlined,
-              size: 56, color: Colors.grey.shade300),
+              size: 56, color: AppColors.grey300),
           const SizedBox(height: 12),
           Text(
               recherche
                   ? 'Aucun compte ne correspond à la recherche'
                   : 'Aucun fonds de cotisation en cours',
-              style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
+              style: TextStyle(fontSize: 15, color: AppColors.grey600)),
         ],
       ),
     );
@@ -366,7 +366,7 @@ class _Error extends StatelessWidget {
       const SizedBox(height: 120),
       Center(
           child: Text('Impossible de charger les comptes courants',
-              style: TextStyle(color: Colors.grey.shade600))),
+              style: TextStyle(color: AppColors.grey600))),
       Center(
         child: TextButton.icon(
             onPressed: onRetry,

@@ -87,11 +87,11 @@ class _ContraventionImportPageState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 'Téléversez le relevé de contraventions (PDF) du Ministère des '
                 'Transports. Les infractions seront extraites et le chauffeur '
                 'proposé selon le programme de travail.',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: AppColors.grey500),
               ),
               const SizedBox(height: 24),
               InkWell(
@@ -100,7 +100,7 @@ class _ContraventionImportPageState
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 32),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade400),
+                    border: Border.all(color: AppColors.grey400),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -108,7 +108,7 @@ class _ContraventionImportPageState
                       Icon(
                         aUnFichier ? Icons.picture_as_pdf : Icons.upload_file,
                         size: 48,
-                        color: aUnFichier ? Colors.red.shade400 : Colors.grey,
+                        color: aUnFichier ? Colors.red.shade400 : AppColors.grey500,
                       ),
                       const SizedBox(height: 12),
                       Text(

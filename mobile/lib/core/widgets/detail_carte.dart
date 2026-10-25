@@ -57,7 +57,7 @@ class DetailHeroCard extends StatelessWidget {
           Expanded(
             child: Text(
               titre,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: AppColors.dark,
@@ -131,14 +131,14 @@ class DetailInfoRow extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Text(label,
-                style: const TextStyle(fontSize: 13, color: AppColors.label)),
+                style: TextStyle(fontSize: 13, color: AppColors.label)),
           ),
           Expanded(
             flex: 3,
             child: Text(
               value!,
               textAlign: TextAlign.end,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppColors.dark),
@@ -176,16 +176,16 @@ class DetailInfoRowAction extends StatelessWidget {
   final bool verrouille;
   final String? motifVerrou;
 
-  const DetailInfoRowAction(
+  DetailInfoRowAction(
     this.icon,
     this.label,
     this.value, {
     super.key,
     required this.onTap,
-    this.accent = AppColors.primaryDark,
+    Color? accent,
     this.verrouille = false,
     this.motifVerrou,
-  });
+  }) : accent = accent ?? AppColors.primaryDark;
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +204,7 @@ class DetailInfoRowAction extends StatelessWidget {
             // signalait l'action, mais elle faisait aussi lire le nom comme
             // autre chose qu'une donnée de la fiche. Le chevron suffit à dire
             // qu'on peut le toucher.
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.dark),
@@ -248,7 +248,7 @@ class DetailInfoRowAction extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Text(label,
-                style: const TextStyle(fontSize: 13, color: AppColors.label)),
+                style: TextStyle(fontSize: 13, color: AppColors.label)),
           ),
           Expanded(
             flex: 3,
@@ -276,7 +276,7 @@ class DetailLabel extends StatelessWidget {
         Icon(icon, size: 15, color: AppColors.label),
         const SizedBox(width: 10),
         Text(label,
-            style: const TextStyle(fontSize: 13, color: AppColors.label)),
+            style: TextStyle(fontSize: 13, color: AppColors.label)),
       ]),
     );
   }

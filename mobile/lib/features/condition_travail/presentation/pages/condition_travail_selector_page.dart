@@ -55,7 +55,7 @@ class _ConditionTravailSelectorPageState
     final async = ref.watch(_conditionsTravailProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       // Le bas est laissé à découvert (edge-to-edge) : la liste défile sous la
       // barre de navigation Android, et c'est son propre retrait qui dégage la
       // dernière carte — même rendu que les sélecteurs chauffeur et véhicule.
@@ -91,14 +91,14 @@ class _ConditionTravailSelectorPageState
               width: 56,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F2F8),
+                color: AppColors.headerButton,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.arrow_back_rounded,
-                  size: 18, color: Color(0xFF1A1A2E)),
+              child: Icon(Icons.arrow_back_rounded,
+                  size: 18, color: AppColors.dark),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -108,18 +108,18 @@ class _ConditionTravailSelectorPageState
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF1A1A2E),
+                    color: AppColors.dark,
                     letterSpacing: -0.3,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   'Sélectionner une condition de travail',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFF6B7280),
+                    color: AppColors.label,
                   ),
                 ),
               ],
@@ -131,11 +131,11 @@ class _ConditionTravailSelectorPageState
               width: 56,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F2F8),
+                color: AppColors.headerButton,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.add_rounded,
-                  size: 20, color: Color(0xFF1A1A2E)),
+              child: Icon(Icons.add_rounded,
+                  size: 20, color: AppColors.dark),
             ),
           ),
         ],
@@ -151,12 +151,12 @@ class _ConditionTravailSelectorPageState
         onChanged: (v) => setState(() => _query = v),
         decoration: InputDecoration(
           hintText: 'Rechercher par nom…',
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-          prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 20),
+          hintStyle: TextStyle(color: AppColors.grey400, fontSize: 14),
+          prefixIcon: Icon(Icons.search_rounded, color: AppColors.grey400, size: 20),
           suffixIcon: _query.isNotEmpty
               ? IconButton(
                   icon: Icon(Icons.close_rounded,
-                      color: Colors.grey.shade500, size: 18),
+                      color: AppColors.grey500, size: 18),
                   onPressed: () {
                     _searchCtrl.clear();
                     setState(() => _query = '');
@@ -164,18 +164,18 @@ class _ConditionTravailSelectorPageState
                 )
               : null,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: AppColors.blanc,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: AppColors.grey200),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: AppColors.grey200),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF43A047), width: 1.5),
+            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -205,11 +205,11 @@ class _ConditionTravailSelectorPageState
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEBEE),
+                color: AppColors.fond(0xFFFFEBEE),
                 borderRadius: BorderRadius.circular(32),
               ),
-              child: const Icon(Icons.wifi_off_rounded,
-                  color: Color(0xFFE53935), size: 32),
+              child: Icon(Icons.wifi_off_rounded,
+                  color: AppColors.error, size: 32),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -220,7 +220,7 @@ class _ConditionTravailSelectorPageState
             const SizedBox(height: 8),
             Text(
               'Vérifiez votre connexion et réessayez.',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              style: TextStyle(color: AppColors.grey600, fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -229,8 +229,8 @@ class _ConditionTravailSelectorPageState
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text('Réessayer'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF43A047),
-                side: const BorderSide(color: Color(0xFF43A047)),
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 padding:
@@ -281,14 +281,14 @@ class _ConditionTravailSelectorPageState
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
+                color: AppColors.positiveTint,
                 borderRadius: BorderRadius.circular(36),
               ),
               child: Icon(
                 noData
                     ? Icons.work_outline_rounded
                     : Icons.search_off_rounded,
-                color: const Color(0xFF43A047),
+                color: AppColors.primary,
                 size: 36,
               ),
             ),
@@ -304,7 +304,7 @@ class _ConditionTravailSelectorPageState
                   ? 'Commencez par créer votre première\ncondition de travail.'
                   : 'Aucune condition ne correspond\nà « $_query ».',
               style:
-                  TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                  TextStyle(color: AppColors.grey500, fontSize: 14),
               textAlign: TextAlign.center,
             ),
             if (noData) ...[
@@ -314,7 +314,7 @@ class _ConditionTravailSelectorPageState
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('Créer une condition'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF43A047),
+                  backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(
@@ -347,9 +347,9 @@ class _ConditionCard extends StatelessWidget {
 
   const _ConditionCard({required this.condition, required this.onTap});
 
-  static const _programmeColors = {
-    'JOURNALIER': Color(0xFF43A047),
-    'HEBDOMADAIRE': Color(0xFF7950F2),
+  static Map<String, Color> get _programmeColors => {
+    'JOURNALIER': AppColors.primary,
+    'HEBDOMADAIRE': const Color(0xFF7950F2),
   };
 
   static const _programmeLabels = {
@@ -363,12 +363,12 @@ class _ConditionCard extends StatelessWidget {
   };
 
   Color get _programmeColor =>
-      _programmeColors[condition.typeProgramme] ?? const Color(0xFF43A047);
+      _programmeColors[condition.typeProgramme] ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.blanc,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -376,7 +376,7 @@ class _ConditionCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE4E7EC)),
+            border: Border.all(color: AppColors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,10 +395,10 @@ class _ConditionCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         condition.nom,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: AppColors.noir87,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -412,7 +412,7 @@ class _ConditionCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Icon(Icons.chevron_right_rounded,
-                        color: Colors.grey.shade400, size: 20),
+                        color: AppColors.grey400, size: 20),
                   ],
                 ),
               ),
@@ -483,7 +483,7 @@ class _ConditionCard extends StatelessWidget {
                     if (condition.cotisations.isNotEmpty ||
                         condition.penalites.isNotEmpty) ...[
                       const SizedBox(height: 10),
-                      const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                      Divider(height: 1, color: AppColors.fond(0xFFF0F0F0)),
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -492,7 +492,7 @@ class _ConditionCard extends StatelessWidget {
                               icon: Icons.savings_outlined,
                               count: condition.cotisations.length,
                               label: 'cotisation${condition.cotisations.length > 1 ? 's' : ''}',
-                              color: const Color(0xFF43A047),
+                              color: AppColors.primary,
                             ),
                             if (condition.penalites.isNotEmpty)
                               const SizedBox(width: 12),
@@ -502,7 +502,7 @@ class _ConditionCard extends StatelessWidget {
                               icon: Icons.gavel_rounded,
                               count: condition.penalites.length,
                               label: 'sanction${condition.penalites.length > 1 ? 's' : ''}',
-                              color: const Color(0xFFC62828),
+                              color: AppColors.error,
                             ),
                         ],
                       ),
@@ -563,10 +563,10 @@ class _MetricChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color =
-        highlight ? const Color(0xFF1B5E20) : Colors.grey.shade700;
+        highlight ? AppColors.success : AppColors.grey700;
     final bg = highlight
-        ? const Color(0xFFE8F5E9)
-        : const Color(0xFFF5F5F5);
+        ? AppColors.positiveTint
+        : AppColors.scaffold;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -604,13 +604,13 @@ class _InfoRow extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13, color: Colors.grey.shade500),
+        Icon(icon, size: 13, color: AppColors.grey500),
         const SizedBox(width: 4),
         Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey.shade600,
+            color: AppColors.grey600,
           ),
         ),
       ],
@@ -661,9 +661,9 @@ class _SkeletonCard extends StatelessWidget {
     return Container(
       height: 140,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -671,7 +671,7 @@ class _SkeletonCard extends StatelessWidget {
           Container(
             height: 52,
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: AppColors.grey100,
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
             ),
@@ -719,7 +719,7 @@ class _Shimmer extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: AppColors.grey200,
         borderRadius: BorderRadius.circular(radius),
       ),
     );

@@ -292,16 +292,16 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
         controller: _searchCtrl,
         onChanged: (v) => setState(() => _query = v),
         textInputAction: TextInputAction.search,
-        style: const TextStyle(fontSize: 15, color: AppColors.dark),
+        style: TextStyle(fontSize: 15, color: AppColors.dark),
         decoration: InputDecoration(
           isDense: true,
           hintText: 'Rechercher parmi $total…',
-          hintStyle: const TextStyle(color: AppColors.hint, fontSize: 15),
-          prefixIcon: const Icon(Icons.search, color: AppColors.hint, size: 20),
+          hintStyle: TextStyle(color: AppColors.hint, fontSize: 15),
+          prefixIcon: Icon(Icons.search, color: AppColors.hint, size: 20),
           suffixIcon: _query.isEmpty
               ? null
               : IconButton(
-                  icon: const Icon(Icons.close_rounded,
+                  icon: Icon(Icons.close_rounded,
                       color: AppColors.hint, size: 18),
                   onPressed: () {
                     _searchCtrl.clear();
@@ -314,11 +314,11 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide(color: AppColors.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
       ),
@@ -344,7 +344,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
               rechercheActive
                   ? 'Aucun résultat pour « $_query ».'
                   : 'Aucune valeur. Ajoutez-en une.',
-              style: const TextStyle(color: AppColors.label),
+              style: TextStyle(color: AppColors.label),
             ),
           ],
         ),
@@ -359,10 +359,10 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded,
+            Icon(Icons.cloud_off_rounded,
                 size: 48, color: AppColors.hint),
             const SizedBox(height: 12),
-            const Text('Chargement impossible.',
+            Text('Chargement impossible.',
                 style: TextStyle(color: AppColors.label)),
             const SizedBox(height: 16),
             FilledButton.icon(
@@ -390,7 +390,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
             shape: BoxShape.circle,
           ),
           child: Text(initiale,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: AppColors.primary)),
@@ -415,7 +415,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
           Container(
             padding: const EdgeInsets.all(1),
             decoration: BoxDecoration(
-              color: Colors.black54,
+              color: AppColors.grey600,
               borderRadius: BorderRadius.circular(4),
             ),
             child: const Icon(Icons.zoom_in_rounded,
@@ -460,7 +460,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
                       Text(titre,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 14.5,
                               fontWeight: FontWeight.w700,
                               color: AppColors.dark)),
@@ -469,7 +469,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
                         Text(sousTitre,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12, color: AppColors.label)),
                       ],
                     ],
@@ -503,7 +503,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
     return PopupMenuButton<String>(
       enabled: !_busy,
       tooltip: 'Actions',
-      icon: const Icon(Icons.more_vert_rounded,
+      icon: Icon(Icons.more_vert_rounded,
           color: AppColors.hint, size: 20),
       color: AppColors.surface,
       surfaceTintColor: Colors.transparent,
@@ -514,7 +514,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
       constraints: const BoxConstraints(minWidth: 190),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       menuPadding: const EdgeInsets.symmetric(vertical: 6),
       onSelected: (v) {

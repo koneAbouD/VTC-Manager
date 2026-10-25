@@ -6,6 +6,7 @@ import '../../../vehicule/presentation/providers/referentiel_provider.dart';
 import '../../data/models/etat_parc_summary_model.dart';
 import '../providers/etat_parc_provider.dart';
 
+import '../../../../core/theme/app_colors.dart';
 /// Icône de présentation d'un motif d'exception. Partagée par la liste
 /// « véhicules demandant une action » et par ce sélecteur, pour que la même
 /// ligne porte partout le même pictogramme.
@@ -95,7 +96,7 @@ Future<void> showEtatParcExceptionFiltreSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.blanc,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -133,19 +134,19 @@ class _ExceptionFiltreSheet extends ConsumerWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppColors.grey300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 4),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
               child: Text(
                 'Filtrer les véhicules',
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
-                  color: Color(0xFF1A1A2E),
+                  color: AppColors.dark,
                 ),
               ),
             ),
@@ -157,7 +158,7 @@ class _ExceptionFiltreSheet extends ConsumerWidget {
                   _CritereTile(
                     libelle: 'Tous',
                     icone: Icons.all_inclusive_rounded,
-                    couleur: Colors.grey.shade600,
+                    couleur: AppColors.grey600,
                     nombre: exceptions.length,
                     selectionne: !courant.estActif,
                     onTap: () => choisir(const ExceptionCritere()),
@@ -200,7 +201,7 @@ class _CritereTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const vert = Color(0xFF43A047);
+    final vert = AppColors.primary;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -223,7 +224,7 @@ class _CritereTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: selectionne ? FontWeight.w700 : FontWeight.w500,
-                  color: selectionne ? vert : const Color(0xFF1A1A2E),
+                  color: selectionne ? vert : AppColors.dark,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -233,7 +234,7 @@ class _CritereTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: AppColors.grey100,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -241,14 +242,14 @@ class _CritereTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade700,
+                  color: AppColors.grey700,
                 ),
               ),
             ),
             SizedBox(
               width: 28,
               child: selectionne
-                  ? const Icon(Icons.check_rounded, size: 19, color: vert)
+                  ? Icon(Icons.check_rounded, size: 19, color: vert)
                   : null,
             ),
           ],

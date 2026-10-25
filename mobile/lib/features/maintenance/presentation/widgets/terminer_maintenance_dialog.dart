@@ -7,11 +7,11 @@ import '../../../operation_financiere/domain/entities/element_maintenance.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const _kPrimary = AppColors.primary;
-const _kAccent = Color(0xFFE65100);
-const _kDark = Color(0xFF1A1A2E);
-const _kBorder = Color(0xFFE3E6EE);
-const _kLabel = Color(0xFF6B7280);
+Color get _kPrimary => AppColors.primary;
+Color get _kAccent => AppColors.warning;
+Color get _kDark => AppColors.dark;
+Color get _kBorder => AppColors.border;
+Color get _kLabel => AppColors.label;
 
 /// Ce que l'utilisateur a décidé en clôturant : le coût réel, puis payé sur
 /// place ou laissé à payer avec une échéance.
@@ -169,7 +169,7 @@ class _TerminerMaintenanceDialogState
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
@@ -199,7 +199,7 @@ class _TerminerMaintenanceDialogState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(widget.titre,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 16.5,
                                 fontWeight: FontWeight.w800,
                                 color: _kDark,
@@ -208,7 +208,7 @@ class _TerminerMaintenanceDialogState
                         Text(widget.typeLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12.5, color: _kLabel)),
                       ],
                     ),
@@ -218,7 +218,7 @@ class _TerminerMaintenanceDialogState
               const SizedBox(height: 18),
               Text(
                 widget.message,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13, height: 1.4, color: _kLabel),
               ),
               const SizedBox(height: 16),
@@ -229,31 +229,31 @@ class _TerminerMaintenanceDialogState
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (_) => setState(() {}),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 16, fontWeight: FontWeight.w700, color: _kDark),
                 decoration: InputDecoration(
                   labelText: 'Coût réel',
-                  labelStyle: const TextStyle(color: _kLabel),
+                  labelStyle: TextStyle(color: _kLabel),
                   floatingLabelStyle:
-                      const TextStyle(color: AppColors.primaryDark),
-                  prefixIcon: const Icon(Icons.payments_outlined,
+                      TextStyle(color: AppColors.primaryDark),
+                  prefixIcon: Icon(Icons.payments_outlined,
                       color: _kPrimary, size: 20),
                   suffixText: 'XOF',
-                  suffixStyle: const TextStyle(
+                  suffixStyle: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: _kLabel),
                   filled: true,
-                  fillColor: const Color(0xFFF3F6F4),
+                  fillColor: AppColors.fieldFill,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: _kBorder),
+                    borderSide: BorderSide(color: _kBorder),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: _kPrimary, width: 1.6),
+                    borderSide: BorderSide(color: _kPrimary, width: 1.6),
                   ),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14)),
@@ -281,26 +281,26 @@ class _TerminerMaintenanceDialogState
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 13),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F6F4),
+                      color: AppColors.fieldFill,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: _kBorder),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.event_outlined,
+                        Icon(Icons.event_outlined,
                             size: 18, color: _kPrimary),
                         const SizedBox(width: 10),
-                        const Text('Échéance',
+                        Text('Échéance',
                             style: TextStyle(fontSize: 13.5, color: _kLabel)),
                         const Spacer(),
                         Text(
                           DateFormat('dd MMM yyyy', 'fr_FR').format(_echeance),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w600,
                               color: _kDark),
                         ),
-                        const Icon(Icons.chevron_right_rounded,
+                        Icon(Icons.chevron_right_rounded,
                             size: 18, color: _kLabel),
                       ],
                     ),
@@ -321,7 +321,7 @@ class _TerminerMaintenanceDialogState
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _kLabel,
-                          side: const BorderSide(color: _kBorder),
+                          side: BorderSide(color: _kBorder),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
                         ),
@@ -432,7 +432,7 @@ class _OptionReglement extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         decoration: BoxDecoration(
           color:
-              actif ? couleur.withValues(alpha: 0.10) : const Color(0xFFF8F9FB),
+              actif ? couleur.withValues(alpha: 0.10) : AppColors.scaffold,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: actif ? couleur : _kBorder,
@@ -451,7 +451,7 @@ class _OptionReglement extends StatelessWidget {
                     color: actif ? couleur : _kDark)),
             const SizedBox(height: 1),
             Text(sousTitre,
-                style: const TextStyle(fontSize: 11.5, color: _kLabel)),
+                style: TextStyle(fontSize: 11.5, color: _kLabel)),
           ],
         ),
       ),
@@ -487,7 +487,7 @@ class _ApercuDettes extends StatelessWidget {
             dettes.length == 1
                 ? 'Une dette sera créée :'
                 : '${dettes.length} dettes seront créées :',
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 12.5, fontWeight: FontWeight.w700, color: _kAccent),
           ),
           const SizedBox(height: 8),
@@ -500,10 +500,10 @@ class _ApercuDettes extends StatelessWidget {
                     child: Text(d.key,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, color: _kDark)),
+                        style: TextStyle(fontSize: 13, color: _kDark)),
                   ),
                   Text(fmt.format(d.value),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: _kDark)),

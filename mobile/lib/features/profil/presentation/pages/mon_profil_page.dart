@@ -70,8 +70,8 @@ class _MonProfilPageState extends ConsumerState<MonProfilPage> {
       // Le bandeau des réglages lit la même fiche : il se rafraîchit seul.
       ref.invalidate(monProfilProvider);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Informations enregistrées.'),
+        SnackBar(
+          content: const Text('Informations enregistrées.'),
           backgroundColor: AppColors.primary,
         ),
       );
@@ -190,7 +190,7 @@ class _MonProfilPageState extends ConsumerState<MonProfilPage> {
             const SizedBox(height: 16),
             Text(
               _erreur!,
-              style: const TextStyle(fontSize: 12, color: AppColors.error),
+              style: TextStyle(fontSize: 12, color: AppColors.error),
             ),
           ],
         ],
@@ -206,11 +206,11 @@ class _MonProfilPageState extends ConsumerState<MonProfilPage> {
         fillColor: AppColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
       );
 }
@@ -254,13 +254,13 @@ class _Entete extends StatelessWidget {
             width: 52,
             height: 52,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.primaryTint,
               shape: BoxShape.circle,
             ),
             child: Text(
               libelle.substring(0, 1).toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: AppColors.primaryDark,
@@ -276,7 +276,7 @@ class _Entete extends StatelessWidget {
                   libelle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: AppColors.dark,
@@ -288,7 +288,7 @@ class _Entete extends StatelessWidget {
                     identite.identifiant,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       color: AppColors.label,
                     ),
@@ -338,12 +338,12 @@ class _LigneVerrouillee extends StatelessWidget {
               children: [
                 Text(
                   libelle,
-                  style: const TextStyle(fontSize: 11.5, color: AppColors.hint),
+                  style: TextStyle(fontSize: 11.5, color: AppColors.hint),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   valeur.isEmpty ? '—' : valeur,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,
                     color: AppColors.dark,
@@ -352,7 +352,7 @@ class _LigneVerrouillee extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   aide,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
                     height: 1.3,
                     color: AppColors.label,
@@ -378,7 +378,7 @@ class _TitreSection extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         texte.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11.5,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.6,
@@ -405,10 +405,10 @@ class _Indisponible extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.person_off_outlined,
+            Icon(Icons.person_off_outlined,
                 size: 40, color: AppColors.hint),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Informations indisponibles',
               style: TextStyle(
                 fontSize: 15,
@@ -420,7 +420,7 @@ class _Indisponible extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 height: 1.35,
                 color: AppColors.label,

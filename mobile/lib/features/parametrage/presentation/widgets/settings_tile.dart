@@ -25,14 +25,14 @@ const kSettingsTransition = Duration(milliseconds: 240);
 /// de profil, reprise telle quelle. Le bandeau et les cartes qui le suivent
 /// forment ainsi une seule matière, sur laquelle les lignes filles blanches se
 /// détachent une fois un volet déplié.
-const Color kSettingsHeaderFond = AppColors.headerButton;
+Color get kSettingsHeaderFond => AppColors.headerButton;
 
 /// Intercale un filet fin entre chaque ligne d'une carte.
 List<Widget> _separees(List<Widget> lignes) {
   final resultat = <Widget>[];
   for (var i = 0; i < lignes.length; i++) {
     if (i > 0) {
-      resultat.add(const Divider(
+      resultat.add(Divider(
         height: 1,
         thickness: 1,
         indent: _kDividerIndent,
@@ -54,7 +54,8 @@ class _CarteReglages extends StatelessWidget {
   /// page Réglages prennent la teinte du bandeau de profil ([kSettingsHeaderFond]).
   final Color fond;
 
-  const _CarteReglages({required this.child, this.fond = AppColors.surface});
+  _CarteReglages({required this.child, Color? fond})
+      : fond = fond ?? AppColors.surface;
 
   @override
   Widget build(BuildContext context) {
@@ -89,12 +90,12 @@ class SettingsCard extends StatelessWidget {
   /// profil. Ignoré quand [sansFond] est vrai.
   final Color fond;
 
-  const SettingsCard({
+  SettingsCard({
     super.key,
     required this.children,
     this.sansFond = false,
-    this.fond = AppColors.surface,
-  });
+    Color? fond,
+  }) : fond = fond ?? AppColors.surface;
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +129,7 @@ class SettingsAccordion extends StatelessWidget {
   final bool ouvert;
   final VoidCallback onToggle;
 
-  const SettingsAccordion({
+  SettingsAccordion({
     super.key,
     required this.icon,
     required this.title,
@@ -136,8 +137,8 @@ class SettingsAccordion extends StatelessWidget {
     required this.ouvert,
     required this.onToggle,
     this.description,
-    this.accent = AppColors.primary,
-  });
+    Color? accent,
+  }) : accent = accent ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -161,7 +162,7 @@ class SettingsAccordion extends StatelessWidget {
                 ? Column(
                     children: [
                       // Frontière nette entre l'en-tête et ce qu'il contient.
-                      const Divider(
+                      Divider(
                           height: 1, thickness: 1, color: AppColors.border),
                       // Retrait des lignes filles : la hiérarchie se lit d'un
                       // coup d'œil, sans surcharge. Fond blanc posé ici, la
@@ -260,7 +261,7 @@ class _EnteteAccordion extends StatelessWidget {
                         description!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           height: 1.3,
                           color: AppColors.label,
@@ -337,12 +338,12 @@ class SettingsPlaceholder extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       child: Row(
         children: [
-          const Icon(Icons.schedule_rounded, size: 18, color: AppColors.hint),
+          Icon(Icons.schedule_rounded, size: 18, color: AppColors.hint),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 height: 1.3,
                 color: AppColors.label,
@@ -378,16 +379,16 @@ class SettingsTile extends StatelessWidget {
   /// (déconnexion : [AppColors.error]).
   final Color? titleColor;
 
-  const SettingsTile({
+  SettingsTile({
     super.key,
     required this.icon,
     required this.title,
     this.description,
     this.onTap,
     this.trailing,
-    this.accent = AppColors.primary,
+    Color? accent,
     this.titleColor,
-  });
+  }) : accent = accent ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -429,7 +430,7 @@ class SettingsTile extends StatelessWidget {
                     description!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       height: 1.3,
                       color: AppColors.label,
@@ -443,7 +444,7 @@ class SettingsTile extends StatelessWidget {
           if (trailing != null)
             trailing!
           else if (enabled)
-            const Icon(Icons.chevron_right_rounded, color: AppColors.hint),
+            Icon(Icons.chevron_right_rounded, color: AppColors.hint),
         ],
       ),
     );

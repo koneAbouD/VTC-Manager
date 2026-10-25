@@ -162,8 +162,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Marquage impossible, réessayez.'),
+        SnackBar(
+          content: const Text('Marquage impossible, réessayez.'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -259,7 +259,7 @@ class _ListeGroupee extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 4, bottom: 8),
                 child: Text(
                   journee.libelle.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.6,
@@ -289,7 +289,7 @@ class _CarteJournee extends StatelessWidget {
     final lignes = <Widget>[];
     for (var i = 0; i < items.length; i++) {
       if (i > 0) {
-        lignes.add(const Divider(
+        lignes.add(Divider(
           height: 1,
           thickness: 1,
           indent: _kDividerIndent,
@@ -369,7 +369,7 @@ class _Ligne extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       notification.corps,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         height: 1.35,
                         color: AppColors.label,
@@ -384,7 +384,7 @@ class _Ligne extends StatelessWidget {
                       const SizedBox(height: 5),
                       Text(
                         detail,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           height: 1.35,
                           color: AppColors.label,
@@ -403,7 +403,7 @@ class _Ligne extends StatelessWidget {
                   if (notification.creeLe != null)
                     Text(
                       DateFormat.Hm('fr_FR').format(notification.creeLe!),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w500,
                         color: AppColors.hint,
@@ -414,7 +414,7 @@ class _Ligne extends StatelessWidget {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.primary,
                         shape: BoxShape.circle,
                       ),
@@ -557,7 +557,7 @@ class _Message extends StatelessWidget {
         Text(
           titre,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15.5,
             fontWeight: FontWeight.w600,
             color: AppColors.dark,
@@ -569,7 +569,7 @@ class _Message extends StatelessWidget {
           child: Text(
             detail,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.label),
+            style: TextStyle(fontSize: 13, color: AppColors.label),
           ),
         ),
       ],

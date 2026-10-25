@@ -35,7 +35,7 @@ class FactureDetailPage extends ConsumerWidget {
             padding: const EdgeInsets.all(24),
             child: Text('$e',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.label)),
+                style: TextStyle(color: AppColors.label)),
           ),
         ),
         data: (facture) => _Corps(facture: facture),
@@ -255,7 +255,7 @@ class _Historique extends StatelessWidget {
                       r.modePaiement == 'MOBILE_MONEY'
                           ? 'Mobile money'
                           : 'Espèces',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11, color: AppColors.hint)),
               ],
             ),

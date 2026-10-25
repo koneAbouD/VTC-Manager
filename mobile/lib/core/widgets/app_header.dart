@@ -98,7 +98,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                 color: backButtonColor ?? AppColors.headerButton,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.arrow_back_rounded,
+              child: Icon(Icons.arrow_back_rounded,
                   size: 18, color: AppColors.dark),
             ),
           )
@@ -113,7 +113,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
               color: AppColors.dark,
@@ -130,7 +130,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             ),
             child: Text(
               badge!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primary,
@@ -216,7 +216,7 @@ class AppHeaderAction extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget child;
     if (loading) {
-      child = const SizedBox(
+      child = SizedBox(
         width: 16,
         height: 16,
         child: CircularProgressIndicator(
@@ -227,7 +227,7 @@ class AppHeaderAction extends StatelessWidget {
     } else if (label != null) {
       child = Text(
         label!,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: AppColors.dark,

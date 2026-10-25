@@ -48,9 +48,9 @@ Future<bool?> showModificationMontantDialog(
 
       InputDecoration deco(String label, {String? hint}) => InputDecoration(
             labelText: label,
-            labelStyle: const TextStyle(fontSize: 13, color: AppColors.label),
+            labelStyle: TextStyle(fontSize: 13, color: AppColors.label),
             hintText: hint,
-            hintStyle: const TextStyle(fontSize: 13.5, color: AppColors.hint),
+            hintStyle: TextStyle(fontSize: 13.5, color: AppColors.hint),
             filled: true,
             fillColor: AppColors.fieldFill,
             isDense: true,
@@ -62,7 +62,7 @@ Future<bool?> showModificationMontantDialog(
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide:
-                    const BorderSide(color: AppColors.primaryDark, width: 1.4)),
+                    BorderSide(color: AppColors.primaryDark, width: 1.4)),
           );
 
       Future<void> valider() async {
@@ -100,14 +100,14 @@ Future<bool?> showModificationMontantDialog(
                     color: AppColors.primaryDark.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.edit_outlined,
+                  child: Icon(Icons.edit_outlined,
                       size: 26, color: AppColors.primaryDark),
                 ),
               ),
               const SizedBox(height: 14),
               Text(titre,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: AppColors.dark,
@@ -116,7 +116,7 @@ Future<bool?> showModificationMontantDialog(
                 const SizedBox(height: 6),
                 Text(sousTitre,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13, height: 1.4, color: AppColors.label)),
               ],
               const SizedBox(height: 8),
@@ -124,7 +124,7 @@ Future<bool?> showModificationMontantDialog(
                   'Montant actuel ${formatMontantCourt(montantActuel)}'
                   '${dejaVerse > 0 ? ' · déjà versé ${formatMontantCourt(dejaVerse)}' : ''}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12.5, color: AppColors.hint)),
+                  style: TextStyle(fontSize: 12.5, color: AppColors.hint)),
               const SizedBox(height: 16),
               TextFormField(
                 controller: montantCtrl,
@@ -135,7 +135,7 @@ Future<bool?> showModificationMontantDialog(
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: validerNouveau,
                 onChanged: (_) => setState(() => erreur = null),
-                style: const TextStyle(fontSize: 15, color: AppColors.dark),
+                style: TextStyle(fontSize: 15, color: AppColors.dark),
                 decoration: deco('Nouveau montant *'),
               ),
               const SizedBox(height: 12),
@@ -145,14 +145,14 @@ Future<bool?> showModificationMontantDialog(
                 minLines: 1,
                 textCapitalization: TextCapitalization.sentences,
                 onChanged: (_) => setState(() => erreur = null),
-                style: const TextStyle(fontSize: 14, color: AppColors.dark),
+                style: TextStyle(fontSize: 14, color: AppColors.dark),
                 decoration: deco('Motif de la correction *',
                     hint: 'Ex. Tarif négocié, erreur de saisie…'),
               ),
               if (erreur != null) ...[
                 const SizedBox(height: 12),
                 Text(erreur!,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12.5, height: 1.35, color: AppColors.error)),
               ],
               const SizedBox(height: 20),
@@ -164,7 +164,7 @@ Future<bool?> showModificationMontantDialog(
                       onPressed: envoi ? null : () => Navigator.pop(ctx),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.label,
-                        side: const BorderSide(color: AppColors.border),
+                        side: BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                       ),

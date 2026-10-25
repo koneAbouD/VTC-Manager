@@ -13,10 +13,10 @@ import '../../../../core/utils/currency_formatter.dart';
 
 /// Seuils de couleur communs : un taux se lit vert / orange / rouge, jamais
 /// « bleu parce que ça fait joli ». Le sens précède l'esthétique.
-const Color kTbVert = Color(0xFF2E7D32);
-const Color kTbOrange = Color(0xFFE65100);
-const Color kTbRouge = Color(0xFFC62828);
-const Color kTbNeutre = Color(0xFF1A1A2E);
+Color get kTbVert => AppColors.positive;
+Color get kTbOrange => AppColors.warning;
+Color get kTbRouge => AppColors.error;
+Color get kTbNeutre => AppColors.dark;
 
 /// Couleur d'un taux dont la hausse est une bonne nouvelle (disponibilité,
 /// recouvrement, couverture du point mort).
@@ -88,15 +88,15 @@ class TbSection extends StatelessWidget {
   /// Action optionnelle en haut à droite (ex. : « Voir le détail »).
   final Widget? action;
 
-  const TbSection({
+  TbSection({
     super.key,
     required this.icone,
     required this.titre,
     required this.question,
     required this.child,
-    this.accent = AppColors.primary,
+    Color? accent,
     this.action,
-  });
+  }) : accent = accent ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -127,12 +127,12 @@ class TbSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(titre,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: AppColors.dark)),
                     Text(question,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11.5, color: AppColors.hint)),
                   ],
                 ),
@@ -182,7 +182,7 @@ class TbKpiPrincipal extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 12.5, color: AppColors.label)),
+            style: TextStyle(fontSize: 12.5, color: AppColors.label)),
         const SizedBox(height: 4),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -211,7 +211,7 @@ class TbKpiPrincipal extends StatelessWidget {
         if (commentaire != null) ...[
           const SizedBox(height: 4),
           Text(commentaire!,
-              style: const TextStyle(fontSize: 11.5, color: AppColors.hint)),
+              style: TextStyle(fontSize: 11.5, color: AppColors.hint)),
         ],
       ],
     );
@@ -271,14 +271,14 @@ class TbKpiTuile extends StatelessWidget {
   /// indicateur qu'on ne sait pas définir ne sert à rien.
   final String? aide;
 
-  const TbKpiTuile({
+  TbKpiTuile({
     super.key,
     required this.label,
     required this.valeur,
-    this.couleur = kTbNeutre,
+    Color? couleur,
     this.sousLabel,
     this.aide,
-  });
+  }) : couleur = couleur ?? kTbNeutre;
 
   @override
   Widget build(BuildContext context) {
@@ -294,7 +294,7 @@ class TbKpiTuile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
-              style: const TextStyle(fontSize: 11, color: AppColors.label),
+              style: TextStyle(fontSize: 11, color: AppColors.label),
               maxLines: 2,
               overflow: TextOverflow.ellipsis),
           const SizedBox(height: 5),
@@ -311,7 +311,7 @@ class TbKpiTuile extends StatelessWidget {
           if (sousLabel != null) ...[
             const SizedBox(height: 3),
             Text(sousLabel!,
-                style: const TextStyle(fontSize: 10.5, color: AppColors.hint),
+                style: TextStyle(fontSize: 10.5, color: AppColors.hint),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
           ],
@@ -402,7 +402,7 @@ class TbLigneDetail extends StatelessWidget {
                         color: forte ? AppColors.dark : AppColors.label)),
                 if (sousLibelle != null)
                   Text(sousLibelle!,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 10.5, color: AppColors.hint)),
               ],
             ),
@@ -425,5 +425,5 @@ class TbFilet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      const Divider(height: 1, thickness: 1, color: AppColors.border);
+      Divider(height: 1, thickness: 1, color: AppColors.border);
 }

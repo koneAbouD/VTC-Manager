@@ -22,14 +22,14 @@ import '../../../../screens/finance/finance_refresh.dart';
 // leur bordure, et un rouge d'erreur plus vif — pour que les champs de saisie
 // aient la même matière d'un formulaire financier à l'autre.
 
-const _kPrimary = AppColors.primary; // vert de marque
-const _kAmber = AppColors.warning; // écart / attention
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint = AppColors.hint;
-const _kLabel = AppColors.label;
-const _kBorder = Color(0xFFE3E6EE);
-const _kDark = AppColors.dark;
-const _kError = Color(0xFFE03131);
+Color get _kPrimary => AppColors.primary; // vert de marque
+Color get _kAmber => AppColors.warning; // écart / attention
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kLabel => AppColors.label;
+Color get _kBorder => AppColors.border;
+Color get _kDark => AppColors.dark;
+Color get _kError => AppColors.error;
 
 // ── Toast ───────────────────────────────────────────────────────────────────
 
@@ -190,7 +190,7 @@ class _TransfertSheetState extends ConsumerState<_TransfertSheet> {
     return _SheetShell(
       keyboardHeight: keyboardHeight,
       bottomSafe: bottomSafe,
-      entete: const _SheetTitle(
+      entete: _SheetTitle(
         icon: Icons.swap_horiz_rounded,
         accent: _kPrimary,
         title: 'Transfert entre comptes',
@@ -230,8 +230,8 @@ class _TransfertSheetState extends ConsumerState<_TransfertSheet> {
                       child: InkWell(
                         customBorder: const CircleBorder(),
                         onTap: _swap,
-                        child: const Padding(
-                          padding: EdgeInsets.all(8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
                           child: Icon(Icons.swap_vert_rounded,
                               size: 20, color: _kPrimary),
                         ),
@@ -252,7 +252,7 @@ class _TransfertSheetState extends ConsumerState<_TransfertSheet> {
                 ),
                 if (memeCompte) ...[
                   const SizedBox(height: 8),
-                  const Text('Choisissez deux comptes différents.',
+                  Text('Choisissez deux comptes différents.',
                       style: TextStyle(
                           fontSize: 12,
                           color: _kError,
@@ -278,11 +278,11 @@ class _TransfertSheetState extends ConsumerState<_TransfertSheet> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     onChanged: (_) => setState(() {}),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15, color: _kDark, fontWeight: FontWeight.w600),
                     decoration: _fieldDeco('0').copyWith(
                       suffixText: 'XOF',
-                      suffixStyle: const TextStyle(
+                      suffixStyle: TextStyle(
                           color: _kLabel,
                           fontSize: 13,
                           fontWeight: FontWeight.w600),
@@ -296,7 +296,7 @@ class _TransfertSheetState extends ConsumerState<_TransfertSheet> {
                     controller: _commentaireCtrl,
                     maxLines: 2,
                     minLines: 1,
-                    style: const TextStyle(fontSize: 15, color: _kDark),
+                    style: TextStyle(fontSize: 15, color: _kDark),
                     decoration: _fieldDeco('Motif du transfert…'),
                   ),
                 ),
@@ -338,7 +338,7 @@ class _FlowPreview extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
@@ -352,7 +352,7 @@ class _FlowPreview extends StatelessWidget {
               color: _kPrimary.withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.arrow_forward_rounded,
+            child: Icon(Icons.arrow_forward_rounded,
                 size: 16, color: _kPrimary),
           ),
           Expanded(child: _FlowEnd(compte: destination, isSource: false)),
@@ -374,7 +374,7 @@ class _FlowEnd extends StatelessWidget {
           isSource ? CrossAxisAlignment.start : CrossAxisAlignment.end,
       children: [
         Text(isSource ? 'Depuis' : 'Vers',
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w600, color: _kHint)),
         const SizedBox(height: 3),
         Text(
@@ -382,7 +382,7 @@ class _FlowEnd extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: isSource ? TextAlign.start : TextAlign.end,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 13.5, fontWeight: FontWeight.w700, color: _kDark),
         ),
         const SizedBox(height: 2),
@@ -667,7 +667,7 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
     return _SheetShell(
       keyboardHeight: keyboardHeight,
       bottomSafe: bottomSafe,
-      entete: const _SheetTitle(
+      entete: _SheetTitle(
         icon: Icons.lock_outline_rounded,
         accent: _kPrimary,
         title: 'Clôture de caisse',
@@ -755,11 +755,11 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     onChanged: (_) => setState(() {}),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15, color: _kDark, fontWeight: FontWeight.w600),
                     decoration: _fieldDeco('0').copyWith(
                       suffixText: 'XOF',
-                      suffixStyle: const TextStyle(
+                      suffixStyle: TextStyle(
                           color: _kLabel,
                           fontSize: 13,
                           fontWeight: FontWeight.w600),
@@ -782,7 +782,7 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
                       maxLines: 2,
                       minLines: 1,
                       onChanged: (_) => setState(() {}),
-                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      style: TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco(
                           'Ex. : appoint non enregistré, erreur de rendu'),
                     ),
@@ -808,13 +808,13 @@ class _ClotureSheetState extends ConsumerState<_ClotureSheet> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline_rounded,
+                  Icon(Icons.info_outline_rounded,
                       size: 15, color: _kHint),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
                       _blocage!,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12, height: 1.3, color: _kLabel),
                     ),
                   ),
@@ -865,14 +865,14 @@ class _DernierReleve extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.history_rounded, size: 16, color: _kLabel),
+          Icon(Icons.history_rounded, size: 16, color: _kLabel),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Dernier relevé : $libelle — '
               '${CurrencyFormatter.format(releve.soldeCompte)}. '
               'Aucun comptage ne peut être daté avant.',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, height: 1.3, color: _kLabel),
             ),
           ),
@@ -943,18 +943,18 @@ class _ChampDateCloture extends StatelessWidget {
             Expanded(
               child: Text(
                 DateFormat('dd/MM/yyyy').format(date),
-                style: const TextStyle(fontSize: 15, color: _kDark),
+                style: TextStyle(fontSize: 15, color: _kDark),
               ),
             ),
             // Le cas ordinaire se signale lui-même : c'est l'antidatage qui
             // engage, et qu'il faut remarquer.
             if (_estAujourdHui)
-              const Padding(
-                padding: EdgeInsets.only(right: 8),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
                 child: Text("Aujourd'hui",
                     style: TextStyle(fontSize: 12, color: _kHint)),
               ),
-            const Icon(Icons.calendar_today_rounded, size: 16, color: _kLabel),
+            Icon(Icons.calendar_today_rounded, size: 16, color: _kLabel),
           ],
         ),
       ),
@@ -981,11 +981,11 @@ class _SuiteEcart extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _kAmber.withValues(alpha: 0.22)),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.balance_rounded, size: 15, color: _kAmber),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               'La caisse sera réalignée sur votre comptage, mais le résultat '
@@ -1029,32 +1029,32 @@ class _SoldeTheorique extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.calculate_outlined, size: 18, color: _kPrimary),
+          Icon(Icons.calculate_outlined, size: 18, color: _kPrimary),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Solde théorique',
+                Text('Solde théorique',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: _kPrimary)),
                 const SizedBox(height: 2),
                 Text('Arrêté au ${DateFormat('dd/MM/yyyy').format(date)}',
-                    style: const TextStyle(fontSize: 11.5, color: _kHint)),
+                    style: TextStyle(fontSize: 11.5, color: _kHint)),
               ],
             ),
           ),
           const SizedBox(width: 8),
           if (chargement)
-            const SizedBox(
+            SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2, color: _kPrimary))
           else
             Text(CurrencyFormatter.format(montant),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 15, fontWeight: FontWeight.w800, color: _kPrimary)),
         ],
       ),
@@ -1077,11 +1077,11 @@ class _NoteAntidatage extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _kAmber.withValues(alpha: 0.25)),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.info_outline_rounded, size: 16, color: _kAmber),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Comptage antidaté : plus aucune écriture ne pourra être '
@@ -1350,7 +1350,7 @@ class _HistoriqueSheetState extends ConsumerState<_HistoriqueSheet> {
               child: Center(child: CircularProgressIndicator()),
             )
           else if (releves.isEmpty)
-            const _EtatVide(
+            _EtatVide(
               icone: Icons.inbox_outlined,
               titre: 'Aucun relevé',
               texte: 'Ce compte n\'a jamais été compté. Aucune journée n\'y est '
@@ -1396,11 +1396,11 @@ class _NoteChronologie extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _kBorder),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.info_outline_rounded, size: 15, color: _kHint),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Les relevés se défont dans l\'ordre inverse où ils ont été '
@@ -1512,13 +1512,13 @@ class _CarteReleveState extends State<_CarteReleve> {
                 ),
                 const SizedBox(width: 8),
                 if (annule)
-                  const _Etiquette(texte: 'Retiré', couleur: _kHint)
+                  _Etiquette(texte: 'Retiré', couleur: _kHint)
                 else if (releve.attendImputation)
-                  const _Etiquette(texte: 'Écart à trancher', couleur: _kAmber)
+                  _Etiquette(texte: 'Écart à trancher', couleur: _kAmber)
                 else if (releve.imputationStatut == 'PERTE')
-                  const _Etiquette(texte: 'Écart supporté', couleur: _kHint)
+                  _Etiquette(texte: 'Écart supporté', couleur: _kHint)
                 else if (releve.imputationStatut == 'RECOUVREE')
-                  const _Etiquette(texte: 'Écart à rembourser', couleur: _kHint),
+                  _Etiquette(texte: 'Écart à rembourser', couleur: _kHint),
                 const Spacer(),
                 Text(
                   CurrencyFormatter.format(releve.soldeCompte),
@@ -1621,7 +1621,7 @@ class _CarteReleveState extends State<_CarteReleve> {
                       border:
                           Border.all(color: _kAmber.withValues(alpha: 0.20)),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Les écritures passées lors de l\'imputation seront '
                       'contre-passées, à la date du relevé. L\'écart redeviendra '
                       'à trancher : vous pourrez décider à nouveau.',
@@ -1639,7 +1639,7 @@ class _CarteReleveState extends State<_CarteReleve> {
                       minLines: 1,
                       textInputAction: TextInputAction.done,
                       onChanged: (_) => setState(() {}),
-                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      style: TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco(
                           'Ex. : le manquant s\'explique, recette saisie deux fois'),
                     ),
@@ -1730,7 +1730,7 @@ class _CarteReleveState extends State<_CarteReleve> {
                       border:
                           Border.all(color: _kError.withValues(alpha: 0.20)),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Le relevé restera au dossier, marqué de son motif et de '
                       'son auteur. Il cessera simplement de faire foi, et la '
                       'journée se rouvrira au recomptage.',
@@ -1748,7 +1748,7 @@ class _CarteReleveState extends State<_CarteReleve> {
                       minLines: 1,
                       textInputAction: TextInputAction.done,
                       onChanged: (_) => setState(() {}),
-                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      style: TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco('Ex. : saisi à la mauvaise date'),
                     ),
                   ),
@@ -1900,7 +1900,7 @@ class _EcartsSheetState extends ConsumerState<_EcartsSheet> {
     return _SheetShell(
       keyboardHeight: keyboardHeight,
       bottomSafe: bottomSafe,
-      entete: const _SheetTitle(
+      entete: _SheetTitle(
         icon: Icons.balance_rounded,
         accent: _kAmber,
         title: 'Écarts de caisse',
@@ -1926,7 +1926,7 @@ class _EcartsSheetState extends ConsumerState<_EcartsSheet> {
             couleur: _kError,
           ),
           data: (ecarts) => ecarts.isEmpty
-              ? const _EtatVide(
+              ? _EtatVide(
                   icone: Icons.verified_outlined,
                   titre: 'Aucun écart en attente',
                   texte: 'Toutes les différences constatées ont été tranchées. '
@@ -1975,7 +1975,7 @@ class _NoteImputation extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _kBorder),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -1983,14 +1983,14 @@ class _NoteImputation extends StatelessWidget {
             'à dire qui supporte la différence :',
             style: TextStyle(fontSize: 12.5, height: 1.35, color: _kLabel),
           ),
-          SizedBox(height: 8),
-          _PuceNote(
+          const SizedBox(height: 8),
+          const _PuceNote(
             texte: 'L\'entreprise supporte — la différence entre au résultat, '
                 'en charge si c\'est un manquant, en produit si c\'est un '
                 'surplus.',
           ),
-          SizedBox(height: 6),
-          _PuceNote(
+          const SizedBox(height: 6),
+          const _PuceNote(
             texte: 'À rembourser — la somme devient une créance sur le '
                 'responsable du fonds ; elle ne pèse pas sur le résultat.',
           ),
@@ -2009,14 +2009,14 @@ class _PuceNote extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 5),
+        Padding(
+          padding: const EdgeInsets.only(top: 5),
           child: Icon(Icons.circle, size: 5, color: _kHint),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(texte,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5, height: 1.35, color: _kLabel)),
         ),
       ],
@@ -2126,7 +2126,7 @@ class _CarteEcartState extends State<_CarteEcart> {
                     Text(
                       '${widget.libelleCompte} — '
                       '${date != null ? DateFormat('dd/MM/yyyy').format(date) : 'date inconnue'}',
-                      style: const TextStyle(fontSize: 12, color: _kHint),
+                      style: TextStyle(fontSize: 12, color: _kHint),
                     ),
                   ],
                 ),
@@ -2141,7 +2141,7 @@ class _CarteEcartState extends State<_CarteEcart> {
           if ((ecart.imputationResponsable ?? '').isNotEmpty ||
               (ecart.motifEcart ?? '').isNotEmpty) ...[
             const SizedBox(height: 10),
-            const Divider(height: 1, color: _kBorder),
+            Divider(height: 1, color: _kBorder),
             const SizedBox(height: 10),
           ],
           if ((ecart.imputationResponsable ?? '').isNotEmpty)
@@ -2197,7 +2197,7 @@ class _CarteEcartState extends State<_CarteEcart> {
                   border: Border.all(color: accent.withValues(alpha: 0.22)),
                 ),
                 child: Text(_explication,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12, height: 1.35, color: _kLabel)),
               ),
               const SizedBox(height: 10),
@@ -2210,7 +2210,7 @@ class _CarteEcartState extends State<_CarteEcart> {
                   minLines: 1,
                   textInputAction: TextInputAction.done,
                   onChanged: (_) => setState(() {}),
-                  style: const TextStyle(fontSize: 15, color: _kDark),
+                  style: TextStyle(fontSize: 15, color: _kDark),
                   decoration: _fieldDeco(_exemple),
                 ),
               ),
@@ -2283,7 +2283,7 @@ class _BoutonDecision extends StatelessWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: _kDark,
-        side: const BorderSide(color: _kBorder),
+        side: BorderSide(color: _kBorder),
         padding: padding,
         shape: forme,
       ),
@@ -2306,7 +2306,7 @@ class _LigneInfo extends StatelessWidget {
         const SizedBox(width: 7),
         Expanded(
           child: Text(texte,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, height: 1.3, color: _kLabel)),
         ),
       ],
@@ -2344,12 +2344,12 @@ class _EtatVide extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(titre,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 15, fontWeight: FontWeight.w700, color: _kDark)),
           const SizedBox(height: 6),
           Text(texte,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5, height: 1.4, color: _kLabel)),
         ],
       ),
@@ -2429,7 +2429,7 @@ class _DragHandle extends StatelessWidget {
         height: 4,
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          color: Colors.grey.shade300,
+          color: AppColors.grey300,
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -2468,14 +2468,14 @@ class _SheetTitle extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
                       color: _kDark,
                       letterSpacing: -0.4)),
               const SizedBox(height: 2),
               Text(subtitle,
-                  style: const TextStyle(fontSize: 12, color: _kHint)),
+                  style: TextStyle(fontSize: 12, color: _kHint)),
             ],
           ),
         ),
@@ -2522,8 +2522,8 @@ class _SubmitButton extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: accent,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.grey.shade200,
-          disabledForegroundColor: Colors.grey.shade400,
+          disabledBackgroundColor: AppColors.grey200,
+          disabledForegroundColor: AppColors.grey400,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
@@ -2551,7 +2551,7 @@ class _FormCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
@@ -2570,7 +2570,7 @@ class _FormCard extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(title,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: _kDark,
@@ -2603,13 +2603,13 @@ class _LabeledField extends StatelessWidget {
       children: [
         Row(children: [
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: _kLabel)),
           if (isRequired) ...[
             const SizedBox(width: 3),
-            const Text('*',
+            Text('*',
                 style: TextStyle(
                     color: _kError,
                     fontSize: 13,
@@ -2656,7 +2656,7 @@ class _StyledDropdown<T> extends StatelessWidget {
 
 InputDecoration _fieldDeco(String hint) => InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+      hintStyle: TextStyle(color: _kHint, fontSize: 15),
       filled: true,
       fillColor: _kFieldFill,
       contentPadding:
@@ -2671,6 +2671,6 @@ InputDecoration _fieldDeco(String hint) => InputDecoration(
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+        borderSide: BorderSide(color: _kPrimary, width: 1.5),
       ),
     );

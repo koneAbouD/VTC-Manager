@@ -191,7 +191,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                 width: 210,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.blanc,
                     borderRadius: BorderRadius.circular(12)),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -221,8 +221,8 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                                 : Icons.radio_button_off_outlined,
                             size: 18,
                             color: sel
-                                ? const Color(0xFF43A047)
-                                : Colors.grey.shade400,
+                                ? AppColors.primary
+                                : AppColors.grey400,
                           ),
                           const SizedBox(width: 10),
                           Text(label,
@@ -232,8 +232,8 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                                     ? FontWeight.w600
                                     : FontWeight.w400,
                                 color: sel
-                                    ? const Color(0xFF43A047)
-                                    : const Color(0xFF1A1A1A),
+                                    ? AppColors.primary
+                                    : AppColors.dark,
                               )),
                         ]),
                       ),
@@ -430,7 +430,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                     ),
                     Text(r.message ?? 'Annulation refusée.',
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade700)),
+                            fontSize: 12, color: AppColors.grey700)),
                     const SizedBox(height: 10),
                   ],
                 ],
@@ -466,7 +466,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
     final ok = await showEncaissementLotDialog(
       context,
       titre:   'Encaisser ${selection.length} cotisation(s)',
-      couleur: const Color(0xFFE65100),
+      couleur: AppColors.warning,
       icone:   Icons.analytics_outlined,
       lignes: [
         for (final l in selection)
@@ -528,7 +528,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
       sousTitre: _libelleVehiculeChauffeur(ligne),
       montantRestant: ligne.montantRestant ??
           (ligne.montantDu - ligne.montantEncaisse),
-      couleur: const Color(0xFFE65100),
+      couleur: AppColors.warning,
       icone:   Icons.analytics_outlined,
       onEncaisser: (saisie) async {
         final enc = EncaissementCotisation(
@@ -596,7 +596,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
         if (!didPop) _quitterSelection();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FB),
+        backgroundColor: AppColors.scaffold,
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,23 +618,23 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                       child: Container(
                         width: 56, height: 38,
                         decoration: BoxDecoration(
-                            color: const Color(0xFFF0F2F8),
+                            color: AppColors.headerButton,
                             borderRadius: BorderRadius.circular(20)),
                         child: Icon(
                             _selectionMode
                                 ? Icons.close_rounded
                                 : Icons.arrow_back_rounded,
                             size: 18,
-                            color: const Color(0xFF1A1A2E)),
+                            color: AppColors.dark),
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text('Cotisations',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF1A1A2E),
+                              color: AppColors.dark,
                               letterSpacing: -0.3)),
                     ),
                     // En sélection, le bouton de génération cède la place à
@@ -647,14 +647,14 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                       child: Container(
                         width: 56, height: 38,
                         decoration: BoxDecoration(
-                            color: const Color(0xFFF0F2F8),
+                            color: AppColors.headerButton,
                             borderRadius: BorderRadius.circular(20)),
                         child: Icon(
                             _selectionMode
                                 ? Icons.select_all_rounded
                                 : Icons.auto_awesome_rounded,
                             size: 18,
-                            color: const Color(0xFF1A1A2E)),
+                            color: AppColors.dark),
                       ),
                     ),
                   ],
@@ -887,22 +887,22 @@ class _FiltreDateBar extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.blanc,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: AppColors.grey300),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.filter_list_rounded,
-                  size: 14, color: Color(0xFF43A047)),
+              Icon(Icons.filter_list_rounded,
+                  size: 14, color: AppColors.primary),
               const SizedBox(width: 5),
               Text(modeLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF43A047),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w500)),
               const SizedBox(width: 3),
-              const Icon(Icons.keyboard_arrow_down_rounded,
-                  size: 14, color: Color(0xFF43A047)),
+              Icon(Icons.keyboard_arrow_down_rounded,
+                  size: 14, color: AppColors.primary),
             ]),
           ),
         ),
@@ -926,22 +926,22 @@ class _DatePill extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-              color: Colors.grey.shade200,
+              color: AppColors.grey200,
               borderRadius: BorderRadius.circular(10)),
           child: Row(children: [
-            Icon(icon, size: 13, color: Colors.grey.shade600),
+            Icon(icon, size: 13, color: AppColors.grey600),
             const SizedBox(width: 6),
             Expanded(
               child: Text(label,
                   style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade700,
+                      color: AppColors.grey700,
                       fontWeight: FontWeight.w500),
                   overflow: TextOverflow.ellipsis),
             ),
             const SizedBox(width: 5),
             Icon(Icons.keyboard_arrow_down_rounded,
-                size: 14, color: Colors.grey.shade600),
+                size: 14, color: AppColors.grey600),
           ]),
         ),
       );
@@ -994,18 +994,18 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
           decoration: BoxDecoration(
             // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt
             // qu'un blanc avec ombre portée.
-            color: const Color(0xFFF2F3F5),
+            color: AppColors.fieldFill,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(children: [
             _focus.hasFocus
                 ? GestureDetector(
                     onTap: _focus.unfocus,
-                    child: const Icon(Icons.close,
-                        color: Color(0xFF8A8A8E), size: 20),
+                    child: Icon(Icons.close,
+                        color: AppColors.hint, size: 20),
                   )
-                : const Icon(Icons.search,
-                    color: Color(0xFF8A8A8E), size: 20),
+                : Icon(Icons.search,
+                    color: AppColors.hint, size: 20),
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
@@ -1013,12 +1013,12 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
                 focusNode: _focus,
                 onChanged: widget.onSearchChanged,
                 style: const TextStyle(fontSize: 14),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Immatriculation, chauffeur…',
                   hintStyle:
-                      TextStyle(color: Color(0xFF8A8A8E), fontSize: 14),
+                      TextStyle(color: AppColors.hint, fontSize: 14),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
             ),
@@ -1033,8 +1033,8 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
                         widget.controller.clear();
                         widget.onSearchChanged('');
                       },
-                      child: const Icon(Icons.close_rounded,
-                          size: 18, color: Color(0xFF8A8A8E)),
+                      child: Icon(Icons.close_rounded,
+                          size: 18, color: AppColors.hint),
                     ),
             ),
           ]),
@@ -1070,8 +1070,8 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
   /// l'attente et les fins de course neutres, bleu pour l'encaissement
   /// commencé mais pas terminé, vert pour ce qui est soldé.
   static const _bleu = Color(0xFF1565C0);
-  static const _vert = Color(0xFF2E7D32);
-  static const _hint = Color(0xFF8A94A6);
+  static Color get _vert => AppColors.positive;
+  static Color get _hint => AppColors.hint;
 
   Color _couleur(StatutLigneCotisation s) => switch (s) {
         StatutLigneCotisation.enAttente             => _hint,
@@ -1176,7 +1176,7 @@ class _LigneCotisationCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(12),
           border: coche
               ? Border.all(color: AppColors.primary.withValues(alpha: 0.55))
@@ -1223,20 +1223,20 @@ class _LigneCotisationCard extends StatelessWidget {
                 children: [
                   Text(
                     ligne.nomCotisation,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: Color(0xFF1A1A1A)),
+                        color: AppColors.dark),
                   ),
                   const SizedBox(height: 2),
                   Text(
                       _libelleVehiculeChauffeur(ligne),
                       style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade500)),
+                          fontSize: 11, color: AppColors.grey500)),
                   Text(
                     _labelDate(ligne.dateCotisation),
                     style: TextStyle(
-                        fontSize: 10, color: Colors.grey.shade400),
+                        fontSize: 10, color: AppColors.grey400),
                   ),
                 ],
               ),
@@ -1248,7 +1248,7 @@ class _LigneCotisationCard extends StatelessWidget {
               // sur l'icône et la pastille de statut.
               Text(
                 '${NumberFormat('#,##0', 'fr_FR').format(montantPrincipal)} XOF',
-                style: const TextStyle(
+                style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     color: AppColors.dark),
@@ -1257,13 +1257,13 @@ class _LigneCotisationCard extends StatelessWidget {
                 Text(
                   'sur ${NumberFormat('#,##0', 'fr_FR').format(ligne.montantDu)} XOF',
                   style: TextStyle(
-                      fontSize: 10, color: Colors.grey.shade400),
+                      fontSize: 10, color: AppColors.grey400),
                 ),
               if (onEncaisser != null) ...[
                 const SizedBox(height: 6),
                 EncaisserChip(
                   onTap: onEncaisser!,
-                  color: const Color(0xFFE65100),
+                  color: AppColors.warning,
                 ),
               ],
             ]),
@@ -1293,11 +1293,11 @@ class _LigneCotisationCard extends StatelessWidget {
   /// Même palette que les chips de filtre : la pastille d'icône reprend la
   /// couleur du statut telle qu'elle est présentée en haut de page.
   Color _couleur(StatutLigneCotisation s) => switch (s) {
-        StatutLigneCotisation.enAttente             => const Color(0xFF8A94A6),
+        StatutLigneCotisation.enAttente             => AppColors.hint,
         StatutLigneCotisation.partiellementEncaisse => const Color(0xFF1565C0),
-        StatutLigneCotisation.encaisse              => const Color(0xFF2E7D32),
-        StatutLigneCotisation.annulee               => const Color(0xFF8A94A6),
-        StatutLigneCotisation.restituee             => const Color(0xFF8A94A6),
+        StatutLigneCotisation.encaisse              => AppColors.positive,
+        StatutLigneCotisation.annulee               => AppColors.hint,
+        StatutLigneCotisation.restituee             => AppColors.hint,
       };
 
   IconData _icone(StatutLigneCotisation s) => switch (s) {
@@ -1324,21 +1324,21 @@ class _EmptyState extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: AppColors.grey100,
                       shape: BoxShape.circle)),
               Icon(Icons.savings_rounded,
-                  size: 38, color: Colors.grey.shade300),
+                  size: 38, color: AppColors.grey300),
             ]),
             const SizedBox(height: 16),
             Text('Aucune cotisation',
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600)),
+                    color: AppColors.grey600)),
             const SizedBox(height: 6),
             Text(
               'Appuyez sur ✨ pour générer les cotisations',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+              style: TextStyle(fontSize: 13, color: AppColors.grey400),
               textAlign: TextAlign.center,
             ),
           ],

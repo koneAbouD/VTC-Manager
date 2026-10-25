@@ -41,7 +41,7 @@ class DocumentSourceBottomSheet extends StatelessWidget {
             width: 36,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0xFFE3E6EE),
+              color: AppColors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -84,19 +84,19 @@ class _SourceTile extends StatelessWidget {
       leading: Container(
         width: 42,
         height: 42,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.primaryTint,
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: AppColors.primaryDark, size: 22),
       ),
       title: Text(title,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
               color: AppColors.dark)),
       subtitle: Text(subtitle,
-          style: const TextStyle(fontSize: 12, color: AppColors.hint)),
+          style: TextStyle(fontSize: 12, color: AppColors.hint)),
       onTap: onTap,
     );
   }
@@ -107,7 +107,7 @@ class _SourceTile extends StatelessWidget {
 Future<PickedDocument?> pickDocumentFromSource(BuildContext context) async {
   final source = await showModalBottomSheet<_DocumentSource>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.blanc,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),

@@ -13,13 +13,14 @@ import '../../../partenaire/presentation/providers/partenaire_providers.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import 'maintenance_form_page.dart';
 
+import '../../../../core/theme/app_colors.dart';
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const _kAccent  = Color(0xFFE65100);
-const _kDark    = Color(0xFF1A1A2E);
-const _kBorder  = Color(0xFFE3E6EE);
-const _kLabel   = Color(0xFF6B7280);
-const _kBg      = Color(0xFFF8F9FB);
+Color get _kAccent => AppColors.warning;
+Color get _kDark => AppColors.dark;
+Color get _kBorder => AppColors.border;
+Color get _kLabel => AppColors.label;
+Color get _kBg => AppColors.scaffold;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -74,10 +75,10 @@ class _MaintenanceDetailPageState
   }
 
   Color _couleurStatut(String? s) => switch (s) {
-        'TERMINEE'  => const Color(0xFF2E7D32),
+        'TERMINEE'  => AppColors.positive,
         'EN_COURS'  => const Color(0xFF1565C0),
-        'ANNULEE'   => const Color(0xFF616161),
-        _           => const Color(0xFFE65100),
+        'ANNULEE'   => AppColors.label,
+        _           => AppColors.warning,
       };
 
   String _labelStatut(String? s) => switch (s) {
@@ -143,7 +144,7 @@ class _MaintenanceDetailPageState
           ),
         ]),
         backgroundColor:
-            error ? const Color(0xFFB71C1C) : const Color(0xFF1B5E20),
+            error ? AppColors.error : AppColors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -280,7 +281,7 @@ class _MaintenanceDetailPageState
                         Expanded(
                           child: Text(
                             _displayType(),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
                                 color: _kDark,
@@ -317,7 +318,7 @@ class _MaintenanceDetailPageState
                     // elles laisseraient un trou là où le filet se trouvait.
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.blanc,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: _kBorder),
                     ),
@@ -379,7 +380,7 @@ class _MaintenanceDetailPageState
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600)),
                               style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF2E7D32),
+                                backgroundColor: AppColors.positive,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14)),
                               ),
@@ -425,7 +426,7 @@ class _MaintenanceDetailPageState
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: _kBorder),
         ),
@@ -461,14 +462,14 @@ class _MaintenanceDetailPageState
         const SizedBox(height: 10),
         Text(
           _m.motifAnnulation!,
-          style: const TextStyle(fontSize: 14, color: _kDark, height: 1.5),
+          style: TextStyle(fontSize: 14, color: _kDark, height: 1.5),
         ),
         if (_signatureAnnulation() != null)
           Padding(
             padding: const EdgeInsets.only(top: 6, bottom: 10),
             child: Text(
               _signatureAnnulation()!,
-              style: const TextStyle(fontSize: 12, color: _kLabel),
+              style: TextStyle(fontSize: 12, color: _kLabel),
             ),
           ),
       ]));
@@ -512,7 +513,7 @@ class _MaintenanceDetailPageState
           const SizedBox(height: 10),
           Text(
             _m.description!,
-            style: const TextStyle(fontSize: 14, color: _kDark, height: 1.5),
+            style: TextStyle(fontSize: 14, color: _kDark, height: 1.5),
           ),
         ],
       ));
@@ -530,14 +531,14 @@ class _MaintenanceDetailPageState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total',
+              Text('Total',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: _kDark)),
               Text(
                 _fmtMontant(elements.fold(0.0, (s, e) => s + e.montant)),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14, fontWeight: FontWeight.w800, color: _kAccent),
               ),
             ],
@@ -593,7 +594,7 @@ class _MaintenanceDetailPageState
   Widget _labelRubrique(IconData icon, String label) => Row(children: [
         Icon(icon, size: 15, color: _kLabel),
         const SizedBox(width: 10),
-        Text(label, style: const TextStyle(fontSize: 13, color: _kLabel)),
+        Text(label, style: TextStyle(fontSize: 13, color: _kLabel)),
       ]);
 
   Widget _infoRow(IconData icon, String label, String value,
@@ -608,7 +609,7 @@ class _MaintenanceDetailPageState
             Expanded(
               flex: 2,
               child: Text(label,
-                  style: const TextStyle(fontSize: 13, color: _kLabel)),
+                  style: TextStyle(fontSize: 13, color: _kLabel)),
             ),
             Expanded(
               flex: 3,
@@ -629,12 +630,12 @@ class _MaintenanceDetailPageState
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF3EB),
+          color: AppColors.fond(0xFFFFF3EB),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: _kAccent.withValues(alpha: 0.20)),
         ),
         child: Row(children: [
-          const Icon(Icons.build_circle_outlined, size: 14, color: _kAccent),
+          Icon(Icons.build_circle_outlined, size: 14, color: _kAccent),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -643,7 +644,7 @@ class _MaintenanceDetailPageState
               children: [
                 Text(
                   e.libelleAvecQuantite,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: _kDark),
@@ -656,7 +657,7 @@ class _MaintenanceDetailPageState
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.storefront_outlined,
+                        Icon(Icons.storefront_outlined,
                             size: 11, color: _kLabel),
                         const SizedBox(width: 4),
                         Flexible(
@@ -681,7 +682,7 @@ class _MaintenanceDetailPageState
           const SizedBox(width: 8),
           Text(
             _fmtMontant(e.montant),
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 12, color: _kAccent, fontWeight: FontWeight.w700),
           ),
         ]),

@@ -129,11 +129,11 @@ class _IndispoCard extends ConsumerWidget {
       {required this.indispo, required this.onView, required this.onEdit});
 
   (Color, String) _statut(String? s) => switch (s) {
-        'EN_COURS' => (const Color(0xFFE65100), 'En cours'),
+        'EN_COURS' => (AppColors.warning, 'En cours'),
         'PLANIFIEE' => (const Color(0xFF1565C0), 'Planifiée'),
         'TERMINEE' => (AppColors.primaryDark, 'Terminée'),
-        'ANNULEE' => (const Color(0xFF616161), 'Annulée'),
-        _ => (const Color(0xFF616161), s ?? '—'),
+        'ANNULEE' => (AppColors.label, 'Annulée'),
+        _ => (AppColors.label, s ?? '—'),
       };
 
   @override
@@ -169,7 +169,7 @@ class _IndispoCard extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     indispo.vehiculeLibelle ?? 'Véhicule',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                         color: AppColors.dark),
@@ -209,7 +209,7 @@ class _IndispoCard extends ConsumerWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(text,
-                style: const TextStyle(fontSize: 13, color: AppColors.label)),
+                style: TextStyle(fontSize: 13, color: AppColors.label)),
           ),
         ],
       );
@@ -228,7 +228,7 @@ class _IndispoCard extends ConsumerWidget {
     if (items.isEmpty) return const SizedBox.shrink();
 
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, size: 18, color: AppColors.hint),
+      icon: Icon(Icons.more_vert, size: 18, color: AppColors.hint),
       onSelected: (v) async {
         if (v == 'modifier') {
           onEdit();
@@ -289,13 +289,13 @@ class _EmptyView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.no_transfer_rounded, size: 64, color: Colors.grey.shade300),
+          Icon(Icons.no_transfer_rounded, size: 64, color: AppColors.grey300),
           const SizedBox(height: 12),
           const Text('Aucune immobilisation',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 4),
           Text('Déclarez l\'immobilisation d\'un véhicule.',
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+              style: TextStyle(color: AppColors.grey500, fontSize: 13)),
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: onAdd,

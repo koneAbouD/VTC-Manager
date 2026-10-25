@@ -16,11 +16,11 @@ class IndisponibiliteVehiculeDetailPage extends ConsumerWidget {
       {super.key, required this.indisponibilite});
 
   static (Color, String) statut(String? s) => switch (s) {
-        'EN_COURS' => (const Color(0xFFE65100), 'En cours'),
+        'EN_COURS' => (AppColors.warning, 'En cours'),
         'PLANIFIEE' => (const Color(0xFF1565C0), 'Planifiée'),
         'TERMINEE' => (AppColors.primaryDark, 'Terminée'),
-        'ANNULEE' => (const Color(0xFF616161), 'Annulée'),
-        _ => (const Color(0xFF616161), s ?? '—'),
+        'ANNULEE' => (AppColors.label, 'Annulée'),
+        _ => (AppColors.label, s ?? '—'),
       };
 
   @override
@@ -46,7 +46,7 @@ class IndisponibiliteVehiculeDetailPage extends ConsumerWidget {
             : '${fmtLong.format(indispo.dateDebut)} → ${fmtLong.format(indispo.dateFin!)}';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
         title: 'Détail immobilisation',
         action: indispo.isTerminee
@@ -79,7 +79,7 @@ class IndisponibiliteVehiculeDetailPage extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     indispo.vehiculeLibelle ?? 'Véhicule',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
                         color: AppColors.dark),
@@ -116,9 +116,9 @@ class IndisponibiliteVehiculeDetailPage extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E1),
+              color: AppColors.fond(0xFFFFF8E1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFFE082)),
+              border: Border.all(color: AppColors.fond(0xFFFFE082)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,14 +179,14 @@ class _Row extends StatelessWidget {
           SizedBox(
             width: 110,
             child: Text(label,
-                style: const TextStyle(color: AppColors.label, fontSize: 13)),
+                style: TextStyle(color: AppColors.label, fontSize: 13)),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(
+              style: TextStyle(
                   fontWeight: FontWeight.w500,
                   fontSize: 13,
                   color: AppColors.dark),

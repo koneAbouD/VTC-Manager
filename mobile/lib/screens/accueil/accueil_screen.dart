@@ -176,8 +176,8 @@ class _AccueilScreenState extends ConsumerState<AccueilScreen> {
                 icon: const Icon(Icons.unfold_more_rounded, size: 16),
                 label: const Text("Plus d'opérations"),
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF2E7D32),
-                  backgroundColor: const Color(0xFFE8F5E9),
+                  foregroundColor: AppColors.positive,
+                  backgroundColor: AppColors.positiveTint,
                   textStyle: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600),
                   padding: const EdgeInsets.symmetric(
@@ -250,7 +250,7 @@ class SoldeHeaderLabel extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       // Gabarit du titre d'en-tête (AppHeader).
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
                         color: AppColors.dark,
@@ -270,7 +270,7 @@ class SoldeHeaderLabel extends ConsumerWidget {
                       soldeVisible
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
-                      color: Colors.grey.shade500,
+                      color: AppColors.grey500,
                       size: 18,
                     ),
                   ),
@@ -491,7 +491,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                   width: 150,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.blanc,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -515,8 +515,8 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                                     : Icons.radio_button_off_outlined,
                                 size: 18,
                                 color: sel
-                                    ? const Color(0xFF43A047)
-                                    : Colors.grey.shade400,
+                                    ? AppColors.primary
+                                    : AppColors.grey400,
                               ),
                               const SizedBox(width: 10),
                               Text(
@@ -527,8 +527,8 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                                       ? FontWeight.w600
                                       : FontWeight.w400,
                                   color: sel
-                                      ? const Color(0xFF43A047)
-                                      : const Color(0xFF1A1A1A),
+                                      ? AppColors.primary
+                                      : AppColors.dark,
                                 ),
                               ),
                             ],
@@ -617,25 +617,25 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: AppColors.grey300),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.filter_list_rounded,
-                            size: 14, color: Color(0xFF43A047)),
+                        Icon(Icons.filter_list_rounded,
+                            size: 14, color: AppColors.primary),
                         const SizedBox(width: 5),
                         Text(
                           filtreLabel,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF43A047),
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(width: 3),
-                        const Icon(Icons.keyboard_arrow_down_rounded,
-                            size: 14, color: Color(0xFF43A047)),
+                        Icon(Icons.keyboard_arrow_down_rounded,
+                            size: 14, color: AppColors.primary),
                       ],
                     ),
                   ),
@@ -649,7 +649,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade200
+                        color: AppColors.grey200
                             .withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -657,14 +657,14 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                         children: [
                           Icon(_datePillIcon,
                               size: 13,
-                              color: Colors.grey.shade600),
+                              color: AppColors.grey600),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               _datePillLabel,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade700,
+                                color: AppColors.grey700,
                                 fontWeight: FontWeight.w500,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -673,7 +673,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                           const SizedBox(width: 5),
                           Icon(Icons.keyboard_arrow_down_rounded,
                               size: 14,
-                              color: Colors.grey.shade600),
+                              color: AppColors.grey600),
                         ],
                       ),
                     ),
@@ -699,8 +699,8 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             afficher(solde, _soldeMasque),
-                            style: const TextStyle(
-                              color: Color(0xFF1A1A1A),
+                            style: TextStyle(
+                              color: AppColors.dark,
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
                               letterSpacing: -0.5,
@@ -720,7 +720,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                             soldeVisible
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
-                            color: Colors.grey.shade500,
+                            color: AppColors.grey500,
                             size: 20,
                           ),
                         ),
@@ -754,7 +754,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
 
             // ── Ligne 3 : Revenus | Dépenses ─────────────────────────────
             const SizedBox(height: 16),
-            Divider(color: Colors.grey.shade200, height: 1),
+            Divider(color: AppColors.grey200, height: 1),
             const SizedBox(height: 14),
             Row(
               children: [
@@ -767,7 +767,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                   ),
                 ),
                 Container(
-                    width: 1, height: 36, color: Colors.grey.shade200),
+                    width: 1, height: 36, color: AppColors.grey200),
                 Expanded(
                   child: _CardStat(
                     icon: Icons.arrow_upward,
@@ -809,15 +809,15 @@ class _CardStat extends StatelessWidget {
               const SizedBox(width: 4),
               Text(label,
                   style: TextStyle(
-                      color: Colors.grey.shade600, fontSize: 11)),
+                      color: AppColors.grey600, fontSize: 11)),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             value,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-                color: Color(0xFF1A1A1A),
+            style: TextStyle(
+                color: AppColors.dark,
                 fontWeight: FontWeight.bold,
                 fontSize: 13),
           ),
@@ -949,11 +949,11 @@ class _ShortcutItem extends StatelessWidget {
           Container(
             width: circleSize,
             height: circleSize,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF0F0F0),
+            decoration: BoxDecoration(
+              color: AppColors.fond(0xFFF0F0F0),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: const Color(0xFF2E7D32), size: iconSize),
+            child: Icon(icon, color: AppColors.positive, size: iconSize),
           ),
           const SizedBox(height: 6),
           Flexible(
@@ -962,10 +962,10 @@ class _ShortcutItem extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF1A1A1A),
+                color: AppColors.dark,
               ),
             ),
           ),
@@ -1019,7 +1019,7 @@ class _DerniereOpTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -1095,7 +1095,7 @@ class _DerniereOpTile extends StatelessWidget {
                       child: Text(
                         vehiculeChauffeur,
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500),
+                            fontSize: 11, color: AppColors.grey500),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1104,7 +1104,7 @@ class _DerniereOpTile extends StatelessWidget {
                     Text(
                       DateFormat('dd/MM', 'fr_FR').format(op.dateOperation),
                       style: TextStyle(
-                          fontSize: 10, color: Colors.grey.shade400),
+                          fontSize: 10, color: AppColors.grey400),
                     ),
                   ],
                 ),

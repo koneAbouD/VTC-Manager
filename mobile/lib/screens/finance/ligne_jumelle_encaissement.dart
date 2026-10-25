@@ -14,10 +14,11 @@ import '../../features/versement/domain/entities/encaissement_versement.dart';
 import '../../features/versement/domain/repositories/versement_repository.dart';
 import '../../features/versement/presentation/providers/versement_provider.dart';
 
+import '../../core/theme/app_colors.dart';
 // ── Palette des deux natures de ligne (identique aux fiches détail) ───────────
 
-const _kVertRecette     = Color(0xFF2E7D32);
-const _kOrangeCotisation = Color(0xFFE65100);
+Color get _kVertRecette => AppColors.positive;
+Color get _kOrangeCotisation => AppColors.warning;
 
 final _jourFmt = DateFormat('dd/MM/yyyy');
 

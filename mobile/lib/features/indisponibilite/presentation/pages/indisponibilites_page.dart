@@ -70,13 +70,13 @@ class _State extends ConsumerState<IndisponibilitesPage>
           Container(
             margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: AppColors.grey100,
               borderRadius: BorderRadius.circular(12),
             ),
             child: TabBar(
               controller: _tab,
               indicator: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.blanc,
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
@@ -89,7 +89,7 @@ class _State extends ConsumerState<IndisponibilitesPage>
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               labelColor: AppColors.primary,
-              unselectedLabelColor: Colors.grey.shade600,
+              unselectedLabelColor: AppColors.grey600,
               labelStyle:
                   const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               unselectedLabelStyle:

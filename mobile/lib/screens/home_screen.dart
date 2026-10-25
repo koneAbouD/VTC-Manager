@@ -15,6 +15,7 @@ import 'fleet/fleet_screen.dart';
 import 'fleet/fleet_tabs_pills.dart';
 import '../features/parametrage/presentation/pages/settings_screen.dart';
 
+import '../core/theme/app_colors.dart';
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -151,7 +152,7 @@ class _FloatingNavBar extends StatelessWidget {
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.10),
@@ -173,7 +174,7 @@ class _FloatingNavBar extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.blanc,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
@@ -212,7 +213,7 @@ class _FloatingNavBar extends StatelessWidget {
                     selected ? item.selectedIcon : item.icon,
                     size: 22,
                     color:
-                        selected ? const Color(0xFF43A047) : Colors.grey.shade500,
+                        selected ? AppColors.primary : AppColors.grey500,
                   ),
                   const SizedBox(height: 3),
                   Text(
@@ -225,8 +226,8 @@ class _FloatingNavBar extends StatelessWidget {
                       fontSize: 11,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                       color: selected
-                          ? const Color(0xFF43A047)
-                          : Colors.grey.shade500,
+                          ? AppColors.primary
+                          : AppColors.grey500,
                     ),
                   ),
                 ],
@@ -250,16 +251,16 @@ class _PlaceholderScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 64, color: Colors.grey.shade300),
+          Icon(icon, size: 64, color: AppColors.grey300),
           const SizedBox(height: 12),
           Text(label,
               style: TextStyle(
                   fontSize: 18,
-                  color: Colors.grey.shade500,
+                  color: AppColors.grey500,
                   fontWeight: FontWeight.w500)),
           const SizedBox(height: 6),
           Text('Fonctionnalité à venir',
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+              style: TextStyle(color: AppColors.grey400, fontSize: 13)),
         ],
       ),
     );

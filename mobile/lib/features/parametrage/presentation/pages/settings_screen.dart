@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tmk_pin/tmk_pin.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/responsive_field_row.dart'
     show kFormPhoneBreakpoint;
@@ -21,6 +22,7 @@ import '../../../profil/presentation/pages/mon_profil_page.dart';
 import '../../../profil/presentation/providers/profil_providers.dart';
 import '../../../tableau_bord/presentation/pages/tableau_bord_page.dart';
 import '../widgets/settings_tile.dart';
+import 'apparence_page.dart';
 import 'parametrage_hub_page.dart';
 import 'parametres_generaux_page.dart';
 
@@ -223,18 +225,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ouvert: _volet == _Volet.configurations,
                     onToggle: () => _basculer(_Volet.configurations),
                     children: [
+                      const _LigneApparence(),
                       const _LigneNotifications(),
                       const _LigneBiometrie(),
                       // Même situation que les notifications : l'entrée est
                       // annoncée, le suivi de position n'est pas encore branché.
-                      const SettingsTile(
+                      SettingsTile(
                         icon: Icons.location_on_outlined,
                         title: 'Géolocalisation',
                         description: 'Suivi de position des chauffeurs en '
                             'service',
-                        trailing: SettingsSwitch(value: false),
+                        trailing: const SettingsSwitch(value: false),
                       ),
-                      const SettingsTile(
+                      SettingsTile(
                         icon: Icons.star_outline_rounded,
                         title: "Noter l'application",
                         description: 'Disponible à la publication sur les '
@@ -429,17 +432,17 @@ class _ProfileHeaderState extends State<_ProfileHeader>
       width: double.infinity,
       // Le bloc part du haut de l'écran : il n'a pas de bord haut, seuls les
       // angles bas sont arrondis.
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.headerButton,
         borderRadius:
-            BorderRadius.vertical(bottom: Radius.circular(_kHeaderRadius)),
+            const BorderRadius.vertical(bottom: Radius.circular(_kHeaderRadius)),
       ),
       child: Column(children: [
         // Barre de retour posée sur la teinte du bandeau : le fond court sans
         // rupture depuis la barre de statut. Même pastille blanche que le
         // bouton « Mon profil » : sans cela, le fond du bouton se confondrait
         // avec celui du bandeau.
-        const AppHeader(
+        AppHeader(
           title: '',
           backgroundColor: Colors.transparent,
           backButtonColor: AppColors.surface,
@@ -495,7 +498,7 @@ class _ProfileHeaderState extends State<_ProfileHeader>
                   height: 52 + 10 * tEmail,
                   alignment: Alignment.center,
                   // Même pastille blanche que le bouton « Mon profil ».
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.surface,
                     shape: BoxShape.circle,
                   ),
@@ -517,7 +520,7 @@ class _ProfileHeaderState extends State<_ProfileHeader>
                         libelle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: AppColors.dark,
@@ -530,7 +533,7 @@ class _ProfileHeaderState extends State<_ProfileHeader>
                           widget.identifiant,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: AppColors.label,
@@ -547,7 +550,7 @@ class _ProfileHeaderState extends State<_ProfileHeader>
                               widget.email,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: AppColors.hint,
@@ -657,6 +660,26 @@ class _PoigneeDepli extends StatelessWidget {
 /// Couper retire le jeton de l'appareil côté serveur : rien n'est filtré à
 /// l'arrivée, plus rien n'est envoyé. La bascule suppose donc un aller-retour
 /// réseau, d'où l'interrupteur qui se fige le temps de la réponse.
+/// Entrée « Apparence » : résume le choix en cours (mode · accent) et ouvre la
+/// page de réglage.
+class _LigneApparence extends ConsumerWidget {
+  const _LigneApparence();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final apparence = ref.watch(themeControllerProvider);
+    return SettingsTile(
+      icon: Icons.palette_outlined,
+      title: 'Apparence',
+      description:
+          '${libelleModeTheme(apparence.mode)} · ${apparence.accent.libelle}',
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const ApparencePage()),
+      ),
+    );
+  }
+}
+
 class _LigneNotifications extends ConsumerStatefulWidget {
   const _LigneNotifications();
 
@@ -924,7 +947,7 @@ class _MonProfilBouton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Mon profil',
               style: TextStyle(
                 fontSize: 13,
@@ -937,7 +960,7 @@ class _MonProfilBouton extends StatelessWidget {
             // une fois ouvert — et à mi-course entre les deux.
             Transform.rotate(
               angle: (0.25 - 0.5 * avancement) * 2 * math.pi,
-              child: const Icon(Icons.chevron_right_rounded,
+              child: Icon(Icons.chevron_right_rounded,
                   size: 18, color: AppColors.dark),
             ),
           ],
@@ -965,7 +988,7 @@ class _PiedDePage extends StatelessWidget {
           child: const PinBrand(height: 34),
         ),
         const SizedBox(height: 10),
-        const Text(
+        Text(
           'Version $_kAppVersion',
           style: TextStyle(
             fontSize: 12,
@@ -976,15 +999,15 @@ class _PiedDePage extends StatelessWidget {
         const SizedBox(height: 8),
         // Wrap plutôt que Row : sur un écran étroit, la seconde mention passe
         // à la ligne au lieu de déborder.
-        const Wrap(
+        Wrap(
           alignment: WrapAlignment.center,
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 8,
           runSpacing: 4,
           children: [
-            _MentionLegale('Conditions Générales'),
+            const _MentionLegale('Conditions Générales'),
             Text('|', style: TextStyle(fontSize: 12, color: AppColors.border)),
-            _MentionLegale('Avis de Confidentialité'),
+            const _MentionLegale('Avis de Confidentialité'),
           ],
         ),
         const SizedBox(height: 20),
@@ -1007,7 +1030,7 @@ class _MentionLegale extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       libelle,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: AppColors.hint,
@@ -1040,12 +1063,12 @@ class _BoutonDeconnexion extends StatelessWidget {
               borderRadius: BorderRadius.circular(_kPillRadius),
               border: Border.all(color: AppColors.border),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 // Flexible : le libellé se resserre plutôt que de déborder
                 // quand l'utilisateur agrandit la taille du texte système.
                 Flexible(

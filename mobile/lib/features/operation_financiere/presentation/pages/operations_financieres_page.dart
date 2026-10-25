@@ -40,9 +40,9 @@ enum _CategorieFiltre {
       };
 
   Color get couleur => switch (this) {
-        recette     => const Color(0xFF2E7D32),
-        cotisation  => const Color(0xFFE65100),
-        penalite    => const Color(0xFFB71C1C),
+        recette     => AppColors.positive,
+        cotisation  => AppColors.warning,
+        penalite    => AppColors.error,
         maintenance => Colors.indigo,
         document    => Colors.blue,
       };
@@ -193,7 +193,7 @@ class _OperationsFinancieresPageState
                   width: 210,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.blanc,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -225,8 +225,8 @@ class _OperationsFinancieresPageState
                                     : Icons.radio_button_off_outlined,
                                 size: 18,
                                 color: sel
-                                    ? const Color(0xFF43A047)
-                                    : Colors.grey.shade400,
+                                    ? AppColors.primary
+                                    : AppColors.grey400,
                               ),
                               const SizedBox(width: 10),
                               Text(
@@ -237,8 +237,8 @@ class _OperationsFinancieresPageState
                                       ? FontWeight.w600
                                       : FontWeight.w400,
                                   color: sel
-                                      ? const Color(0xFF43A047)
-                                      : const Color(0xFF1A1A1A),
+                                      ? AppColors.primary
+                                      : AppColors.dark,
                                 ),
                               ),
                             ],
@@ -366,7 +366,7 @@ class _OperationsFinancieresPageState
     final typeFiltre = ref.watch(operationsTypeFiltreProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: AppColors.scaffold,
       body: SafeArea(
         top: false,
         child: Column(
@@ -581,27 +581,27 @@ class _FiltreBar extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.blanc,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: AppColors.grey300),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.filter_list_rounded,
-                      size: 14, color: Color(0xFF43A047)),
+                  Icon(Icons.filter_list_rounded,
+                      size: 14, color: AppColors.primary),
                   const SizedBox(width: 5),
                   Text(
                     modeLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF43A047),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(width: 3),
-                  const Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 14, color: Color(0xFF43A047)),
+                  Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 14, color: AppColors.primary),
                 ],
               ),
             ),
@@ -635,19 +635,19 @@ class _DatePill extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: AppColors.grey200,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 13, color: Colors.grey.shade600),
+            Icon(icon, size: 13, color: AppColors.grey600),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade700,
+                  color: AppColors.grey700,
                   fontWeight: FontWeight.w500,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -655,7 +655,7 @@ class _DatePill extends StatelessWidget {
             ),
             const SizedBox(width: 5),
             Icon(Icons.keyboard_arrow_down_rounded,
-                size: 14, color: Colors.grey.shade600),
+                size: 14, color: AppColors.grey600),
           ],
         ),
       ),
@@ -701,7 +701,7 @@ class _SearchBarWidgetState extends State<_SearchBarWidget> {
       decoration: BoxDecoration(
         // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt qu'un
         // blanc avec ombre portée.
-        color: const Color(0xFFF2F3F5),
+        color: AppColors.fieldFill,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -709,10 +709,10 @@ class _SearchBarWidgetState extends State<_SearchBarWidget> {
           _focus.hasFocus
               ? GestureDetector(
                   onTap: _focus.unfocus,
-                  child: const Icon(Icons.close,
-                      color: Color(0xFF8A8A8E), size: 20),
+                  child: Icon(Icons.close,
+                      color: AppColors.hint, size: 20),
                 )
-              : const Icon(Icons.search, color: Color(0xFF8A8A8E), size: 20),
+              : Icon(Icons.search, color: AppColors.hint, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -720,12 +720,12 @@ class _SearchBarWidgetState extends State<_SearchBarWidget> {
               focusNode: _focus,
               onChanged: widget.onChanged,
               style: const TextStyle(fontSize: 14),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Immatriculation, chauffeur, référence…',
                 hintStyle:
-                    TextStyle(color: Color(0xFF8A8A8E), fontSize: 14),
+                    TextStyle(color: AppColors.hint, fontSize: 14),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
@@ -740,8 +740,8 @@ class _SearchBarWidgetState extends State<_SearchBarWidget> {
                       widget.controller.clear();
                       widget.onChanged('');
                     },
-                    child: const Icon(Icons.close_rounded,
-                        size: 18, color: Color(0xFF8A8A8E)),
+                    child: Icon(Icons.close_rounded,
+                        size: 18, color: AppColors.hint),
                   ),
           ),
         ],
@@ -772,7 +772,7 @@ class _OpCard extends StatelessWidget {
     final effetCaisse = isRevenu ? op.montant : -op.montant;
     final entreEnCaisse = effetCaisse >= 0;
     final amountColor =
-        entreEnCaisse ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+        entreEnCaisse ? AppColors.positive : AppColors.error;
     // Une sortie porte son signe ; une entrée s'en passe, sauf sur une extourne
     // où le « + » dit clairement que l'argent revient.
     final sign = entreEnCaisse ? (op.estUneExtourne ? '+' : '') : '-';
@@ -800,7 +800,7 @@ class _OpCard extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -841,7 +841,7 @@ class _OpCard extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: isAnnulee ? Colors.red : const Color(0xFF1A1A1A),
+                      color: isAnnulee ? Colors.red : AppColors.dark,
                       decoration:
                           isAnnulee ? TextDecoration.lineThrough : null,
                       decorationColor: Colors.red,
@@ -858,7 +858,7 @@ class _OpCard extends StatelessWidget {
                   style: TextStyle(
                     // Montant en noir comme le libellé ; le sens de
                     // l'opération se lit sur la pastille d'icône et le signe.
-                    color: isAnnulee ? Colors.red : const Color(0xFF1A1A1A),
+                    color: isAnnulee ? Colors.red : AppColors.dark,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     decoration:
@@ -876,7 +876,7 @@ class _OpCard extends StatelessWidget {
                   child: Text(
                     vehiculeChauffeur,
                     style: TextStyle(
-                        fontSize: 11, color: Colors.grey.shade500),
+                        fontSize: 11, color: AppColors.grey500),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -887,7 +887,7 @@ class _OpCard extends StatelessWidget {
                   // date de référence métier de l'encaissement.
                   DateFormat('dd/MM', 'fr_FR').format(op.dateOperation),
                   style: TextStyle(
-                      fontSize: 10, color: Colors.grey.shade400),
+                      fontSize: 10, color: AppColors.grey400),
                 ),
               ],
             ),
@@ -953,7 +953,7 @@ class _CategorieChipBar extends StatelessWidget {
                 width: 1,
                 height: 18,
                 margin: const EdgeInsets.only(right: 8),
-                color: Colors.grey.shade300,
+                color: AppColors.grey300,
               ),
             ),
             _TypeFiltreChip(type: typeFiltre!, onClear: onClearType!),
@@ -1056,12 +1056,12 @@ class _EmptyState extends StatelessWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: AppColors.grey100,
                   shape: BoxShape.circle,
                 ),
               ),
               Icon(Icons.description_outlined,
-                  size: 38, color: Colors.grey.shade300),
+                  size: 38, color: AppColors.grey300),
             ],
           ),
           const SizedBox(height: 16),
@@ -1070,13 +1070,13 @@ class _EmptyState extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.grey.shade600,
+              color: AppColors.grey600,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             'Aucune opération trouvée',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+            style: TextStyle(fontSize: 13, color: AppColors.grey400),
           ),
         ],
       ),
@@ -1096,7 +1096,7 @@ class _TypeFiltreChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isRevenu = type == 'REVENU';
     final color =
-        isRevenu ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+        isRevenu ? AppColors.positive : AppColors.error;
     final label = isRevenu ? 'Revenus' : 'Dépenses';
     return Center(
       child: Container(

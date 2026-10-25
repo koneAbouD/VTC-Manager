@@ -10,6 +10,7 @@ import 'etat_parc_exception_filtre_sheet.dart';
 import 'etat_parc_exception_navigation.dart';
 import 'etat_parc_filtre_sheet.dart';
 
+import '../../../../core/theme/app_colors.dart';
 /// Largeur à partir de laquelle on bascule en disposition « large »
 /// (tablette / paysage) : KPI et alertes sur une seule rangée.
 const double _kTabletBreakpoint = 600;
@@ -72,16 +73,16 @@ class _Header extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final f = ref.watch(etatParcFiltreProvider);
-    const title = Text(
+    final title = Text(
       "État de parc — aujourd'hui",
       style: TextStyle(
         fontWeight: FontWeight.w800,
         fontSize: 18,
-        color: Color(0xFF1A1A2E),
+        color: AppColors.dark,
       ),
     );
     final actif = f.estActif;
-    const vert = Color(0xFF43A047);
+    final vert = AppColors.primary;
     final filtreBtn = Material(
       color: Colors.transparent,
       child: InkWell(
@@ -92,24 +93,24 @@ class _Header extends ConsumerWidget {
           decoration: BoxDecoration(
             color: actif
                 ? vert.withValues(alpha: 0.1)
-                : Colors.grey.shade100,
+                : AppColors.grey100,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-                color: actif ? vert : Colors.grey.shade300),
+                color: actif ? vert : AppColors.grey300),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.tune_rounded,
                   size: 14,
-                  color: actif ? vert : Colors.grey.shade600),
+                  color: actif ? vert : AppColors.grey600),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
                   'Groupe : ${f.groupeLabel} · Activité : ${f.activiteLabel}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: actif ? vert : Colors.grey.shade600,
+                    color: actif ? vert : AppColors.grey600,
                     fontWeight: actif ? FontWeight.w600 : FontWeight.normal,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -117,7 +118,7 @@ class _Header extends ConsumerWidget {
               ),
               Icon(Icons.keyboard_arrow_down_rounded,
                   size: 16,
-                  color: actif ? vert : Colors.grey.shade600),
+                  color: actif ? vert : AppColors.grey600),
             ],
           ),
         ),
@@ -128,7 +129,7 @@ class _Header extends ConsumerWidget {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Expanded(child: title),
+          Expanded(child: title),
           const SizedBox(width: 12),
           Flexible(child: filtreBtn),
         ],
@@ -153,9 +154,9 @@ class _KpiSection extends StatelessWidget {
   const _KpiSection({required this.data, required this.isWide});
 
   static Color _tauxColor(double taux) {
-    if (taux >= 80) return const Color(0xFF2E7D32);
-    if (taux >= 60) return const Color(0xFFE65100);
-    return const Color(0xFFC62828);
+    if (taux >= 80) return AppColors.positive;
+    if (taux >= 60) return AppColors.warning;
+    return AppColors.error;
   }
 
   static String _pct(double v) =>
@@ -182,14 +183,14 @@ class _KpiSection extends StatelessWidget {
       _KpiTile(
         label: "Taux d'utilisation",
         valeur: _pct(data.tauxUtilisation),
-        valeurColor: const Color(0xFF1A1A2E),
+        valeurColor: AppColors.dark,
         sousLabel: '${data.enService} en service / ${data.parcActif} actifs',
         horizontal: !isWide,
       ),
       _KpiTile(
         label: 'Immobilisés',
         valeur: '${data.immobilises}',
-        valeurColor: const Color(0xFFC62828),
+        valeurColor: AppColors.error,
         sousLabel: immobilisesAnciens > 0
             ? 'dont $immobilisesAnciens depuis plus de 7 j'
             : 'aucun depuis plus de 7 j',
@@ -246,9 +247,9 @@ class _KpiTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final decoration = BoxDecoration(
-      color: Colors.white,
+      color: AppColors.blanc,
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.grey.shade200),
+      border: Border.all(color: AppColors.grey200),
     );
 
     if (horizontal) {
@@ -263,11 +264,11 @@ class _KpiTile extends StatelessWidget {
                 children: [
                   Text(label,
                       style: TextStyle(
-                          fontSize: 12.5, color: Colors.grey.shade700)),
+                          fontSize: 12.5, color: AppColors.grey700)),
                   const SizedBox(height: 2),
                   Text(sousLabel,
                       style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade500)),
+                          fontSize: 11, color: AppColors.grey500)),
                 ],
               ),
             ),
@@ -293,7 +294,7 @@ class _KpiTile extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
+            style: TextStyle(fontSize: 12.5, color: AppColors.grey700),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -309,7 +310,7 @@ class _KpiTile extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             sousLabel,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: 11, color: AppColors.grey500),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -395,14 +396,14 @@ class _LegendeItem extends StatelessWidget {
             children: [
               TextSpan(
                 text: '$label ',
-                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
+                style: TextStyle(fontSize: 12.5, color: AppColors.grey700),
               ),
               TextSpan(
                 text: '$count',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A2E),
+                  color: AppColors.dark,
                 ),
               ),
             ],
@@ -438,13 +439,13 @@ class _ExceptionsCard extends ConsumerWidget {
           padding: const EdgeInsets.only(bottom: 10),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Véhicules demandant une action',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
-                    color: Color(0xFF1A1A2E),
+                    color: AppColors.dark,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -463,9 +464,9 @@ class _ExceptionsCard extends ConsumerWidget {
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.blanc,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: AppColors.grey200),
           ),
           child: visibles.isEmpty
               // Le critère ne retient plus rien (données rafraîchies depuis).
@@ -481,7 +482,7 @@ class _ExceptionsCard extends ConsumerWidget {
                     padding: EdgeInsets.zero,
                     itemCount: visibles.length,
                     separatorBuilder: (_, __) => Divider(
-                        height: 1, indent: 60, color: Colors.grey.shade100),
+                        height: 1, indent: 60, color: AppColors.grey100),
                     itemBuilder: (_, i) =>
                         _ExceptionTile(exception: visibles[i]),
                   ),
@@ -507,8 +508,8 @@ class _ExceptionFiltreBouton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const vert = Color(0xFF43A047);
-    final couleur = actif ? vert : Colors.grey.shade600;
+    final vert = AppColors.primary;
+    final couleur = actif ? vert : AppColors.grey600;
 
     return Material(
       color: Colors.transparent,
@@ -521,10 +522,10 @@ class _ExceptionFiltreBouton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color:
-                  actif ? vert.withValues(alpha: 0.1) : Colors.grey.shade100,
+                  actif ? vert.withValues(alpha: 0.1) : AppColors.grey100,
               borderRadius: BorderRadius.circular(20),
               border:
-                  Border.all(color: actif ? vert : Colors.grey.shade300),
+                  Border.all(color: actif ? vert : AppColors.grey300),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -568,12 +569,12 @@ class _ExceptionsVide extends StatelessWidget {
       child: Row(
         children: [
           Icon(Icons.filter_alt_off_outlined,
-              size: 20, color: Colors.grey.shade400),
+              size: 20, color: AppColors.grey400),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'Aucun véhicule pour ce critère',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 13, color: AppColors.grey600),
             ),
           ),
           TextButton(
@@ -583,8 +584,8 @@ class _ExceptionsVide extends StatelessWidget {
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text('Tout voir',
-                style: TextStyle(fontSize: 12.5, color: Color(0xFF43A047))),
+            child: Text('Tout voir',
+                style: TextStyle(fontSize: 12.5, color: AppColors.primary)),
           ),
         ],
       ),
@@ -627,7 +628,7 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
     }
     final choisie = await showModalBottomSheet<ActionVehiculeModel>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -672,10 +673,10 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
                       if (exception.libelleVehicule.isNotEmpty)
                         exception.libelleVehicule,
                     ].join(' · '),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 13,
-                      color: Color(0xFF1A1A2E),
+                      color: AppColors.dark,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -685,7 +686,7 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
                     '${statut.libelle} — '
                     '${exception.actions.map((a) => a.motifLabel).join(' · ')}',
                     style:
-                        TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        TextStyle(fontSize: 12, color: AppColors.grey600),
                     // Plusieurs motifs peuvent ne pas tenir sur une ligne.
                     maxLines: plusieurs ? 2 : 1,
                     overflow: TextOverflow.ellipsis,
@@ -699,7 +700,7 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
                         children: [
                           if (plusieurs) ...[
                             Icon(iconeMotifException(action.motif),
-                                size: 12, color: Colors.grey.shade500),
+                                size: 12, color: AppColors.grey500),
                             const SizedBox(width: 4),
                           ],
                           Expanded(
@@ -707,7 +708,7 @@ class _ExceptionTileState extends ConsumerState<_ExceptionTile> {
                               echeanceAction(action)!,
                               style: TextStyle(
                                   fontSize: 11.5,
-                                  color: Colors.grey.shade500),
+                                  color: AppColors.grey500),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -789,7 +790,7 @@ class _ActionsVehiculeSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppColors.grey300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -798,17 +799,17 @@ class _ActionsVehiculeSheet extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
               child: Text(
                 exception.immatriculation,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
-                  color: Color(0xFF1A1A2E),
+                  color: AppColors.dark,
                 ),
               ),
             ),
             for (final action in exception.actions)
               ListTile(
                 leading: Icon(iconeMotifException(action.motif),
-                    color: const Color(0xFF1A1A2E)),
+                    color: AppColors.dark),
                 title: Text(action.motifLabel,
                     style: const TextStyle(
                         fontWeight: FontWeight.w600, fontSize: 14)),
@@ -841,7 +842,7 @@ class _AlertesSection extends StatelessWidget {
       if (n.documentsExpirantSous30Jours > 0)
         _AlerteTile(
           icon: Icons.description_outlined,
-          color: const Color(0xFFE65100),
+          color: AppColors.warning,
           gras: '${n.documentsExpirantSous30Jours} document'
               '${s(n.documentsExpirantSous30Jours)}',
           reste: 'expiré${s(n.documentsExpirantSous30Jours)} '
@@ -850,7 +851,7 @@ class _AlertesSection extends StatelessWidget {
       if (n.maintenancesDuesSous7Jours > 0)
         _AlerteTile(
           icon: Icons.build_outlined,
-          color: const Color(0xFFE65100),
+          color: AppColors.warning,
           gras: '${n.maintenancesDuesSous7Jours} véhicule'
               '${s(n.maintenancesDuesSous7Jours)}',
           reste: 'à entretenir sous 7 j',
@@ -858,14 +859,14 @@ class _AlertesSection extends StatelessWidget {
       if (n.vidangesDues > 0)
         _AlerteTile(
           icon: Icons.oil_barrel_outlined,
-          color: const Color(0xFFE65100),
+          color: AppColors.warning,
           gras: '${n.vidangesDues} vidange${s(n.vidangesDues)}',
           reste: 'prévue${s(n.vidangesDues)} (échéance ou kilométrage)',
         ),
       if (n.permisExpires > 0)
         _AlerteTile(
           icon: Icons.badge_outlined,
-          color: const Color(0xFFC62828),
+          color: AppColors.error,
           gras: '${n.permisExpires} permis',
           reste: 'chauffeur expiré${s(n.permisExpires)}',
         ),
@@ -874,14 +875,14 @@ class _AlertesSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 10),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
           child: Text(
             'Alertes préventives (30 j)',
             style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 15,
-              color: Color(0xFF1A1A2E),
+              color: AppColors.dark,
             ),
           ),
         ),
@@ -931,9 +932,9 @@ class _AlerteTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.grey200),
       ),
       child: Row(
         children: [
@@ -954,7 +955,7 @@ class _AlerteTile extends StatelessWidget {
                   TextSpan(
                     text: reste,
                     style: TextStyle(
-                        fontSize: 13, color: Colors.grey.shade700),
+                        fontSize: 13, color: AppColors.grey700),
                   ),
                 ],
               ),
@@ -979,7 +980,7 @@ class _ErreurSynthese extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(

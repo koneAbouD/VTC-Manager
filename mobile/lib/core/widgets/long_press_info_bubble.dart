@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
 /// Enveloppe un élément (ex. chip de statut) : un **appui prolongé** affiche une
 /// petite info-bulle premium (fond blanc, contour + pointe à la couleur donnée)
 /// avec [infoText] ; elle disparaît au relâchement. Le [onTap] éventuel reste
@@ -67,7 +68,7 @@ class _LongPressInfoBubbleState extends State<LongPressInfoBubble> {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 6 + _tailHeight),
       decoration: ShapeDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         shape: _BubbleTailBorder(
           color: widget.color,
           radius: 9,

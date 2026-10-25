@@ -6,12 +6,13 @@ import '../../../vehicule/data/datasources/referentiel_datasource.dart';
 import '../../../vehicule/presentation/providers/referentiel_provider.dart';
 import '../providers/etat_parc_provider.dart';
 
+import '../../../../core/theme/app_colors.dart';
 /// Ouvre le sélecteur de filtre (groupe / activité) de l'état de parc.
 Future<void> showEtatParcFiltreSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.blanc,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -91,7 +92,7 @@ class _EtatParcFiltreSheetState extends ConsumerState<_EtatParcFiltreSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppColors.grey300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -126,13 +127,13 @@ class _EtatParcFiltreSheetState extends ConsumerState<_EtatParcFiltreSheet> {
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: Colors.grey.shade300),
+                        side: BorderSide(color: AppColors.grey300),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: _reinitialiser,
-                      child: const Text('Réinitialiser',
-                          style: TextStyle(color: Colors.black54)),
+                      child: Text('Réinitialiser',
+                          style: TextStyle(color: AppColors.grey600)),
                     ),
                   ),
                 if (aUnFiltre) const SizedBox(width: 12),
@@ -140,7 +141,7 @@ class _EtatParcFiltreSheetState extends ConsumerState<_EtatParcFiltreSheet> {
                   flex: 2,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF43A047),
+                      backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
@@ -183,7 +184,7 @@ class _RefDropdown extends StatelessWidget {
             style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700)),
+                color: AppColors.grey700)),
         const SizedBox(height: 6),
         items.when(
           loading: () => const _DropdownSquelette(texte: 'Chargement…'),
@@ -225,7 +226,7 @@ class _DropdownSquelette extends StatelessWidget {
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F5),
+        color: AppColors.fieldFill,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -240,7 +241,7 @@ class _DropdownSquelette extends StatelessWidget {
           ],
           Text(texte,
               style: TextStyle(
-                  color: erreur ? Colors.red : Colors.grey, fontSize: 13)),
+                  color: erreur ? Colors.red : AppColors.grey500, fontSize: 13)),
         ],
       ),
     );

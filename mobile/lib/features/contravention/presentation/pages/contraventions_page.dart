@@ -27,10 +27,10 @@ void _appToast(
   Duration? duration,
 }) {
   final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.success => (AppColors.success, Icons.check_circle_outline_rounded),
+    _ToastType.error   => (AppColors.error, Icons.error_outline_rounded),
+    _ToastType.warning => (AppColors.warning, Icons.warning_amber_rounded),
+    _ToastType.info    => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -195,7 +195,7 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                   width: 210,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.blanc,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -227,8 +227,8 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                                     : Icons.radio_button_off_outlined,
                                 size: 18,
                                 color: sel
-                                    ? const Color(0xFF43A047)
-                                    : Colors.grey.shade400,
+                                    ? AppColors.primary
+                                    : AppColors.grey400,
                               ),
                               const SizedBox(width: 10),
                               Text(
@@ -238,8 +238,8 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                                   fontWeight:
                                       sel ? FontWeight.w600 : FontWeight.w400,
                                   color: sel
-                                      ? const Color(0xFF43A047)
-                                      : const Color(0xFF1A1A1A),
+                                      ? AppColors.primary
+                                      : AppColors.dark,
                                 ),
                               ),
                             ],
@@ -403,16 +403,16 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                 child: Container(
                   width: 56,
                   height: 56,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.primaryTint,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.account_balance_outlined,
+                  child: Icon(Icons.account_balance_outlined,
                       size: 28, color: AppColors.primaryDark),
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
+              Text(
                 'Reverser la sélection',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -427,7 +427,7 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                 'Une opération « Reversement contravention » sera enregistrée '
                 'pour chacune.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13.5, height: 1.4, color: AppColors.label),
               ),
               const SizedBox(height: 18),
@@ -445,11 +445,11 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.surface,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.payments_outlined,
+                      child: Icon(Icons.payments_outlined,
                           size: 20, color: AppColors.primaryDark),
                     ),
                     const SizedBox(width: 12),
@@ -457,14 +457,14 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Total à reverser',
+                          Text('Total à reverser',
                               style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primaryDark)),
                           const SizedBox(height: 2),
                           Text('${_money.format(total)} XOF',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 21,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.primaryDark,
@@ -499,7 +499,7 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                         onPressed: () => Navigator.pop(ctx, false),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.label,
-                          side: const BorderSide(color: AppColors.border),
+                          side: BorderSide(color: AppColors.border),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
                         ),
@@ -822,7 +822,7 @@ class _ListToolbar extends StatelessWidget {
       child: Row(
         children: [
           Text('$count contravention(s)',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.label)),
@@ -861,7 +861,7 @@ class _SelectionActionBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
@@ -872,12 +872,12 @@ class _SelectionActionBar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Total à reverser',
+                  Text('Total à reverser',
                       style:
                           TextStyle(fontSize: 11.5, color: AppColors.label)),
                   const SizedBox(height: 2),
                   Text('${_money.format(total)} XOF',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: AppColors.dark)),
@@ -944,7 +944,7 @@ class _PayingOverlay extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
-                const Text('Reversement en cours…',
+                Text('Reversement en cours…',
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -952,7 +952,7 @@ class _PayingOverlay extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text('$done / $total',
                     style:
-                        const TextStyle(fontSize: 13, color: AppColors.label)),
+                        TextStyle(fontSize: 13, color: AppColors.label)),
               ],
             ),
           ),
@@ -979,10 +979,10 @@ class _StatutChips extends StatelessWidget {
 
   // Couleurs alignées sur les badges de statut de ContraventionCard.
   static const _ambre = Color(0xFF854F0B);
-  static const _vert = Color(0xFF2E7D32);
-  static const _hint = Color(0xFF8A94A6);
+  static Color get _vert => AppColors.positive;
+  static Color get _hint => AppColors.hint;
 
-  static const List<(String?, String, Color)> _options = [
+  static List<(String?, String, Color)> get _options => [
     (null, 'Toutes', _hint),
     ('ATTENTE', 'En attente', _hint),
     ('PARTIEL', 'Partiel', _ambre),
@@ -1067,7 +1067,7 @@ class _SearchBarState extends State<_SearchBar> {
       decoration: BoxDecoration(
         // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt qu'un
         // fond blanc bordé.
-        color: const Color(0xFFF2F3F5),
+        color: AppColors.fieldFill,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -1076,22 +1076,22 @@ class _SearchBarState extends State<_SearchBar> {
               ? GestureDetector(
                   onTap: _focus.unfocus,
                   child:
-                      const Icon(Icons.close, size: 20, color: AppColors.hint),
+                      Icon(Icons.close, size: 20, color: AppColors.hint),
                 )
-              : const Icon(Icons.search, size: 20, color: AppColors.hint),
+              : Icon(Icons.search, size: 20, color: AppColors.hint),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: widget.controller,
               focusNode: _focus,
               onChanged: widget.onChanged,
-              style: const TextStyle(fontSize: 14, color: AppColors.dark),
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 14, color: AppColors.dark),
+              decoration: InputDecoration(
                 hintText: 'Numéro, véhicule, chauffeur…',
                 hintStyle: TextStyle(color: AppColors.hint, fontSize: 14),
                 border: InputBorder.none,
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 13),
+                contentPadding: const EdgeInsets.symmetric(vertical: 13),
               ),
             ),
           ),
@@ -1104,7 +1104,7 @@ class _SearchBarState extends State<_SearchBar> {
                       widget.controller.clear();
                       widget.onChanged('');
                     },
-                    child: const Icon(Icons.close,
+                    child: Icon(Icons.close,
                         size: 17, color: AppColors.hint),
                   ),
           ),
@@ -1195,27 +1195,27 @@ class _FiltreDateBar extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.blanc,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: AppColors.grey300),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.filter_list_rounded,
-                      size: 14, color: Color(0xFF43A047)),
+                  Icon(Icons.filter_list_rounded,
+                      size: 14, color: AppColors.primary),
                   const SizedBox(width: 5),
                   Text(
                     modeLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF43A047),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(width: 3),
-                  const Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 14, color: Color(0xFF43A047)),
+                  Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 14, color: AppColors.primary),
                 ],
               ),
             ),
@@ -1243,19 +1243,19 @@ class _DatePill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: AppColors.grey200,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 13, color: Colors.grey.shade600),
+            Icon(icon, size: 13, color: AppColors.grey600),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade700,
+                  color: AppColors.grey700,
                   fontWeight: FontWeight.w500,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -1263,7 +1263,7 @@ class _DatePill extends StatelessWidget {
             ),
             const SizedBox(width: 5),
             Icon(Icons.keyboard_arrow_down_rounded,
-                size: 14, color: Colors.grey.shade600),
+                size: 14, color: AppColors.grey600),
           ],
         ),
       ),
@@ -1281,10 +1281,10 @@ class _EmptyView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.gavel, size: 64, color: Colors.grey),
+          Icon(Icons.gavel, size: 64, color: AppColors.grey500),
           const SizedBox(height: 16),
-          const Text('Aucune contravention',
-              style: TextStyle(fontSize: 16, color: Colors.grey)),
+          Text('Aucune contravention',
+              style: TextStyle(fontSize: 16, color: AppColors.grey500)),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: onRetry,

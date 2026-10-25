@@ -7,6 +7,7 @@ import '../../../core/widgets/app_header.dart';
 import '../../../core/widgets/date_filter_dialogs.dart';
 import '../data/jour_ferie_api.dart';
 
+import '../../../core/theme/app_colors.dart';
 /// Écran d'administration des jours fériés (Côte d'Ivoire).
 ///
 /// Modèle hybride : le bouton « Générer l'année » calcule les fériés
@@ -90,7 +91,7 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
     final ajoute = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -176,16 +177,16 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.event_busy, size: 48, color: Colors.grey.shade400),
+              Icon(Icons.event_busy, size: 48, color: AppColors.grey400),
               const SizedBox(height: 12),
               Text('Aucun jour férié pour $_annee.',
-                  style: TextStyle(color: Colors.grey.shade600)),
+                  style: TextStyle(color: AppColors.grey600)),
               const SizedBox(height: 4),
               Text(
                 'Utilisez « Générer » pour les fériés fixes et chrétiens, '
                 'puis ajoutez les fêtes musulmanes à la main.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                style: TextStyle(color: AppColors.grey500, fontSize: 12),
               ),
             ],
           ),
@@ -209,7 +210,7 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
   Widget _carte(JourFerie f) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(14),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -230,7 +231,7 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
                   const SizedBox(width: 6),
                   _badge(
                       f.isManuel ? 'Manuel' : 'Auto',
-                      f.isManuel ? const Color(0xFF9C6D00) : Colors.grey.shade600),
+                      f.isManuel ? const Color(0xFF9C6D00) : AppColors.grey600),
                 ]),
               ],
             ),
@@ -311,7 +312,7 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
         'FIXE' => const Color(0xFF3B5BDB),
         'CHRETIEN' => const Color(0xFF7048E8),
         'MUSULMAN' => const Color(0xFF0CA678),
-        _ => Colors.grey,
+        _ => AppColors.grey500,
       };
 
   void _snack(String msg) {
@@ -413,7 +414,7 @@ class _AjoutJourFerieSheetState extends State<_AjoutJourFerieSheet> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text('Fêtes musulmanes ou décrets non calculés automatiquement.',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              style: TextStyle(fontSize: 12, color: AppColors.grey500)),
           const SizedBox(height: 16),
           InkWell(
             onTap: _pickDate,
@@ -421,7 +422,7 @@ class _AjoutJourFerieSheetState extends State<_AjoutJourFerieSheet> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: AppColors.grey300),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(children: [
@@ -432,7 +433,7 @@ class _AjoutJourFerieSheetState extends State<_AjoutJourFerieSheet> {
                       ? 'Choisir une date'
                       : '${_date!.day}/${_date!.month}/${_date!.year}',
                   style: TextStyle(
-                      color: _date == null ? Colors.grey.shade500 : Colors.black87),
+                      color: _date == null ? AppColors.grey500 : AppColors.noir87),
                 ),
               ]),
             ),

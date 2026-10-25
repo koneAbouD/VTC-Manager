@@ -17,17 +17,18 @@ import '../../../features/recu/presentation/proposer_recu.dart';
 import '../../../features/versement/presentation/providers/versement_provider.dart';
 import '../../finance/finance_refresh.dart';
 
+import '../../../core/theme/app_colors.dart';
 // ── Palette (cohérente avec MaintenanceFormPage) ──────────────────────────────
 
 const _kPrimary   = Color(0xFF3B5BDB);
-const _kGreen     = Color(0xFF2E7D32);
-const _kOrange    = Color(0xFFE65100);
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint      = Color(0xFF9AA0AE);
-const _kLabel     = Color(0xFF6B7280);
-const _kBorder    = Color(0xFFE3E6EE);
-const _kDark      = Color(0xFF1A1A2E);
-const _kError     = Color(0xFFE03131);
+Color get _kGreen => AppColors.positive;
+Color get _kOrange => AppColors.warning;
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kLabel => AppColors.label;
+Color get _kBorder => AppColors.border;
+Color get _kDark => AppColors.dark;
+Color get _kError => AppColors.error;
 
 // ── Entrée du bottom sheet ────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ Future<bool> showEncaissementRapideDialog(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: const Color(0xFFF8F9FB),
+    backgroundColor: AppColors.scaffold,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -426,15 +427,15 @@ class _EncaissementRapideSheetState
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppColors.grey300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
 
             // ── Titre ─────────────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.only(bottom: 14),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
               child: Text(
                 'Encaissement rapide',
                 textAlign: TextAlign.center,
@@ -469,9 +470,9 @@ class _EncaissementRapideSheetState
                     controller: ctrl,
                     focusNode:  focus,
                     onFieldSubmitted: (_) => onSubmit(),
-                    style: const TextStyle(fontSize: 15, color: _kDark),
+                    style: TextStyle(fontSize: 15, color: _kDark),
                     decoration: _fieldDeco('Rechercher un véhicule…').copyWith(
-                      prefixIcon: const Icon(Icons.search,
+                      prefixIcon: Icon(Icons.search,
                           size: 18, color: _kHint),
                       suffixIcon: lignesLoading
                           ? const Padding(
@@ -484,7 +485,7 @@ class _EncaissementRapideSheetState
                               ),
                             )
                           : _vehicule != null && lignesOk
-                              ? const Icon(Icons.check_circle_outline_rounded,
+                              ? Icon(Icons.check_circle_outline_rounded,
                                   size: 18, color: _kGreen)
                               : null,
                     ),
@@ -505,7 +506,7 @@ class _EncaissementRapideSheetState
                           shrinkWrap: true,
                           itemCount: options.length,
                           separatorBuilder: (_, __) =>
-                              Divider(height: 1, color: Colors.grey.shade100),
+                              Divider(height: 1, color: AppColors.grey100),
                           itemBuilder: (_, i) {
                             final v = options.elementAt(i);
                             return ListTile(
@@ -520,12 +521,12 @@ class _EncaissementRapideSheetState
                                     size: 17),
                               ),
                               title: Text(v.immatriculation,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                       color: _kDark)),
                               subtitle: Text(v.displayName,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 11, color: _kHint)),
                               onTap: () => onSelected(v),
                             );
@@ -581,10 +582,10 @@ class _EncaissementRapideSheetState
                         // la recette du jour, la cotisation, ou les deux.
                         plafond:        totalRestantConnu,
                         libellePlafond: 'le total restant',
-                        style: const TextStyle(fontSize: 15, color: _kDark),
+                        style: TextStyle(fontSize: 15, color: _kDark),
                         decoration: _fieldDeco('0').copyWith(
                           suffixText: 'XOF',
-                          suffixStyle: const TextStyle(
+                          suffixStyle: TextStyle(
                               color: _kLabel,
                               fontSize: 13,
                               fontWeight: FontWeight.w600),
@@ -615,7 +616,7 @@ class _EncaissementRapideSheetState
                       child: TextFormField(
                         controller: _commentCtrl,
                         maxLines:   2,
-                        style: const TextStyle(fontSize: 15, color: _kDark),
+                        style: TextStyle(fontSize: 15, color: _kDark),
                         decoration: _fieldDeco('Remarques éventuelles…'),
                       ),
                     ),
@@ -658,7 +659,7 @@ class _EncaissementRapideSheetState
                 style: FilledButton.styleFrom(
                   backgroundColor: _kGreen,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey.shade200,
+                  disabledBackgroundColor: AppColors.grey200,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
@@ -707,7 +708,7 @@ class _LignesCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
@@ -726,7 +727,7 @@ class _LignesCard extends StatelessWidget {
                   size: 18, color: _kPrimary),
             ),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -736,7 +737,7 @@ class _LignesCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: _kDark,
                           letterSpacing: -0.2)),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text('Décochez une ligne pour la retirer du versement',
                       style: TextStyle(fontSize: 11, color: _kHint)),
                 ],
@@ -760,7 +761,7 @@ class _LignesCard extends StatelessWidget {
             ),
 
           if (ligneRecette != null && ligneCotisation != null)
-            Divider(height: 16, color: Colors.grey.shade100),
+            Divider(height: 16, color: AppColors.grey100),
 
           // Cotisation
           if (ligneCotisation != null)
@@ -826,7 +827,7 @@ class _LigneBadge extends StatelessWidget {
               value: selectionne,
               onChanged: onChanged,
               activeColor: color,
-              side: const BorderSide(color: _kHint, width: 1.6),
+              side: BorderSide(color: _kHint, width: 1.6),
               visualDensity: VisualDensity.compact,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: RoundedRectangleBorder(
@@ -854,12 +855,12 @@ class _LigneBadge extends StatelessWidget {
                         color: selectionne ? _kDark : _kHint)),
                 const SizedBox(height: 2),
                 Row(children: [
-                  const Icon(Icons.event_outlined, size: 11, color: _kHint),
+                  Icon(Icons.event_outlined, size: 11, color: _kHint),
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(jour,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
                             color: _kHint)),
@@ -914,7 +915,7 @@ class _RepartitionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(Icons.alt_route_outlined, size: 13, color: _kGreen),
+            Icon(Icons.alt_route_outlined, size: 13, color: _kGreen),
             const SizedBox(width: 5),
             Text('Répartition du montant',
                 style: TextStyle(
@@ -967,7 +968,7 @@ class _RepartitionRow extends StatelessWidget {
       Icon(icon, size: 13, color: color),
       const SizedBox(width: 6),
       Text(label,
-          style: const TextStyle(fontSize: 12, color: _kLabel)),
+          style: TextStyle(fontSize: 12, color: _kLabel)),
       const Spacer(),
       Text(value,
           style: TextStyle(
@@ -1047,7 +1048,7 @@ class _FormCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
@@ -1065,7 +1066,7 @@ class _FormCard extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(title,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: _kDark,
@@ -1097,13 +1098,13 @@ class _LabeledField extends StatelessWidget {
       children: [
         Row(children: [
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: _kLabel)),
           if (isRequired) ...[
             const SizedBox(width: 3),
-            const Text('*',
+            Text('*',
                 style: TextStyle(
                     color: _kError,
                     fontSize: 13,
@@ -1119,7 +1120,7 @@ class _LabeledField extends StatelessWidget {
 
 InputDecoration _fieldDeco(String hint) => InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+      hintStyle: TextStyle(color: _kHint, fontSize: 15),
       filled: true,
       fillColor: _kFieldFill,
       contentPadding:
@@ -1138,10 +1139,10 @@ InputDecoration _fieldDeco(String hint) => InputDecoration(
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kError, width: 1.5),
+        borderSide: BorderSide(color: _kError, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kError, width: 1.5),
+        borderSide: BorderSide(color: _kError, width: 1.5),
       ),
     );

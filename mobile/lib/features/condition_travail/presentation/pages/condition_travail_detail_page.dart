@@ -6,11 +6,12 @@ import 'condition_travail_models.dart';
 import 'condition_travail_wizard_page.dart';
 import 'condition_travail_liste_page.dart' show conditionsTravailListeProvider;
 
+import '../../../../core/theme/app_colors.dart';
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const _kPrimary = Color(0xFF43A047);
-const _kDark = Color(0xFF1A1A2E);
-const _kBg = Color(0xFFF4F6FB);
+Color get _kPrimary => AppColors.primary;
+Color get _kDark => AppColors.dark;
+Color get _kBg => AppColors.scaffold;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -250,7 +251,7 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -279,7 +280,7 @@ class _SectionCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                     color: _kDark,
@@ -289,7 +290,7 @@ class _SectionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Divider(height: 1, color: Color(0xFFF0F2F8)),
+          Divider(height: 1, color: AppColors.headerButton),
           ...children,
           const SizedBox(height: 4),
         ],
@@ -319,7 +320,7 @@ class _InfoRow extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey.shade600,
+                color: AppColors.grey600,
               ),
             ),
           ),
@@ -328,7 +329,7 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: _kDark,
@@ -353,7 +354,7 @@ class _CotisationsSection extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -374,14 +375,14 @@ class _CotisationsSection extends StatelessWidget {
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
+                    color: AppColors.positiveTint,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.savings_rounded,
-                      size: 16, color: Color(0xFF43A047)),
+                  child: Icon(Icons.savings_rounded,
+                      size: 16, color: AppColors.primary),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Cotisations',
                     style: TextStyle(
@@ -395,15 +396,15 @@ class _CotisationsSection extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
+                    color: AppColors.positiveTint,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${total.toStringAsFixed(0)} XOF',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF43A047),
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -411,13 +412,13 @@ class _CotisationsSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Divider(height: 1, color: Color(0xFFF0F2F8)),
+          Divider(height: 1, color: AppColors.headerButton),
           if (cotisations.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
                 'Aucune cotisation',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                style: TextStyle(color: AppColors.grey500, fontSize: 13),
               ),
             )
           else
@@ -430,8 +431,8 @@ class _CotisationsSection extends StatelessWidget {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF43A047),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -439,13 +440,13 @@ class _CotisationsSection extends StatelessWidget {
                     Expanded(
                       child: Text(
                         c.nom,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 13, color: _kDark),
                       ),
                     ),
                     Text(
                       '${c.montant.toStringAsFixed(0)} XOF',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: _kDark,
@@ -487,7 +488,7 @@ class _PenalitesSection extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -515,7 +516,7 @@ class _PenalitesSection extends StatelessWidget {
                       size: 16, color: Colors.red.shade700),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Pénalités',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
@@ -544,14 +545,14 @@ class _PenalitesSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Divider(height: 1, color: Color(0xFFF0F2F8)),
+          Divider(height: 1, color: AppColors.headerButton),
           if (groups.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
                 'Aucune pénalité configurée',
                 style:
-                    TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                    TextStyle(color: AppColors.grey500, fontSize: 13),
               ),
             )
           else
@@ -601,7 +602,7 @@ class _PenaliteGroup extends StatelessWidget {
             child: Text(
               'Aucune sanction',
               style:
-                  TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  TextStyle(fontSize: 12, color: AppColors.grey400),
             ),
           )
         else
@@ -621,7 +622,7 @@ class _PenaliteGroup extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     labelsSanction[s.typeSanction] ?? s.typeSanction,
-                    style: const TextStyle(fontSize: 13, color: _kDark),
+                    style: TextStyle(fontSize: 13, color: _kDark),
                   ),
                   const Spacer(),
                   Text(
@@ -636,7 +637,7 @@ class _PenaliteGroup extends StatelessWidget {
               ),
             ),
           ),
-        const Divider(height: 1, color: Color(0xFFF0F2F8)),
+        Divider(height: 1, color: AppColors.headerButton),
       ],
     );
   }

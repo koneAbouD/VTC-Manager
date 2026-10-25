@@ -13,10 +13,10 @@ enum _ToastType { success, error, warning, info }
 void _appToast(BuildContext context, String message,
     {_ToastType type = _ToastType.success, Duration? duration}) {
   final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.success => (AppColors.success, Icons.check_circle_outline_rounded),
+    _ToastType.error   => (AppColors.error, Icons.error_outline_rounded),
+    _ToastType.warning => (AppColors.warning, Icons.warning_amber_rounded),
+    _ToastType.info    => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -117,7 +117,7 @@ class _GestionnaireFormPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       appBar: const AppHeader(title: 'Nouveau gestionnaire'),
       body: SafeArea(
         child: Column(
@@ -136,13 +136,13 @@ class _GestionnaireFormPageState
               child: Row(
                 children: [
                   Icon(Icons.info_outline,
-                      size: 14, color: Colors.grey.shade500),
+                      size: 14, color: AppColors.grey500),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       'Un utilisateur avec le rôle Gestionnaire sera automatiquement créé.',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade500),
+                          fontSize: 12, color: AppColors.grey500),
                     ),
                   ),
                 ],
@@ -282,14 +282,14 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.grey.shade600),
+        Icon(icon, size: 16, color: AppColors.grey600),
         const SizedBox(width: 6),
         Text(
           text,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade600,
+            color: AppColors.grey600,
             letterSpacing: 0.3,
           ),
         ),
@@ -335,9 +335,9 @@ class _Field extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle:
-                TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                TextStyle(color: AppColors.grey400, fontSize: 14),
             filled: true,
-            fillColor: const Color(0xFFF5F5F5),
+            fillColor: AppColors.scaffold,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide.none,

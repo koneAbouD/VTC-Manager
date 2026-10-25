@@ -6,16 +6,17 @@ import 'date_filter_dialogs.dart';
 import 'montant_field.dart';
 import 'premium_select_field.dart';
 
+import '../../core/theme/app_colors.dart';
 // ── Palette (cohérente avec MaintenanceFormPage) ──────────────────────────────
 
 const _kPrimary   = Color(0xFF3B5BDB);
-const _kGreen     = Color(0xFF2E7D32);
-const _kFieldFill = Color(0xFFF2F3F5);
-const _kHint      = Color(0xFF9AA0AE);
-const _kLabel     = Color(0xFF6B7280);
-const _kBorder    = Color(0xFFE3E6EE);
-const _kDark      = Color(0xFF1A1A2E);
-const _kError     = Color(0xFFE03131);
+Color get _kGreen => AppColors.positive;
+Color get _kFieldFill => AppColors.fieldFill;
+Color get _kHint => AppColors.hint;
+Color get _kLabel => AppColors.label;
+Color get _kBorder => AppColors.border;
+Color get _kDark => AppColors.dark;
+Color get _kError => AppColors.error;
 
 // ── Bouton "Encaisser" réutilisable sur les cartes ────────────────────────────
 
@@ -23,11 +24,11 @@ class EncaisserChip extends StatelessWidget {
   final VoidCallback onTap;
   final Color color;
 
-  const EncaisserChip({
+  EncaisserChip({
     super.key,
     required this.onTap,
-    this.color = _kGreen,
-  });
+    Color? color,
+  }) : color = color ?? _kGreen;
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +148,7 @@ Future<bool?> showEncaissementLigneDialog(
   required String titre,
   String? sousTitre,
   double? montantRestant,
-  Color couleur = _kGreen,
+  Color? couleur,
   IconData icone = Icons.payments_outlined,
   required Future<String?> Function(SaisieEncaissement saisie) onEncaisser,
   LigneJumelleEncaissement? jumelle,
@@ -156,7 +157,7 @@ Future<bool?> showEncaissementLigneDialog(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: const Color(0xFFF8F9FB),
+    backgroundColor: AppColors.scaffold,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -164,7 +165,7 @@ Future<bool?> showEncaissementLigneDialog(
       titre: titre,
       sousTitre: sousTitre,
       montantRestant: montantRestant,
-      couleur: couleur,
+      couleur: couleur ?? _kGreen,
       icone: icone,
       onEncaisser: onEncaisser,
       jumelle: jumelle,
@@ -404,15 +405,15 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppColors.grey300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
 
             // ── Titre ─────────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.only(bottom: 14),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
               child: Text(
                 'Encaisser',
                 textAlign: TextAlign.center,
@@ -464,10 +465,10 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                       // Ce que le versement peut couvrir : la ligne ouverte,
                       // plus la ligne du même jour quand elle est cochée.
                       plafond: _plafond,
-                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      style: TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco('0').copyWith(
                         suffixText: 'XOF',
-                        suffixStyle: const TextStyle(
+                        suffixStyle: TextStyle(
                             color: _kLabel,
                             fontSize: 13,
                             fontWeight: FontWeight.w600),
@@ -517,7 +518,7 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                       label: 'Référence Mobile Money',
                       child: TextFormField(
                         controller: _refCtrl,
-                        style: const TextStyle(fontSize: 15, color: _kDark),
+                        style: TextStyle(fontSize: 15, color: _kDark),
                         decoration: _fieldDeco('N° de transaction'),
                       ),
                     ),
@@ -540,7 +541,7 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                     child: TextFormField(
                       controller: _commentCtrl,
                       maxLines:   2,
-                      style: const TextStyle(fontSize: 15, color: _kDark),
+                      style: TextStyle(fontSize: 15, color: _kDark),
                       decoration: _fieldDeco('Remarques éventuelles…'),
                     ),
                   ),
@@ -580,7 +581,7 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: _kGreen,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey.shade200,
+                  disabledBackgroundColor: AppColors.grey200,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
@@ -624,16 +625,16 @@ class _DateField extends StatelessWidget {
           Expanded(
             child: Text(
               DateFormat('dd/MM/yyyy').format(date),
-              style: const TextStyle(fontSize: 15, color: _kDark),
+              style: TextStyle(fontSize: 15, color: _kDark),
             ),
           ),
           if (estAujourdHui)
-            const Padding(
-              padding: EdgeInsets.only(right: 8),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
               child: Text("Aujourd'hui",
                   style: TextStyle(fontSize: 12, color: _kHint)),
             ),
-          const Icon(Icons.calendar_today_rounded, size: 16, color: _kLabel),
+          Icon(Icons.calendar_today_rounded, size: 16, color: _kLabel),
         ]),
       ),
     );
@@ -668,7 +669,7 @@ class _JumelleCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(8, 12, 14, 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
               color: selectionne
@@ -686,7 +687,7 @@ class _JumelleCard extends StatelessWidget {
                   value: selectionne,
                   onChanged: onChanged,
                   activeColor: jumelle.couleur,
-                  side: const BorderSide(color: _kHint, width: 1.6),
+                  side: BorderSide(color: _kHint, width: 1.6),
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   shape: RoundedRectangleBorder(
@@ -727,7 +728,7 @@ class _JumelleCard extends StatelessWidget {
                     if (jumelle.sousTitre != null)
                       Text(jumelle.sousTitre!,
                           style:
-                              const TextStyle(fontSize: 11, color: _kHint)),
+                              TextStyle(fontSize: 11, color: _kHint)),
                   ],
                 ),
               ),
@@ -789,7 +790,7 @@ class _RepartitionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(Icons.alt_route_outlined, size: 13, color: _kGreen),
+            Icon(Icons.alt_route_outlined, size: 13, color: _kGreen),
             const SizedBox(width: 5),
             Text('Répartition du montant',
                 style: TextStyle(
@@ -833,7 +834,7 @@ class _RepartitionRow extends StatelessWidget {
       Expanded(
         child: Text(label,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: _kLabel)),
+            style: TextStyle(fontSize: 12, color: _kLabel)),
       ),
       Text(value,
           style: TextStyle(
@@ -866,7 +867,7 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _kBorder),
       ),
@@ -885,13 +886,13 @@ class _InfoCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(titre,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: _kDark)),
               if (sousTitre != null)
                 Text(sousTitre!,
-                    style: const TextStyle(fontSize: 11, color: _kHint)),
+                    style: TextStyle(fontSize: 11, color: _kHint)),
             ],
           ),
         ),
@@ -939,7 +940,7 @@ class _FormCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
@@ -957,7 +958,7 @@ class _FormCard extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(title,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: _kDark,
@@ -989,13 +990,13 @@ class _LabeledField extends StatelessWidget {
       children: [
         Row(children: [
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: _kLabel)),
           if (isRequired) ...[
             const SizedBox(width: 3),
-            const Text('*',
+            Text('*',
                 style: TextStyle(
                     color: _kError,
                     fontSize: 13,
@@ -1011,7 +1012,7 @@ class _LabeledField extends StatelessWidget {
 
 InputDecoration _fieldDeco(String hint) => InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: _kHint, fontSize: 15),
+      hintStyle: TextStyle(color: _kHint, fontSize: 15),
       filled: true,
       fillColor: _kFieldFill,
       contentPadding:
@@ -1030,10 +1031,10 @@ InputDecoration _fieldDeco(String hint) => InputDecoration(
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kError, width: 1.5),
+        borderSide: BorderSide(color: _kError, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kError, width: 1.5),
+        borderSide: BorderSide(color: _kError, width: 1.5),
       ),
     );

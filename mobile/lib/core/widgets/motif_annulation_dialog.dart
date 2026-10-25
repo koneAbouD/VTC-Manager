@@ -73,7 +73,7 @@ Future<SaisieAnnulation?> showSaisieAnnulationDialog(
                       color: AppColors.error.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.cancel_outlined,
+                    child: Icon(Icons.cancel_outlined,
                         size: 28, color: AppColors.error),
                   ),
                 ),
@@ -81,7 +81,7 @@ Future<SaisieAnnulation?> showSaisieAnnulationDialog(
                 Text(
                   titre,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: AppColors.dark,
@@ -91,7 +91,7 @@ Future<SaisieAnnulation?> showSaisieAnnulationDialog(
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13.5, height: 1.4, color: AppColors.label),
                 ),
                 const SizedBox(height: 18),
@@ -102,14 +102,14 @@ Future<SaisieAnnulation?> showSaisieAnnulationDialog(
                   minLines: 1,
                   textCapitalization: TextCapitalization.sentences,
                   onChanged: (_) => setState(() {}),
-                  style: const TextStyle(fontSize: 14, color: AppColors.dark),
+                  style: TextStyle(fontSize: 14, color: AppColors.dark),
                   decoration: InputDecoration(
                     labelText: 'Motif de l\'annulation *',
                     labelStyle:
-                        const TextStyle(fontSize: 13, color: AppColors.label),
+                        TextStyle(fontSize: 13, color: AppColors.label),
                     hintText: 'Ex. Erreur de saisie, doublon…',
                     hintStyle:
-                        const TextStyle(fontSize: 13.5, color: AppColors.hint),
+                        TextStyle(fontSize: 13.5, color: AppColors.hint),
                     filled: true,
                     fillColor: AppColors.fieldFill,
                     isDense: true,
@@ -124,7 +124,7 @@ Future<SaisieAnnulation?> showSaisieAnnulationDialog(
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide:
-                            const BorderSide(color: AppColors.error, width: 1.4)),
+                            BorderSide(color: AppColors.error, width: 1.4)),
                   ),
                 ),
                 if (optionLabel != null) ...[
@@ -146,7 +146,7 @@ Future<SaisieAnnulation?> showSaisieAnnulationDialog(
                           onPressed: () => Navigator.pop(ctx),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.label,
-                            side: const BorderSide(color: AppColors.border),
+                            side: BorderSide(color: AppColors.border),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14)),
                           ),
@@ -235,7 +235,7 @@ class _CaseOption extends StatelessWidget {
                 value: valeur,
                 onChanged: (v) => onChanged(v ?? false),
                 activeColor: AppColors.error,
-                side: const BorderSide(color: AppColors.hint, width: 1.6),
+                side: BorderSide(color: AppColors.hint, width: 1.6),
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
@@ -256,7 +256,7 @@ class _CaseOption extends StatelessWidget {
                   if (detail != null) ...[
                     const SizedBox(height: 2),
                     Text(detail!,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12, height: 1.3, color: AppColors.label)),
                   ],
                 ],

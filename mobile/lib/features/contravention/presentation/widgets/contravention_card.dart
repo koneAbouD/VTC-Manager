@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../domain/entities/contravention.dart';
 
+import '../../../../core/theme/app_colors.dart';
 /// Carte premium d'une contravention d'État — badges d'infraction, chip de
 /// rattachement (Auto / À rattacher) et méta date · heure · vitesse · n°.
 /// Un appui long sur une ligne active le mode sélection (paiement en lot) en
@@ -48,12 +49,12 @@ class ContraventionCard extends StatelessWidget {
   static const _moyenneBg = Color(0xFFFAF0DE);
   static const _legereBg = Color(0xFFEDF3E6);
   static const _ambre = Color(0xFF854F0B);
-  static const _vert = Color(0xFF2E7D32);
-  static const _ink = Color(0xFF1A1A2E);
-  static const _label = Color(0xFF6B7280);
-  static const _hint = Color(0xFF8A94A6);
-  static const _border = Color(0xFFE4E9EE);
-  static const _primary = Color(0xFF43A047);
+  static Color get _vert => AppColors.positive;
+  static Color get _ink => AppColors.dark;
+  static Color get _label => AppColors.label;
+  static Color get _hint => AppColors.hint;
+  static Color get _border => AppColors.border;
+  static Color get _primary => AppColors.primary;
   static const _selBg = Color(0xFFF3FAF4);
 
   /// Gravité de l'infraction, lue dans le montant : le barème de l'État suit
@@ -121,7 +122,7 @@ class ContraventionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(fmt.format(montantAffiche),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: _ink)),
@@ -129,7 +130,7 @@ class ContraventionCard extends StatelessWidget {
                 // réglé, on rappelle donc le total dû juste en dessous.
                 if (montantAffiche != contravention.montant)
                   Text('sur ${fmt.format(contravention.montant)} XOF',
-                      style: const TextStyle(fontSize: 10, color: _hint)),
+                      style: TextStyle(fontSize: 10, color: _hint)),
                 const SizedBox(height: 2),
                 Text(statutLabel,
                     style: TextStyle(
@@ -176,8 +177,8 @@ class ContraventionCard extends StatelessWidget {
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: onEdit,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 child:
                     Icon(Icons.chevron_right_rounded, size: 22, color: _hint),
               ),
@@ -197,7 +198,7 @@ class ContraventionCard extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       text: TextSpan(
-        style: const TextStyle(
+        style: TextStyle(
             fontSize: 14, fontWeight: FontWeight.w700, color: _ink),
         children: [
           TextSpan(text: vehicule),
@@ -227,7 +228,7 @@ class ContraventionCard extends StatelessWidget {
       decoration:
           BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Text(label,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w600, color: _label)),
     );
   }
@@ -236,7 +237,7 @@ class ContraventionCard extends StatelessWidget {
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 13, color: _label),
       const SizedBox(width: 5),
-      Text(text, style: const TextStyle(fontSize: 11.5, color: _label)),
+      Text(text, style: TextStyle(fontSize: 11.5, color: _label)),
     ]);
   }
 }

@@ -148,7 +148,7 @@ class _LignesMaintenancePageState
                 width: 210,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.blanc,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -178,7 +178,7 @@ class _LignesMaintenancePageState
                                 ? Icons.radio_button_checked
                                 : Icons.radio_button_off_outlined,
                             size: 18,
-                            color: sel ? _kPrimary : Colors.grey.shade400,
+                            color: sel ? _kPrimary : AppColors.grey400,
                           ),
                           const SizedBox(width: 10),
                           Text(label,
@@ -189,7 +189,7 @@ class _LignesMaintenancePageState
                                     : FontWeight.w400,
                                 color: sel
                                     ? _kPrimary
-                                    : const Color(0xFF1A1A1A),
+                                    : AppColors.dark,
                               )),
                         ]),
                       ),
@@ -301,21 +301,21 @@ class _LignesMaintenancePageState
                   child: Container(
                     width: 56, height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F2F8),
+                      color: AppColors.headerButton,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(Icons.arrow_back_rounded,
-                        size: 18, color: Color(0xFF1A1A2E)),
+                    child: Icon(Icons.arrow_back_rounded,
+                        size: 18, color: AppColors.dark),
                   ),
                 ),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Maintenances',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF1A1A2E),
+                      color: AppColors.dark,
                       letterSpacing: -0.3,
                     ),
                   ),
@@ -333,11 +333,11 @@ class _LignesMaintenancePageState
                     width: 56,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F2F8),
+                      color: AppColors.headerButton,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(Icons.add_rounded,
-                        size: 20, color: Color(0xFF1A1A2E)),
+                    child: Icon(Icons.add_rounded,
+                        size: 20, color: AppColors.dark),
                   ),
                 ),
               ]),
@@ -518,9 +518,9 @@ class _FiltreBar extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.blanc,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: AppColors.grey300),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.filter_list_rounded, size: 14, color: _kPrimary),
@@ -557,23 +557,23 @@ class _DatePill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: AppColors.grey200,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(children: [
-          Icon(icon, size: 13, color: Colors.grey.shade600),
+          Icon(icon, size: 13, color: AppColors.grey600),
           const SizedBox(width: 6),
           Expanded(
             child: Text(label,
                 style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade700,
+                    color: AppColors.grey700,
                     fontWeight: FontWeight.w500),
                 overflow: TextOverflow.ellipsis),
           ),
           const SizedBox(width: 5),
           Icon(Icons.keyboard_arrow_down_rounded,
-              size: 14, color: Colors.grey.shade600),
+              size: 14, color: AppColors.grey600),
         ]),
       ),
     );
@@ -630,17 +630,17 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
         decoration: BoxDecoration(
           // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt qu'un
           // blanc avec ombre portée.
-          color: const Color(0xFFF2F3F5),
+          color: AppColors.fieldFill,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(children: [
           _focus.hasFocus
               ? GestureDetector(
                   onTap: _focus.unfocus,
-                  child: const Icon(Icons.close,
-                      color: Color(0xFF8A8A8E), size: 20),
+                  child: Icon(Icons.close,
+                      color: AppColors.hint, size: 20),
                 )
-              : const Icon(Icons.search, color: Color(0xFF8A8A8E), size: 20),
+              : Icon(Icons.search, color: AppColors.hint, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -648,12 +648,12 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
               focusNode: _focus,
               onChanged: widget.onSearchChanged,
               style: const TextStyle(fontSize: 14),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Type, immatriculation, prestataire…',
                 hintStyle:
-                    TextStyle(color: Color(0xFF8A8A8E), fontSize: 14),
+                    TextStyle(color: AppColors.hint, fontSize: 14),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
@@ -668,8 +668,8 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
                       widget.controller.clear();
                       widget.onSearchChanged('');
                     },
-                    child: const Icon(Icons.close_rounded,
-                        size: 18, color: Color(0xFF8A8A8E)),
+                    child: Icon(Icons.close_rounded,
+                        size: 18, color: AppColors.hint),
                   ),
           ),
         ]),
@@ -712,8 +712,8 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
   /// trois teintes seulement — gris pour l'attente et les fins de course
   /// neutres, ambre pour ce qui est en cours, vert pour ce qui est soldé.
   static const _ambre = Color(0xFF854F0B);
-  static const _vert = Color(0xFF2E7D32);
-  static const _hint = Color(0xFF8A94A6);
+  static Color get _vert => AppColors.positive;
+  static Color get _hint => AppColors.hint;
 
   Color _couleurStatut(String s) => switch (s) {
         'PLANIFIEE' => _ambre,
@@ -793,7 +793,7 @@ class _MaintenanceCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -822,10 +822,10 @@ class _MaintenanceCard extends StatelessWidget {
                     m.categorieTypeLibelle?.isNotEmpty == true
                         ? m.categorieTypeLibelle!
                         : _labelType(m.type),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
-                        color: Color(0xFF1A1A1A))),
+                        color: AppColors.dark)),
                 const SizedBox(height: 3),
                 // Immatriculation seule : elle suffit à désigner le véhicule.
                 // Repli sur l'identifiant tant qu'elle n'est pas renseignée,
@@ -836,30 +836,30 @@ class _MaintenanceCard extends StatelessWidget {
                       : 'Véhicule ${m.vehiculeId ?? '—'}',
                   style: TextStyle(
                       fontSize: 10,
-                      color: Colors.grey.shade600,
+                      color: AppColors.grey600,
                       fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Row(children: [
                   Icon(Icons.calendar_today_outlined,
-                      size: 11, color: Colors.grey.shade400),
+                      size: 11, color: AppColors.grey400),
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(_labelDate(m.datePrevue),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500)),
+                            fontSize: 11, color: AppColors.grey500)),
                   ),
                   if (m.dureeHeures != null) ...[
                     const SizedBox(width: 8),
                     Icon(Icons.timer_outlined,
-                        size: 11, color: Colors.grey.shade400),
+                        size: 11, color: AppColors.grey400),
                     const SizedBox(width: 3),
                     Text('${m.dureeHeures}h',
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500)),
+                            fontSize: 11, color: AppColors.grey500)),
                   ],
                 ]),
               ],
@@ -884,7 +884,7 @@ class _MaintenanceCard extends StatelessWidget {
               // Coût toujours en noir : la pastille au-dessus porte déjà la
               // couleur du statut.
               Text(money.format(m.cout),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.dark)),
@@ -912,9 +912,9 @@ class _MaintenanceCard extends StatelessWidget {
   /// couleur du statut telle qu'elle est présentée en haut de page.
   Color _couleurStatut(String s) => switch (s) {
         'PLANIFIEE' => const Color(0xFF854F0B),
-        'TERMINEE'  => const Color(0xFF2E7D32),
-        'ANNULEE'   => const Color(0xFF8A94A6),
-        _           => const Color(0xFF8A94A6),
+        'TERMINEE'  => AppColors.positive,
+        'ANNULEE'   => AppColors.hint,
+        _           => AppColors.hint,
       };
 
   String _labelStatut(String s) => switch (s) {
@@ -976,21 +976,21 @@ class _EmptyState extends StatelessWidget {
           Container(
             width: 80, height: 80,
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: AppColors.grey100,
               shape: BoxShape.circle,
             ),
           ),
-          Icon(Icons.handyman_outlined, size: 38, color: Colors.grey.shade300),
+          Icon(Icons.handyman_outlined, size: 38, color: AppColors.grey300),
         ]),
         const SizedBox(height: 16),
         Text('Aucune maintenance sur cette période',
             style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey.shade600)),
+                color: AppColors.grey600)),
         const SizedBox(height: 6),
         Text('Modifiez la période ou les filtres',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
+            style: TextStyle(fontSize: 13, color: AppColors.grey400)),
       ]),
     );
   }

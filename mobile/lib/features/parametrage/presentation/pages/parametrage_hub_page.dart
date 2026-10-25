@@ -98,7 +98,7 @@ class _HubTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(libelle,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color: AppColors.dark)),
@@ -107,7 +107,7 @@ class _HubTile extends StatelessWidget {
                       Text(description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12,
                               height: 1.3,
                               color: AppColors.label)),
@@ -116,7 +116,7 @@ class _HubTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.hint),
+              Icon(Icons.chevron_right_rounded, color: AppColors.hint),
             ],
           ),
         ),
@@ -138,12 +138,12 @@ class _Erreur extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded,
+            Icon(Icons.cloud_off_rounded,
                 size: 48, color: AppColors.hint),
             const SizedBox(height: 12),
             Text(message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.label)),
+                style: TextStyle(color: AppColors.label)),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: onRetry,

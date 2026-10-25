@@ -14,10 +14,10 @@ enum _ToastType { success, error, warning, info }
 void _appToast(BuildContext context, String message,
     {_ToastType type = _ToastType.success, Duration? duration}) {
   final (Color bg, IconData icon) = switch (type) {
-    _ToastType.success => (const Color(0xFF1B5E20), Icons.check_circle_outline_rounded),
-    _ToastType.error   => (const Color(0xFFB71C1C), Icons.error_outline_rounded),
-    _ToastType.warning => (const Color(0xFFE65100), Icons.warning_amber_rounded),
-    _ToastType.info    => (const Color(0xFF1A237E), Icons.info_outline_rounded),
+    _ToastType.success => (AppColors.success, Icons.check_circle_outline_rounded),
+    _ToastType.error   => (AppColors.error, Icons.error_outline_rounded),
+    _ToastType.warning => (AppColors.warning, Icons.warning_amber_rounded),
+    _ToastType.info    => (AppColors.info, Icons.info_outline_rounded),
   };
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -134,7 +134,7 @@ class _GroupeFormPageState extends ConsumerState<GroupeFormPage> {
     final typesAsync = ref.watch(_typesActivitesProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.blanc,
       appBar: const AppHeader(title: 'Nouveau groupe'),
       body: SafeArea(
         child: Column(
@@ -294,9 +294,9 @@ class _GroupeFormPageState extends ConsumerState<GroupeFormPage> {
 InputDecoration _inputDeco({required String hint}) => InputDecoration(
       hintText: hint,
       hintStyle:
-          TextStyle(color: Colors.grey.shade400, fontSize: 14),
+          TextStyle(color: AppColors.grey400, fontSize: 14),
       filled: true,
-      fillColor: const Color(0xFFF5F5F5),
+      fillColor: AppColors.scaffold,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
@@ -317,14 +317,14 @@ class _Label extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.grey.shade600),
+        Icon(icon, size: 16, color: AppColors.grey600),
         const SizedBox(width: 6),
         Text(
           text,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade600,
+            color: AppColors.grey600,
             letterSpacing: 0.3,
           ),
         ),
@@ -370,7 +370,7 @@ class _TypeActivitePicker extends StatelessWidget {
             decoration: BoxDecoration(
               color: isSelected
                   ? AppColors.primary.withValues(alpha: 0.1)
-                  : const Color(0xFFF5F5F5),
+                  : AppColors.scaffold,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: isSelected
@@ -383,7 +383,7 @@ class _TypeActivitePicker extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isSelected) ...[
-                  const Icon(Icons.check,
+                  Icon(Icons.check,
                       size: 14, color: AppColors.primary),
                   const SizedBox(width: 6),
                 ],
@@ -396,7 +396,7 @@ class _TypeActivitePicker extends StatelessWidget {
                         : FontWeight.normal,
                     color: isSelected
                         ? AppColors.primary
-                        : Colors.black87,
+                        : AppColors.noir87,
                   ),
                 ),
               ],
@@ -460,7 +460,7 @@ class _GestionnaireTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: isSelected
                   ? AppColors.primary.withValues(alpha: 0.06)
-                  : const Color(0xFFF5F5F5),
+                  : AppColors.scaffold,
               borderRadius: BorderRadius.circular(14),
               border: isSelected
                   ? Border.all(
@@ -474,7 +474,7 @@ class _GestionnaireTile extends StatelessWidget {
                   radius: 20,
                   backgroundColor: isSelected
                       ? AppColors.primary.withValues(alpha: 0.15)
-                      : Colors.grey.shade200,
+                      : AppColors.grey200,
                   child: Text(
                     gestionnaire.displayName.isNotEmpty
                         ? gestionnaire.displayName[0].toUpperCase()
@@ -483,7 +483,7 @@ class _GestionnaireTile extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: isSelected
                           ? AppColors.primary
-                          : Colors.grey.shade600,
+                          : AppColors.grey600,
                     ),
                   ),
                 ),
@@ -499,7 +499,7 @@ class _GestionnaireTile extends StatelessWidget {
                           fontSize: 15,
                           color: isSelected
                               ? AppColors.primary
-                              : Colors.black87,
+                              : AppColors.noir87,
                         ),
                       ),
                       if (gestionnaire.email != null &&
@@ -507,13 +507,13 @@ class _GestionnaireTile extends StatelessWidget {
                         Text(
                           gestionnaire.email!,
                           style: TextStyle(
-                              fontSize: 12, color: Colors.grey.shade500),
+                              fontSize: 12, color: AppColors.grey500),
                         ),
                     ],
                   ),
                 ),
                 if (isSelected)
-                  const Icon(Icons.check_circle,
+                  Icon(Icons.check_circle,
                       color: AppColors.primary, size: 20),
               ],
             ),
@@ -561,11 +561,11 @@ class _EmptyTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: AppColors.scaffold,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(message,
-          style: TextStyle(color: Colors.grey.shade500),
+          style: TextStyle(color: AppColors.grey500),
           textAlign: TextAlign.center),
     );
   }

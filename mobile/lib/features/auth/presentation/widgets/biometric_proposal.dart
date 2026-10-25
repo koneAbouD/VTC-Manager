@@ -86,7 +86,7 @@ class _ProposalDialog extends StatelessWidget {
           Container(
             width: 56,
             height: 56,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.primaryTint,
               shape: BoxShape.circle,
             ),
@@ -96,11 +96,11 @@ class _ProposalDialog extends StatelessWidget {
           Text(
             'Utiliser ${availability.libelleAvecArticle} ?',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18, color: AppColors.dark),
+            style: TextStyle(fontSize: 18, color: AppColors.dark),
           ),
         ],
       ),
-      content: const Text(
+      content: Text(
         'Vous ouvrirez l\'application d\'un geste, sans saisir vos cinq '
         'chiffres. Votre code TMK reste actif et vous sera redemandé si la '
         'reconnaissance échoue.',
@@ -123,7 +123,7 @@ class _ProposalDialog extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(false),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary),
+              side: BorderSide(color: AppColors.primary),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

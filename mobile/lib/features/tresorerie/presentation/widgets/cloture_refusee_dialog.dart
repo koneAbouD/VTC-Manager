@@ -45,7 +45,7 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
     final obstacles = widget.obstacles;
     final consigne = widget.consigne;
     final actionLabel = widget.actionLabel;
-    const accent = AppColors.warning;
+    final accent = AppColors.warning;
     // Plusieurs comptes non comptés font une liste : le message résume, la
     // liste détaille. Un seul obstacle se suffit à lui-même — le répéter sous
     // forme de puce ferait doublon.
@@ -74,12 +74,12 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
                     color: accent.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.lock_clock_rounded,
+                  child: Icon(Icons.lock_clock_rounded,
                       size: 28, color: accent),
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
+              Text(
                 'Clôture impossible',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -92,7 +92,7 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
               Text(
                 '$mois reste ouvert.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13.5, height: 1.4, color: AppColors.label),
               ),
               const SizedBox(height: 16),
@@ -122,7 +122,7 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
                             children: [
                               Text(
                                 message,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 13,
                                     height: 1.4,
                                     fontWeight: FontWeight.w600,
@@ -135,8 +135,8 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      const Padding(
-                                        padding: EdgeInsets.only(top: 5),
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 5),
                                         child: Icon(Icons.circle,
                                             size: 5, color: accent),
                                       ),
@@ -144,7 +144,7 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
                                       Expanded(
                                         child: Text(
                                           obstacle,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontSize: 12.5,
                                               height: 1.4,
                                               color: AppColors.label),
@@ -168,13 +168,13 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.checklist_rounded,
+                    Icon(Icons.checklist_rounded,
                         size: 17, color: AppColors.hint),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         consigne,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12.5,
                             height: 1.4,
                             color: AppColors.label),
@@ -193,7 +193,7 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
                         onPressed: () => Navigator.pop(context, false),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.label,
-                          side: const BorderSide(color: AppColors.border),
+                          side: BorderSide(color: AppColors.border),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
                         ),

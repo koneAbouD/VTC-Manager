@@ -332,7 +332,7 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
         children: [
-          const Text('Fonds à restituer',
+          Text('Fonds à restituer',
               style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -342,7 +342,7 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
           // où le chauffeur l'a payée : une cotisation de juillet réglée en août
           // se trouve sous juillet. Sans ce rappel, l'écart avec la caisse du
           // mois passe pour une erreur de calcul.
-          const Text('Mois de la cotisation, pas du versement',
+          Text('Mois de la cotisation, pas du versement',
               style: TextStyle(fontSize: 11, color: AppColors.hint)),
           const SizedBox(height: 6),
           MonthFilterPill(
@@ -377,12 +377,12 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
               decoration: BoxDecoration(
                   color: AppColors.headerButton,
                   borderRadius: BorderRadius.circular(10)),
-              child: const Row(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(Icons.info_outline_rounded,
                       size: 15, color: AppColors.label),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                         'Le mois ne filtre que les cotisations. Toutes les '
@@ -403,9 +403,9 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                 child: Center(child: CircularProgressIndicator()))
           else if (_erreur != null)
             _MessageCard('Impossible de calculer le décompte : $_erreur',
-                Colors.red.shade900, const Color(0xFFFDECEA))
+                Colors.red.shade900, AppColors.errorTint)
           else if (rien)
-            const _MessageCard(
+            _MessageCard(
                 'Aucune cotisation ni créance sur cette période.',
                 AppColors.label,
                 AppColors.headerButton)
@@ -420,7 +420,7 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text('Lignes à restituer / compenser',
                       style: TextStyle(
                           fontSize: 12.5,
@@ -448,7 +448,7 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
               _GroupeCard(groupe: g, etat: this, decompte: decompte),
             const SizedBox(height: 8),
             if (decompte.totalNet > 0) ...[
-              const Text('Mode de versement',
+              Text('Mode de versement',
                   style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
@@ -626,7 +626,7 @@ class _SyntheseCard extends StatelessWidget {
                       color: AppColors.dark)),
               if (aide != null)
                 Text(aide,
-                    style: const TextStyle(fontSize: 10.5, color: AppColors.hint)),
+                    style: TextStyle(fontSize: 10.5, color: AppColors.hint)),
             ],
           ),
           Text(CurrencyFormatter.format(montant),
@@ -687,7 +687,7 @@ class _GroupeCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(groupe.nom,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
                           color: AppColors.dark)),
@@ -704,8 +704,8 @@ class _GroupeCard extends StatelessWidget {
             ),
           ),
           if (groupe.estVehicule)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(14, 0, 14, 2),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 2),
               child: Text(
                   'Sans chauffeur rattaché : payées par le fonds commun, '
                   'après les dettes de chaque chauffeur',
@@ -773,7 +773,7 @@ class _GroupeCard extends StatelessWidget {
   Widget _sousTitre(String texte) => Padding(
         padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
         child: Text(texte,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: AppColors.hint)),
@@ -808,7 +808,7 @@ class _GroupeCard extends StatelessWidget {
                 children: [
                   Text('$titre  $sousTitre',
                       style:
-                          const TextStyle(fontSize: 13, color: AppColors.dark)),
+                          TextStyle(fontSize: 13, color: AppColors.dark)),
                   if (note != null)
                     Text(note,
                         style: TextStyle(

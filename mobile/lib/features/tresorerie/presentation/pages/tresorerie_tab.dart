@@ -86,7 +86,7 @@ class TresorerieTab extends ConsumerWidget {
                 padding: const EdgeInsets.only(top: 32),
                 child: Center(
                   child: Text('Aucun compte de trésorerie configuré',
-                      style: TextStyle(color: Colors.grey.shade500)),
+                      style: TextStyle(color: AppColors.grey500)),
                 ),
               ),
           ],
@@ -121,7 +121,7 @@ class _TotalCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Total trésorerie',
+          Text('Total trésorerie',
               style: TextStyle(fontSize: 13, color: AppColors.label)),
           const SizedBox(height: 6),
           Text(
@@ -134,7 +134,7 @@ class _TotalCard extends StatelessWidget {
           ),
           if (detail) ...[
             const SizedBox(height: 12),
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: AppColors.border),
             const SizedBox(height: 4),
             if (summary.depotsCotisations > 0)
               _LigneRetenue(
@@ -156,7 +156,7 @@ class _TotalCard extends StatelessWidget {
               ),
             const SizedBox(height: 4),
             Row(children: [
-              const Expanded(
+              Expanded(
                 child: Text('Disponible réel',
                     style: TextStyle(
                         fontSize: 13.5,
@@ -205,16 +205,16 @@ class _LigneRetenue extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(libelle,
-                style: const TextStyle(fontSize: 12.5, color: AppColors.label)),
+                style: TextStyle(fontSize: 12.5, color: AppColors.label)),
           ),
           Text('− ${CurrencyFormatter.format(montant)}',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppColors.dark)),
           if (onTap != null) ...[
             const SizedBox(width: 2),
-            const Icon(Icons.chevron_right_rounded,
+            Icon(Icons.chevron_right_rounded,
                 size: 18, color: AppColors.hint),
           ],
         ]),
@@ -243,14 +243,14 @@ class _CouvertureBandeau extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded,
+          Icon(Icons.warning_amber_rounded,
               size: 20, color: AppColors.error),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'La trésorerie ne couvre pas les dépôts des chauffeurs',
                   style: TextStyle(
                       fontSize: 13,
@@ -262,7 +262,7 @@ class _CouvertureBandeau extends StatelessWidget {
                   'Il manque ${CurrencyFormatter.format(manque)} pour rendre les '
                   "cotisations et reverser l'État. Évitez toute dépense non "
                   'urgente avant le prochain arrêté.',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11.5, height: 1.3, color: AppColors.dark),
                 ),
               ],
@@ -305,7 +305,7 @@ class _EcartsBandeau extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.balance_rounded,
+              Icon(Icons.balance_rounded,
                   size: 20, color: AppColors.warning),
               const SizedBox(width: 10),
               Expanded(
@@ -316,7 +316,7 @@ class _EcartsBandeau extends ConsumerWidget {
                       pluriel
                           ? '${ecarts.length} écarts de caisse à trancher'
                           : 'Un écart de caisse à trancher',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppColors.dark),
@@ -328,14 +328,14 @@ class _EcartsBandeau extends ConsumerWidget {
                               'peuvent pas être clôturés'
                           : 'Tant qu\'il attend, le mois où il tombe ne peut pas '
                               'être clôturé',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11.5, height: 1.3, color: AppColors.label),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded,
+              Icon(Icons.chevron_right_rounded,
                   size: 20, color: AppColors.hint),
             ],
           ),
@@ -378,7 +378,7 @@ class _CompteCard extends StatelessWidget {
                   compte.libelle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: AppColors.label),
+                  style: TextStyle(fontSize: 12, color: AppColors.label),
                 ),
               ),
             ],
@@ -410,7 +410,7 @@ class _ErrorRetry extends StatelessWidget {
     return ListView(
       children: [
         const SizedBox(height: 120),
-        Center(child: Text(message, style: TextStyle(color: Colors.grey.shade600))),
+        Center(child: Text(message, style: TextStyle(color: AppColors.grey600))),
         const SizedBox(height: 12),
         Center(
           child: TextButton.icon(

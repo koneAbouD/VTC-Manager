@@ -79,13 +79,13 @@ class OperationFinanciereDetailPage extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.cloud_off_rounded,
+                Icon(Icons.cloud_off_rounded,
                     size: 40, color: AppColors.hint),
                 const SizedBox(height: 12),
                 Text(
                   e.toString().replaceFirst('Exception: ', ''),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: AppColors.label),
+                  style: TextStyle(fontSize: 13, color: AppColors.label),
                 ),
                 const SizedBox(height: 12),
                 TextButton.icon(
@@ -380,8 +380,8 @@ class _DetailBody extends ConsumerWidget {
       await ouvrirWhatsApp(telephone: telephone, message: message);
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("WhatsApp n'a pas pu être ouvert sur cet appareil."),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text("WhatsApp n'a pas pu être ouvert sur cet appareil."),
           backgroundColor: AppColors.error));
     }
   }

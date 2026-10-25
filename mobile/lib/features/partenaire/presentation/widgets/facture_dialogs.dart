@@ -94,9 +94,9 @@ class _ReglementSheetState extends ConsumerState<_ReglementSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: keyboardHeight),
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         ),
         padding: EdgeInsets.fromLTRB(20, 14, 20, 20 + bottomSafe),
         // Défilable : le clavier du montant ne laisse souvent pas la place à
@@ -118,7 +118,7 @@ class _ReglementSheetState extends ConsumerState<_ReglementSheet> {
               ),
               const SizedBox(height: 16),
               Text('Régler ${f.partenaireNom ?? "la facture"}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: AppColors.dark)),
@@ -127,7 +127,7 @@ class _ReglementSheetState extends ConsumerState<_ReglementSheet> {
                   '${f.reference ?? ""} · échéance '
                   '${DateFormat('dd/MM/yyyy').format(f.dateEcheance)}',
                   style:
-                      const TextStyle(fontSize: 11.5, color: AppColors.hint)),
+                      TextStyle(fontSize: 11.5, color: AppColors.hint)),
               const SizedBox(height: 16),
               _Ligne(
                   'Montant de la facture', CurrencyFormatter.format(f.montant)),
@@ -145,7 +145,7 @@ class _ReglementSheetState extends ConsumerState<_ReglementSheet> {
                   labelText: 'Montant réglé',
                   suffixText: 'XOF',
                   filled: true,
-                  fillColor: const Color(0xFFF2F3F5),
+                  fillColor: AppColors.fieldFill,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -174,7 +174,7 @@ class _ReglementSheetState extends ConsumerState<_ReglementSheet> {
                 const SizedBox(height: 10),
                 Text(_erreur!,
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.error)),
+                        TextStyle(fontSize: 12, color: AppColors.error)),
               ],
               const SizedBox(height: 18),
               FilledButton(
@@ -256,18 +256,18 @@ class _ChampDate extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF2F3F5),
+          color: AppColors.fieldFill,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined,
+            Icon(Icons.calendar_today_outlined,
                 size: 16, color: AppColors.label),
             const SizedBox(width: 10),
             Text(DateFormat('dd/MM/yyyy').format(date),
-                style: const TextStyle(fontSize: 14, color: AppColors.dark)),
+                style: TextStyle(fontSize: 14, color: AppColors.dark)),
             const Spacer(),
-            const Icon(Icons.keyboard_arrow_down_rounded,
+            Icon(Icons.keyboard_arrow_down_rounded,
                 size: 18, color: AppColors.hint),
           ],
         ),

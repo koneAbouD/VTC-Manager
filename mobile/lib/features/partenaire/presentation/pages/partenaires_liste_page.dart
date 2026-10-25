@@ -54,7 +54,7 @@ class _PartenairesListePageState extends ConsumerState<PartenairesListePage> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text('Masquer les partenaires désactivés',
                       style: TextStyle(fontSize: 12.5, color: AppColors.label)),
                 ),
@@ -78,10 +78,10 @@ class _PartenairesListePageState extends ConsumerState<PartenairesListePage> {
               error: (e, _) => Center(
                 child: Text('$e',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.label)),
+                    style: TextStyle(color: AppColors.label)),
               ),
               data: (liste) => liste.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text('Aucun partenaire',
                           style: TextStyle(color: AppColors.label)))
                   : ListView.builder(
@@ -136,13 +136,13 @@ class _PartenaireCard extends ConsumerWidget {
                         partenaire.telephone!,
                     ].join(' · '),
                     style:
-                        const TextStyle(fontSize: 11, color: AppColors.hint)),
+                        TextStyle(fontSize: 11, color: AppColors.hint)),
               ],
             ),
           ),
           IconButton(
             tooltip: 'Modifier',
-            icon: const Icon(Icons.edit_outlined,
+            icon: Icon(Icons.edit_outlined,
                 size: 18, color: AppColors.label),
             onPressed: () async {
               await Navigator.of(context).push(

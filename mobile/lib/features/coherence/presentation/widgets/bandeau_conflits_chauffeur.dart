@@ -49,7 +49,7 @@ class _BandeauConflitsChauffeurState
     // Un bandeau qui apparaît puis s'évapore vaut moins que pas de bandeau.
     if (conflits.isEmpty) return const SizedBox.shrink();
 
-    const teinte = AppColors.warning;
+    final teinte = AppColors.warning;
     final jourFmt = DateFormat('dd/MM');
 
     return Padding(
@@ -76,13 +76,13 @@ class _BandeauConflitsChauffeurState
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded,
+                      Icon(Icons.warning_amber_rounded,
                           size: 16, color: teinte),
                       const SizedBox(width: 9),
                       Expanded(
                         child: Text(
                           _resume(conflits.length),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: AppColors.dark),
@@ -111,7 +111,7 @@ class _BandeauConflitsChauffeurState
                             child: Row(
                               children: [
                                 Text(jourFmt.format(c.date),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w700,
                                         color: teinte)),
@@ -122,19 +122,19 @@ class _BandeauConflitsChauffeurState
                                     '${c.immatriculations.join(" et ")}',
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 11.5, color: AppColors.label),
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right_rounded,
+                                Icon(Icons.chevron_right_rounded,
                                     size: 16, color: AppColors.hint),
                               ],
                             ),
                           ),
                         ),
                       ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 6, top: 2),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6, top: 2),
                       child: Text(
                         'Un chauffeur ne conduit qu’un véhicule par jour. '
                         'Annulez la créance en trop, ou réaffectez-la.',

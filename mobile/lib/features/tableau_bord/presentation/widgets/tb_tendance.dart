@@ -52,7 +52,7 @@ class _TbTendanceState extends State<TbTendance> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           children: [
             Expanded(
               child: Text('Résultat mensuel — 12 mois glissants',
@@ -121,7 +121,7 @@ class _DetailPoint extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(libelleMois,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.dark)),
           const SizedBox(height: 6),
           Row(
@@ -164,7 +164,7 @@ class _Mesure extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 9.5, color: AppColors.hint),
+            style: TextStyle(fontSize: 9.5, color: AppColors.hint),
             maxLines: 1,
             overflow: TextOverflow.ellipsis),
         FittedBox(

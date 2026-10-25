@@ -14,6 +14,7 @@ import '../../core/widgets/responsive_field_row.dart' show kFormPhoneBreakpoint;
 import '../../features/operation_financiere/presentation/pages/operation_financiere_detail_page.dart';
 import '../home_nav_provider.dart';
 
+import '../../core/theme/app_colors.dart';
 // ── Modèles ──────────────────────────────────────────────────────────────────
 
 class BreakdownItem {
@@ -178,7 +179,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
     final asyncData = ref.watch(rapportFinancierProvider(params));
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.grey50,
       appBar: AppHeader(title: 'Rapport financier', showBack: !widget.embedded),
       body: Column(
         children: [
@@ -232,7 +233,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
 
   Widget _buildFilters() {
     return Container(
-      color: Colors.white,
+      color: AppColors.blanc,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Row(
         children: [
@@ -257,7 +258,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: AppColors.grey100,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -281,11 +282,11 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
 
   Widget _buildToggle() {
     return Container(
-      color: Colors.white,
+      color: AppColors.blanc,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: AppColors.grey100,
           borderRadius: BorderRadius.circular(30),
         ),
         child: Row(
@@ -313,8 +314,8 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                       style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: _showRevenus
-                              ? Colors.black87
-                              : Colors.grey)),
+                              ? AppColors.noir87
+                              : AppColors.grey500)),
                 ),
               ),
             ),
@@ -341,8 +342,8 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                       style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: !_showRevenus
-                              ? Colors.black87
-                              : Colors.grey)),
+                              ? AppColors.noir87
+                              : AppColors.grey500)),
                 ),
               ),
             ),
@@ -364,7 +365,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -378,7 +379,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
         children: [
           Text(label,
               style:
-                  TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  TextStyle(color: AppColors.grey600, fontSize: 13)),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -391,8 +392,8 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Text('XOF',
-                  style: TextStyle(fontSize: 16, color: Colors.grey)),
+              Text('XOF',
+                  style: TextStyle(fontSize: 16, color: AppColors.grey500)),
               const SizedBox(width: 10),
               Container(
                 padding:
@@ -424,18 +425,18 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Center(
+        child: Center(
             child: Text('Aucune donnée',
-                style: TextStyle(color: Colors.grey))),
+                style: TextStyle(color: AppColors.grey500))),
       );
     }
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -453,7 +454,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               const Spacer(),
               Text('${items.length} au total',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  style: TextStyle(fontSize: 11, color: AppColors.grey500)),
             ],
           ),
           const SizedBox(height: 16),
@@ -469,12 +470,12 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blanc,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Center(
+        child: Center(
             child: Text('Aucune donnée',
-                style: TextStyle(color: Colors.grey))),
+                style: TextStyle(color: AppColors.grey500))),
       );
     }
     final pieColors = [
@@ -488,7 +489,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -506,7 +507,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               const Spacer(),
               Text('${items.length} catégories',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  style: TextStyle(fontSize: 11, color: AppColors.grey500)),
             ],
           ),
           const SizedBox(height: 16),
@@ -709,7 +710,7 @@ class _OperationTile extends StatelessWidget {
     final effetCaisse = isRevenu ? op.montant : -op.montant;
     final entreEnCaisse = effetCaisse >= 0;
     final amountColor =
-        entreEnCaisse ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+        entreEnCaisse ? AppColors.positive : AppColors.error;
     // Une sortie porte son signe ; une entrée s'en passe, sauf sur une extourne
     // où le « + » dit clairement que l'argent revient.
     final sign = entreEnCaisse ? (op.estUneExtourne ? '+' : '') : '-';
@@ -735,7 +736,7 @@ class _OperationTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -776,7 +777,7 @@ class _OperationTile extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                           color:
-                              isAnnulee ? Colors.red : const Color(0xFF1A1A1A),
+                              isAnnulee ? Colors.red : AppColors.dark,
                           decoration:
                               isAnnulee ? TextDecoration.lineThrough : null,
                           decorationColor: Colors.red,
@@ -793,7 +794,7 @@ class _OperationTile extends StatelessWidget {
                       style: TextStyle(
                         // Montant en noir comme le libellé ; le sens de
                         // l'opération se lit sur la pastille d'icône et le signe.
-                        color: isAnnulee ? Colors.red : const Color(0xFF1A1A1A),
+                        color: isAnnulee ? Colors.red : AppColors.dark,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                         decoration:
@@ -811,7 +812,7 @@ class _OperationTile extends StatelessWidget {
                       child: Text(
                         vehiculeChauffeur,
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500),
+                            fontSize: 11, color: AppColors.grey500),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -820,7 +821,7 @@ class _OperationTile extends StatelessWidget {
                     Text(
                       dateLabel,
                       style: TextStyle(
-                          fontSize: 10, color: Colors.grey.shade400),
+                          fontSize: 10, color: AppColors.grey400),
                     ),
                   ],
                 ),
@@ -909,7 +910,7 @@ class _PieItemBubbleState extends State<_PieItemBubble> {
       // corps de la bulle).
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 6 + _tailHeight),
       decoration: ShapeDecoration(
-        color: Colors.white,
+        color: AppColors.blanc,
         shape: _BubbleWithTail(
           color: widget.color,
           radius: 9,

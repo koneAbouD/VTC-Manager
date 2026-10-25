@@ -61,7 +61,7 @@ class _ArretesHistoryPageState extends ConsumerState<ArretesHistoryPage> {
                         '${a.length} arrêté${a.length > 1 ? 's' : ''}',
                     orElse: () => '',
                   ),
-                  style: const TextStyle(fontSize: 12, color: AppColors.hint),
+                  style: TextStyle(fontSize: 12, color: AppColors.hint),
                 ),
               ],
             ),
@@ -75,14 +75,14 @@ class _ArretesHistoryPageState extends ConsumerState<ArretesHistoryPage> {
                   const SizedBox(height: 120),
                   Center(
                       child: Text('Impossible de charger l\'historique',
-                          style: TextStyle(color: Colors.grey.shade600))),
+                          style: TextStyle(color: AppColors.grey600))),
                 ]),
                 data: (arretes) {
                   if (arretes.isEmpty) {
                     return ListView(children: [
                       const SizedBox(height: 120),
                       Icon(Icons.receipt_long_outlined,
-                          size: 56, color: Colors.grey.shade300),
+                          size: 56, color: AppColors.grey300),
                       const SizedBox(height: 12),
                       Center(
                           child: Text(
@@ -90,7 +90,7 @@ class _ArretesHistoryPageState extends ConsumerState<ArretesHistoryPage> {
                                   ? 'Aucun arrêté enregistré'
                                   : 'Aucun arrêté sur ce mois',
                               style: TextStyle(
-                                  fontSize: 15, color: Colors.grey.shade600))),
+                                  fontSize: 15, color: AppColors.grey600))),
                     ]);
                   }
                   return ListView.builder(
@@ -167,7 +167,7 @@ class _ArreteTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text('${fmtDate(arrete.dateArrete)} · '
                       '${arrete.reglements.length} bénéficiaire${arrete.reglements.length > 1 ? 's' : ''}',
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.label)),
+                      style: TextStyle(fontSize: 11.5, color: AppColors.label)),
                 ],
               ),
             ),
@@ -180,7 +180,7 @@ class _ArreteTile extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: Colors.green.shade800)),
                 const SizedBox(height: 2),
-                const Text('restitué', style: TextStyle(fontSize: 10.5, color: AppColors.hint)),
+                Text('restitué', style: TextStyle(fontSize: 10.5, color: AppColors.hint)),
               ],
             ),
           ],

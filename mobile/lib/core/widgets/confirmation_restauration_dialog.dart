@@ -37,7 +37,7 @@ Future<bool?> showConfirmationRestaurationDialog(
                   color: AppColors.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.restore_rounded,
+                child: Icon(Icons.restore_rounded,
                     size: 28, color: AppColors.primary),
               ),
             ),
@@ -45,7 +45,7 @@ Future<bool?> showConfirmationRestaurationDialog(
             Text(
               titre,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: AppColors.dark,
@@ -55,7 +55,7 @@ Future<bool?> showConfirmationRestaurationDialog(
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13.5, height: 1.4, color: AppColors.label),
             ),
             const SizedBox(height: 20),
@@ -68,7 +68,7 @@ Future<bool?> showConfirmationRestaurationDialog(
                       onPressed: () => Navigator.pop(ctx, false),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.label,
-                        side: const BorderSide(color: AppColors.border),
+                        side: BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                       ),
