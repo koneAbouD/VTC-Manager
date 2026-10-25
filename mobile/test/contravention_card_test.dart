@@ -4,15 +4,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vtc_manager/features/contravention/domain/entities/contravention.dart';
 import 'package:vtc_manager/features/contravention/presentation/widgets/contravention_card.dart';
 
-Contravention _fake({String? statut}) => Contravention(
+Contravention _fake({
+  String? statut,
+  String? typeInfraction = 'Excès de vitesse',
+}) =>
+    Contravention(
       id: 42,
       dateInfraction: DateTime(2026, 7, 17),
       montant: 25000,
       statut: statut,
       vehiculeNom: 'AA-123-BB',
       chauffeurNom: 'Koné',
-      typeInfraction: 'Excès de vitesse',
+      typeInfraction: typeInfraction,
     );
+
+Future<void> _monter(WidgetTester tester, Contravention c) =>
+    tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: ContraventionCard(
+          contravention: c,
+          selectable: false,
+          selected: false,
+          onSelectChanged: (_) {},
+          onEdit: () {},
+        ),
+      ),
+    ));
 
 void main() {
   testWidgets('un tap sur la ligne coche la contravention', (tester) async {
@@ -63,5 +80,21 @@ void main() {
 
     expect(selectChanged, isFalse);
     expect(edited, isTrue);
+  });
+
+  group("pastille du type d'infraction", () {
+    testWidgets('type inconnu : aucune pastille « Contravention »',
+        (tester) async {
+      for (final type in [null, '', '  ']) {
+        await _monter(tester, _fake(typeInfraction: type));
+        expect(find.text('Contravention'), findsNothing,
+            reason: 'type ${type == null ? 'absent' : 'vide'}');
+      }
+    });
+
+    testWidgets('type connu : la pastille le montre', (tester) async {
+      await _monter(tester, _fake());
+      expect(find.text('Excès de vitesse'), findsOneWidget);
+    });
   });
 }

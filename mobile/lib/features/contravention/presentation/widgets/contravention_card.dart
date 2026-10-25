@@ -92,6 +92,12 @@ class ContraventionCard extends StatelessWidget {
         ? (contravention.montantPaye ?? contravention.montant)
         : contravention.montant;
 
+    // Type d'infraction : la pastille n'existe que s'il est connu. Sans lui,
+    // elle répétait « Contravention » sur chaque ligne, ce qui n'apprend rien
+    // dans une liste de contraventions.
+    final typeInfraction = contravention.typeInfraction?.trim();
+    final aUnType = typeInfraction != null && typeInfraction.isNotEmpty;
+
     final contenu = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -111,8 +117,7 @@ class ContraventionCard extends StatelessWidget {
                     runSpacing: 6,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      _pill(contravention.typeInfraction ?? 'Contravention',
-                          _graviteBg()),
+                      if (aUnType) _pill(typeInfraction, _graviteBg()),
                       _metaItem(Icons.calendar_today_outlined, _dateLabel()),
                     ],
                   ),
