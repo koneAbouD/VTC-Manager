@@ -220,14 +220,14 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: hasFilter
-                    ? primary.withValues(alpha: 0.08)
-                    : Colors.white,
+                // Même bouton que le filtre des recettes : surface (blanc en
+                // clair, sombre en sombre), bordure grise, texte à l'accent.
+                color: AppColors.blanc,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: hasFilter
                       ? primary.withValues(alpha: 0.6)
-                      : AppColors.grey200,
+                      : AppColors.grey300,
                   width: hasFilter ? 1.5 : 1,
                 ),
               ),
@@ -238,8 +238,7 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
                   icon: Icon(
                     Icons.keyboard_arrow_down_rounded,
                     size: 16,
-                    color:
-                        hasFilter ? primary : AppColors.grey400,
+                    color: primary,
                   ),
                   dropdownColor: AppColors.blanc,
                   borderRadius: BorderRadius.circular(12),
@@ -249,8 +248,7 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
                     fontWeight: hasFilter
                         ? FontWeight.w600
                         : FontWeight.w500,
-                    color:
-                        hasFilter ? primary : AppColors.grey600,
+                    color: primary,
                   ),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Tous')),
@@ -618,14 +616,14 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: hasFilter
-                    ? primary.withValues(alpha: 0.08)
-                    : Colors.white,
+                // Même bouton que le filtre des recettes : surface (blanc en
+                // clair, sombre en sombre), bordure grise, texte à l'accent.
+                color: AppColors.blanc,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: hasFilter
                       ? primary.withValues(alpha: 0.6)
-                      : AppColors.grey200,
+                      : AppColors.grey300,
                   width: hasFilter ? 1.5 : 1,
                 ),
               ),
@@ -636,8 +634,7 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
                   icon: Icon(
                     Icons.keyboard_arrow_down_rounded,
                     size: 16,
-                    color:
-                        hasFilter ? primary : AppColors.grey400,
+                    color: primary,
                   ),
                   dropdownColor: AppColors.blanc,
                   borderRadius: BorderRadius.circular(12),
@@ -647,8 +644,7 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
                     fontWeight: hasFilter
                         ? FontWeight.w600
                         : FontWeight.w500,
-                    color:
-                        hasFilter ? primary : AppColors.grey600,
+                    color: primary,
                   ),
                   items: const [
                     DropdownMenuItem(value: null, child: Text('Tous')),
