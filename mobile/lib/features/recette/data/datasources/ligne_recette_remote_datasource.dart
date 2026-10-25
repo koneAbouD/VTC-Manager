@@ -5,6 +5,7 @@ import '../models/encaissement_model.dart';
 import '../models/ligne_recette_model.dart';
 import '../../../../core/models/apercu_reaffectation.dart';
 import '../../../../core/models/encaissement_lot.dart';
+import '../../domain/entities/generation_journee.dart';
 
 class LigneRecetteRemoteDatasource {
   final ApiClient _client;
@@ -155,5 +156,17 @@ class LigneRecetteRemoteDatasource {
     final data = await _client.post('/recettes/lignes/generer', <String, dynamic>{}, query: query);
     if (data is! List) throw const ApiException(500, 'Format de réponse inattendu');
     return data.map((e) => LigneRecetteModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Recettes et cotisations de la journée en un seul appel (veille par défaut).
+  Future<GenerationJournee> genererAvecCotisations({String? date}) async {
+    final query = date != null ? {'date': date} : null;
+    final data = await _client.post(
+        '/recettes/lignes/generer-avec-cotisations', <String, dynamic>{},
+        query: query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return GenerationJournee.fromJson(data);
   }
 }

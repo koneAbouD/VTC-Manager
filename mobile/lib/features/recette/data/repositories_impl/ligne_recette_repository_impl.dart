@@ -4,6 +4,7 @@ import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/network/page_result.dart';
 import '../../domain/entities/encaissement.dart';
+import '../../domain/entities/generation_journee.dart';
 import '../../domain/entities/ligne_recette.dart';
 import '../../domain/repositories/ligne_recette_repository.dart';
 import '../datasources/ligne_recette_remote_datasource.dart';
@@ -244,6 +245,22 @@ class LigneRecetteRepositoryImpl implements LigneRecetteRepository {
         date: date?.toIso8601String().substring(0, 10),
       );
       return Right(result);
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, GenerationJournee>> genererAvecCotisations(
+      {DateTime? date}) async {
+    try {
+      return Right(await _datasource.genererAvecCotisations(
+        date: date?.toIso8601String().substring(0, 10),
+      ));
     } on ApiException catch (e) {
       return Left(_mapApiException(e));
     } on NetworkException catch (e) {

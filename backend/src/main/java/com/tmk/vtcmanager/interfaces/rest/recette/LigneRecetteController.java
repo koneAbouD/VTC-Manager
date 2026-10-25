@@ -18,6 +18,8 @@ import com.tmk.vtcmanager.application.usecases.recette.ConfirmerVersementUseCase
 import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.CreateEncaissementsLotUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.GenererLignesRecetteUseCase;
+import com.tmk.vtcmanager.application.usecases.recette.GenererRecettesEtCotisationsUseCase;
+import com.tmk.vtcmanager.application.domain.recette.ResultatGenerationJournee;
 import com.tmk.vtcmanager.application.usecases.recette.GetLignesRecetteUseCase;
 import com.tmk.vtcmanager.application.usecases.recette.ModifierDateEncaissementRecetteUseCase;
 import com.tmk.vtcmanager.interfaces.rest.common.ModificationDateEncaissementRequest;
@@ -29,6 +31,7 @@ import com.tmk.vtcmanager.interfaces.rest.recette.dto.request.EncaissementLotReq
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.request.EncaissementRequest;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.EncaissementLotResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.EncaissementResponse;
+import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.GenerationJourneeResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.dto.response.LigneRecetteResponse;
 import com.tmk.vtcmanager.interfaces.rest.recette.mapper.RecetteRestMapper;
 import jakarta.validation.Valid;
@@ -69,6 +72,7 @@ public class LigneRecetteController {
     private final ModifierMontantAttenduRecetteUseCase modifierMontantAttenduUseCase;
     private final ModificationMontantService modificationMontantService;
     private final GenererLignesRecetteUseCase genererLignesRecetteUseCase;
+    private final GenererRecettesEtCotisationsUseCase genererRecettesEtCotisationsUseCase;
     private final RecetteRestMapper mapper;
 
     @GetMapping
@@ -268,5 +272,21 @@ public class LigneRecetteController {
         // Principe : sans date, la génération concerne la veille (J-1).
         return mapper.toResponseList(genererLignesRecetteUseCase.executer(
                 date != null ? date : LocalDate.now().minusDays(1)));
+    }
+
+    /**
+     * Recettes et cotisations de la journée d'un seul geste. Chaque côté garde
+     * ses garde-fous et sa transaction : le bilan dit ce qui est passé de part
+     * et d'autre.
+     */
+    @PostMapping("/generer-avec-cotisations")
+    @ResponseStatus(HttpStatus.CREATED)
+    public GenerationJourneeResponse genererAvecCotisations(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        // Même principe que /generer : sans date, la veille (J-1).
+        ResultatGenerationJournee r = genererRecettesEtCotisationsUseCase.executer(
+                date != null ? date : LocalDate.now().minusDays(1));
+        return new GenerationJourneeResponse(
+                r.date(), r.recettes(), r.erreurRecettes(), r.cotisations(), r.erreurCotisations());
     }
 }

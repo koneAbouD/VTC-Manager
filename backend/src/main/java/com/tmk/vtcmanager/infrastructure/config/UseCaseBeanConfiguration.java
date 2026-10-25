@@ -951,6 +951,14 @@ public class UseCaseBeanConfiguration {
                 encaissementFuturGuard, notificationEncaissementService);
     }
 
+    /** Passe par les beans des deux générations, donc par leur proxy : une transaction chacune. */
+    @Bean
+    public GenererRecettesEtCotisationsUseCase genererRecettesEtCotisationsUseCase(
+            GenererLignesRecetteUseCase genererLignesRecetteUseCase,
+            GenererLignesCotisationUseCase genererLignesCotisationUseCase) {
+        return new GenererRecettesEtCotisationsUseCase(genererLignesRecetteUseCase, genererLignesCotisationUseCase);
+    }
+
     /** Voir {@link #createEncaissementsCotisationLotUseCase} : une transaction par ligne. */
     @Bean
     public CreateEncaissementsLotUseCase createEncaissementsLotUseCase(

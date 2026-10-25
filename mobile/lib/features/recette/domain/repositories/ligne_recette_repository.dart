@@ -3,6 +3,7 @@ import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/network/page_result.dart';
 import '../entities/encaissement.dart';
+import '../entities/generation_journee.dart';
 import '../entities/ligne_recette.dart';
 import '../../../../core/models/apercu_reaffectation.dart';
 import '../../../../core/models/encaissement_lot.dart';
@@ -96,4 +97,11 @@ abstract interface class LigneRecetteRepository {
   Future<Either<Failure, LigneRecette>> confirmerVersement(int id);
 
   Future<Either<Failure, List<LigneRecette>>> generer({DateTime? date});
+
+  /// Génère d'un seul geste les recettes et les cotisations de la journée
+  /// (veille par défaut). Chaque côté garde ses garde-fous serveur (jour de
+  /// salaire, alternance, immobilisation, anti-doublon) et rend son propre
+  /// verdict : un échec d'un côté n'emporte pas l'autre.
+  Future<Either<Failure, GenerationJournee>> genererAvecCotisations(
+      {DateTime? date});
 }

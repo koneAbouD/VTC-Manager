@@ -489,20 +489,30 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     }
   }
 
+  /// Recettes et cotisations d'hier d'un seul geste. Le serveur rend un
+  /// verdict par côté : une partie réussie est rechargée même si l'autre a
+  /// échoué.
   Future<void> _generer() async {
-    final result = await ref.read(ligneRecetteRepositoryProvider).generer();
-    final error = result.fold((f) => f.message, (_) => null);
+    final result =
+        await ref.read(ligneRecetteRepositoryProvider).genererAvecCotisations();
     if (!mounted) return;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lignes d'hier générées avec succès.")),
-      );
-      _load();
-    }
+    result.fold(
+      (f) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(f.message), backgroundColor: Colors.red),
+      ),
+      (bilan) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(bilan.message),
+          backgroundColor: bilan.enErreur ? Colors.red : null,
+        ));
+        if (bilan.recettesReussies || bilan.cotisationsReussies) {
+          _load();
+          // Les deux listes sont autoDispose : la page Cotisations se recharge à
+          // sa prochaine ouverture. Créances et Finances, elles, sont montées.
+          refreshFinances(ref);
+        }
+      },
+    );
   }
 
   @override
