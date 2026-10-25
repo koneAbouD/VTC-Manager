@@ -11,6 +11,7 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/auth/presentation/pages/login_page.dart';
+import 'features/auth/presentation/pages/pin_brand.dart';
 import 'features/auth/presentation/pages/pin_lock_page.dart';
 import 'features/auth/presentation/pages/pin_resume_page.dart';
 import 'features/auth/presentation/pages/pin_setup_page.dart';
@@ -188,24 +189,15 @@ class _SplashScreen extends ConsumerWidget {
       ref.read(authNotifierProvider.notifier).bootstrap();
     });
 
-    return Scaffold(
+    return const Scaffold(
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'assets/images/logo_tmk.png',
-              height: 120,
-              fit: BoxFit.contain,
-              // Repli si le logo n'est pas (encore) disponible.
-              errorBuilder: (_, __, ___) => Icon(
-                Icons.local_taxi_rounded,
-                size: 80,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 28),
-            const CircularProgressIndicator(),
+            // Même logo, aux angles adoucis, que les écrans de code.
+            PinBrand(height: 120),
+            SizedBox(height: 28),
+            CircularProgressIndicator(),
           ],
         ),
       ),

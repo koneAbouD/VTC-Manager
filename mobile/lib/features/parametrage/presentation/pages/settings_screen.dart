@@ -981,12 +981,8 @@ class _PiedDePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Le logo est une image carrée à fond blanc : on adoucit ses angles
-        // pour l'accorder aux cartes de la page.
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: const PinBrand(height: 34),
-        ),
+        // Angles adoucis par PinBrand lui-même.
+        const PinBrand(height: 34),
         const SizedBox(height: 10),
         Text(
           'Version $_kAppVersion',

@@ -15,25 +15,35 @@ PinTheme get pinTheme => PinTheme(
   tint: AppColors.primaryTint,
 );
 
-/// Logo de l'application : en tête des écrans de code, et en miniature au pied
-/// des réglages.
+/// Logo de l'application : en tête des écrans de code, à l'écran de démarrage
+/// et en miniature au pied des réglages.
 class PinBrand extends StatelessWidget {
   /// Hauteur du logo (96 en tête d'écran, une trentaine en pied de page).
   final double height;
 
   const PinBrand({super.key, this.height = 96});
 
+  /// Arrondi des angles, proportionnel à la taille : 10 px pour le logo de 34
+  /// px du pied des réglages, la même courbe à toutes les tailles.
+  static const _ratioArrondi = 10 / 34;
+
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/images/logo_tmk.png',
-      height: height,
-      fit: BoxFit.contain,
-      // Même repli que l'écran de démarrage si l'asset manque.
-      errorBuilder: (_, __, ___) => Icon(
-        Icons.local_taxi_rounded,
-        size: height * 0.75,
-        color: AppColors.primary,
+    // Le logo est une image à fond blanc, sans transparence : en clair il se
+    // fond dans la page, en sombre il devient un rectangle blanc. Ses angles
+    // sont donc toujours adoucis, comme ceux des cartes.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(height * _ratioArrondi),
+      child: Image.asset(
+        'assets/images/logo_tmk.png',
+        height: height,
+        fit: BoxFit.contain,
+        // Repli si l'asset manque.
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.local_taxi_rounded,
+          size: height * 0.75,
+          color: AppColors.primary,
+        ),
       ),
     );
   }
