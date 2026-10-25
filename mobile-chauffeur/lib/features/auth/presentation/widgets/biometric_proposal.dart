@@ -80,6 +80,11 @@ class _ProposalDialog extends StatelessWidget {
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      // Marges réduites et contenu défilant : la boîte tient sur un téléphone
+      // de 360 dp, en paysage comme en grand texte.
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      scrollable: true,
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       title: Column(
         children: [
           Container(
@@ -99,44 +104,49 @@ class _ProposalDialog extends StatelessWidget {
           ),
         ],
       ),
-      content: const Text(
-        'Vous ouvrirez l\'application d\'un geste, sans saisir vos cinq '
-        'chiffres. Votre code TMK reste actif et vous sera redemandé si la '
-        'reconnaissance échoue.',
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 13, color: AppColors.label, height: 1.4),
-      ),
-      actionsAlignment: MainAxisAlignment.center,
-      actions: [
-        SizedBox(
-          width: 120,
-          child: FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-            child: const Text(
-              'ACTIVER',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
+      content: ConstrainedBox(
+        // Sur tablette, le paragraphe ne s'étale pas sur toute la largeur.
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: const Text(
+          'Vous ouvrirez l\'application d\'un geste, sans saisir vos cinq '
+          'chiffres. Votre code TMK reste actif et vous sera redemandé si la '
+          'reconnaissance échoue.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: AppColors.label, height: 1.4),
         ),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 120,
-          child: OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary),
-              padding: const EdgeInsets.symmetric(vertical: 14),
+      ),
+      // Boutons empilés en pleine largeur plutôt que deux largeurs fixes côte
+      // à côte : rien ne déborde, quelle que soit la taille de l'écran.
+      actions: [
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                minimumSize: const Size.fromHeight(50),
+              ),
+              child: const Text(
+                'ACTIVER',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
-            child: const Text(
-              'PLUS TARD',
-              style: TextStyle(fontWeight: FontWeight.w700),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                minimumSize: const Size.fromHeight(50),
+              ),
+              child: const Text(
+                'PLUS TARD',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
-          ),
+          ],
         ),
       ],
     );
