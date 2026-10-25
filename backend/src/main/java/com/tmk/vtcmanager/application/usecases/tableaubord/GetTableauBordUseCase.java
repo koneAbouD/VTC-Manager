@@ -138,7 +138,10 @@ public class GetTableauBordUseCase {
         return new JourneeDto(
                 jour,
                 encaisse,
-                nz(creanceRepository.getRestantRecettesEtAmendes(jour.minusDays(1))),
+                // Jamais négatif : un reste dû ne peut pas l'être (la vue ne
+                // retient que les restants positifs), le plancher le garantit.
+                nz(creanceRepository.getRestantRecettesEtAmendes(jour.minusDays(1)))
+                        .max(BigDecimal.ZERO),
                 nz(r.getChargesVariables()).add(nz(r.getChargesFixes())),
                 nz(r.getResultatGestion()));
     }

@@ -133,6 +133,14 @@ class GetTableauBordUseCaseTest {
     }
 
     @Test
+    void le_manquant_du_jour_n_est_jamais_negatif() {
+        when(creanceRepository.getRestantRecettesEtAmendes(any()))
+                .thenReturn(new BigDecimal("-290000"));
+
+        assertThat(executer().journee().manquant()).isEqualByComparingTo("0");
+    }
+
+    @Test
     void lit_le_dernier_jour_d_un_mois_passe() {
         var jour = executer().journee();
 

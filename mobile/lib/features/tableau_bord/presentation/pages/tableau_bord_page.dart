@@ -294,6 +294,10 @@ class _BandeauEssentiel extends ConsumerWidget {
 
     // Le manquant du jour porte sur les recettes de la veille, celles qu'on
     // encaisse ce jour-là (elles naissent le lendemain matin) : on le dit.
+    // Un manquant n'est jamais négatif. Le serveur ne peut plus en produire,
+    // mais un serveur antérieur envoyait encore l'ancien calcul (dus du jour −
+    // versés du jour), négatif dès qu'on encaissait la veille : plancher à 0.
+    final manquant = j.manquant < 0 ? 0.0 : j.manquant;
     final veille = j.date == null || data.periode.moisEnCours
         ? 'd\'hier'
         : 'du ${DateFormat('d MMMM', 'fr_FR').format(j.date!.subtract(const Duration(days: 1)))}';
@@ -332,9 +336,9 @@ class _BandeauEssentiel extends ConsumerWidget {
           _CarteEssentiel(
             icone: Icons.money_off_outlined,
             label: 'Manquant',
-            valeur: tbMontantCourt(j.manquant),
-            couleur: j.manquant > 0 ? kTbRouge : kTbVert,
-            sousLabel: j.manquant > 0
+            valeur: tbMontantCourt(manquant),
+            couleur: manquant > 0 ? kTbRouge : kTbVert,
+            sousLabel: manquant > 0
                 ? 'recettes $veille non versées'
                 : 'recettes $veille toutes versées',
             libelleMois: mois,

@@ -287,6 +287,14 @@ void main() {
       expect(find.text('recettes du 30 mai non versées'), findsOneWidget);
     });
 
+    testWidgets('un manquant négatif (serveur antérieur) s\'affiche 0',
+        (tester) async {
+      await _pump(tester, _modele(journee: _journee(manquant: -290000)));
+
+      expect(find.text('-290 k'), findsNothing);
+      expect(find.text('recettes du 30 mai toutes versées'), findsOneWidget);
+    });
+
     testWidgets('au mois en cours, le manquant parle des recettes d\'hier',
         (tester) async {
       await _pump(
