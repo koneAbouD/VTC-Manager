@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import 'gestionnaire_form_page.dart';
 import 'groupe_models.dart';
+import '../../../../core/widgets/choix_premium.dart';
 
 // ── Toast helpers ──────────────────────────────────────────────────────────────
 enum _ToastType { success, error, warning, info }
@@ -367,18 +368,7 @@ class _TypeActivitePicker extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : AppColors.scaffold,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: isSelected
-                    ? AppColors.primary
-                    : Colors.transparent,
-                width: 1.5,
-              ),
-            ),
+            decoration: decorationChoix(choisi: isSelected, rayon: 24),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -457,17 +447,7 @@ class _GestionnaireTile extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.06)
-                  : AppColors.scaffold,
-              borderRadius: BorderRadius.circular(14),
-              border: isSelected
-                  ? Border.all(
-                      color: AppColors.primary
-                          .withValues(alpha: 0.4))
-                  : null,
-            ),
+            decoration: decorationChoix(choisi: isSelected, rayon: 14),
             child: Row(
               children: [
                 CircleAvatar(

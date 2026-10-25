@@ -1055,6 +1055,12 @@ class _SearchBarState extends State<_SearchBar> {
         // fond blanc bordé.
         color: AppColors.fieldFill,
         borderRadius: BorderRadius.circular(12),
+        // Contour à l'accent pendant la saisie, comme les champs des
+        // formulaires ; aucun au repos.
+        border: Border.all(
+          color: _focus.hasFocus ? AppColors.primary : Colors.transparent,
+          width: 1.5,
+        ),
       ),
       child: Row(
         children: [
@@ -1076,6 +1082,11 @@ class _SearchBarState extends State<_SearchBar> {
                 hintText: 'Numéro, véhicule, chauffeur…',
                 hintStyle: TextStyle(color: AppColors.hint, fontSize: 14),
                 border: InputBorder.none,
+                // Le cadre est porté par la boîte grise : sans cela, le thème
+                // dessinerait son propre fond et son contour à l'intérieur.
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 13),
               ),

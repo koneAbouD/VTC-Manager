@@ -50,15 +50,8 @@ class _VehiculeSelectorPageState extends ConsumerState<VehiculeSelectorPage> {
               onChanged: (v) => setState(() => _query = v),
               decoration: InputDecoration(
                 hintText: 'Rechercher un véhicule...',
-                prefixIcon: Icon(Icons.search, color: AppColors.grey500),
-                filled: true,
-                fillColor: AppColors.scaffold,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                // Fond, contours et marges : ceux des champs du thème.
+                prefixIcon: const Icon(Icons.search),
               ),
             ),
           ),

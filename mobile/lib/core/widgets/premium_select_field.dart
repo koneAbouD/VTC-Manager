@@ -88,7 +88,6 @@ class PremiumSelectField<T> extends StatelessWidget {
 
         final selection =
             options.where((o) => o.value == value).cast<SelectOption<T>?>().firstOrNull;
-        final borderColor = state.hasError ? AppColors.error : AppColors.border;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,14 +108,18 @@ class PremiumSelectField<T> extends StatelessWidget {
                             state.didChange(res.value);
                           }
                         },
+                  // Même gabarit que les champs texte du thème : fond gris
+                  // sans contour, contour rouge seulement en cas d'erreur.
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 13),
+                        horizontal: 16, vertical: 13),
                     decoration: BoxDecoration(
                       color: fillColor ?? AppColors.fieldFill,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: borderColor,
+                          color: state.hasError
+                              ? AppColors.error
+                              : Colors.transparent,
                           width: state.hasError ? 1.4 : 1),
                     ),
                     child: Row(
@@ -329,15 +332,9 @@ class _SelectSheetState<T> extends State<_SelectSheet<T>> {
                   hintText: 'Rechercher…',
                   hintStyle:
                       TextStyle(color: AppColors.hint, fontSize: 14),
-                  prefixIcon: Icon(Icons.search_rounded,
-                      size: 20, color: AppColors.hint),
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  contentPadding: EdgeInsets.zero,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.border),
-                  ),
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  // Fond gris et contours du thème ; le contour actif reprend
+                  // l'accent de la liste.
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: accent, width: 1.5),

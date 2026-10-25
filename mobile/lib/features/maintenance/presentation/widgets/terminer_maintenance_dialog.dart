@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../operation_financiere/domain/entities/element_maintenance.dart';
+import '../../../../core/widgets/choix_premium.dart';
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -430,15 +431,8 @@ class _OptionReglement extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          color:
-              actif ? couleur.withValues(alpha: 0.10) : AppColors.scaffold,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: actif ? couleur : _kBorder,
-            width: actif ? 1.6 : 1,
-          ),
-        ),
+        decoration:
+            decorationChoix(choisi: actif, couleur: couleur, rayon: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

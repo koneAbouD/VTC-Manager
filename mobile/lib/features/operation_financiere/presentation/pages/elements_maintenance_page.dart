@@ -243,24 +243,8 @@ class _ElementsMaintenancePageState
                     decoration: InputDecoration(
                       hintText: 'Recherchez...',
                       hintStyle: TextStyle(color: _kHint, fontSize: 15),
-                      suffixIcon: Icon(Icons.search, color: _kHint),
-                      filled: true,
-                      fillColor: AppColors.scaffold,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 13),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: _kBorder, width: 1),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: _kBorder, width: 1),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            BorderSide(color: _kPrimary, width: 1.5),
-                      ),
+                      // Fond, contours et marges : ceux des champs du thème.
+                      suffixIcon: const Icon(Icons.search),
                     ),
                   ),
                 ),

@@ -24,6 +24,7 @@ import 'categorie_operation_selector_page.dart';
 import 'elements_maintenance_page.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/choix_premium.dart';
 // ── Palette ───────────────────────────────────────────────────────────────────
 
 Color get _kPrimary => AppColors.primary;
@@ -376,14 +377,7 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
               margin: EdgeInsets.only(
                   right: isEspeces ? 5 : 0, left: isEspeces ? 0 : 5),
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-              decoration: BoxDecoration(
-                color: isSel ? _kPrimary.withValues(alpha: 0.10) : _kFieldFill,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isSel ? _kPrimary : Colors.transparent,
-                  width: 1.5,
-                ),
-              ),
+              decoration: decorationChoix(choisi: isSel, rayon: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -433,14 +427,8 @@ class _FormState extends ConsumerState<OperationFinanciereFormPage> {
               margin: EdgeInsets.only(
                   right: isRevenu ? 5 : 0, left: isRevenu ? 0 : 5),
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-              decoration: BoxDecoration(
-                color: isSel ? color.withValues(alpha: 0.10) : _kFieldFill,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isSel ? color : Colors.transparent,
-                  width: 1.5,
-                ),
-              ),
+              decoration:
+                  decorationChoix(choisi: isSel, couleur: color, rayon: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

@@ -11,6 +11,7 @@ import '../../../../core/widgets/app_header.dart';
 import 'condition_travail_models.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/choix_premium.dart';
 // ── Toast helpers ──────────────────────────────────────────────────────────────
 enum _ToastType { success, error, warning, info }
 
@@ -2422,13 +2423,7 @@ class _DureeMinutesSection extends StatelessWidget {
               duration: const Duration(milliseconds: 150),
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected ? _kPrimary : AppColors.scaffold,
-                borderRadius: BorderRadius.circular(22),
-                border: isSelected
-                    ? null
-                    : Border.all(color: AppColors.border),
-              ),
+              decoration: decorationChoix(choisi: isSelected, rayon: 22),
               child: Text(e.value,
                   style: TextStyle(
                       fontSize: 13,
@@ -2436,7 +2431,7 @@ class _DureeMinutesSection extends StatelessWidget {
                           ? FontWeight.w700
                           : FontWeight.w500,
                       color:
-                          isSelected ? Colors.white : AppColors.grey700)),
+                          isSelected ? _kPrimary : AppColors.grey700)),
             ),
           );
         }).toList(),

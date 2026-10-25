@@ -32,6 +32,7 @@ import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/premium_select_field.dart';
 import '../../../../core/widgets/responsive_field_row.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/choix_premium.dart';
 
 Color get _kPrimary => AppColors.primary;
 Color get _kFieldFill => AppColors.fieldFill;
@@ -2654,20 +2655,15 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                             duration: const Duration(milliseconds: 120),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 20, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: sel ? _kPrimary : _kFieldFill,
-                              borderRadius: BorderRadius.circular(10),
-                              border: sel
-                                  ? null
-                                  : Border.all(color: AppColors.border),
-                            ),
+                            decoration:
+                                decorationChoix(choisi: sel, rayon: 10),
                             child: Text(
                               cat,
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight:
                                     sel ? FontWeight.w600 : FontWeight.w400,
-                                color: sel ? Colors.white : AppColors.noir87,
+                                color: sel ? _kPrimary : AppColors.noir87,
                               ),
                             ),
                           ),

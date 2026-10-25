@@ -38,6 +38,11 @@ class RechercheField extends StatelessWidget {
               hintStyle:
                   TextStyle(color: AppColors.hint, fontSize: 13.5),
               border: InputBorder.none,
+              // Le cadre est porté par la boîte grise : sans cela, le thème
+              // dessinerait son propre fond et son contour à l'intérieur.
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
               isDense: true,
             ),
           ),
