@@ -615,8 +615,11 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 6),
+                    // Même pastille que le filtre des recettes : surface du
+                    // thème (blanc en clair, sombre en sombre) au lieu d'un
+                    // blanc translucide qui éclairait la carte en sombre.
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: AppColors.blanc,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: AppColors.grey300),
                     ),
@@ -649,9 +652,9 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 8),
+                      // Même pastille de date que les recettes.
                       decoration: BoxDecoration(
-                        color: AppColors.grey200
-                            .withValues(alpha: 0.5),
+                        color: AppColors.grey200,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
