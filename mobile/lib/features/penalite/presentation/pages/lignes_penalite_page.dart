@@ -835,10 +835,7 @@ class _LignePenaliteCard extends StatelessWidget {
                     _buildValeurDroite(sanctionColor),
                     if (onEncaisser != null) ...[
                       const SizedBox(height: 6),
-                      EncaisserChip(
-                        onTap: onEncaisser!,
-                        color: AppColors.error,
-                      ),
+                      EncaisserChip(onTap: onEncaisser!),
                     ],
                   ],
                 ),

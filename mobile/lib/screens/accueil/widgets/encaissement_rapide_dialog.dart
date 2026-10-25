@@ -657,7 +657,7 @@ class _EncaissementRapideSheetState
                       fontSize: 15, fontWeight: FontWeight.w700),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: _kGreen,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: AppColors.grey200,
                   shape: RoundedRectangleBorder(

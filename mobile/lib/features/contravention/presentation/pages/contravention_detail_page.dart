@@ -610,7 +610,7 @@ class _ContraventionDetailPageState
         child: FilledButton.icon(
           onPressed: _encaisser,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14)),

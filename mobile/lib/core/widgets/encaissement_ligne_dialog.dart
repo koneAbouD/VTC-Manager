@@ -20,6 +20,8 @@ Color get _kError => AppColors.error;
 
 // ── Bouton "Encaisser" réutilisable sur les cartes ────────────────────────────
 
+/// À la couleur d'accent par défaut : c'est une action de l'interface, elle
+/// suit le thème choisi dans Réglages › Apparence.
 class EncaisserChip extends StatelessWidget {
   final VoidCallback onTap;
   final Color color;
@@ -28,7 +30,7 @@ class EncaisserChip extends StatelessWidget {
     super.key,
     required this.onTap,
     Color? color,
-  }) : color = color ?? _kGreen;
+  }) : color = color ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -579,7 +581,7 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                       fontSize: 15, fontWeight: FontWeight.w700),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: _kGreen,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: AppColors.grey200,
                   shape: RoundedRectangleBorder(

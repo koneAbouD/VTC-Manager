@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/extourne_badge.dart';
-import '../../../../core/widgets/long_press_info_bubble.dart';
 import '../../domain/entities/operation_financiere.dart';
 import '../../domain/enums/statut_operation.dart';
 import '../../domain/enums/type_operation.dart';
@@ -18,6 +17,7 @@ import '../../../../screens/home_nav_provider.dart';
 import '../../../../screens/finance/finance_refresh.dart';
 import '../widgets/ligne_journal.dart';
 import '../widgets/versement_card.dart';
+import '../../../../core/widgets/statut_filtre_chip.dart';
 
 enum _FiltreMode { mois, semaine, jour, periode }
 
@@ -930,7 +930,7 @@ class _CategorieChipBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          _CategoryChip(
+          StatutFiltreChip(
             label: 'Tous',
             selected: selected == null,
             // Même gris neutre que le chip « Toutes » de ContraventionsPage.
@@ -938,7 +938,7 @@ class _CategorieChipBar extends StatelessWidget {
             onTap: () => onChanged(null),
             infoText: money.format(montantsCategorie[null] ?? 0),
           ),
-          ..._CategorieFiltre.values.map((c) => _CategoryChip(
+          ..._CategorieFiltre.values.map((c) => StatutFiltreChip(
                 label: c.label,
                 selected: selected == c,
                 color: c.couleur,
@@ -960,58 +960,6 @@ class _CategorieChipBar extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final Color color;
-  final VoidCallback onTap;
-
-  /// Montant à afficher dans l'info-bulle au long-press (montant de la catégorie).
-  final String? infoText;
-
-  const _CategoryChip({
-    required this.label,
-    required this.selected,
-    required this.color,
-    required this.onTap,
-    this.infoText,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Fond, bordure et texte repris des chips de statut de ContraventionsPage :
-    // le chip sélectionné se teinte de sa couleur au lieu de s'en remplir.
-    final chip = Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: selected ? color.withValues(alpha: 0.5) : AppColors.border),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          color: selected ? color : AppColors.label,
-        ),
-      ),
-    );
-
-    if (infoText == null) {
-      return GestureDetector(onTap: onTap, child: chip);
-    }
-    return LongPressInfoBubble(
-      onTap: onTap,
-      infoText: infoText!,
-      color: color,
-      child: chip,
     );
   }
 }

@@ -574,7 +574,7 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                             fontSize: 15, fontWeight: FontWeight.w700),
                       ),
                       style: FilledButton.styleFrom(
-                        backgroundColor: _kGreen,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: AppColors.grey200,
                         shape: RoundedRectangleBorder(

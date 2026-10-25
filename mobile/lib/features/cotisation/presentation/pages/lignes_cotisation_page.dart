@@ -1212,10 +1212,7 @@ class _LigneCotisationCard extends StatelessWidget {
                 ),
               if (onEncaisser != null) ...[
                 const SizedBox(height: 6),
-                EncaisserChip(
-                  onTap: onEncaisser!,
-                  color: AppColors.warning,
-                ),
+                EncaisserChip(onTap: onEncaisser!),
               ],
             ]),
           ],
