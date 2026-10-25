@@ -20,12 +20,36 @@ const String kMsgServeurTimeout =
 const String kMsgServeurInjoignable =
     'Impossible de joindre le serveur. Vérifiez votre connexion internet, puis réessayez.';
 
+/// Réponse 3xx : l'appel a été détourné avant d'atteindre le serveur — portail
+/// d'un Wi-Fi public, forfait épuisé, proxy. C'est un problème d'accès au
+/// réseau, pas une erreur du serveur : on dit à l'utilisateur quoi faire.
+const String kMsgAccesDetourne =
+    'Le serveur est inaccessible depuis ce réseau. Sur un Wi-Fi public, '
+    'ouvrez votre navigateur pour vous connecter, ou passez sur les données '
+    'mobiles, puis réessayez.';
+
+/// 502, 503, 504 : le proxy est joignable mais le serveur derrière ne répond
+/// pas (redémarrage, maintenance).
+const String kMsgServeurIndisponible =
+    'Le serveur est momentanément indisponible. Réessayez dans quelques '
+    'instants.';
+
+/// Autre 5xx sans message du backend.
+const String kMsgErreurServeur =
+    'Une erreur est survenue sur le serveur. Réessayez ; si le problème '
+    'persiste, contactez le support.';
+
+/// Code inattendu (1xx, 4xx non prévu…) sans message du backend.
+const String kMsgReponseInattendue =
+    'Réponse inattendue du serveur. Réessayez dans un instant.';
+
 /// Client HTTP partagé par tous les datasources.
 /// - Injecte automatiquement le Bearer token.
 /// - Sur un 401, tente un refresh token puis rejoue la requête **une seule fois**.
 /// - Normalise les réponses JSON (dynamic).
 /// - Lance [ApiException] pour les erreurs HTTP et [NetworkException] pour
-///   les erreurs réseau (timeout, pas de connexion).
+///   les erreurs réseau (timeout, pas de connexion, appel détourné par une
+///   redirection 3xx).
 class ApiClient {
   final SecureStorage _storage;
   final http.Client _http;
@@ -74,16 +98,12 @@ class ApiClient {
       if (result.statusCode >= 200 && result.statusCode < 300) {
         return result.bytes;
       }
-      final rawBody = utf8.decode(result.bytes);
-      final parsedBody = _corpsJson(rawBody);
-      throw ApiException(
-        result.statusCode,
-        _messageErreurHttp(result.statusCode, parsedBody, rawBody),
-        body: parsedBody,
-      );
+      throw _erreurHttp(result.statusCode, utf8.decode(result.bytes));
     } on TimeoutException {
       throw const NetworkException(kMsgServeurTimeout);
     } on ApiException {
+      rethrow;
+    } on NetworkException {
       rethrow;
     } catch (_) {
       throw const NetworkException(kMsgServeurInjoignable);
@@ -122,13 +142,7 @@ class ApiClient {
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         return bodyBytes;
       }
-      final rawBody = utf8.decode(bodyBytes);
-      final parsedBody = _corpsJson(rawBody);
-      throw ApiException(
-        streamed.statusCode,
-        _messageErreurHttp(streamed.statusCode, parsedBody, rawBody),
-        body: parsedBody,
-      );
+      throw _erreurHttp(streamed.statusCode, utf8.decode(bodyBytes));
     } on TimeoutException {
       throw const NetworkException(kMsgServeurTimeout);
     } on http.ClientException {
@@ -489,10 +503,25 @@ class ApiClient {
       if (response.bodyBytes.isEmpty) return null;
       return jsonDecode(utf8.decode(response.bodyBytes));
     }
-    final rawBody = utf8.decode(response.bodyBytes);
+    throw _erreurHttp(status, utf8.decode(response.bodyBytes));
+  }
+
+  /// Exception à lever pour une réponse hors 2xx.
+  ///
+  /// Une redirection (3xx) n'est jamais une réponse du backend, qui n'en émet
+  /// pas : c'est le réseau qui a intercepté l'appel. Elle remonte donc comme
+  /// une [NetworkException] — l'écran la traite comme « serveur injoignable »
+  /// (à la connexion : la saisie n'est pas en cause).
+  Exception _erreurHttp(int status, String rawBody) {
+    if (status >= 300 && status < 400) {
+      return const NetworkException(kMsgAccesDetourne);
+    }
     final parsedBody = _corpsJson(rawBody);
-    throw ApiException(status, _messageErreurHttp(status, parsedBody, rawBody),
-        body: parsedBody);
+    return ApiException(
+      status,
+      _messageErreurHttp(status, parsedBody, rawBody),
+      body: parsedBody,
+    );
   }
 
   /// Corps d'erreur JSON du backend, ou null s'il n'en est pas un (page HTML
@@ -521,8 +550,9 @@ class ApiClient {
           403 => 'Action non autorisée.',
           404 => 'Ressource introuvable.',
           413 => 'Le document est trop volumineux.',
-          >= 500 => 'Erreur serveur ($status).',
-          _ => 'Erreur serveur ($status)',
+          502 || 503 || 504 => kMsgServeurIndisponible,
+          >= 500 => kMsgErreurServeur,
+          _ => kMsgReponseInattendue,
         };
   }
 

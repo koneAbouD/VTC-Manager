@@ -45,7 +45,7 @@ void main() {
     await expectLater(
       client.getBytes('/recus/501/pdf'),
       throwsA(isA<ApiException>()
-          .having((e) => e.message, 'message', 'Erreur serveur (502).')),
+          .having((e) => e.message, 'message', kMsgServeurIndisponible)),
     );
   });
 }
