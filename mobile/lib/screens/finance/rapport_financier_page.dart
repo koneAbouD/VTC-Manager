@@ -179,7 +179,9 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
     final asyncData = ref.watch(rapportFinancierProvider(params));
 
     return Scaffold(
-      backgroundColor: AppColors.grey50,
+      // Fond de page du thème, comme Indisponibilités : les cartes (surface)
+      // s'en détachent en clair comme en sombre.
+      backgroundColor: AppColors.scaffold,
       appBar: AppHeader(title: 'Rapport financier', showBack: !widget.embedded),
       body: Column(
         children: [
@@ -231,9 +233,14 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
     );
   }
 
+  /// Bandeau des filtres et du segmenté : blanc en clair, sous l'en-tête ; en
+  /// sombre, le fond de page, comme les onglets d'Indisponibilités.
+  Color get _fondBandeau =>
+      AppColors.estSombre ? AppColors.scaffold : AppColors.blanc;
+
   Widget _buildFilters() {
     return Container(
-      color: AppColors.blanc,
+      color: _fondBandeau,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Row(
         children: [
@@ -282,7 +289,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
 
   Widget _buildToggle() {
     return Container(
-      color: AppColors.blanc,
+      color: _fondBandeau,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Container(
         decoration: BoxDecoration(
@@ -299,7 +306,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     color:
-                        _showRevenus ? Colors.white : Colors.transparent,
+                        _showRevenus ? AppColors.blanc : Colors.transparent,
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: _showRevenus
                         ? [
@@ -314,8 +321,8 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                       style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: _showRevenus
-                              ? AppColors.noir87
-                              : AppColors.grey500)),
+                              ? AppColors.primary
+                              : AppColors.grey600)),
                 ),
               ),
             ),
@@ -327,7 +334,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     color:
-                        !_showRevenus ? Colors.white : Colors.transparent,
+                        !_showRevenus ? AppColors.blanc : Colors.transparent,
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: !_showRevenus
                         ? [
@@ -342,8 +349,8 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                       style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: !_showRevenus
-                              ? AppColors.noir87
-                              : AppColors.grey500)),
+                              ? AppColors.primary
+                              : AppColors.grey600)),
                 ),
               ),
             ),
@@ -400,14 +407,14 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: isPositive
-                      ? Colors.green.shade50
-                      : Colors.red.shade50,
+                      ? AppColors.positiveTint
+                      : AppColors.errorTint,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '${isPositive ? '+' : ''}${variation.toStringAsFixed(0)}%',
                   style: TextStyle(
-                      color: isPositive ? Colors.green : Colors.red,
+                      color: isPositive ? AppColors.positive : AppColors.error,
                       fontWeight: FontWeight.bold,
                       fontSize: 13),
                 ),
