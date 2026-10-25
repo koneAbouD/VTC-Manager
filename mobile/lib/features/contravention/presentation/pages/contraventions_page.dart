@@ -7,13 +7,13 @@ import 'package:intl/intl.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
-import '../../../../core/widgets/long_press_info_bubble.dart';
 import '../../domain/entities/contravention.dart';
 import '../providers/contravention_provider.dart';
 import '../widgets/contravention_card.dart';
 import 'contravention_detail_page.dart';
 import 'contravention_form_page.dart';
 import 'contravention_import_page.dart';
+import '../../../../core/widgets/statut_filtre_chip.dart';
 
 /// Modes du filtre par date (identiques à Recettes/Pénalités).
 enum _FiltreMode { mois, semaine, jour, periode }
@@ -1002,28 +1002,14 @@ class _StatutChips extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final (key, label, color) = _options[i];
-          final sel = selected == key;
-          final chip = Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: sel ? color.withValues(alpha: 0.12) : AppColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: sel ? color.withValues(alpha: 0.5) : AppColors.border),
-            ),
-            child: Text(label,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: sel ? color : AppColors.label,
-                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                )),
-          );
-          return LongPressInfoBubble(
-            onTap: () => onChanged(key),
+          return StatutFiltreChip(
+            label: label,
+            selected: selected == key,
             color: color,
+            onTap: () => onChanged(key),
             infoText: '${_money.format(montantsStatut[key] ?? 0)} XOF',
-            child: chip,
+            // L'écart entre pastilles est porté par le séparateur de la liste.
+            margin: EdgeInsets.zero,
           );
         },
       ),

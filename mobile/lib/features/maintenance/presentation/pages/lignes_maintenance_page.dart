@@ -11,8 +11,8 @@ import '../providers/maintenance_provider.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
 import 'maintenance_detail_page.dart';
 import 'maintenance_form_page.dart';
-import '../../../../core/widgets/long_press_info_bubble.dart';
 import '../../../../screens/finance/finance_refresh.dart';
+import '../../../../core/widgets/statut_filtre_chip.dart';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -680,14 +680,14 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           children: [
-            _StatutChip(
+            StatutFiltreChip(
               label:    'Tous',
               selected: widget.statutSelectionne == null,
               color:    _hint,
               onTap:    () => widget.onStatutChanged(null),
               infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
             ),
-            ...widget.statuts.map((s) => _StatutChip(
+            ...widget.statuts.map((s) => StatutFiltreChip(
                   label:    _labelStatut(s),
                   selected: widget.statutSelectionne == s,
                   color:    _couleurStatut(s),
@@ -721,56 +721,6 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
         'ANNULEE'   => _hint,
         _           => _hint,
       };
-}
-
-class _StatutChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final Color color;
-  final VoidCallback onTap;
-
-  /// Montant à afficher dans l'info-bulle au long-press (montant du statut).
-  final String? infoText;
-
-  const _StatutChip({
-    required this.label,
-    required this.selected,
-    required this.color,
-    required this.onTap,
-    this.infoText,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Fond, bordure et texte repris des chips de statut de ContraventionsPage :
-    // le chip sélectionné se teinte de sa couleur au lieu de s'en remplir.
-    final chip = Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color:
-                selected ? color.withValues(alpha: 0.5) : AppColors.border),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? color : AppColors.label)),
-    );
-
-    if (infoText == null) {
-      return GestureDetector(onTap: onTap, child: chip);
-    }
-    return LongPressInfoBubble(
-      onTap: onTap,
-      infoText: infoText!,
-      color: color,
-      child: chip,
-    );
-  }
 }
 
 // ── Carte maintenance ─────────────────────────────────────────────────────────
