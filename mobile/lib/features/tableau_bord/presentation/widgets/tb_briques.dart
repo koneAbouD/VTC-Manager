@@ -425,7 +425,9 @@ Widget tbAvecAide(String? aide, Widget enfant) {
     triggerMode: TooltipTriggerMode.longPress,
     showDuration: const Duration(seconds: 6),
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-    textStyle: const TextStyle(fontSize: 12, color: Colors.white),
+    // Couleurs du thème (bulle inversée) : un blanc forcé disparaissait sur la
+    // bulle claire du mode sombre.
+    textStyle: TextStyle(fontSize: 12, color: AppColors.scaffold),
     child: enfant,
   );
 }

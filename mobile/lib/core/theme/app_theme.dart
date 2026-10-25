@@ -68,6 +68,17 @@ abstract final class AppTheme {
         elevation: 2,
       ),
 
+      // Bulles d'aide aux couleurs inversées de la page : foncées sur fond
+      // clair, claires sur fond sombre. Le défaut de Flutter en sombre (bulle
+      // claire) rendait illisible tout texte forcé en blanc.
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: p.dark.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        textStyle: TextStyle(fontSize: 12, color: p.scaffold),
+      ),
+
       dialogTheme: DialogThemeData(
         backgroundColor: p.surface,
         surfaceTintColor: Colors.transparent,
