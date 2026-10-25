@@ -58,7 +58,7 @@ public class ChauffeurController {
     @ResponseStatus(HttpStatus.CREATED)
     public ChauffeurResponse create(
             @RequestPart("data") @Valid ChauffeurRequest request,
-            @RequestPart("permis") MultipartFile permisFile,
+            @RequestPart(value = "permis", required = false) MultipartFile permisFile,
             @RequestPart(value = "photo", required = false) MultipartFile photoIdentiteFile) {
 
         Chauffeur created = createChauffeurUseCase.execute(

@@ -46,9 +46,12 @@ public class CreateChauffeurUseCase {
 
         Chauffeur saved = chauffeurRepository.save(chauffeur);
 
-        // Permis de conduire → Document générique
-        sauvegarderPermisDocument(saved.getId(), numeroPermis, typesPermis,
-                dateEmissionPermis, dateExpirationPermis, permisFile);
+        // Permis de conduire → Document générique (facultatif à la création :
+        // il pourra être ajouté plus tard depuis la fiche du chauffeur)
+        if (permisFile != null && !permisFile.isEmpty()) {
+            sauvegarderPermisDocument(saved.getId(), numeroPermis, typesPermis,
+                    dateEmissionPermis, dateExpirationPermis, permisFile);
+        }
 
         if (photoIdentiteFile != null && !photoIdentiteFile.isEmpty()) {
             saved.setPhotoUrl(uploaderFichier(photoIdentiteFile, PHOTO_PREFIX));

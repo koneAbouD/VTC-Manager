@@ -42,7 +42,7 @@ class ChauffeurRemoteDatasource {
   }
 
   /// POST multipart `/chauffeurs` — conforme à `ChauffeurController#create`.
-  /// `data` (JSON `ChauffeurRequest`) + `permis` (fichier) + `photo` (optionnel).
+  /// `data` (JSON `ChauffeurRequest`) + `permis` et `photo` (fichiers optionnels).
   Future<ChauffeurModel> createChauffeur(
     ChauffeurRequestModel request, {
     Uint8List? permisBytes,

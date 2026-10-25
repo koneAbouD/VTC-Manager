@@ -11,8 +11,10 @@ import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
 import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
+import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.ports.persistence.IndisponibiliteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ProgrammeTravailRepository;
+import com.tmk.vtcmanager.application.ports.persistence.TypeDocumentRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import com.tmk.vtcmanager.application.services.IndisponibiliteNettoyageService;
@@ -103,6 +105,29 @@ class ChauffeurUseCasesTest {
                 .id(CHAUFFEUR).nom("Kouassi").prenom("Aya").statut(statut).vehicule(vehicule).build();
         when(chauffeurRepository.findById(CHAUFFEUR)).thenReturn(Optional.of(chauffeur));
         return chauffeur;
+    }
+
+    @Nested
+    @DisplayName("Création")
+    class Creation {
+
+        @Test
+        @DisplayName("Sans permis joint, le chauffeur est créé et aucun document n'est enregistré")
+        void creation_sans_permis() {
+            TypeDocumentRepository typeDocumentRepository = mock(TypeDocumentRepository.class);
+            DocumentRepository documentRepository = mock(DocumentRepository.class);
+            SyncChauffeurAccountUseCase syncUseCase = mock(SyncChauffeurAccountUseCase.class);
+            CreateChauffeurUseCase createUseCase = new CreateChauffeurUseCase(chauffeurRepository,
+                    typeDocumentRepository, documentRepository, fileStoragePort, syncUseCase);
+            Chauffeur nouveau = Chauffeur.builder().id(CHAUFFEUR).nom("Kouassi").prenom("Aya").build();
+
+            Chauffeur created = createUseCase.execute(nouveau, null, null, null, null, null, null);
+
+            assertThat(created.getStatut()).isEqualTo(ChauffeurStatus.ACTIF);
+            verifyNoInteractions(typeDocumentRepository, documentRepository);
+            verify(fileStoragePort, never()).upload(anyString(), any(), anyLong(), any());
+            verify(syncUseCase).synchroniser(any());
+        }
     }
 
     @Nested

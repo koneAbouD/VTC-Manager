@@ -22,7 +22,7 @@ public record ChauffeurRequest(
         String adresse,
         ChauffeurStatus statut,
         LocalDate dateEmbauche,
-        // Données du permis de conduire (obligatoires à la création, optionnels à la mise à jour sans nouveau fichier)
+        // Données du permis de conduire (optionnelles : seulement lues quand un fichier permis est joint)
         String numeroPermis,
         Set<TypePermis> typesPermis,
         LocalDate dateEmissionPermis,

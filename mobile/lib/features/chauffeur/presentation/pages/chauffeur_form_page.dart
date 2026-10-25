@@ -311,18 +311,13 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
           type: _ToastType.error);
       return;
     }
-    _PendingDocument? permisDoc;
-    if (!_isEditing) {
-      permisDoc = _pendingDocuments
-          .where((d) => d.typeNom.toLowerCase().contains('permis'))
-          .firstOrNull;
-      if (permisDoc == null) {
-        _tabCtrl.animateTo(1);
-        _toast('Veuillez ajouter un permis de conduire.',
-            type: _ToastType.error);
-        return;
-      }
-    }
+    // Les pièces sont facultatives à la création : si un permis est joint, il
+    // part avec la fiche ; sinon il pourra être ajouté plus tard.
+    final _PendingDocument? permisDoc = _isEditing
+        ? null
+        : _pendingDocuments
+            .where((d) => d.typeNom.toLowerCase().contains('permis'))
+            .firstOrNull;
     setState(() {
       _loading = true;
       _submitError = null;
@@ -371,15 +366,17 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
       final photoBytes = _photo != null ? await _photo!.readAsBytes() : null;
       error = await notifier.createChauffeur(
         chauffeur,
-        permisBytes: permisDoc!.bytes,
-        permisFilename: permisDoc.filename,
+        permisBytes: permisDoc?.bytes,
+        permisFilename: permisDoc?.filename ?? 'permis.jpg',
         photoBytes: photoBytes,
         photoFilename: _photo?.name ?? 'photo.jpg',
-        numeroPermis: permisDoc.reference,
-        typesPermis: permisDoc.typesPermis,
-        dateEmissionPermis: permisDoc.dateEmission,
+        numeroPermis: permisDoc?.reference,
+        typesPermis: permisDoc?.typesPermis,
+        dateEmissionPermis: permisDoc?.dateEmission,
         dateExpirationPermis:
-            permisDoc.permanent ? null : permisDoc.dateExpiration,
+            permisDoc == null || permisDoc.permanent
+                ? null
+                : permisDoc.dateExpiration,
       );
     }
 
