@@ -205,63 +205,12 @@ class _BandeauPeriode extends ConsumerWidget {
               ],
             ),
           ),
-          _BasculeBase(
+          TbBasculeBase(
             base: cadrage.base,
             onChange: (base) => ref
                 .read(tableauBordCadrageProvider.notifier)
                 .state = cadrage.copyWith(base: base),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Bascule CAISSE / ENGAGEMENT, dans le style des pastilles d'onglets.
-class _BasculeBase extends StatelessWidget {
-  final String base;
-  final ValueChanged<String> onChange;
-
-  const _BasculeBase({required this.base, required this.onChange});
-
-  @override
-  Widget build(BuildContext context) {
-    Widget pilule(String valeur, String libelle, String aide) {
-      final actif = base == valeur;
-      return Tooltip(
-        message: aide,
-        triggerMode: TooltipTriggerMode.longPress,
-        child: GestureDetector(
-          onTap: () => onChange(valeur),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: actif ? AppColors.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Text(libelle,
-                style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: actif ? Colors.white : AppColors.label)),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.headerButton,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          pilule('CAISSE', 'Caisse',
-              'Base caisse : ce qui est réellement entré et sorti sur la période.'),
-          pilule('ENGAGEMENT', 'Dû',
-              'Base engagement : ce qui était dû sur la période, encaissé ou non.'),
         ],
       ),
     );

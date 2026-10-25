@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/month_filter_pill.dart';
+import '../../../tableau_bord/presentation/widgets/tb_briques.dart';
 import '../../domain/entities/rapports.dart';
 import '../providers/tresorerie_providers.dart';
 
@@ -58,51 +59,60 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
                 () => ref.invalidate(compteResultatProvider(crParams))),
             data: (cr) => _CascadeCard(cr: cr, base: _base),
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: Text('Marge par véhicule',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.dark)),
-              ),
-              _AmortiToggle(
-                actif: _amorti,
-                onChanged: (v) => setState(() => _amorti = v),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          // La base est rappelée ici : deux véhicules identiques n'affichent pas
-          // la même marge selon qu'on lit le dû ou l'encaissé.
-          Text(
-            '${_base == 'ENGAGEMENT' ? 'Produits dus' : 'Produits encaissés'} '
-            '− charges variables − charges directes'
-            '${_amorti ? ' − amortissement' : ''}, '
-            'sans imputation des charges de structure',
-            style: TextStyle(fontSize: 12, color: AppColors.label),
-          ),
-          const SizedBox(height: 8),
-          asyncMarges.when(
-            loading: () => const SizedBox.shrink(),
-            error: (e, _) => _erreur('Impossible de charger les marges',
-                () => ref.invalidate(margesVehiculesProvider(margeParams))),
-            data: (marges) => marges.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                        'Aucune opération rattachée à un véhicule sur la période',
-                        style: TextStyle(fontSize: 13, color: AppColors.label)),
-                  )
-                : Column(
-                    children: [
-                      for (final m in _triees(marges))
-                        _MargeTile(m, amorti: _amorti),
-                      _nonImpute(asyncCr.valueOrNull, marges),
-                    ],
-                  ),
+          const SizedBox(height: 16),
+          // Même langage que les sections du tableau de bord : en-tête à
+          // pastille d'icône, tuiles internes sur le fond de la page.
+          TbSection(
+            icone: Icons.directions_car_outlined,
+            titre: 'Marge par véhicule',
+            accent: AppColors.info,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // La base est rappelée ici : deux véhicules identiques
+                    // n'affichent pas la même marge selon qu'on lit le dû ou
+                    // l'encaissé.
+                    Expanded(
+                      child: Text(
+                        '${_base == 'ENGAGEMENT' ? 'Produits dus' : 'Produits encaissés'} '
+                        '− charges variables − charges directes'
+                        '${_amorti ? ' − amortissement' : ''}, '
+                        'sans imputation des charges de structure',
+                        style: TextStyle(fontSize: 12, color: AppColors.label),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _AmortiToggle(
+                      actif: _amorti,
+                      onChanged: (v) => setState(() => _amorti = v),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                asyncMarges.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, _) => _erreur(
+                      'Impossible de charger les marges',
+                      () =>
+                          ref.invalidate(margesVehiculesProvider(margeParams))),
+                  data: (marges) => marges.isEmpty
+                      ? Text(
+                          'Aucune opération rattachée à un véhicule sur la période',
+                          style:
+                              TextStyle(fontSize: 13, color: AppColors.label))
+                      : Column(
+                          children: [
+                            for (final m in _triees(marges))
+                              _MargeTile(m, amorti: _amorti),
+                            _nonImpute(asyncCr.valueOrNull, marges),
+                          ],
+                        ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -130,21 +140,20 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
   /// et la flotte paraissait plus rentable qu'elle ne l'est.
   Widget _nonImpute(CompteResultatData? cr, List<MargeVehiculeData> marges) {
     if (cr == null) return const SizedBox.shrink();
-    final imputees =
-        marges.fold<double>(0, (t, m) => t + m.chargesVariables);
+    final imputees = marges.fold<double>(0, (t, m) => t + m.chargesVariables);
     final ecart = cr.chargesVariables - imputees;
     if (ecart.abs() < 1) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Row(
         children: [
-          Icon(Icons.info_outline, size: 14, color: Colors.orange.shade800),
+          Icon(Icons.info_outline, size: 14, color: kTbOrange),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               '${CurrencyFormatter.format(ecart)} de charges variables '
               'sans véhicule : comptées dans la cascade, dans aucune marge',
-              style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
+              style: TextStyle(fontSize: 11, color: kTbOrange),
             ),
           ),
         ],
@@ -166,18 +175,11 @@ class _CompteResultatPageState extends ConsumerState<CompteResultatPage> {
           ),
         ),
         const SizedBox(width: 10),
-        SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(value: 'ENGAGEMENT', label: Text('Dû')),
-            ButtonSegment(value: 'CAISSE', label: Text('Caisse')),
-          ],
-          selected: {_base},
-          onSelectionChanged: (s) => setState(() => _base = s.first),
-          showSelectedIcon: false,
-          style: const ButtonStyle(
-            visualDensity: VisualDensity.compact,
-            textStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12)),
-          ),
+        // Même bascule que le tableau de bord : Caisse d'abord, c'est la
+        // lecture par défaut.
+        TbBasculeBase(
+          base: _base,
+          onChange: (base) => setState(() => _base = base),
         ),
       ],
     );
@@ -228,9 +230,7 @@ class _AmortiToggle extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                actif
-                    ? Icons.check_circle_rounded
-                    : Icons.circle_outlined,
+                actif ? Icons.check_circle_rounded : Icons.circle_outlined,
                 size: 14,
                 color: actif ? AppColors.primaryDark : AppColors.label,
               ),
@@ -239,8 +239,7 @@ class _AmortiToggle extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color:
-                          actif ? AppColors.primaryDark : AppColors.label)),
+                      color: actif ? AppColors.primaryDark : AppColors.label)),
             ],
           ),
         ),
@@ -256,15 +255,27 @@ class _CascadeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 0.8),
-      ),
+    final couleurResultat = tbCouleurMontant(cr.resultatGestion);
+    // Carte en relief, comme « Résultat du mois » au tableau de bord : c'est
+    // le premier regard de la page.
+    return TbCarteRelief(
       child: Column(
         children: [
+          Row(
+            children: [
+              Icon(Icons.account_balance_wallet_outlined,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Résultat de la période',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           // Les cotisations sont un dépôt restitué en fin de période, pas un
           // produit : elles sont hors résultat dans les deux bases.
           _ligne('Produits d\'exploitation', cr.produitsExploitation,
@@ -298,11 +309,12 @@ class _CascadeCard extends StatelessWidget {
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            // Vert de bénéfice, rouge de perte — les couleurs de statut du
+            // tableau de bord, et non l'accent, qui ne dit rien du signe.
             decoration: BoxDecoration(
-              color: cr.resultatGestion >= 0
-                  ? AppColors.primaryTint
-                  : AppColors.errorTint,
+              color: couleurResultat.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: couleurResultat.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -311,18 +323,14 @@ class _CascadeCard extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: cr.resultatGestion >= 0
-                              ? AppColors.primaryDark
-                              : Colors.red.shade900)),
+                          color: couleurResultat)),
                 ),
                 const SizedBox(width: 8),
                 Text(CurrencyFormatter.format(cr.resultatGestion),
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: cr.resultatGestion >= 0
-                            ? AppColors.primaryDark
-                            : Colors.red.shade900)),
+                        color: couleurResultat)),
               ],
             ),
           ),
@@ -381,9 +389,11 @@ class _CascadeCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      // Fond de page et filet : les tuiles internes du tableau de bord.
       decoration: BoxDecoration(
         color: AppColors.scaffold,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -418,19 +428,29 @@ class _MargeTile extends StatelessWidget {
     final aAmortissement = amorti && marge.dotationAmortissement > 0;
     final valeurPrincipale =
         aAmortissement ? marge.margeNette : marge.margeApresChargesDirectes;
-    final negative = valeurPrincipale < 0;
+    // Vert de bénéfice, rouge de perte, comme les montants du tableau de bord.
+    final couleur = tbCouleurMontant(valeurPrincipale);
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      // Tuile interne d'une section du tableau de bord.
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border, width: 0.8),
+        color: AppColors.scaffold,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
-          Icon(Icons.directions_car_outlined,
-              size: 18, color: AppColors.label),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: couleur.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child:
+                Icon(Icons.directions_car_outlined, size: 17, color: couleur),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -448,22 +468,20 @@ class _MargeTile extends StatelessWidget {
                   Text(
                     '− Assurance et documents '
                     '${CurrencyFormatter.format(marge.chargesDirectes)}',
-                    style:
-                        TextStyle(fontSize: 11, color: AppColors.label),
+                    style: TextStyle(fontSize: 11, color: AppColors.label),
                   ),
                 if (aAmortissement)
                   Text(
                     '− Amortissement '
                     '${CurrencyFormatter.format(marge.dotationAmortissement)}',
-                    style:
-                        TextStyle(fontSize: 11, color: AppColors.label),
+                    style: TextStyle(fontSize: 11, color: AppColors.label),
                   ),
                 if (marge.joursImmobilisation > 0)
                   Text(
                     'Immobilisé ${marge.joursImmobilisation} j sur la période',
                     style: TextStyle(
                         fontSize: 11,
-                        color: Colors.orange.shade800,
+                        color: kTbOrange,
                         fontWeight: FontWeight.w500),
                   ),
               ],
@@ -471,10 +489,7 @@ class _MargeTile extends StatelessWidget {
           ),
           Text(CurrencyFormatter.format(valeurPrincipale),
               style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color:
-                      negative ? Colors.red.shade900 : AppColors.primaryDark)),
+                  fontSize: 13.5, fontWeight: FontWeight.w700, color: couleur)),
         ],
       ),
     );

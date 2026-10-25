@@ -224,6 +224,59 @@ class TbCarteRelief extends StatelessWidget {
   }
 }
 
+/// Bascule CAISSE / ENGAGEMENT, dans le style des pastilles d'onglets.
+/// Partagée par le tableau de bord et le compte de résultat : la même base se
+/// choisit de la même façon partout.
+class TbBasculeBase extends StatelessWidget {
+  final String base;
+  final ValueChanged<String> onChange;
+
+  const TbBasculeBase({super.key, required this.base, required this.onChange});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget pilule(String valeur, String libelle, String aide) {
+      final actif = base == valeur;
+      return Tooltip(
+        message: aide,
+        triggerMode: TooltipTriggerMode.longPress,
+        child: GestureDetector(
+          onTap: () => onChange(valeur),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: actif ? AppColors.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(libelle,
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: actif ? Colors.white : AppColors.label)),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.headerButton,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          pilule('CAISSE', 'Caisse',
+              'Base caisse : ce qui est réellement entré et sorti sur la période.'),
+          pilule('ENGAGEMENT', 'Dû',
+              'Base engagement : ce qui était dû sur la période, encaissé ou non.'),
+        ],
+      ),
+    );
+  }
+}
+
 /// Chiffre dominant d'une section : la réponse en un coup d'œil, avec sa
 /// variation et une phrase qui dit ce qu'il faut en conclure.
 class TbKpiPrincipal extends StatelessWidget {
