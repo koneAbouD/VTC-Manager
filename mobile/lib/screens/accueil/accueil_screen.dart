@@ -304,11 +304,12 @@ class EncaisserHeaderButton extends ConsumerWidget {
               onTap: () => showEncaissementRapideDialog(context, ref),
               child: Container(
                 // Même gabarit que les boutons d'en-tête (AppHeaderAction),
-                // en vert : c'est la même action que sur la carte.
+                // à la couleur d'accent : c'est la même action que sur la
+                // carte.
                 height: 38,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade600,
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
@@ -738,7 +739,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                       icon: const Icon(Icons.add, size: 14),
                       label: const Text('Encaisser'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 6),
@@ -953,7 +954,9 @@ class _ShortcutItem extends StatelessWidget {
               color: AppColors.fond(0xFFF0F0F0),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: AppColors.positive, size: iconSize),
+            // Version soutenue de l'accent : la teinte d'origine (vert foncé)
+            // en thème vert, et elle suit la couleur choisie dans Apparence.
+            child: Icon(icon, color: AppColors.primaryDark, size: iconSize),
           ),
           const SizedBox(height: 6),
           Flexible(
