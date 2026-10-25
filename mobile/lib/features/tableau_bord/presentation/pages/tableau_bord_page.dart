@@ -795,7 +795,8 @@ class _SectionCash extends ConsumerWidget {
         tbCouleurTauxCroissant(c.tauxRecouvrement, bon: 95, moyen: 80);
 
     return TbSection(
-      icone: Icons.savings_outlined,
+      // Même icône que la rubrique « Encaissements » du détail d'une recette.
+      icone: Icons.receipt_outlined,
       titre: 'Encaissement',
       accent: AppColors.info,
       libelleVoir: 'Créances',
