@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/core_providers.dart';
+import '../../../../core/providers/lecture_avec_cache.dart';
 import '../../data/datasources/recette_remote_datasource.dart';
 import '../../data/repositories_impl/recette_repository_impl.dart';
 import '../../domain/entities/ligne_recette.dart';
@@ -21,7 +22,5 @@ final getRecettesUseCaseProvider = Provider<GetRecettesUseCase>(
 
 /// Liste des recettes du chauffeur connecté.
 final recettesProvider =
-    FutureProvider.autoDispose<List<LigneRecette>>((ref) async {
-  final result = await ref.watch(getRecettesUseCaseProvider).call();
-  return result.fold((f) => throw f.message, (r) => r);
-});
+    FutureProvider.autoDispose<List<LigneRecette>>((ref) =>
+        lectureAvecCache(ref, ref.watch(getRecettesUseCaseProvider).call));

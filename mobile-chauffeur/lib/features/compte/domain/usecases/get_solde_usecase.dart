@@ -9,7 +9,4 @@ class GetSoldeUseCase {
   const GetSoldeUseCase(this._repository);
 
   Future<Either<Failure, Solde>> call() => _repository.getSolde();
-
-  /// Dernier solde reçu, à afficher en attendant [call].
-  Future<Solde?> enCache() => _repository.getSoldeEnCache();
 }

@@ -9,7 +9,4 @@ class GetProfilUseCase {
   const GetProfilUseCase(this._repository);
 
   Future<Either<Failure, Profil>> call() => _repository.getProfil();
-
-  /// Dernier profil reçu, à afficher en attendant [call].
-  Future<Profil?> enCache() => _repository.getProfilEnCache();
 }

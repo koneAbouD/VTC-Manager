@@ -13,8 +13,4 @@ class OperationRepositoryImpl implements OperationRepository {
   @override
   Future<Either<Failure, List<OperationFinanciere>>> getOperations() =>
       guard(() => _datasource.getOperations());
-
-  @override
-  Future<List<OperationFinanciere>?> getOperationsEnCache() =>
-      _datasource.getOperationsEnCache();
 }

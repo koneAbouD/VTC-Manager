@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/core_providers.dart';
+import '../../../../core/providers/lecture_avec_cache.dart';
 import '../../data/datasources/notification_remote_datasource.dart';
 import '../../data/repositories_impl/notification_repository_impl.dart';
 import '../../domain/entities/notification_item.dart';
@@ -31,10 +32,8 @@ final marquerNotificationLueUseCaseProvider =
 /// et la valeur doit survivre à la fermeture de la page pour ne pas repartir en
 /// chargement à chaque aller-retour.
 final centreNotificationsProvider =
-    FutureProvider<CentreNotifications>((ref) async {
-  final result = await ref.watch(getNotificationsUseCaseProvider).call();
-  return result.fold((f) => throw f.message, (r) => r);
-});
+    FutureProvider<CentreNotifications>((ref) =>
+        lectureAvecCache(ref, ref.watch(getNotificationsUseCaseProvider).call));
 
 /// Nombre de non-lues, pour la pastille de l'accueil.
 ///

@@ -73,6 +73,11 @@ class ApiClient {
   /// Une réponse du serveur, même une erreur, l'emporte toujours : un 403 ou
   /// un 404 n'est jamais masqué par le cache.
   Future<dynamic> get(String path, {Map<String, String>? query}) async {
+    if (lectureCacheSeul) {
+      final enCache = await lireCache(path, query: query);
+      if (enCache == null) throw const NetworkException(_kPasEnCache);
+      return enCache;
+    }
     try {
       return await _lireServeur(path, query);
     } on NetworkException {
@@ -86,6 +91,23 @@ class ApiClient {
       return secours.donnees;
     }
   }
+
+  /// Exécute [lecture] — un appel ordinaire de datasource ou de repository —
+  /// sur le cache seul : chaque [get] rend la dernière réponse enregistrée
+  /// de son URL, sans appel au serveur ni bandeau, ou échoue s'il n'y en a
+  /// pas (une [NetworkException], que les repositories traduisent en échec).
+  ///
+  /// De quoi afficher la dernière version connue d'un écran à partir du code
+  /// qui le charge, sans écrire une variante « cache » de chaque lecture.
+  static Future<T> depuisLeCacheSeul<T>(Future<T> Function() lecture) =>
+      runZoned(lecture, zoneValues: {_cacheSeul: true});
+
+  /// Vrai pendant [depuisLeCacheSeul] : un double de test qui ne passe pas
+  /// par l'ApiClient s'y comporte comme un cache vide.
+  static bool get lectureCacheSeul => Zone.current[_cacheSeul] == true;
+
+  static final _cacheSeul = Object();
+  static const _kPasEnCache = 'Aucune réponse en cache.';
 
   /// Dernière réponse enregistrée de cette lecture, sans aller au serveur :
   /// de quoi afficher un écran aussitôt, le temps que [get] réponde. `null`

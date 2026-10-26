@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/core_providers.dart';
+import '../../../../core/providers/lecture_avec_cache.dart';
 import '../../data/datasources/contravention_remote_datasource.dart';
 import '../../data/repositories_impl/contravention_repository_impl.dart';
 import '../../domain/entities/contravention.dart';
@@ -21,7 +22,5 @@ final getContraventionsUseCaseProvider = Provider<GetContraventionsUseCase>(
 );
 
 final contraventionsProvider =
-    FutureProvider.autoDispose<List<Contravention>>((ref) async {
-  final result = await ref.watch(getContraventionsUseCaseProvider).call();
-  return result.fold((f) => throw f.message, (r) => r);
-});
+    FutureProvider.autoDispose<List<Contravention>>((ref) =>
+        lectureAvecCache(ref, ref.watch(getContraventionsUseCaseProvider).call));

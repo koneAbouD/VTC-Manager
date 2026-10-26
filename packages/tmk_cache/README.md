@@ -53,7 +53,9 @@ branchés :
 - gestionnaire : véhicules et chauffeurs (flotte), tableau de bord, accueil
   (dernières opérations et solde), et toutes les listes paginées
   (`PagedListNotifier`, liste des opérations) ;
-- chauffeur : profil, solde et opérations (accueil).
+- chauffeur : toutes les pages de son compte (profil, solde, opérations,
+  recettes, cotisations, pénalités, contraventions, indisponibilités et
+  remplaçants, notifications), via `lectureAvecCache`.
 
 Pour les listes paginées, pas de variante « cache » par écran :
 `ApiClient.depuisLeCacheSeul` rejoue le fetcher ordinaire de l'écran dans une

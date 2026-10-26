@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/core_providers.dart';
+import '../../../../core/providers/lecture_avec_cache.dart';
 import '../../data/datasources/indisponibilite_remote_datasource.dart';
 import '../../data/repositories_impl/indisponibilite_repository_impl.dart';
 import '../../domain/entities/indisponibilite.dart';
@@ -37,14 +38,10 @@ final terminerIndisponibiliteUseCaseProvider = Provider(
 
 /// Liste des indisponibilités du chauffeur.
 final indisponibilitesProvider =
-    FutureProvider.autoDispose<List<Indisponibilite>>((ref) async {
-  final result = await ref.watch(getIndisponibilitesUseCaseProvider).call();
-  return result.fold((f) => throw f.message, (r) => r);
-});
+    FutureProvider.autoDispose<List<Indisponibilite>>((ref) =>
+        lectureAvecCache(ref, ref.watch(getIndisponibilitesUseCaseProvider).call));
 
 /// Liste des remplaçants sélectionnables.
 final remplacantsProvider =
-    FutureProvider.autoDispose<List<Remplacant>>((ref) async {
-  final result = await ref.watch(getRemplacantsUseCaseProvider).call();
-  return result.fold((f) => throw f.message, (r) => r);
-});
+    FutureProvider.autoDispose<List<Remplacant>>((ref) =>
+        lectureAvecCache(ref, ref.watch(getRemplacantsUseCaseProvider).call));

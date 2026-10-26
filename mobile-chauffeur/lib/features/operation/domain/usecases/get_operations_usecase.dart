@@ -10,8 +10,4 @@ class GetOperationsUseCase {
 
   Future<Either<Failure, List<OperationFinanciere>>> call() =>
       _repository.getOperations();
-
-  /// Dernières opérations reçues, à afficher en attendant [call].
-  Future<List<OperationFinanciere>?> enCache() =>
-      _repository.getOperationsEnCache();
 }

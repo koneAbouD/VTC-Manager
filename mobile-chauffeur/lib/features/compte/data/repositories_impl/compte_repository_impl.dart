@@ -18,10 +18,4 @@ class CompteRepositoryImpl implements CompteRepository {
   @override
   Future<Either<Failure, Solde>> getSolde() =>
       guard(() => _datasource.getSolde());
-
-  @override
-  Future<Profil?> getProfilEnCache() => _datasource.getProfilEnCache();
-
-  @override
-  Future<Solde?> getSoldeEnCache() => _datasource.getSoldeEnCache();
 }

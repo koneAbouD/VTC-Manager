@@ -30,12 +30,8 @@ final getSoldeUseCaseProvider = Provider<GetSoldeUseCase>(
 );
 
 final profilProvider = FutureProvider.autoDispose<Profil>((ref) async {
-  final profil = ref.watch(getProfilUseCaseProvider);
-  final p = await lectureAvecCache(
-    ref,
-    serveur: profil.call(),
-    cache: profil.enCache,
-  );
+  final p =
+      await lectureAvecCache(ref, ref.watch(getProfilUseCaseProvider).call);
   // Le prénom métier alimente l'écran de code, qui s'affiche avant tout appel
   // réseau : il doit donc être connu à l'avance. C'est la source de vérité,
   // plus fiable que le `given_name` du jeton si le gestionnaire l'a corrigé.
@@ -47,7 +43,5 @@ final profilProvider = FutureProvider.autoDispose<Profil>((ref) async {
   return p;
 });
 
-final soldeProvider = FutureProvider.autoDispose<Solde>((ref) {
-  final solde = ref.watch(getSoldeUseCaseProvider);
-  return lectureAvecCache(ref, serveur: solde.call(), cache: solde.enCache);
-});
+final soldeProvider = FutureProvider.autoDispose<Solde>(
+    (ref) => lectureAvecCache(ref, ref.watch(getSoldeUseCaseProvider).call));

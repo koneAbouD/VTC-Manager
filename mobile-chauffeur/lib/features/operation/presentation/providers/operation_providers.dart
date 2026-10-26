@@ -21,11 +21,5 @@ final getOperationsUseCaseProvider = Provider<GetOperationsUseCase>(
 );
 
 final operationsProvider =
-    FutureProvider.autoDispose<List<OperationFinanciere>>((ref) {
-  final operations = ref.watch(getOperationsUseCaseProvider);
-  return lectureAvecCache(
-    ref,
-    serveur: operations.call(),
-    cache: operations.enCache,
-  );
-});
+    FutureProvider.autoDispose<List<OperationFinanciere>>((ref) =>
+        lectureAvecCache(ref, ref.watch(getOperationsUseCaseProvider).call));
