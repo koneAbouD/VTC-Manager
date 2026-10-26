@@ -206,7 +206,6 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
 
   Widget _buildSearchHeader(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
-    final hasFilter = _statutFilter != null;
     return Container(
       color: AppColors.fond(0xFFF5F6FA),
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
@@ -214,53 +213,13 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // ── Filtre par statut (à gauche) ─────────────────────────────
-          SizedBox(
-            height: 46,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                // Même bouton que le filtre des recettes : surface (blanc en
-                // clair, sombre en sombre), bordure grise, texte à l'accent.
-                color: AppColors.blanc,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: hasFilter
-                      ? primary.withValues(alpha: 0.6)
-                      : AppColors.grey300,
-                  width: hasFilter ? 1.5 : 1,
-                ),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _statutFilter,
-                  isDense: true,
-                  icon: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: primary,
-                  ),
-                  dropdownColor: AppColors.blanc,
-                  borderRadius: BorderRadius.circular(12),
-                  menuMaxHeight: 280,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: hasFilter
-                        ? FontWeight.w600
-                        : FontWeight.w500,
-                    color: primary,
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Tous')),
-                    for (final s in ref.watch(statutsVehiculeResolvedProvider))
-                      DropdownMenuItem(value: s.code, child: Text(s.libelle)),
-                  ],
-                  onChanged: (v) {
-                    setState(() => _statutFilter = v);
-                  },
-                ),
-              ),
-            ),
+          _StatutFiltreButton<String>(
+            value: _statutFilter,
+            options: [
+              for (final s in ref.watch(statutsVehiculeResolvedProvider))
+                (s.code, s.libelle),
+            ],
+            onChanged: (v) => setState(() => _statutFilter = v),
           ),
           const SizedBox(width: 8),
           // ── Barre de recherche (au centre) ───────────────────────────
@@ -385,6 +344,77 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
 }
 
 // ── Carte véhicule ───────────────────────────────────────────────────────────
+
+// ── Filtre par statut ─────────────────────────────────────────────────────────
+
+/// Bouton du filtre par statut, au style du sélecteur de filtre des recettes
+/// (« Tous / Mois ») : pastille surface bordée de gris, texte à l'accent ;
+/// dans le menu, le statut retenu ressort à l'accent.
+class _StatutFiltreButton<T> extends StatelessWidget {
+  final T? value;
+  final List<(T, String)> options;
+  final ValueChanged<T?> onChanged;
+
+  const _StatutFiltreButton({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final entrees = <(T?, String)>[(null, 'Tous'), ...options];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.blanc,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.grey300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T?>(
+          value: value,
+          isDense: true,
+          icon: Padding(
+            padding: const EdgeInsets.only(left: 3),
+            child: Icon(Icons.keyboard_arrow_down_rounded,
+                size: 14, color: AppColors.primary),
+          ),
+          dropdownColor: AppColors.blanc,
+          borderRadius: BorderRadius.circular(12),
+          menuMaxHeight: 280,
+          selectedItemBuilder: (_) => [
+            for (final (_, label) in entrees)
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.filter_list_rounded,
+                    size: 14, color: AppColors.primary),
+                const SizedBox(width: 5),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w500)),
+              ]),
+          ],
+          items: [
+            for (final (v, label) in entrees)
+              DropdownMenuItem<T?>(
+                value: v,
+                child: Text(label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight:
+                          v == value ? FontWeight.w600 : FontWeight.w400,
+                      color: v == value ? AppColors.primary : AppColors.dark,
+                    )),
+              ),
+          ],
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
 
 class _VehiculeCard extends ConsumerWidget {
   final Vehicule vehicule;
@@ -602,7 +632,6 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
 
   Widget _buildSearchHeader(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
-    final hasFilter = _statutFilter != null;
     return Container(
       color: AppColors.fond(0xFFF5F6FA),
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
@@ -610,63 +639,15 @@ class _ChauffeurTabState extends ConsumerState<_ChauffeurTab> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // ── Filtre par statut (à gauche) ─────────────────────────────
-          SizedBox(
-            height: 46,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                // Même bouton que le filtre des recettes : surface (blanc en
-                // clair, sombre en sombre), bordure grise, texte à l'accent.
-                color: AppColors.blanc,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: hasFilter
-                      ? primary.withValues(alpha: 0.6)
-                      : AppColors.grey300,
-                  width: hasFilter ? 1.5 : 1,
-                ),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<ChauffeurStatus?>(
-                  value: _statutFilter,
-                  isDense: true,
-                  icon: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: primary,
-                  ),
-                  dropdownColor: AppColors.blanc,
-                  borderRadius: BorderRadius.circular(12),
-                  menuMaxHeight: 280,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: hasFilter
-                        ? FontWeight.w600
-                        : FontWeight.w500,
-                    color: primary,
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: null, child: Text('Tous')),
-                    DropdownMenuItem(
-                        value: ChauffeurStatus.actif,
-                        child: Text('Actif')),
-                    DropdownMenuItem(
-                        value: ChauffeurStatus.enConge,
-                        child: Text('En congé')),
-                    DropdownMenuItem(
-                        value: ChauffeurStatus.suspendu,
-                        child: Text('Suspendu')),
-                    DropdownMenuItem(
-                        value: ChauffeurStatus.inactif,
-                        child: Text('Inactif')),
-                  ],
-                  onChanged: (v) {
-                    setState(() => _statutFilter = v);
-                  },
-                ),
-              ),
-            ),
+          _StatutFiltreButton<ChauffeurStatus>(
+            value: _statutFilter,
+            options: const [
+              (ChauffeurStatus.actif, 'Actif'),
+              (ChauffeurStatus.enConge, 'En congé'),
+              (ChauffeurStatus.suspendu, 'Suspendu'),
+              (ChauffeurStatus.inactif, 'Inactif'),
+            ],
+            onChanged: (v) => setState(() => _statutFilter = v),
           ),
           const SizedBox(width: 8),
           // ── Barre de recherche (au centre) ───────────────────────────

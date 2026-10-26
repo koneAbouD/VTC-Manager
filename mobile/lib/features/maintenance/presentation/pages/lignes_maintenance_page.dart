@@ -18,8 +18,6 @@ import '../../../../core/widgets/statut_filtre_chip.dart';
 
 enum _FiltreMode { mois, semaine, jour, periode }
 
-const _kPrimary = Color(0xFF1A5276);
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 class LignesMaintenancePage extends ConsumerStatefulWidget {
@@ -178,7 +176,7 @@ class _LignesMaintenancePageState
                                 ? Icons.radio_button_checked
                                 : Icons.radio_button_off_outlined,
                             size: 18,
-                            color: sel ? _kPrimary : AppColors.grey400,
+                            color: sel ? AppColors.primary : AppColors.grey400,
                           ),
                           const SizedBox(width: 10),
                           Text(label,
@@ -188,7 +186,7 @@ class _LignesMaintenancePageState
                                     ? FontWeight.w600
                                     : FontWeight.w400,
                                 color: sel
-                                    ? _kPrimary
+                                    ? AppColors.primary
                                     : AppColors.dark,
                               )),
                         ]),
@@ -523,16 +521,16 @@ class _FiltreBar extends StatelessWidget {
               border: Border.all(color: AppColors.grey300),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.filter_list_rounded, size: 14, color: _kPrimary),
+              Icon(Icons.filter_list_rounded, size: 14, color: AppColors.primary),
               const SizedBox(width: 5),
               Text(modeLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12,
-                      color: _kPrimary,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w500)),
               const SizedBox(width: 3),
-              const Icon(Icons.keyboard_arrow_down_rounded,
-                  size: 14, color: _kPrimary),
+              Icon(Icons.keyboard_arrow_down_rounded,
+                  size: 14, color: AppColors.primary),
             ]),
           ),
         ),
