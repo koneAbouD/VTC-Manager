@@ -50,7 +50,10 @@ public class CreateEncaissementUseCase {
 
     @Transactional
     public Encaissement executer(Long ligneRecetteId, Encaissement encaissement) {
-        LigneRecette ligne = ligneRecetteRepository.findById(ligneRecetteId)
+        // Ligne verrouillée jusqu'à la fin de la transaction : un second
+        // encaissement simultané de la même ligne attend celui-ci, puis voit
+        // le montant qu'il a encaissé — pas de dépassement de l'attendu.
+        LigneRecette ligne = ligneRecetteRepository.findByIdPourMiseAJour(ligneRecetteId)
                 .orElseThrow(() -> new LigneRecetteNotFoundException(ligneRecetteId));
 
         if (!ligne.estActive()) {

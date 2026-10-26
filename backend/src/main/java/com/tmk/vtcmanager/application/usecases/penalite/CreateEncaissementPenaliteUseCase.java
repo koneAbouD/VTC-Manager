@@ -42,7 +42,10 @@ public class CreateEncaissementPenaliteUseCase {
 
     @Transactional
     public EncaissementPenalite executer(Long lignePenaliteId, EncaissementPenalite encaissement) {
-        LignePenalite ligne = lignePenaliteRepository.findById(lignePenaliteId)
+        // Ligne verrouillée jusqu'à la fin de la transaction : un second
+        // encaissement simultané de la même ligne attend celui-ci, puis voit
+        // le montant qu'il a encaissé — pas de dépassement de l'attendu.
+        LignePenalite ligne = lignePenaliteRepository.findByIdPourMiseAJour(lignePenaliteId)
                 .orElseThrow(() -> new LignePenaliteNotFoundException(lignePenaliteId));
 
         if (!ligne.isEncaissable()) {

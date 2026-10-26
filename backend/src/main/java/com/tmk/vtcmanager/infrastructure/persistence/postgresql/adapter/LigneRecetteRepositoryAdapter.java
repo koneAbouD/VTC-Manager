@@ -11,6 +11,9 @@ import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.LigneRecette
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa.VehiculeJpaRepository;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.mapper.LigneRecettePersistenceMapper;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -31,6 +35,9 @@ import java.util.Optional;
 public class LigneRecetteRepositoryAdapter implements LigneRecetteRepository {
 
     private final LigneRecetteJpaRepository jpaRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
     private final VehiculeJpaRepository vehiculeJpaRepository;
     private final ChauffeurJpaRepository chauffeurJpaRepository;
     private final LigneRecettePersistenceMapper mapper;
@@ -60,6 +67,21 @@ public class LigneRecetteRepositoryAdapter implements LigneRecetteRepository {
     @Override
     public Optional<LigneRecette> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    /**
+     * {@code refresh} verrouillant plutôt qu'une requête {@code FOR UPDATE} :
+     * sur une ligne déjà chargée dans la transaction (le versement lit ses deux
+     * lignes avant d'encaisser), une requête poserait bien le verrou mais
+     * rendrait l'entité en mémoire, avec son montant d'avant.
+     */
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Optional<LigneRecette> findByIdPourMiseAJour(Long id) {
+        LigneRecetteEntity entity = entityManager.find(LigneRecetteEntity.class, id);
+        if (entity == null) return Optional.empty();
+        entityManager.refresh(entity, LockModeType.PESSIMISTIC_WRITE);
+        return Optional.of(mapper.toDomain(entity));
     }
 
     @Override

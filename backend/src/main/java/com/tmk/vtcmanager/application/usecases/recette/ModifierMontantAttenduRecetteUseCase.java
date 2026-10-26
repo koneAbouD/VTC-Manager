@@ -42,7 +42,9 @@ public class ModifierMontantAttenduRecetteUseCase {
         // l'éteindrait sur l'ancienne valeur.
         arreteCompteRepository.verrouillerExecution();
 
-        LigneRecette ligne = ligneRecetteRepository.findById(ligneId)
+        // Ligne verrouillée : un encaissement simultané ne peut pas passer
+        // entre le contrôle du plancher (déjà versé) et l'écriture du montant.
+        LigneRecette ligne = ligneRecetteRepository.findByIdPourMiseAJour(ligneId)
                 .orElseThrow(() -> new LigneRecetteNotFoundException(ligneId));
         BigDecimal ancien = ligne.getMontantAttendu();
         if (ancien != null && nouveauMontant != null && ancien.compareTo(nouveauMontant) == 0) {

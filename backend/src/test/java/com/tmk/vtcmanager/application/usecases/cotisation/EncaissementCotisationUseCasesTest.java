@@ -79,6 +79,8 @@ class EncaissementCotisationUseCasesTest {
 
         when(ligneCotisationRepository.findById(LIGNE_ID))
                 .thenReturn(Optional.of(ligne(StatutLigneCotisation.EN_ATTENTE, 0)));
+        when(ligneCotisationRepository.findByIdPourMiseAJour(LIGNE_ID))
+                .thenReturn(Optional.of(ligne(StatutLigneCotisation.EN_ATTENTE, 0)));
         when(ligneCotisationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(encaissementCotisationRepository.save(any())).thenAnswer(inv -> {
             EncaissementCotisation enc = inv.getArgument(0);
@@ -140,6 +142,15 @@ class EncaissementCotisationUseCasesTest {
         }
 
         @Test
+        @DisplayName("La ligne est lue verrouillée : deux dépôts simultanés passent l'un après l'autre")
+        void ligne_lue_verrouillee() {
+            encaisserUseCase.executer(LIGNE_ID, encaissement(1_000, null));
+
+            verify(ligneCotisationRepository).findByIdPourMiseAJour(LIGNE_ID);
+            verify(ligneCotisationRepository, never()).findById(any());
+        }
+
+        @Test
         @DisplayName("L'écriture financière porte la référence du journal des cotisations")
         void ecriture_financiere() {
             encaisserUseCase.executer(LIGNE_ID, encaissement(1_000, null));
@@ -181,7 +192,7 @@ class EncaissementCotisationUseCasesTest {
         @Test
         @DisplayName("Un dépôt supérieur au reste dû est refusé")
         void montant_superieur_au_du() {
-            when(ligneCotisationRepository.findById(LIGNE_ID))
+            when(ligneCotisationRepository.findByIdPourMiseAJour(LIGNE_ID))
                     .thenReturn(Optional.of(ligne(StatutLigneCotisation.PARTIELLEMENT_ENCAISSE, 600)));
 
             assertThatThrownBy(() -> encaisserUseCase.executer(LIGNE_ID, encaissement(500, null)))
@@ -192,7 +203,7 @@ class EncaissementCotisationUseCasesTest {
         @Test
         @DisplayName("Un dépôt égal au reste dû est accepté")
         void montant_egal_au_restant() {
-            when(ligneCotisationRepository.findById(LIGNE_ID))
+            when(ligneCotisationRepository.findByIdPourMiseAJour(LIGNE_ID))
                     .thenReturn(Optional.of(ligne(StatutLigneCotisation.PARTIELLEMENT_ENCAISSE, 600)));
 
             assertThatCode(() -> encaisserUseCase.executer(LIGNE_ID, encaissement(400, null)))
@@ -202,7 +213,7 @@ class EncaissementCotisationUseCasesTest {
         @Test
         @DisplayName("Une ligne déjà soldée n'accepte plus de dépôt")
         void ligne_soldee() {
-            when(ligneCotisationRepository.findById(LIGNE_ID))
+            when(ligneCotisationRepository.findByIdPourMiseAJour(LIGNE_ID))
                     .thenReturn(Optional.of(ligne(StatutLigneCotisation.ENCAISSE, 1_000)));
 
             assertThatThrownBy(() -> encaisserUseCase.executer(LIGNE_ID, encaissement(100, null)))
@@ -212,7 +223,7 @@ class EncaissementCotisationUseCasesTest {
         @Test
         @DisplayName("Une ligne restituée par un arrêté n'accepte plus de dépôt")
         void ligne_restituee() {
-            when(ligneCotisationRepository.findById(LIGNE_ID))
+            when(ligneCotisationRepository.findByIdPourMiseAJour(LIGNE_ID))
                     .thenReturn(Optional.of(ligne(StatutLigneCotisation.RESTITUEE, 1_000)));
 
             assertThatThrownBy(() -> encaisserUseCase.executer(LIGNE_ID, encaissement(100, null)))
@@ -222,7 +233,7 @@ class EncaissementCotisationUseCasesTest {
         @Test
         @DisplayName("Une ligne inexistante est refusée")
         void ligne_introuvable() {
-            when(ligneCotisationRepository.findById(LIGNE_ID)).thenReturn(Optional.empty());
+            when(ligneCotisationRepository.findByIdPourMiseAJour(LIGNE_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> encaisserUseCase.executer(LIGNE_ID, encaissement(1_000, null)))
                     .isInstanceOf(LigneCotisationNotFoundException.class);

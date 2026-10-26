@@ -79,6 +79,7 @@ class ModifierMontantUseCaseTest {
                 .montantAttendu(attendu == null ? null : new BigDecimal(attendu))
                 .montantEncaisse(new BigDecimal(encaisse)).statut(statut).build();
         when(ligneRecetteRepository.findById(1L)).thenReturn(Optional.of(l));
+        when(ligneRecetteRepository.findByIdPourMiseAJour(1L)).thenReturn(Optional.of(l));
         return l;
     }
 
@@ -87,6 +88,7 @@ class ModifierMontantUseCaseTest {
                 .montant(new BigDecimal(montant)).montantEncaisse(new BigDecimal(encaisse))
                 .statut(StatutLignePenalite.PARTIELLEMENT_ENCAISSEE).build();
         when(lignePenaliteRepository.findById(2L)).thenReturn(Optional.of(p));
+        when(lignePenaliteRepository.findByIdPourMiseAJour(2L)).thenReturn(Optional.of(p));
         return p;
     }
 

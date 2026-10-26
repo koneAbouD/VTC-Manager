@@ -15,6 +15,15 @@ public interface LigneRecetteRepository {
 
     Optional<LigneRecette> findById(Long id);
 
+    /**
+     * Lecture verrouillée ({@code SELECT … FOR UPDATE}) jusqu'à la fin de la
+     * transaction appelante, état relu en base même si la ligne y a déjà été
+     * chargée. À utiliser avant tout contrôle du type « encaissé ≤ attendu »
+     * suivi d'une écriture : deux encaissements simultanés de la même ligne
+     * passent alors l'un après l'autre, et le second voit le premier.
+     */
+    Optional<LigneRecette> findByIdPourMiseAJour(Long id);
+
     List<LigneRecette> findByCriteres(LigneRecetteFiltres filtres);
 
     PageResult<LigneRecette> findPageByCriteres(LigneRecetteFiltres filtres, int page, int size);

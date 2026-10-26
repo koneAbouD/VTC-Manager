@@ -88,7 +88,7 @@ class CreateEncaissementUseCaseTest {
         caisseClotureeGuard = mock(CaisseClotureeGuard.class);
         notificationEncaissementService = mock(NotificationEncaissementService.class);
 
-        when(ligneRecetteRepository.findById(LIGNE_ID)).thenReturn(Optional.of(ligne(0)));
+        when(ligneRecetteRepository.findByIdPourMiseAJour(LIGNE_ID)).thenReturn(Optional.of(ligne(0)));
         when(encaissementRepository.save(any())).thenAnswer(inv -> {
             Encaissement enc = inv.getArgument(0);
             enc.setId(900L);
@@ -152,6 +152,17 @@ class CreateEncaissementUseCaseTest {
     }
 
     @Test
+    @DisplayName("La ligne est lue verrouillée : deux encaissements simultanés passent l'un après l'autre")
+    void ligne_lue_verrouillee() {
+        useCase.executer(LIGNE_ID, encaissement(15_000, ModePaiement.ESPECES));
+
+        // Le contrôle du restant doit porter sur l'état relu sous verrou, jamais
+        // sur une lecture ordinaire qu'un encaissement concurrent rendrait fausse.
+        verify(ligneRecetteRepository).findByIdPourMiseAJour(LIGNE_ID);
+        verify(ligneRecetteRepository, never()).findById(anyLong());
+    }
+
+    @Test
     @DisplayName("Une écriture financière de revenu est créée avec sa référence de journal")
     void ecriture_financiere_creee() {
         useCase.executer(LIGNE_ID, encaissement(15_000, ModePaiement.ESPECES));
@@ -203,7 +214,7 @@ class CreateEncaissementUseCaseTest {
     @Test
     @DisplayName("Une ligne inexistante est refusée")
     void ligne_introuvable() {
-        when(ligneRecetteRepository.findById(LIGNE_ID)).thenReturn(Optional.empty());
+        when(ligneRecetteRepository.findByIdPourMiseAJour(LIGNE_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.executer(LIGNE_ID, encaissement(15_000, ModePaiement.ESPECES)))
                 .isInstanceOf(LigneRecetteNotFoundException.class);
@@ -214,7 +225,7 @@ class CreateEncaissementUseCaseTest {
     void ligne_deja_soldee() {
         LigneRecette soldee = ligne(15_000);
         soldee.setStatut(StatutLigneRecette.ENCAISSE);
-        when(ligneRecetteRepository.findById(LIGNE_ID)).thenReturn(Optional.of(soldee));
+        when(ligneRecetteRepository.findByIdPourMiseAJour(LIGNE_ID)).thenReturn(Optional.of(soldee));
 
         assertThatThrownBy(() -> useCase.executer(LIGNE_ID, encaissement(1_000, ModePaiement.ESPECES)))
                 .isInstanceOf(LigneRecetteDejaSoldeeException.class);
@@ -295,7 +306,7 @@ class CreateEncaissementUseCaseTest {
     @Test
     @DisplayName("Un versement supérieur au reste dû est refusé")
     void montant_superieur_au_restant() {
-        when(ligneRecetteRepository.findById(LIGNE_ID)).thenReturn(Optional.of(ligne(10_000)));
+        when(ligneRecetteRepository.findByIdPourMiseAJour(LIGNE_ID)).thenReturn(Optional.of(ligne(10_000)));
 
         // Reste dû : 5 000. Un versement de 6 000 déborderait.
         assertThatThrownBy(() -> useCase.executer(LIGNE_ID, encaissement(6_000, ModePaiement.ESPECES)))
@@ -305,7 +316,7 @@ class CreateEncaissementUseCaseTest {
     @Test
     @DisplayName("Un versement égal au reste dû solde la ligne")
     void montant_egal_au_restant() {
-        when(ligneRecetteRepository.findById(LIGNE_ID)).thenReturn(Optional.of(ligne(10_000)));
+        when(ligneRecetteRepository.findByIdPourMiseAJour(LIGNE_ID)).thenReturn(Optional.of(ligne(10_000)));
 
         assertThatCode(() -> useCase.executer(LIGNE_ID, encaissement(5_000, ModePaiement.ESPECES)))
                 .doesNotThrowAnyException();
@@ -316,7 +327,7 @@ class CreateEncaissementUseCaseTest {
     void montant_reel_sans_plafond() {
         LigneRecette reelle = ligne(0);
         reelle.setMontantAttendu(null);
-        when(ligneRecetteRepository.findById(LIGNE_ID)).thenReturn(Optional.of(reelle));
+        when(ligneRecetteRepository.findByIdPourMiseAJour(LIGNE_ID)).thenReturn(Optional.of(reelle));
 
         assertThatCode(() -> useCase.executer(LIGNE_ID, encaissement(50_000, ModePaiement.ESPECES)))
                 .doesNotThrowAnyException();

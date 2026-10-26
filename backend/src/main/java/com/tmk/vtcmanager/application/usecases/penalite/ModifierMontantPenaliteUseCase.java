@@ -37,7 +37,9 @@ public class ModifierMontantPenaliteUseCase {
         }
         arreteCompteRepository.verrouillerExecution();
 
-        LignePenalite ligne = lignePenaliteRepository.findById(ligneId)
+        // Ligne verrouillée : un encaissement simultané ne peut pas passer
+        // entre le contrôle du plancher (déjà versé) et l'écriture du montant.
+        LignePenalite ligne = lignePenaliteRepository.findByIdPourMiseAJour(ligneId)
                 .orElseThrow(() -> new LignePenaliteNotFoundException(ligneId));
         BigDecimal ancien = ligne.getMontant() != null ? ligne.getMontant() : BigDecimal.ZERO;
         if (nouveauMontant != null && ancien.compareTo(nouveauMontant) == 0) {

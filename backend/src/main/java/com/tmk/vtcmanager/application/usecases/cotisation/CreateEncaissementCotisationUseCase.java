@@ -43,7 +43,10 @@ public class CreateEncaissementCotisationUseCase {
 
     @Transactional
     public EncaissementCotisation executer(Long ligneCotisationId, EncaissementCotisation encaissement) {
-        LigneCotisation ligne = ligneCotisationRepository.findById(ligneCotisationId)
+        // Ligne verrouillée jusqu'à la fin de la transaction : un second
+        // encaissement simultané de la même ligne attend celui-ci, puis voit
+        // le montant qu'il a encaissé — pas de dépassement de l'attendu.
+        LigneCotisation ligne = ligneCotisationRepository.findByIdPourMiseAJour(ligneCotisationId)
                 .orElseThrow(() -> new LigneCotisationNotFoundException(ligneCotisationId));
 
         if (!ligne.estActive()) {
