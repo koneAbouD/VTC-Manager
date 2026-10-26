@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
@@ -99,7 +100,8 @@ class OperationFinanciereNotifier
   /// reste à l'écran pendant l'appel et n'est remplacée qu'à l'arrivée de la
   /// nouvelle — pas de liste vidée, pas de roue. Un échec la laisse en place :
   /// une erreur passagère ne doit pas effacer ce que le guichet vient de voir.
-  /// Seul le tout premier chargement montre l'attente et l'erreur.
+  /// Seul le tout premier chargement montre l'attente et l'erreur — et encore :
+  /// la dernière liste connue s'affiche le temps que le serveur réponde.
   Future<void> loadAll({
     String? typeOperation,
     String? categorieCode,
@@ -109,14 +111,28 @@ class OperationFinanciereNotifier
   }) async {
     final generation = ++_generation;
     final silencieux = _affichees != null;
-    if (!silencieux) state = const OperationFinanciereLoading();
-    final result = await _getAll(
-      typeOperation: typeOperation,
-      categorieCode: categorieCode,
-      debut:  debut,
-      fin:    fin,
-      statut: statut,
-    );
+    lecture() => _getAll(
+          typeOperation: typeOperation,
+          categorieCode: categorieCode,
+          debut: debut,
+          fin: fin,
+          statut: statut,
+        );
+    final enAttente = lecture();
+    if (!silencieux) {
+      state = const OperationFinanciereLoading();
+      await afficherEnAttendant<List<OperationFinanciere>>(
+        enAttente: enAttente,
+        cache: () async =>
+            (await ApiClient.depuisLeCacheSeul(lecture)).toNullable(),
+        afficher: (ops) {
+          if (mounted && generation == _generation) {
+            state = OperationFinanciereLoaded(ops);
+          }
+        },
+      );
+    }
+    final result = await enAttente;
     if (!mounted || generation != _generation) return;
     result.fold(
       (f) {
@@ -179,12 +195,27 @@ final operationFinanciereNotifierProvider =
 /// Réécoute [operationFinanciereNotifierProvider] : toute création / mise à
 /// jour / annulation d'opération (qui déclenche `loadAll`) — ainsi que le
 /// tiré-pour-rafraîchir — recharge automatiquement le solde affiché.
+///
+/// À l'ouverture, le dernier solde connu de la plage s'affiche le temps que le
+/// serveur réponde ; un rechargement garde le solde affiché.
 final soldePeriodeProvider = FutureProvider.autoDispose
-    .family<SoldePeriode, ({String? debut, String? fin})>((ref, plage) {
+    .family<SoldePeriode, ({String? debut, String? fin})>((ref, plage) async {
   ref.watch(operationFinanciereNotifierProvider);
-  return ref
-      .watch(_opDatasourceProvider)
-      .getSolde(debut: plage.debut, fin: plage.fin);
+  final ds = ref.watch(_opDatasourceProvider);
+  lecture() => ds.getSolde(debut: plage.debut, fin: plage.fin);
+  final enAttente = lecture();
+  if (!ref.state.hasValue) {
+    var actif = true;
+    ref.onDispose(() => actif = false);
+    await afficherEnAttendant<SoldePeriode>(
+      enAttente: enAttente,
+      cache: () => ApiClient.depuisLeCacheSeul(lecture),
+      afficher: (solde) {
+        if (actif) ref.state = AsyncData(solde);
+      },
+    );
+  }
+  return enAttente;
 });
 
 // ── Montants par catégorie (info-bulles des chips de la page Opérations) ─────

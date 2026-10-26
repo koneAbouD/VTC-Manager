@@ -44,6 +44,11 @@ class _Repo implements OperationFinanciereRepository {
     String? statut,
     String? categorieCode,
   }) {
+    // Lecture de la dernière liste connue (affichage en attendant) : ce double
+    // n'a pas de cache, comme un vrai dépôt à la première ouverture.
+    if (ApiClient.lectureCacheSeul) {
+      return Future.value(const Left(NetworkFailure('Aucune réponse en cache.')));
+    }
     tout = Completer();
     return tout!.future;
   }

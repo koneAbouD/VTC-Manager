@@ -83,10 +83,11 @@ class OperationsListeNotifier extends StateNotifier<OperationsListeState> {
     _vehiculeId = vehiculeId;
     _chauffeurId = chauffeurId;
     _recherche = recherche;
-    return _reload();
+    return _reload(depuisLeCache: true);
   }
 
   /// Recharge avec les filtres déjà en place (pull-to-refresh, retour d'écran).
+  /// La liste affichée reste en place jusqu'à la nouvelle.
   Future<void> refresh() => _reload();
 
   /// Plafond d'un rechargement silencieux : au-delà, on se contente des
@@ -140,9 +141,12 @@ class OperationsListeNotifier extends StateNotifier<OperationsListeState> {
     );
   }
 
-  /// Premier chargement ou changement de filtres : la dernière première page
-  /// connue pour ces filtres s'affiche le temps que le serveur réponde.
-  Future<void> _reload() async {
+  /// [depuisLeCache] — premier chargement ou changement de filtres : la
+  /// dernière première page connue pour ces filtres s'affiche le temps que le
+  /// serveur réponde. Jamais sur un rafraîchissement : la liste affichée,
+  /// peut-être déroulée sur plusieurs pages, ne doit pas retomber sur la
+  /// première page du cache.
+  Future<void> _reload({bool depuisLeCache = false}) async {
     final generation = ++_generation;
     _page = 0;
     state = state.copyWith(initialLoading: true, clearError: true);
@@ -160,17 +164,20 @@ class OperationsListeNotifier extends StateNotifier<OperationsListeState> {
           recherche: _recherche,
         );
     final enAttente = premierePage();
-    await afficherEnAttendant<PageResult<OperationFinanciere>>(
-      enAttente: enAttente,
-      cache: () async =>
-          (await ApiClient.depuisLeCacheSeul(premierePage)).toNullable(),
-      // Toujours « en chargement » : pas de page suivante avant la vraie.
-      afficher: (page) {
-        if (mounted && generation == _generation) {
-          state = OperationsListeState(items: page.content, initialLoading: true);
-        }
-      },
-    );
+    if (depuisLeCache) {
+      await afficherEnAttendant<PageResult<OperationFinanciere>>(
+        enAttente: enAttente,
+        cache: () async =>
+            (await ApiClient.depuisLeCacheSeul(premierePage)).toNullable(),
+        // Toujours « en chargement » : pas de page suivante avant la vraie.
+        afficher: (page) {
+          if (mounted && generation == _generation) {
+            state =
+                OperationsListeState(items: page.content, initialLoading: true);
+          }
+        },
+      );
+    }
     final res = await enAttente;
     if (!mounted || generation != _generation) return;
     res.fold(

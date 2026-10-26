@@ -50,8 +50,9 @@ réseau, déjà lancée, est en cours. Une réponse fraîche n'est jamais écras
 l'ancienne, et un rafraîchissement garde ce que l'écran montre déjà. Écrans
 branchés :
 
-- gestionnaire : véhicules et chauffeurs (flotte), tableau de bord, et toutes
-  les listes paginées (`PagedListNotifier`, liste des opérations) ;
+- gestionnaire : véhicules et chauffeurs (flotte), tableau de bord, accueil
+  (dernières opérations et solde), et toutes les listes paginées
+  (`PagedListNotifier`, liste des opérations) ;
 - chauffeur : profil, solde et opérations (accueil).
 
 Pour les listes paginées, pas de variante « cache » par écran :
