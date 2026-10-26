@@ -3,6 +3,7 @@ import '../../domain/entities/vehicule.dart';
 class VehiculeModel extends Vehicule {
   const VehiculeModel({
     super.id,
+    super.version,
     required super.immatriculation,
     super.libelle,
     required super.marque,
@@ -51,6 +52,7 @@ class VehiculeModel extends Vehicule {
 
   factory VehiculeModel.fromJson(Map<String, dynamic> json) => VehiculeModel(
         id: json['id'] as int?,
+        version: (json['version'] as num?)?.toInt(),
         immatriculation: _str(json['immatriculation']) ?? '',
         libelle: json['libelle'] as String?,
         marque: _str(json['marque']) ?? '',
@@ -101,6 +103,7 @@ class VehiculeModel extends Vehicule {
 
   factory VehiculeModel.fromEntity(Vehicule v) => VehiculeModel(
         id: v.id,
+        version: v.version,
         immatriculation: v.immatriculation,
         libelle: v.libelle,
         marque: v.marque,
@@ -131,6 +134,7 @@ class VehiculeModel extends Vehicule {
 
   Map<String, dynamic> toJson() => {
         if (id != null) 'id': id,
+        if (version != null) 'version': version,
         'immatriculation': immatriculation,
         if (libelle != null && libelle!.isNotEmpty) 'libelle': libelle,
         if (marqueId != null) 'marqueId': marqueId,

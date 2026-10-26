@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 
 import 'package:vtc_manager/core/error/failure.dart';
+import 'package:vtc_manager/core/network/api_client.dart';
 import 'package:vtc_manager/core/network/page_result.dart';
 import 'package:vtc_manager/features/operation_financiere/domain/entities/operation_financiere.dart';
 import 'package:vtc_manager/features/operation_financiere/domain/enums/type_operation.dart';
@@ -61,6 +62,11 @@ class _Repo implements OperationFinanciereRepository {
     int? chauffeurId,
     String? recherche,
   }) {
+    // Lecture de la dernière page connue (affichage en attendant) : ce double
+    // n'a pas de cache, comme un vrai dépôt à la première visite.
+    if (ApiClient.lectureCacheSeul) {
+      return Future.value(const Left(NetworkFailure('Aucune réponse en cache.')));
+    }
     pagesDemandees.add((page: page, size: size));
     this.page = Completer();
     return this.page!.future;

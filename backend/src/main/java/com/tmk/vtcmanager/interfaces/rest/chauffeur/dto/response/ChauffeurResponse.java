@@ -11,6 +11,8 @@ import java.util.List;
 
 public record ChauffeurResponse(
         Long id,
+        /** Jeton de version à renvoyer avec une modification. */
+        Long version,
         String nom,
         String prenom,
         Genre genre,

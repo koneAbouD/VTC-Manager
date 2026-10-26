@@ -8,6 +8,8 @@ import java.util.List;
 
 public record VehiculeResponse(
         Long id,
+        /** Jeton de version à renvoyer avec une modification. */
+        Long version,
         String immatriculation,
         MarqueResponse marque,
         ModeleResponse modele,

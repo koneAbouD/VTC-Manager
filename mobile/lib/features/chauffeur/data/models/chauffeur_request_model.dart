@@ -29,6 +29,9 @@ class ChauffeurRequestModel {
   /// Si `true`, demande au backend de supprimer la photo existante.
   final bool deletePhoto;
 
+  /// Version de la fiche lue avant la saisie (modification seulement).
+  final int? version;
+
   const ChauffeurRequestModel({
     required this.nom,
     required this.prenom,
@@ -45,6 +48,7 @@ class ChauffeurRequestModel {
     this.dateEmissionPermis,
     this.dateExpirationPermis,
     this.deletePhoto = false,
+    this.version,
   });
 
   /// Construit le DTO à partir d'un [Chauffeur] domaine.
@@ -75,6 +79,7 @@ class ChauffeurRequestModel {
           : const <TypePermis>{},
       dateEmissionPermis: dateEmissionPermis,
       dateExpirationPermis: dateExpirationPermis,
+      version: chauffeur.version,
     );
   }
 
@@ -101,6 +106,7 @@ class ChauffeurRequestModel {
         dateEmissionPermis: dateEmissionPermis ?? this.dateEmissionPermis,
         dateExpirationPermis: dateExpirationPermis ?? this.dateExpirationPermis,
         deletePhoto: deletePhoto ?? this.deletePhoto,
+        version: version,
       );
 
   Map<String, dynamic> toJson() => {
@@ -121,6 +127,7 @@ class ChauffeurRequestModel {
         if (dateExpirationPermis != null)
           'dateExpirationPermis': _toIsoDate(dateExpirationPermis!),
         if (deletePhoto) 'deletePhoto': true,
+        if (version != null) 'version': version,
       };
 
   static String _toIsoDate(DateTime d) => d.toIso8601String().substring(0, 10);

@@ -22,5 +22,7 @@ public record UpdateVehiculeRequest(
         @Positive Integer dureeAmortissementMois,
         LocalDate dateProchaineMaintenance,
         LocalDate dateMiseEnCirculation,
-        LocalDate dateEntreeFlotte
+        LocalDate dateEntreeFlotte,
+        /** Version de la fiche lue avant la saisie (voir VehiculeResponse). */
+        Long version
 ) {}

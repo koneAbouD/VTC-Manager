@@ -27,5 +27,8 @@ public record ChauffeurRequest(
         Set<TypePermis> typesPermis,
         LocalDate dateEmissionPermis,
         LocalDate dateExpirationPermis,
-        Boolean deletePhoto
+        Boolean deletePhoto,
+        /** Modification : version de la fiche lue avant la saisie (voir
+         *  ChauffeurResponse) ; ignorée à la création. */
+        Long version
 ) {}

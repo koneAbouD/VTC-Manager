@@ -527,6 +527,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
     final initial = widget.initial;
     final vehicule = Vehicule(
       id: initial?.id,
+      version: initial?.version,
       immatriculation: _immatCtrl.text.trim(),
       marque: _marque?.nom ?? initial?.marque ?? '',
       modele: _modele?.nom ?? initial?.modele ?? '',

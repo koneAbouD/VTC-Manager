@@ -34,11 +34,13 @@ public class ChauffeurRepositoryAdapter implements ChauffeurRepository {
             return jpaRepository.findById(chauffeur.getId())
                     .map(existing -> {
                         applyDomainToEntity(existing, chauffeur);
-                        return mapper.toDomain(jpaRepository.save(existing));
+                        return mapper.toDomain(jpaRepository.saveAndFlush(existing));
                     })
-                    .orElseGet(() -> mapper.toDomain(jpaRepository.save(mapper.toEntity(chauffeur))));
+                    .orElseGet(() -> mapper.toDomain(jpaRepository.saveAndFlush(mapper.toEntity(chauffeur))));
         }
-        return mapper.toDomain(jpaRepository.save(mapper.toEntity(chauffeur)));
+        // Écriture immédiate : la version, posée par la base, est relue avec la
+        // ligne et revient à jour dans la fiche renvoyée.
+        return mapper.toDomain(jpaRepository.saveAndFlush(mapper.toEntity(chauffeur)));
     }
 
     private void applyDomainToEntity(ChauffeurEntity entity, Chauffeur domain) {

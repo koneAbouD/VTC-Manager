@@ -16,6 +16,11 @@ import java.time.Period;
 public class Chauffeur {
 
     private Long id;
+
+    /** Jeton de version, relu de la base (voir l'entité JPA). Renvoyé par
+     *  l'application qui modifie la fiche : s'il a changé entre-temps, la
+     *  modification est refusée plutôt que d'écraser celle d'un autre. */
+    private Long version;
     private String nom;
     private String prenom;
     private Genre genre;

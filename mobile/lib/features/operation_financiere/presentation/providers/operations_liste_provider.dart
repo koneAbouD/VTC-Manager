@@ -1,4 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tmk_cache/tmk_cache.dart';
+
+import '../../../../core/network/api_client.dart';
+import '../../../../core/network/page_result.dart';
 
 import '../../domain/entities/operation_financiere.dart';
 import '../../domain/usecases/get_operations_financieres_page_usecase.dart';
@@ -136,23 +140,38 @@ class OperationsListeNotifier extends StateNotifier<OperationsListeState> {
     );
   }
 
+  /// Premier chargement ou changement de filtres : la dernière première page
+  /// connue pour ces filtres s'affiche le temps que le serveur réponde.
   Future<void> _reload() async {
     final generation = ++_generation;
     _page = 0;
     state = state.copyWith(initialLoading: true, clearError: true);
-    final res = await _getPage(
-      page: 0,
-      size: _pageSize,
-      typeOperation: _typeOperation,
-      debut: _debut,
-      fin: _fin,
-      statut: _statut,
-      categorieCode: _categorieCode,
-      sousCategorieLibelle: _sousCategorieLibelle,
-      vehiculeId: _vehiculeId,
-      chauffeurId: _chauffeurId,
-      recherche: _recherche,
+    premierePage() => _getPage(
+          page: 0,
+          size: _pageSize,
+          typeOperation: _typeOperation,
+          debut: _debut,
+          fin: _fin,
+          statut: _statut,
+          categorieCode: _categorieCode,
+          sousCategorieLibelle: _sousCategorieLibelle,
+          vehiculeId: _vehiculeId,
+          chauffeurId: _chauffeurId,
+          recherche: _recherche,
+        );
+    final enAttente = premierePage();
+    await afficherEnAttendant<PageResult<OperationFinanciere>>(
+      enAttente: enAttente,
+      cache: () async =>
+          (await ApiClient.depuisLeCacheSeul(premierePage)).toNullable(),
+      // Toujours « en chargement » : pas de page suivante avant la vraie.
+      afficher: (page) {
+        if (mounted && generation == _generation) {
+          state = OperationsListeState(items: page.content, initialLoading: true);
+        }
+      },
     );
+    final res = await enAttente;
     if (!mounted || generation != _generation) return;
     res.fold(
       (f) => state = const OperationsListeState().copyWith(error: f.message),

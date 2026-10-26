@@ -14,6 +14,11 @@ class VehiculePhoto {
 
 class Vehicule {
   final int? id;
+
+  /// Jeton de version de la fiche, posé par le serveur. Renvoyé avec une
+  /// modification : si la fiche a changé entre-temps (autre gestionnaire,
+  /// fiche ouverte depuis le cache), le serveur refuse au lieu d'écraser.
+  final int? version;
   final String immatriculation;
   final String? libelle;
   final String marque;
@@ -60,6 +65,7 @@ class Vehicule {
 
   const Vehicule({
     this.id,
+    this.version,
     required this.immatriculation,
     this.libelle,
     required this.marque,
@@ -92,6 +98,7 @@ class Vehicule {
 
   Vehicule copyWith({
     int? id,
+    int? version,
     String? immatriculation,
     String? libelle,
     String? marque,
@@ -118,6 +125,7 @@ class Vehicule {
   }) {
     return Vehicule(
       id: id ?? this.id,
+      version: version ?? this.version,
       immatriculation: immatriculation ?? this.immatriculation,
       libelle: libelle ?? this.libelle,
       marque: marque ?? this.marque,

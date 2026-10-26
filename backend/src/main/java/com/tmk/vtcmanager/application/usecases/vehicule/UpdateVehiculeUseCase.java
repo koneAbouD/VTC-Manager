@@ -2,6 +2,7 @@ package com.tmk.vtcmanager.application.usecases.vehicule;
 
 import com.tmk.vtcmanager.application.domain.conditionTravail.ConditionTravail;
 import com.tmk.vtcmanager.application.domain.vehicule.*;
+import com.tmk.vtcmanager.application.exception.FicheModifieeEntreTempsException;
 import com.tmk.vtcmanager.application.exception.ResourceAlreadyExistsException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
@@ -27,6 +28,7 @@ public class UpdateVehiculeUseCase {
     public Vehicule execute(Long id, UpdateVehiculeCommand cmd) {
         Vehicule existing = vehiculeRepository.findById(id)
                 .orElseThrow(() -> new VehiculeNotFoundException(id));
+        FicheModifieeEntreTempsException.verifier("véhicule", cmd.version(), existing.getVersion());
 
         if (cmd.immatriculation() != null && !cmd.immatriculation().equals(existing.getImmatriculation())) {
             vehiculeRepository.findByImmatriculation(cmd.immatriculation()).ifPresent(conflict -> {

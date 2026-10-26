@@ -9,6 +9,11 @@ import 'permis_conduire.dart';
 /// [com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur].
 class Chauffeur {
   final int? id;
+
+  /// Jeton de version de la fiche, posé par le serveur. Renvoyé avec une
+  /// modification : si la fiche a changé entre-temps (autre gestionnaire,
+  /// fiche ouverte depuis le cache), le serveur refuse au lieu d'écraser.
+  final int? version;
   final String nom;
   final String prenom;
   final Genre? genre;
@@ -49,6 +54,7 @@ class Chauffeur {
 
   const Chauffeur({
     this.id,
+    this.version,
     required this.nom,
     required this.prenom,
     this.genre,
@@ -100,6 +106,7 @@ class Chauffeur {
 
   Chauffeur copyWith({
     int? id,
+    int? version,
     String? nom,
     String? prenom,
     Genre? genre,
@@ -124,6 +131,7 @@ class Chauffeur {
   }) {
     return Chauffeur(
       id: id ?? this.id,
+      version: version ?? this.version,
       nom: nom ?? this.nom,
       prenom: prenom ?? this.prenom,
       genre: genre ?? this.genre,

@@ -90,7 +90,7 @@ public class VehiculeController {
         AmortissementVehicule amortissement = getAmortissementVehiculeUseCase.executer(id)
                 .orElse(null);
         return new VehiculeDetailResponse(
-                base.id(), base.immatriculation(),
+                base.id(), base.version(), base.immatriculation(),
                 base.marque(), base.modele(),
                 base.numeroChassis(),
                 base.balise(),

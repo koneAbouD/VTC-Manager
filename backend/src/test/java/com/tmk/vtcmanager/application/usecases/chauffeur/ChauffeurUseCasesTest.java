@@ -7,6 +7,7 @@ import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeChauffeur
 import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.ChauffeurNotFoundException;
+import com.tmk.vtcmanager.application.exception.FicheModifieeEntreTempsException;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
 import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
@@ -317,6 +318,53 @@ class ChauffeurUseCasesTest {
 
             assertThatThrownBy(() -> recomputeUseCase.execute(CHAUFFEUR))
                     .isInstanceOf(ChauffeurNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Modification d'une fiche modifiée entre-temps")
+    class Modification {
+
+        private UpdateChauffeurUseCase updateUseCase;
+
+        @BeforeEach
+        void setUp() {
+            updateUseCase = new UpdateChauffeurUseCase(chauffeurRepository,
+                    mock(DocumentRepository.class), mock(TypeDocumentRepository.class),
+                    fileStoragePort, mock(SyncChauffeurAccountUseCase.class));
+            Chauffeur actuel = Chauffeur.builder().id(CHAUFFEUR).version(7L)
+                    .nom("Kouassi").prenom("Aya").build();
+            when(chauffeurRepository.findById(CHAUFFEUR)).thenReturn(Optional.of(actuel));
+            when(chauffeurRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        }
+
+        private Chauffeur saisie(Long version) {
+            return Chauffeur.builder().version(version).nom("Kouassi").prenom("Awa").build();
+        }
+
+        private Chauffeur modifier(Long version) {
+            return updateUseCase.execute(CHAUFFEUR, saisie(version),
+                    null, null, null, null, null, null, false);
+        }
+
+        @Test
+        @DisplayName("Une saisie partie d'une version périmée est refusée, rien n'est écrit")
+        void version_perimee() {
+            assertThatThrownBy(() -> modifier(6L))
+                    .isInstanceOf(FicheModifieeEntreTempsException.class);
+            verify(chauffeurRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Une saisie partie de la version actuelle est enregistrée")
+        void version_a_jour() {
+            assertThat(modifier(7L).getPrenom()).isEqualTo("Awa");
+        }
+
+        @Test
+        @DisplayName("Sans version (application d'avant le contrôle), pas de contrôle")
+        void sans_version() {
+            assertThat(modifier(null).getPrenom()).isEqualTo("Awa");
         }
     }
 

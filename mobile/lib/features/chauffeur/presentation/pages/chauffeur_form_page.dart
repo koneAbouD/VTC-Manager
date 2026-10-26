@@ -332,6 +332,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
 
     final chauffeur = Chauffeur(
       id: widget.initial?.id,
+      version: widget.initial?.version,
       nom: _nom.text.trim(),
       prenom: _prenom.text.trim(),
       genre: _genre ?? widget.initial?.genre,

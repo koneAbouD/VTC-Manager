@@ -6,6 +6,7 @@ import com.tmk.vtcmanager.application.domain.document.CibleDocument;
 import com.tmk.vtcmanager.application.domain.document.Document;
 import com.tmk.vtcmanager.application.domain.document.DocumentStatut;
 import com.tmk.vtcmanager.application.exception.ChauffeurNotFoundException;
+import com.tmk.vtcmanager.application.exception.FicheModifieeEntreTempsException;
 import com.tmk.vtcmanager.application.ports.persistence.ChauffeurRepository;
 import com.tmk.vtcmanager.application.ports.persistence.DocumentRepository;
 import com.tmk.vtcmanager.application.ports.persistence.TypeDocumentRepository;
@@ -43,6 +44,7 @@ public class UpdateChauffeurUseCase {
                              boolean deletePhoto) {
         Chauffeur existing = chauffeurRepository.findById(id)
                 .orElseThrow(() -> new ChauffeurNotFoundException(id));
+        FicheModifieeEntreTempsException.verifier("chauffeur", data.getVersion(), existing.getVersion());
 
         existing.setNom(data.getNom());
         existing.setPrenom(data.getPrenom());

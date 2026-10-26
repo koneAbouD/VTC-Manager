@@ -50,8 +50,15 @@ réseau, déjà lancée, est en cours. Une réponse fraîche n'est jamais écras
 l'ancienne, et un rafraîchissement garde ce que l'écran montre déjà. Écrans
 branchés :
 
-- gestionnaire : véhicules et chauffeurs (flotte), tableau de bord ;
+- gestionnaire : véhicules et chauffeurs (flotte), tableau de bord, et toutes
+  les listes paginées (`PagedListNotifier`, liste des opérations) ;
 - chauffeur : profil, solde et opérations (accueil).
+
+Pour les listes paginées, pas de variante « cache » par écran :
+`ApiClient.depuisLeCacheSeul` rejoue le fetcher ordinaire de l'écran dans une
+zone où chaque `get` lit le cache au lieu du serveur. Un double de test qui ne
+passe pas par l'`ApiClient` consulte `ApiClient.lectureCacheSeul` pour se
+comporter comme un cache vide.
 
 ## Préchargement
 

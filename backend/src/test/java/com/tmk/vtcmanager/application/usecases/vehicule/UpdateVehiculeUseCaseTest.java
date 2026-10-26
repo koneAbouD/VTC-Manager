@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.application.usecases.vehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.UpdateVehiculeCommand;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.domain.vehicule.VehiculeStatus;
+import com.tmk.vtcmanager.application.exception.FicheModifieeEntreTempsException;
 import com.tmk.vtcmanager.application.ports.persistence.BaliseRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ConditionTravailRepository;
 import com.tmk.vtcmanager.application.ports.persistence.GroupeVehiculeRepository;
@@ -12,14 +13,19 @@ import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.services.ConfigurationRecetteSynchronizer;
 import com.tmk.vtcmanager.application.services.VehiculeStatutHistoriqueService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UpdateVehiculeUseCaseTest {
@@ -51,10 +57,57 @@ class UpdateVehiculeUseCaseTest {
     }
 
     private UpdateVehiculeCommand commandeAvecPrix(BigDecimal prixAchat) {
-        // Ordre : …, dateAchat, prixAchat, dureeAmortissementMois, dates…
+        return commande(prixAchat, null);
+    }
+
+    private UpdateVehiculeCommand commande(BigDecimal prixAchat, Long version) {
+        // Ordre : …, dateAchat, prixAchat, dureeAmortissementMois, dates…, version
         return new UpdateVehiculeCommand(
                 null, null, null, null, null, null, null, null, null, null,
-                null, null, null, prixAchat, null, null, null, null);
+                null, null, null, prixAchat, null, null, null, null, version);
+    }
+
+    @Nested
+    @DisplayName("Fiche modifiée entre-temps")
+    class Version {
+
+        private Vehicule existantEnVersion(long version) {
+            Vehicule existant = vehiculeExistant();
+            existant.setVersion(version);
+            when(vehiculeRepository.findById(1L)).thenReturn(Optional.of(existant));
+            return existant;
+        }
+
+        @Test
+        @DisplayName("une saisie partie d'une version périmée est refusée, rien n'est écrit")
+        void versionPerimeeRefusee() {
+            existantEnVersion(4L);
+
+            assertThatThrownBy(() -> useCase.execute(1L, commande(new BigDecimal("1"), 3L)))
+                    .isInstanceOf(FicheModifieeEntreTempsException.class)
+                    .hasMessageContaining("Rouvrez-la");
+            verify(vehiculeRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("une saisie partie de la version actuelle est enregistrée")
+        void versionAJourAcceptee() {
+            existantEnVersion(4L);
+
+            Vehicule maj = useCase.execute(1L, commande(new BigDecimal("7500000"), 4L));
+
+            assertThat(maj.getPrixAchat()).isEqualByComparingTo("7500000");
+        }
+
+        @Test
+        @DisplayName("sans version (application d'avant le contrôle), pas de contrôle")
+        void sansVersionPasDeControle() {
+            existantEnVersion(4L);
+
+            Vehicule maj = useCase.execute(1L, commande(new BigDecimal("7500000"), null));
+
+            assertThat(maj.getPrixAchat()).isEqualByComparingTo("7500000");
+        }
     }
 
     @Test

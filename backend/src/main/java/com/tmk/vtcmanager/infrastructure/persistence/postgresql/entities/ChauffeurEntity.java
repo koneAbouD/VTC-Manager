@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 
 import java.time.LocalDate;
 
@@ -24,6 +26,18 @@ public class ChauffeurEntity extends AbstractAuditEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /**
+     * Jeton de version de la fiche, tenu par la base : un trigger l'incrémente
+     * à chaque UPDATE de la ligne, quel qu'en soit l'auteur. Relu après chaque
+     * écriture ; jamais écrit par l'application. (Pas de {@code @Version} JPA :
+     * il changerait la façon dont Hibernate reconnaît une entité nouvelle, et
+     * les références détachées construites par les mappers passeraient pour
+     * des insertions.)
+     */
+    @Generated(event = {EventType.INSERT, EventType.UPDATE})
+    @Column(name = "version", insertable = false, updatable = false)
+    private Long version;
 
     @NotBlank
     @Column(nullable = false)

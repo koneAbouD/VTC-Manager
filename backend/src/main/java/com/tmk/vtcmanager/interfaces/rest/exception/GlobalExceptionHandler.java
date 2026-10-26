@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.interfaces.rest.exception;
 import com.tmk.vtcmanager.application.exception.AucunePenaliteAmendePendingException;
 import com.tmk.vtcmanager.application.exception.CaisseClotureeException;
 import com.tmk.vtcmanager.application.exception.CaisseCreditriceException;
+import com.tmk.vtcmanager.application.exception.FicheModifieeEntreTempsException;
 import com.tmk.vtcmanager.application.exception.EcritureFigeeException;
 import com.tmk.vtcmanager.application.exception.EncaissementFuturException;
 import com.tmk.vtcmanager.application.exception.ChauffeurAlreadyAssignedException;
@@ -255,6 +256,15 @@ public class GlobalExceptionHandler {
                         "chauffeurId:" + ex.getChauffeurId(),
                         "chauffeurNom:" + ex.getChauffeurNom()
                 ), ex);
+    }
+
+    // ── Modifications concurrentes ────────────────────────────────────────
+    // 409 : la saisie part d'une version de la fiche qui n'est plus la bonne.
+
+    @ExceptionHandler(FicheModifieeEntreTempsException.class)
+    public ResponseEntity<ApiError> handleFicheModifiee(FicheModifieeEntreTempsException ex,
+                                                        HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, "FICHE_MODIFIEE", ex.getMessage(), request, ex);
     }
 
     // ── Verrous comptables ────────────────────────────────────────────────

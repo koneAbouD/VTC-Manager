@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 
 import '../error/failure.dart';
+import '../network/api_client.dart';
 import '../network/page_result.dart';
 
 /// Récupère une page donnée. Le fetcher capture les filtres courants de l'écran,
@@ -57,20 +59,41 @@ class PagedListNotifier<T> extends StateNotifier<PagedListState<T>> {
   PageFetcher<T>? _fetcher;
 
   /// (Re)charge depuis la page 0 avec un nouveau fetcher (filtres à jour).
+  ///
+  /// La dernière première page connue pour ces filtres s'affiche le temps que
+  /// le serveur réponde : sur réseau mobile, la liste apparaît aussitôt au lieu
+  /// d'un indicateur de chargement.
   Future<void> load(PageFetcher<T> fetcher) {
     _fetcher = fetcher;
-    return _reload();
+    return _reload(depuisLeCache: true);
   }
 
-  /// Recharge avec le dernier fetcher connu (mêmes filtres).
+  /// Recharge avec le dernier fetcher connu (mêmes filtres). La liste affichée
+  /// reste en place jusqu'à la nouvelle.
   Future<void> refresh() => _fetcher == null ? Future.value() : _reload();
 
-  Future<void> _reload() async {
+  Future<void> _reload({bool depuisLeCache = false}) async {
     final fetch = _fetcher;
     if (fetch == null) return;
     _page = 0;
     state = state.copyWith(initialLoading: true, clearError: true);
-    final res = await fetch(0, pageSize);
+    final enAttente = fetch(0, pageSize);
+    if (depuisLeCache) {
+      await afficherEnAttendant<PageResult<T>>(
+        enAttente: enAttente,
+        cache: () async =>
+            (await ApiClient.depuisLeCacheSeul(() => fetch(0, pageSize)))
+                .toNullable(),
+        // Toujours « en chargement » : la page suivante n'est demandée qu'une
+        // fois la vraie première page arrivée.
+        afficher: (page) {
+          if (identical(_fetcher, fetch)) {
+            state = PagedListState<T>(items: page.content, initialLoading: true);
+          }
+        },
+      );
+    }
+    final res = await enAttente;
     res.fold(
       (f) => state = PagedListState<T>(error: f.message),
       (p) => state = PagedListState<T>(items: p.content, hasMore: p.hasMore),

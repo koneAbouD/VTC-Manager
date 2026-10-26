@@ -12,6 +12,8 @@ import java.util.List;
 
 public record ChauffeurDetailResponse(
         Long id,
+        /** Jeton de version à renvoyer avec une modification. */
+        Long version,
         String nom,
         String prenom,
         Genre genre,
@@ -40,7 +42,7 @@ public record ChauffeurDetailResponse(
             ProgrammeTravailResponse p,
             List<DocumentResponse> documents) {
         return new ChauffeurDetailResponse(
-                c.id(), c.nom(), c.prenom(), c.genre(), c.type(),
+                c.id(), c.version(), c.nom(), c.prenom(), c.genre(), c.type(),
                 c.dateNaissance(), c.age(), c.photoUrl(),
                 documents,
                 c.telephone(), c.email(), c.adresse(), c.statut(), c.dateEmbauche(),

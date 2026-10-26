@@ -21,5 +21,8 @@ public record UpdateVehiculeCommand(
         Integer dureeAmortissementMois,
         LocalDate dateProchaineMaintenance,
         LocalDate dateMiseEnCirculation,
-        LocalDate dateEntreeFlotte
+        LocalDate dateEntreeFlotte,
+        /** Version de la fiche à partir de laquelle la modification a été
+         *  saisie ; {@code null} = pas de contrôle (anciennes applications). */
+        Long version
 ) {}

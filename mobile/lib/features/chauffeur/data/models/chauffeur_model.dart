@@ -9,6 +9,7 @@ import 'geolocalisation_model.dart';
 class ChauffeurModel extends Chauffeur {
   const ChauffeurModel({
     super.id,
+    super.version,
     required super.nom,
     required super.prenom,
     super.genre,
@@ -58,6 +59,7 @@ class ChauffeurModel extends Chauffeur {
 
     return ChauffeurModel(
       id: json['id'] as int?,
+      version: (json['version'] as num?)?.toInt(),
       nom: json['nom'] as String,
       prenom: json['prenom'] as String,
       genre: Genre.fromJson(json['genre']),
@@ -90,6 +92,7 @@ class ChauffeurModel extends Chauffeur {
 
   factory ChauffeurModel.fromEntity(Chauffeur c) => ChauffeurModel(
         id: c.id,
+        version: c.version,
         nom: c.nom,
         prenom: c.prenom,
         genre: c.genre,
