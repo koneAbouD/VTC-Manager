@@ -349,9 +349,9 @@ class _VehiculeTabState extends ConsumerState<_VehiculeTab> {
 // ── Filtre par statut ─────────────────────────────────────────────────────────
 
 /// Bouton du filtre par statut, au style du sélecteur de filtre des recettes
-/// (« Tous / Mois ») : pastille surface bordée de gris, texte à l'accent ;
-/// dans le menu, le statut retenu ressort à l'accent.
-class _StatutFiltreButton<T> extends StatelessWidget {
+/// (« Tous / Mois ») : pastille surface bordée de gris, texte à l'accent, et
+/// même popup ancrée sous le bouton, le statut retenu coché à l'accent.
+class _StatutFiltreButton<T> extends StatefulWidget {
   final T? value;
   final List<(T, String)> options;
   final ValueChanged<T?> onChanged;
@@ -363,54 +363,142 @@ class _StatutFiltreButton<T> extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final entrees = <(T?, String)>[(null, 'Tous'), ...options];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.blanc,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.grey300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T?>(
-          value: value,
-          isDense: true,
-          icon: Padding(
-            padding: const EdgeInsets.only(left: 3),
-            child: Icon(Icons.keyboard_arrow_down_rounded,
-                size: 14, color: AppColors.primary),
-          ),
-          dropdownColor: AppColors.blanc,
-          borderRadius: BorderRadius.circular(12),
-          menuMaxHeight: 280,
-          selectedItemBuilder: (_) => [
-            for (final (_, label) in entrees)
-              Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.filter_list_rounded,
-                    size: 14, color: AppColors.primary),
-                const SizedBox(width: 5),
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w500)),
-              ]),
-          ],
-          items: [
-            for (final (v, label) in entrees)
-              DropdownMenuItem<T?>(
-                value: v,
-                child: Text(label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight:
-                          v == value ? FontWeight.w600 : FontWeight.w400,
-                      color: v == value ? AppColors.primary : AppColors.dark,
-                    )),
+  State<_StatutFiltreButton<T>> createState() => _StatutFiltreButtonState<T>();
+}
+
+class _StatutFiltreButtonState<T> extends State<_StatutFiltreButton<T>> {
+  OverlayEntry? _overlayEntry;
+
+  List<(T?, String)> get _entrees => [(null, 'Tous'), ...widget.options];
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    super.dispose();
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    final offset = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+
+    _overlayEntry = OverlayEntry(
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _removeOverlay,
+        child: Stack(
+          children: [
+            Positioned(
+              left: offset.dx,
+              top: offset.dy + size.height + 4,
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 210,
+                  constraints: const BoxConstraints(maxHeight: 360),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.blanc,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: _entrees.map((e) {
+                        final (v, label) = e;
+                        final sel = widget.value == v;
+                        return InkWell(
+                          onTap: () {
+                            _removeOverlay();
+                            widget.onChanged(v);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  sel
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off_outlined,
+                                  size: 18,
+                                  color: sel
+                                      ? AppColors.primary
+                                      : AppColors.grey400,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    label,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: sel
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                      color: sel
+                                          ? AppColors.primary
+                                          : AppColors.dark,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
               ),
+            ),
           ],
-          onChanged: onChanged,
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _entrees
+        .firstWhere((e) => e.$1 == widget.value, orElse: () => _entrees.first)
+        .$2;
+    return GestureDetector(
+      onTap: _showOverlay,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.blanc,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.grey300),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.filter_list_rounded,
+                size: 14, color: AppColors.primary),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 3),
+            Icon(Icons.keyboard_arrow_down_rounded,
+                size: 14, color: AppColors.primary),
+          ],
         ),
       ),
     );
