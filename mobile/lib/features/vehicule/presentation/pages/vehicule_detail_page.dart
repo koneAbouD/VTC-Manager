@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:pdfx/pdfx.dart';
@@ -1491,8 +1492,8 @@ class _InfoGeneralesTab extends ConsumerWidget {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            photo.url,
+                          child: Image(
+                            image: imageReseau(photo.url),
                             width: 100,
                             height: 100,
                             fit: BoxFit.cover,

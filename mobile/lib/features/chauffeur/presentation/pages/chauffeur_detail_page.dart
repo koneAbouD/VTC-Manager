@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:pdfx/pdfx.dart';
@@ -2610,13 +2611,12 @@ class _ChauffeurAvatarState extends ConsumerState<ChauffeurAvatar> {
         if (headers == null) return fallback();
         return ClipRRect(
           borderRadius: radius,
-          child: Image.network(
-            url,
+          child: Image(
+            image: imageReseau(url, headers: headers),
             key: ValueKey('$id-$version'),
             width: widget.size,
             height: widget.size,
             fit: BoxFit.cover,
-            headers: headers,
             errorBuilder: (_, __, ___) => fallback(),
             loadingBuilder: (ctx, child, progress) =>
                 progress == null ? child : fallback(),
@@ -2685,10 +2685,12 @@ class _PhotoFullscreenViewerState extends State<_PhotoFullscreenViewer> {
                       color: Colors.white54, size: 64)),
             );
           }
-          return Image.network(
-            '${ApiConfig.baseUrl}/chauffeurs/${widget.chauffeurId}/photo',
+          return Image(
+            image: imageReseau(
+              '${ApiConfig.baseUrl}/chauffeurs/${widget.chauffeurId}/photo',
+              headers: headers,
+            ),
             fit: BoxFit.cover,
-            headers: headers,
             errorBuilder: (_, __, ___) => const SizedBox(
               height: 200,
               child: Center(

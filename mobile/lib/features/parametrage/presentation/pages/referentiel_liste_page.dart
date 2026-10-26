@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -403,8 +404,8 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              imageUrl,
+            child: Image(
+              image: imageReseau(imageUrl),
               width: 40,
               height: 40,
               fit: BoxFit.cover,

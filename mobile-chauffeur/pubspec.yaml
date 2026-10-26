@@ -54,6 +54,11 @@ dependencies:
   tmk_push:
     path: ../packages/tmk_push
 
+  # Cache local partagé avec l'app gestionnaire : dernières réponses rejouées
+  # hors connexion.
+  tmk_cache:
+    path: ../packages/tmk_cache
+
   # Format / dates (FCFA, locale fr)
   intl: ^0.20.2
 

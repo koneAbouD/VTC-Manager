@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1435,10 +1436,12 @@ class _RemoteChauffeurPhotoState extends State<_RemoteChauffeurPhoto> {
         if (snap.connectionState != ConnectionState.done) return _fallback();
         final headers = snap.data;
         if (headers == null) return _fallback();
-        return Image.network(
-          '${ApiConfig.baseUrl}/chauffeurs/${widget.chauffeurId}/photo',
+        return Image(
+          image: imageReseau(
+            '${ApiConfig.baseUrl}/chauffeurs/${widget.chauffeurId}/photo',
+            headers: headers,
+          ),
           fit: BoxFit.cover,
-          headers: headers,
           errorBuilder: (_, __, ___) => _fallback(),
           loadingBuilder: (_, child, progress) =>
               progress == null ? child : _fallback(),
@@ -1538,10 +1541,9 @@ class _AuthenticatedNetworkImageState
             ),
           );
         }
-        return Image.network(
-          widget.imageUrl,
+        return Image(
+          image: imageReseau(widget.imageUrl, headers: snap.data),
           fit: widget.fit,
-          headers: snap.data,
           errorBuilder: (_, __, ___) => _fallback(),
           loadingBuilder: (_, child, progress) => progress == null
               ? child

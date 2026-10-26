@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1148,8 +1149,8 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    photo.url,
+                  Image(
+                    image: imageReseau(photo.url),
                     fit: BoxFit.cover,
                     loadingBuilder: (_, child, progress) => progress == null
                         ? child

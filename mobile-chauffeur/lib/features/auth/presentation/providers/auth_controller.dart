@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:tmk_pin/tmk_pin.dart';
 import 'package:tmk_push/tmk_push.dart';
 
@@ -182,6 +183,8 @@ class AuthController extends Notifier<AuthState> {
     await PushService.instance.detacherSession();
     await _storage.clearTokens();
     await _storage.setLoggedOut(true);
+    // Les écrans consultés ne restent pas sur l'appareil après la session.
+    purgerCacheSession();
     state = const AuthUnauthenticated();
   }
 
@@ -420,13 +423,19 @@ class AuthController extends Notifier<AuthState> {
         // refresh token distingue donc les deux cas.
         final encorePresent = await _storage.getRefreshToken();
         if (encorePresent != null && encorePresent.isNotEmpty) {
-          // Le code était bon : on reverrouille sans compter d'échec.
-          _pin.lock();
-          await _storage.clearTokens();
-          return const UnlockOffline(
-            'Connexion au serveur impossible. Vérifiez votre réseau, puis '
-            'réessayez dans un instant.',
-          );
+          // Le code était bon : il a prouvé l'identité sans le serveur, c'est
+          // le coffre qui l'a vérifié. L'application s'ouvre en consultation :
+          // les lectures rejouent leurs dernières réponses (tmk_cache, avec le
+          // bandeau « hors connexion »). Le refresh token reste en place : au
+          // premier appel qui atteint le serveur, le 401 déclenche le refresh
+          // et la session reprend sans redemander le code — ou l'expiration
+          // remet sous clé si le serveur l'a révoqué entre-temps. Un refresh
+          // qui aboutit après le délai rechiffre le coffre via
+          // `onTokensRenewed`.
+          SessionManager.instance.start();
+          state = AuthAuthenticated(nom);
+          _ouvrirNotifications();
+          return const UnlockOk();
         }
 
         // Session révoquée côté serveur : le code ne peut plus rien rouvrir,
@@ -557,6 +566,7 @@ class AuthController extends Notifier<AuthState> {
     await _pin.reset();
     await _storage.clearTokens();
     await _storage.setLoggedOut(true);
+    purgerCacheSession();
     state = const AuthUnauthenticated();
   }
 }

@@ -147,15 +147,20 @@ class PushService {
     }
 
     _abonnementRotation?.cancel();
-    _abonnementRotation =
-        FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
-      _token = token;
-      try {
-        await _registrar?.enregistrer(token: token, plateforme: _plateforme);
-      } catch (e) {
-        debugPrint('[push] mise à jour du jeton impossible : $e');
-      }
-    });
+    try {
+      _abonnementRotation =
+          FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+        _token = token;
+        try {
+          await _registrar?.enregistrer(token: token, plateforme: _plateforme);
+        } catch (e) {
+          debugPrint('[push] mise à jour du jeton impossible : $e');
+        }
+      });
+    } catch (e) {
+      // Firebase non initialisé : l'ouverture de session n'en dépend pas.
+      debugPrint('[push] suivi des rotations de jeton impossible : $e');
+    }
   }
 
   /// Retire cet appareil du compte alors que la session, elle, continue :

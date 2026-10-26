@@ -64,9 +64,7 @@ class AuthError extends AuthState {
 
   /// Vrai quand le serveur n'a pas tranché la demande : réseau coupé, délai
   /// dépassé, service d'authentification en panne. La saisie n'est alors pas en
-  /// cause — l'écran la conserve au lieu de la vider, à l'image du
-  /// déverrouillage hors ligne qui ne consomme aucun essai (voir
-  /// `UnlockOffline`).
+  /// cause — l'écran la conserve au lieu de la vider.
   final bool indisponible;
 
   const AuthError(this.message, {this.indisponible = false});

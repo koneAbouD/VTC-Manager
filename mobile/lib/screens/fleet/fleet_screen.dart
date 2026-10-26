@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_config.dart';
@@ -966,9 +967,8 @@ class _ChauffeurThumbnailState extends State<_ChauffeurThumbnail> {
           }
           final headers = snap.data;
           if (headers == null) return _initialsWidget(size);
-          return Image.network(
-            url,
-            headers: headers,
+          return Image(
+            image: imageReseau(url, headers: headers),
             width: size,
             height: size,
             fit: BoxFit.cover,

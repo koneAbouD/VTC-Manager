@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:tmk_push/tmk_push.dart';
 
 import 'core/network/session_manager.dart';
@@ -155,7 +156,13 @@ class _VtcManagerAppState extends ConsumerState<VtcManagerApp>
                   ? SystemUiOverlayStyle.light
                   : SystemUiOverlayStyle.dark)
               .copyWith(statusBarColor: Colors.transparent),
-          child: child ?? const SizedBox.shrink(),
+          // Hors connexion, les écrans montrent leurs dernières données : le
+          // bandeau dit de quand elles datent.
+          child: BandeauHorsLigne(
+            fond: AppColors.warningTint,
+            texte: AppColors.warning,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
         home: switch (authState) {

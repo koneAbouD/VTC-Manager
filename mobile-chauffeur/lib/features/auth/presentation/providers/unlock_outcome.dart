@@ -25,13 +25,6 @@ class UnlockWait extends UnlockOutcome {
   const UnlockWait(this.remaining);
 }
 
-/// Code correct mais serveur injoignable : on reste verrouillé, sans compter
-/// d'échec.
-class UnlockOffline extends UnlockOutcome {
-  final String message;
-  const UnlockOffline(this.message);
-}
-
 /// La biométrie n'a pas abouti : rien n'est ouvert, le pavé numérique reste
 /// le chemin normal.
 ///

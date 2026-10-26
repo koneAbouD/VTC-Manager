@@ -135,9 +135,6 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
           'Trop de tentatives. Réessayez dans ${remaining.inSeconds + 1} s.',
         );
 
-      case UnlockOffline(:final message):
-        _reject(message);
-
       // Renoncement (message nul) : rien à dire, le pavé est là.
       case UnlockBiometricsFailed(:final message):
         message == null ? setState(() => _busy = false) : _reject(message);

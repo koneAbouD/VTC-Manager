@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -492,8 +493,8 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
           children: [
             GestureDetector(
               onTap: () => showImageViewer(context, preview, titre: c.label),
-              child: Image.network(
-                preview,
+              child: Image(
+                image: imageReseau(preview),
                 fit: BoxFit.cover,
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) return child;

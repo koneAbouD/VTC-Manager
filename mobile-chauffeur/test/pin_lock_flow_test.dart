@@ -270,19 +270,37 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    // Le code a prouvé l'identité : l'application s'ouvre en consultation sur
+    // le cache, et le refresh token attend le retour du serveur.
     testWidgets(
-        'un serveur indisponible (502) laisse le code en place et l\'écran '
-        'verrouillé', (tester) async {
+        'un serveur indisponible (502) ouvre l\'application en consultation',
+        (tester) async {
       await tester.runAsync(configurer);
       serveurRepond(502);
       await bootApp(tester);
       await saisirCode(tester);
 
-      expect(find.byType(PinLockPage), findsOneWidget);
-      expect(find.textContaining('Connexion au serveur impossible'),
-          findsOneWidget);
+      expect(find.byType(PinLockPage), findsNothing);
+      expect(find.byType(HomePage), findsOneWidget);
+      expect(storage.values['refresh_token'], 'refresh-token-abc');
+      // Session ouverte : ses minuteurs ne doivent pas survivre au test.
+      SessionManager.instance.stop();
       expect(await tester.runAsync(() => fastPin().isConfigured()), isTrue);
       expect(storage.values['session_logged_out'], isNull);
+    });
+
+    testWidgets('sans réseau, l\'application s\'ouvre aussi en consultation',
+        (tester) async {
+      await tester.runAsync(configurer);
+      SessionManager.instance.httpClient =
+          MockClient((_) async => throw http.ClientException('hors ligne'));
+      await bootApp(tester);
+      await saisirCode(tester);
+
+      expect(find.byType(HomePage), findsOneWidget);
+      expect(storage.values['refresh_token'], 'refresh-token-abc');
+      // Session ouverte : ses minuteurs ne doivent pas survivre au test.
+      SessionManager.instance.stop();
     });
 
     testWidgets(

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:tmk_push/tmk_push.dart';
 
+import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/pin_lock_page.dart';
@@ -51,6 +53,13 @@ class ChauffeurApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
+        // Hors connexion, les écrans montrent leurs dernières données : le
+        // bandeau dit de quand elles datent.
+        builder: (context, child) => BandeauHorsLigne(
+          fond: AppColors.warningTint,
+          texte: AppColors.warning,
+          child: child ?? const SizedBox.shrink(),
+        ),
         home: const _AuthGate(),
       ),
     );

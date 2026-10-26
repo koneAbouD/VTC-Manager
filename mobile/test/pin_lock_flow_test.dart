@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tmk_pin/tmk_pin.dart';
 import 'package:vtc_manager/core/error/exception.dart';
+import 'package:vtc_manager/core/network/session_manager.dart';
 import 'package:vtc_manager/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:vtc_manager/features/auth/data/models/token_model.dart';
 import 'package:vtc_manager/features/auth/presentation/pages/login_page.dart';
 import 'package:vtc_manager/features/auth/presentation/pages/pin_lock_page.dart';
 import 'package:vtc_manager/features/auth/presentation/providers/auth_provider.dart';
 import 'package:vtc_manager/main.dart';
+import 'package:vtc_manager/screens/home_screen.dart';
 
 /// Le stockage sécurisé passe par un canal de plateforme : en test, on le
 /// remplace par une simple map. C'est ce qui permet d'exercer le parcours réel
@@ -79,6 +81,18 @@ class _RefreshRefuse implements AuthRemoteDatasource {
   @override
   Future<TokenModel> refreshToken(String refreshToken) async =>
       throw ApiException(statusCode, 'Erreur serveur ($statusCode).');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Réseau coupé : le refresh n'atteint pas le serveur.
+class _ReseauCoupe implements AuthRemoteDatasource {
+  const _ReseauCoupe();
+
+  @override
+  Future<TokenModel> refreshToken(String refreshToken) async =>
+      throw const NetworkException();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -207,9 +221,11 @@ void main() {
           displayName: 'Abou-dramane',
         );
 
+    // Le code a prouvé l'identité : l'application s'ouvre en consultation sur
+    // le cache, et le refresh token attend le retour du serveur.
     testWidgets(
-        'un serveur indisponible (503) laisse le code en place et l\'écran '
-        'verrouillé', (tester) async {
+        'un serveur indisponible (503) ouvre l\'application en consultation',
+        (tester) async {
       await tester.runAsync(configurer);
       await bootApp(tester, overrides: [
         authRemoteDatasourceProvider
@@ -217,10 +233,27 @@ void main() {
       ]);
       await tapCode(tester, '48213');
 
-      expect(find.byType(PinLockPage), findsOneWidget);
-      expect(find.text('Erreur serveur (503).'), findsOneWidget);
+      expect(find.byType(PinLockPage), findsNothing);
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(storage.values['refresh_token'], 'refresh-token-abc');
+      // Session ouverte : ses minuteurs ne doivent pas survivre au test.
+      SessionManager.instance.stop();
       expect(await tester.runAsync(() => fastPin().isConfigured()), isTrue);
       expect(storage.values['session_logged_out'], isNull);
+    });
+
+    testWidgets('sans réseau, l\'application s\'ouvre aussi en consultation',
+        (tester) async {
+      await tester.runAsync(configurer);
+      await bootApp(tester, overrides: [
+        authRemoteDatasourceProvider.overrideWithValue(const _ReseauCoupe()),
+      ]);
+      await tapCode(tester, '48213');
+
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(storage.values['refresh_token'], 'refresh-token-abc');
+      // Session ouverte : ses minuteurs ne doivent pas survivre au test.
+      SessionManager.instance.stop();
     });
 
     testWidgets(

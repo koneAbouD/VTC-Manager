@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 
 import '../../core/theme/app_colors.dart';
 void showNetworkPhotoViewer(
@@ -101,8 +102,8 @@ class _NetworkPhotoViewerDialogState
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: InteractiveViewer(
-                        child: Image.network(
-                          widget.urls[i],
+                        child: Image(
+                          image: imageReseau(widget.urls[i]),
                           fit: BoxFit.contain,
                           loadingBuilder: (_, child, progress) =>
                               progress == null

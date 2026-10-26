@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 
 import '../../core/theme/app_colors.dart';
 /// Ouvre une image en aperçu premium : arrière-plan flouté laissant deviner
@@ -83,8 +84,8 @@ class _ImageViewerOverlay extends StatelessWidget {
                           minScale: 1,
                           maxScale: 5,
                           clipBehavior: Clip.hardEdge,
-                          child: Image.network(
-                            url,
+                          child: Image(
+                            image: imageReseau(url),
                             fit: BoxFit.contain,
                             loadingBuilder: (_, child, progress) =>
                                 progress == null

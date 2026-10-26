@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:tmk_pin/tmk_pin.dart';
 import 'package:tmk_push/tmk_push.dart';
 
@@ -462,7 +463,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // aller-retour réseau complet. Au-delà de [_delaiReouverture], on rend
         // la main plutôt que de laisser l'utilisateur devant un écran qui
         // tourne — le client HTTP, lui, patiente jusqu'à 25 s.
-        final refreshed = await _refresh.call().timeout(
+        final enCours = _refresh.call();
+        final refreshed = await enCours.timeout(
               _delaiReouverture,
               onTimeout: () => const Left(NetworkFailure(
                 'Le serveur met trop de temps à répondre. '
@@ -473,12 +475,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return refreshed.fold<Future<UnlockOutcome>>(
           (failure) async {
             if (failure is NetworkFailure) {
-              // Le code était bon, mais la session n'a pas pu être rouverte :
-              // on reverrouille pour ne rien laisser en clair, sans compter
-              // d'échec. L'utilisateur réessaiera une fois le réseau revenu.
-              _pin.lock();
-              unawaited(_storage.clearTokens());
-              return UnlockOffline(failure.message);
+              // Un refresh parti trop lentement peut encore aboutir : le
+              // coffre reçoit alors le token renouvelé.
+              unawaited(enCours.then((tardif) async {
+                if (tardif.isRight() && state is AuthAuthenticated) {
+                  SessionManager.instance.start();
+                  await _syncVaultWithStoredToken();
+                }
+              }));
+              return _ouvrirHorsLigne(nom);
             }
             // Session révoquée côté serveur : le code ne peut plus rien rouvrir,
             // mais il reste celui de l'utilisateur. Comme après une
@@ -503,6 +508,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
           },
         );
     }
+  }
+
+  /// Code correct, serveur injoignable : l'application s'ouvre en consultation.
+  ///
+  /// Le code a prouvé l'identité sans le serveur — c'est le coffre qui l'a
+  /// vérifié. Les lectures rejouent leurs dernières réponses (tmk_cache, avec
+  /// le bandeau « hors connexion »), les écritures échouent comme sur toute
+  /// coupure. Le refresh token sorti du coffre reste en place : au premier
+  /// appel qui atteint le serveur, le 401 déclenche le refresh et la session
+  /// reprend sans redemander le code. Si le serveur l'a révoqué entre-temps,
+  /// l'expiration remet sous clé comme d'habitude.
+  UnlockOutcome _ouvrirHorsLigne(String? nom) {
+    SessionManager.instance.start();
+    state = AuthAuthenticated(nom ?? '');
+    _ouvrirNotifications();
+    return const UnlockOk();
   }
 
   // ── Déverrouillage biométrique ──────────────────────────────────────────
@@ -625,6 +646,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await PushService.instance.detacherSession();
     await _storage.clearTokens();
     await _storage.setLoggedOut(true);
+    purgerCacheSession();
     unawaited(_logout.call());
     state = const AuthUnauthenticated();
   }
@@ -676,6 +698,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // « Code TMK oublié ? » efface le coffre (voir [forgetPin]).
     _pin.lock();
     await _storage.setLoggedOut(true);
+    // Les écrans consultés ne restent pas sur l'appareil après la session.
+    purgerCacheSession();
     // Redirection immédiate : on bascule l'état AVANT l'appel réseau de
     // révocation (qui peut être lent), puis on révoque en arrière-plan.
     state = const AuthUnauthenticated();

@@ -39,6 +39,11 @@ dependencies:
   tmk_push:
     path: ../packages/tmk_push
 
+  # Cache local partagé avec l'app chauffeur : dernières réponses rejouées
+  # hors connexion, cache disque des images.
+  tmk_cache:
+    path: ../packages/tmk_cache
+
   # Functional programming / Either
   fpdart: ^1.1.0
 

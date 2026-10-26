@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -607,12 +608,13 @@ class _CatalogueRowState extends ConsumerState<_CatalogueRow> {
                     showImageViewer(context, _el.imageUrl!, titre: _el.libelle),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    _el.imageUrl!,
+                  child: Image(
+                    // Décodage léger : pas de re-décode coûteux.
+                    image: ResizeImage.resizeIfNeeded(
+                        96, null, imageReseau(_el.imageUrl!)),
                     width: 32,
                     height: 32,
                     fit: BoxFit.cover,
-                    cacheWidth: 96, // décodage léger : pas de re-décode coûteux
                     errorBuilder: (_, __, ___) =>
                         const SizedBox(width: 32, height: 32),
                   ),

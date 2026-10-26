@@ -58,7 +58,6 @@ class _PinResumePageState extends ConsumerState<PinResumePage> {
       // même l'indicateur pour ne jamais laisser un écran qui tourne sans fin.
       case UnlockOk():
       case UnlockRequiresLogin():
-      case UnlockOffline():
       // La reprise ne passe jamais par la biométrie : c'est la saisie du code
       // qui re-dérive la clé du coffre après une reconnexion.
       case UnlockBiometricsFailed():

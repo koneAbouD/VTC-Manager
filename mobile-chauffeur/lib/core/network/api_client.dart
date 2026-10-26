@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:tmk_cache/tmk_cache.dart';
+import 'package:tmk_pin/tmk_pin.dart' show JwtClaims;
 
 import '../error/exception.dart';
 import '../storage/secure_storage.dart';
@@ -46,17 +48,44 @@ const String kMsgReponseInattendue =
 /// - Lance [ApiException] pour les erreurs HTTP et [NetworkException] pour
 ///   les erreurs réseau (timeout, pas de connexion, appel détourné par une
 ///   redirection 3xx).
+/// - Sans réseau, rejoue la dernière réponse connue d'une lecture (voir [get]).
 class ApiClient {
   final SecureStorage _storage;
   final http.Client _http;
+  final ReponseCache _cache;
+  final EtatHorsLigne _horsLigne;
 
-  ApiClient(this._storage, [http.Client? client])
-      : _http = client ?? http.Client();
+  ApiClient(
+    this._storage, [
+    http.Client? client,
+    ReponseCache? cache,
+    EtatHorsLigne? horsLigne,
+  ])  : _http = client ?? http.Client(),
+        _cache = cache ?? ReponseCache.instance,
+        _horsLigne = horsLigne ?? EtatHorsLigne.instance;
 
   static const _timeout = Duration(seconds: 25);
 
-  Future<dynamic> get(String path, {Map<String, String>? query}) =>
-      _send('GET', path, query: query);
+  /// Lecture. Quand le serveur est hors d'atteinte (pas de réseau, portail
+  /// Wi-Fi, maintenance), rejoue la dernière réponse connue de la même URL et
+  /// signale au bandeau « hors connexion » de quand elle date.
+  ///
+  /// Une réponse du serveur, même une erreur, l'emporte toujours : un 403 ou
+  /// un 404 n'est jamais masqué par le cache.
+  Future<dynamic> get(String path, {Map<String, String>? query}) async {
+    try {
+      return await _send('GET', path, query: query);
+    } on NetworkException {
+      final secours = await _depuisLeCache(path, query);
+      if (secours == null) rethrow;
+      return secours.donnees;
+    } on ApiException catch (e) {
+      if (!_serveurIndisponible(e.statusCode)) rethrow;
+      final secours = await _depuisLeCache(path, query);
+      if (secours == null) rethrow;
+      return secours.donnees;
+    }
+  }
 
   Future<dynamic> post(String path, [Object? body]) =>
       _send('POST', path, body: body);
@@ -113,12 +142,76 @@ class ApiClient {
           return _send(method, path, query: query, body: body, retry: false);
         }
       }
+      _noterReponse(method, path, uri, response, headers['Authorization']);
       return _handle(response);
     } on TimeoutException {
       throw const NetworkException(kMsgServeurTimeout);
     } on http.ClientException {
       throw const NetworkException(kMsgServeurInjoignable);
     }
+  }
+
+  // ── Cache hors connexion ────────────────────────────────────────────────
+
+  /// Le serveur a répondu : le bandeau hors connexion tombe, et une lecture
+  /// réussie devient la réponse de secours de son URL.
+  void _noterReponse(
+    String method,
+    String path,
+    Uri uri,
+    http.Response response,
+    String? autorisation,
+  ) {
+    final status = response.statusCode;
+    if ((status >= 300 && status < 400) || _serveurIndisponible(status)) return;
+    _horsLigne.serveurJoignable();
+    if (method == 'GET' && status < 300 && _cachable(path)) {
+      unawaited(_cache.ecrire(
+        uri.toString(),
+        response.bodyBytes,
+        proprietaire: _proprietaire(autorisation),
+      ));
+    }
+  }
+
+  Future<({Object? donnees})?> _depuisLeCache(
+    String path,
+    Map<String, String>? query,
+  ) async {
+    if (!_cachable(path)) return null;
+    String? jeton;
+    try {
+      // Ouverte hors connexion, l'application n'a pas encore de jeton
+      // d'accès : le refresh token sorti du coffre porte le même compte.
+      jeton = await _storage.getAccessToken() ??
+          await _storage.getRefreshToken();
+    } catch (_) {}
+    final enCache = await _cache.lire(
+      _buildUri(path, query).toString(),
+      proprietaire: _proprietaire(jeton),
+    );
+    if (enCache == null) return null;
+    _horsLigne.donneesDuCache(enCache.enregistreLe);
+    return (
+      donnees: enCache.corps.isEmpty
+          ? null
+          : jsonDecode(utf8.decode(enCache.corps)) as Object?,
+    );
+  }
+
+  /// 502, 503, 504 : le proxy répond, pas l'application. Pour l'écran, c'est
+  /// une coupure comme une autre.
+  bool _serveurIndisponible(int status) =>
+      status == 502 || status == 503 || status == 504;
+
+  /// Les échanges d'authentification ne se rejouent jamais.
+  bool _cachable(String path) => !path.startsWith('/auth/');
+
+  /// Compte (`sub`) auquel appartient une réponse, lu dans le jeton d'accès.
+  String? _proprietaire(String? jeton) {
+    if (jeton == null) return null;
+    final brut = jeton.startsWith('Bearer ') ? jeton.substring(7) : jeton;
+    return JwtClaims.parse(brut).string('sub');
   }
 
   dynamic _handle(http.Response response) {

@@ -138,9 +138,6 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
           'Trop de tentatives. Réessayez dans ${remaining.inSeconds + 1} s.',
         );
 
-      case UnlockOffline(:final message):
-        _reject(message);
-
       // Traité en amont par [_deverrouillerParBiometrie], qui doit aussi
       // décider du sort de la touche.
       case UnlockBiometricsFailed(:final message):
