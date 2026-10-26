@@ -19,6 +19,16 @@ class VehiculeRemoteDatasource {
         .toList();
   }
 
+  /// Dernière liste reçue, à afficher en attendant le serveur (`null` si
+  /// rien n'est en cache).
+  Future<List<VehiculeModel>?> getVehiculesEnCache() async {
+    final data = await _client.lireCache('/vehicules');
+    if (data is! List) return null;
+    return data
+        .map((e) => VehiculeModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Liste paginée (scroll infini) via `GET /vehicules/page`.
   Future<PageResult<VehiculeModel>> getVehiculesPage({
     int page = 0,

@@ -7,6 +7,9 @@ import '../entities/vehicule.dart';
 abstract interface class VehiculeRepository {
   Future<Either<Failure, List<Vehicule>>> getVehicules();
 
+  /// Dernière liste reçue, sans appel au serveur ; `null` si aucune.
+  Future<List<Vehicule>?> getVehiculesEnCache();
+
   Future<Either<Failure, PageResult<Vehicule>>> getVehiculesPage({
     int page,
     int size,

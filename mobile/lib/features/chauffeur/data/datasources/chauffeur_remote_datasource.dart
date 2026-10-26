@@ -18,6 +18,16 @@ class ChauffeurRemoteDatasource {
         .toList();
   }
 
+  /// Dernière liste reçue, à afficher en attendant le serveur (`null` si
+  /// rien n'est en cache).
+  Future<List<ChauffeurModel>?> getChauffeursEnCache() async {
+    final data = await _client.lireCache('/chauffeurs');
+    if (data is! List) return null;
+    return data
+        .map((e) => ChauffeurModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Liste paginée (scroll infini) via `GET /chauffeurs/page`.
   Future<PageResult<ChauffeurModel>> getChauffeursPage({
     int page = 0,

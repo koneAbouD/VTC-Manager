@@ -154,6 +154,90 @@ void main() {
         throwsA(isA<NetworkException>()));
   });
 
+  group('revalidation par ETag', () {
+    test("renvoie l'ETag reçu ; un 304 sert le cache", () async {
+      final demandes = <String?>[];
+      serveur = (req) {
+        demandes.add(req.headers['If-None-Match']);
+        return demandes.length == 1
+            ? http.Response(jsonEncode([1, 2]), 200,
+                headers: {'etag': 'W/"0abc"'})
+            : http.Response('', 304);
+      };
+
+      await client().get('/vehicules');
+      await ecrituresTerminees();
+      final revalide = await client().get('/vehicules');
+
+      expect(demandes, [null, 'W/"0abc"']);
+      expect(revalide, [1, 2]);
+      expect(horsLigne.value, isNull, reason: 'le serveur a répondu');
+    });
+
+    test('une réponse modifiée remplace le cache et son ETag', () async {
+      var version = 1;
+      final demandes = <String?>[];
+      serveur = (req) {
+        demandes.add(req.headers['If-None-Match']);
+        return http.Response(jsonEncode([version]), 200,
+            headers: {'etag': 'W/"$version"'});
+      };
+
+      await client().get('/vehicules');
+      await ecrituresTerminees();
+      version = 2;
+      expect(await client().get('/vehicules'), [2]);
+      await ecrituresTerminees();
+      await client().get('/vehicules');
+
+      expect(demandes, [null, 'W/"1"', 'W/"2"']);
+    });
+  });
+
+  group('lecture du cache seul', () {
+    test("rend la dernière réponse sans appeler le serveur", () async {
+      serveur = (_) => json({'ok': 1});
+      await client().get('/tableau-bord');
+      await ecrituresTerminees();
+      serveur = (_) => fail('le serveur ne doit pas être appelé');
+
+      expect(await client().lireCache('/tableau-bord'), {'ok': 1});
+      expect(horsLigne.value, isNull,
+          reason: "affichage d'attente, pas un repli hors connexion");
+    });
+
+    test('rien en cache : null', () async {
+      expect(await client().lireCache('/jamais-lu'), isNull);
+    });
+  });
+
+  group('préchargement', () {
+    test("la réponse rejoint le cache pour la suite", () async {
+      serveur = (_) => json(['AB-123']);
+      expect(await client().precharger('/vehicules'), isTrue);
+      await ecrituresTerminees();
+
+      serveur = (_) => null;
+      expect(await client().get('/vehicules'), ['AB-123']);
+    });
+
+    test("un refus du serveur ne concerne que cette lecture", () async {
+      serveur = (_) => json({'message': 'Action non autorisée.'}, 403);
+      expect(await client().precharger('/parametres'), isTrue,
+          reason: 'le serveur répond : les lectures suivantes peuvent partir');
+    });
+
+    test('sans réseau : ni erreur, ni bandeau', () async {
+      serveur = (_) => json(['AB-123']);
+      await client().get('/vehicules');
+      await ecrituresTerminees();
+
+      serveur = (_) => null;
+      expect(await client().precharger('/vehicules'), isFalse);
+      expect(horsLigne.value, isNull);
+    });
+  });
+
   group('ouverte hors connexion (pas encore de jeton d\'accès)', () {
     setUp(() async {
       serveur = (_) => json({'solde': 1});

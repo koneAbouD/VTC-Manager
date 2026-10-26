@@ -10,4 +10,7 @@ class GetChauffeursUseCase {
 
   Future<Either<Failure, List<Chauffeur>>> call() =>
       _repository.getChauffeurs();
+
+  /// Dernière liste reçue, à afficher en attendant [call].
+  Future<List<Chauffeur>?> enCache() => _repository.getChauffeursEnCache();
 }

@@ -27,6 +27,10 @@ class VehiculeRepositoryImpl implements VehiculeRepository {
   }
 
   @override
+  Future<List<Vehicule>?> getVehiculesEnCache() =>
+      _datasource.getVehiculesEnCache();
+
+  @override
   Future<Either<Failure, PageResult<Vehicule>>> getVehiculesPage({
     int page = 0,
     int size = 20,

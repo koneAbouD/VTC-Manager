@@ -9,4 +9,7 @@ class GetVehiculesUseCase {
   const GetVehiculesUseCase(this._repository);
 
   Future<Either<Failure, List<Vehicule>>> call() => _repository.getVehicules();
+
+  /// Dernière liste reçue, à afficher en attendant [call].
+  Future<List<Vehicule>?> enCache() => _repository.getVehiculesEnCache();
 }

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
@@ -70,9 +71,20 @@ class VehiculeNotifier extends StateNotifier<VehiculeState> {
         _deleteVehicule = deleteVehicule,
         super(const VehiculeInitial());
 
+  /// Au premier chargement, la dernière liste connue s'affiche le temps que le
+  /// serveur réponde. Ensuite (après une création, une modification…), la
+  /// liste affichée reste en place jusqu'à la nouvelle.
   Future<void> loadVehicules() async {
-    state = const VehiculeLoading();
-    final result = await _getVehicules.call();
+    final enAttente = _getVehicules.call();
+    if (state is! VehiculeLoaded) {
+      state = const VehiculeLoading();
+      await afficherEnAttendant<List<Vehicule>>(
+        enAttente: enAttente,
+        cache: _getVehicules.enCache,
+        afficher: (vehicules) => state = VehiculeLoaded(vehicules),
+      );
+    }
+    final result = await enAttente;
     result.fold(
       (failure) => state = VehiculeError(failure.message),
       (vehicules) => state = VehiculeLoaded(vehicules),

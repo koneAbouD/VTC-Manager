@@ -97,6 +97,36 @@ void main() {
     });
   });
 
+  group('revalidation', () {
+    test("l'ETag de la réponse est retrouvé sans la déchiffrer", () async {
+      await cache.ecrire('/vehicules', utf8.encode('[1]'),
+          proprietaire: 'a', etag: 'W/"0abc"');
+
+      expect(await cache.etag('/vehicules', proprietaire: 'a'), 'W/"0abc"');
+      expect(await cache.etag('/vehicules', proprietaire: 'b'), isNull,
+          reason: "pas de revalidation d'une réponse d'un autre compte");
+    });
+
+    test('une confirmation (304) rajeunit la réponse', () async {
+      await cache.ecrire('/vehicules', utf8.encode('[1]'), etag: 'W/"1"');
+      maintenant = maintenant.add(const Duration(days: 29));
+      await cache.confirmer('/vehicules');
+      maintenant = maintenant.add(const Duration(days: 5));
+
+      final lu = await cache.lire('/vehicules');
+      expect(lu, isNotNull, reason: 'confirmée il y a 5 jours, pas 34');
+      expect(lu!.enregistreLe, DateTime(2026, 11, 24, 14, 32));
+      expect(await cache.etag('/vehicules'), 'W/"1"');
+    });
+
+    test('au-delà de 30 jours, plus de revalidation non plus', () async {
+      await cache.ecrire('/vehicules', utf8.encode('[1]'), etag: 'W/"1"');
+      maintenant = maintenant.add(const Duration(days: 31));
+
+      expect(await cache.etag('/vehicules'), isNull);
+    });
+  });
+
   test('vider efface tout', () async {
     await cache.ecrire('/a', utf8.encode('1'), proprietaire: 'a');
     await cache.vider();

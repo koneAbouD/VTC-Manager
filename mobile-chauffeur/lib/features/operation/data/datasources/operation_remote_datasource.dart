@@ -15,4 +15,15 @@ class OperationRemoteDatasource {
             OperationFinanciereModel.fromJson((e as Map).cast<String, dynamic>()))
         .toList();
   }
+
+  /// Dernières opérations reçues, à afficher en attendant le serveur (`null`
+  /// si rien n'est en cache).
+  Future<List<OperationFinanciereModel>?> getOperationsEnCache() async {
+    final data = await _client.lireCache('/me/operations');
+    if (data is! List) return null;
+    return data
+        .map((e) =>
+            OperationFinanciereModel.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
+  }
 }

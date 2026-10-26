@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 
 import '../../../../core/providers/core_providers.dart';
 import '../../data/datasources/tableau_bord_remote_datasource.dart';
@@ -58,12 +59,32 @@ final tableauBordCadrageProvider = StateProvider<TableauBordCadrage>(
 
 /// Photo de la période, cadrée par [tableauBordCadrageProvider].
 /// Invalider le provider pour rafraîchir.
+///
+/// À l'ouverture, la dernière photo connue de ce cadrage s'affiche le temps
+/// que le serveur réponde ; un rafraîchissement garde la photo affichée.
 final tableauBordProvider =
-    FutureProvider.autoDispose<TableauBordModel>((ref) {
+    FutureProvider.autoDispose<TableauBordModel>((ref) async {
   final cadrage = ref.watch(tableauBordCadrageProvider);
-  return ref.watch(tableauBordDatasourceProvider).getTableauBord(
+  final ds = ref.watch(tableauBordDatasourceProvider);
+  final enAttente = ds.getTableauBord(
+    annee: cadrage.annee,
+    mois: cadrage.mois,
+    base: cadrage.base,
+  );
+  if (!ref.state.hasValue) {
+    var actif = true;
+    ref.onDispose(() => actif = false);
+    await afficherEnAttendant<TableauBordModel>(
+      enAttente: enAttente,
+      cache: () => ds.getTableauBordEnCache(
         annee: cadrage.annee,
         mois: cadrage.mois,
         base: cadrage.base,
-      );
+      ),
+      afficher: (photo) {
+        if (actif) ref.state = AsyncData(photo);
+      },
+    );
+  }
+  return enAttente;
 });

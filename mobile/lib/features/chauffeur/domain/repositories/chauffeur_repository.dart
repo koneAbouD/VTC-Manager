@@ -9,6 +9,9 @@ import '../entities/chauffeur.dart';
 abstract interface class ChauffeurRepository {
   Future<Either<Failure, List<Chauffeur>>> getChauffeurs();
 
+  /// Dernière liste reçue, sans appel au serveur ; `null` si aucune.
+  Future<List<Chauffeur>?> getChauffeursEnCache();
+
   Future<Either<Failure, PageResult<Chauffeur>>> getChauffeursPage({
     int page,
     int size,

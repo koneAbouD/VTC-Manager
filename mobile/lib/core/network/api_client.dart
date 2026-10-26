@@ -82,7 +82,7 @@ class ApiClient {
   /// un 404 n'est jamais masqué par le cache.
   Future<dynamic> get(String path, {Map<String, String>? query}) async {
     try {
-      return await _send('GET', path, query: query);
+      return await _lireServeur(path, query);
     } on NetworkException {
       final secours = await _depuisLeCache(path, query);
       if (secours == null) rethrow;
@@ -93,6 +93,42 @@ class ApiClient {
       if (secours == null) rethrow;
       return secours.donnees;
     }
+  }
+
+  /// Dernière réponse enregistrée de cette lecture, sans aller au serveur :
+  /// de quoi afficher un écran aussitôt, le temps que [get] réponde. `null`
+  /// si rien n'est en cache. Ne touche pas au bandeau hors connexion — les
+  /// données vont être remplacées, elles ne sont pas présentées comme les
+  /// dernières disponibles.
+  Future<dynamic> lireCache(String path, {Map<String, String>? query}) async {
+    if (!_cachable(path)) return null;
+    final enCache = await _cache
+        .lire(
+          _buildUri(path, query).toString(),
+          proprietaire: await _proprietaireCourant(),
+        )
+        .timeout(_attenteCache, onTimeout: () => null);
+    return enCache == null ? null : _decoder(enCache.corps);
+  }
+
+  /// Lecture faite d'avance, pour que l'écran la trouve hors connexion : la
+  /// réponse rejoint le cache, rien n'est rendu. Sans réseau, rien ne se
+  /// passe — ni erreur, ni repli sur le cache, ni bandeau.
+  ///
+  /// Retourne `false` quand le serveur est hors d'atteinte : inutile alors de
+  /// tenter les lectures suivantes. Un refus du serveur (403, 404…) ne
+  /// concerne que cette lecture-là.
+  Future<bool> precharger(String path, {Map<String, String>? query}) async {
+    try {
+      await _lireServeur(path, query);
+    } on NetworkException {
+      return false;
+    } on ApiException catch (e) {
+      return !_serveurIndisponible(e.statusCode);
+    } catch (_) {
+      // Corps illisible : le serveur, lui, a répondu.
+    }
+    return true;
   }
 
   /// Télécharge un fichier binaire (ex. contenu d'un document).
@@ -489,6 +525,7 @@ class ApiClient {
     Map<String, String>? query,
     Object? body,
     bool retry = true,
+    String? siDifferent,
   }) async {
     final uri = _buildUri(path, query);
     final headers = await _buildHeaders();
@@ -496,6 +533,7 @@ class ApiClient {
     try {
       final request = http.Request(method, uri)..headers.addAll(headers);
       if (body != null) request.body = jsonEncode(body);
+      if (siDifferent != null) request.headers['If-None-Match'] = siDifferent;
 
       final streamed = await _http.send(request).timeout(_timeout);
       final response = await http.Response.fromStream(streamed);
@@ -504,10 +542,15 @@ class ApiClient {
       if (response.statusCode == 401 && retry && _isRefreshable(path)) {
         final refreshed = await _tryRefresh();
         if (refreshed) {
-          return _send(method, path, query: query, body: body, retry: false);
+          return _send(method, path,
+              query: query, body: body, retry: false, siDifferent: siDifferent);
         }
       }
 
+      if (response.statusCode == 304 && siDifferent != null) {
+        _horsLigne.serveurJoignable();
+        return _nonModifie;
+      }
       _noterReponse(method, path, uri, response, headers['Authorization']);
       return _handle(response);
     } on TimeoutException {
@@ -518,6 +561,38 @@ class ApiClient {
   }
 
   // ── Cache hors connexion ────────────────────────────────────────────────
+
+  /// Lecture au serveur, revalidée par l'ETag de la réponse en cache : si
+  /// rien n'a changé, le serveur répond 304 sans corps et c'est la réponse
+  /// enregistrée qui sert — confirmée à jour.
+  Future<dynamic> _lireServeur(String path, Map<String, String>? query) async {
+    if (!_cachable(path)) return _send('GET', path, query: query);
+    final url = _buildUri(path, query).toString();
+    final proprietaire = await _proprietaireCourant();
+    // Un disque lent ne retient pas la requête : sans ETag à temps, elle
+    // part sans condition.
+    final etag = await _cache
+        .etag(url, proprietaire: proprietaire)
+        .timeout(_attenteCache, onTimeout: () => null);
+    final reponse = await _send('GET', path, query: query, siDifferent: etag);
+    if (!identical(reponse, _nonModifie)) return reponse;
+    final enCache = await _cache.lire(url, proprietaire: proprietaire);
+    // Purgée entre la question et la réponse (déconnexion) : on redemande
+    // le corps.
+    if (enCache == null) return _send('GET', path, query: query);
+    unawaited(_cache.confirmer(url));
+    return _decoder(enCache.corps);
+  }
+
+  /// Au-delà, une lecture du cache est abandonnée : la base s'ouvre en
+  /// quelques millisecondes, sauf incident.
+  static const _attenteCache = Duration(milliseconds: 500);
+
+  /// Réponse 304 : le corps est celui du cache.
+  static const _nonModifie = Object();
+
+  dynamic _decoder(List<int> corps) =>
+      corps.isEmpty ? null : jsonDecode(utf8.decode(corps));
 
   /// Le serveur a répondu : le bandeau hors connexion tombe, et une lecture
   /// réussie devient la réponse de secours de son URL.
@@ -536,6 +611,7 @@ class ApiClient {
         uri.toString(),
         response.bodyBytes,
         proprietaire: _proprietaire(autorisation),
+        etag: response.headers['etag'],
       ));
     }
   }
@@ -545,24 +621,26 @@ class ApiClient {
     Map<String, String>? query,
   ) async {
     if (!_cachable(path)) return null;
-    String? jeton;
-    try {
-      // Ouverte hors connexion, l'application n'a pas encore de jeton
-      // d'accès : le refresh token sorti du coffre porte le même compte.
-      jeton = await _storage.getAccessToken() ??
-          await _storage.getRefreshToken();
-    } catch (_) {}
-    final enCache = await _cache.lire(
-      _buildUri(path, query).toString(),
-      proprietaire: _proprietaire(jeton),
-    );
+    final enCache = await _cache
+        .lire(
+          _buildUri(path, query).toString(),
+          proprietaire: await _proprietaireCourant(),
+        )
+        .timeout(_attenteCache * 4, onTimeout: () => null);
     if (enCache == null) return null;
     _horsLigne.donneesDuCache(enCache.enregistreLe);
-    return (
-      donnees: enCache.corps.isEmpty
-          ? null
-          : jsonDecode(utf8.decode(enCache.corps)) as Object?,
-    );
+    return (donnees: _decoder(enCache.corps) as Object?);
+  }
+
+  /// Compte connecté. Ouverte hors connexion, l'application n'a pas encore de
+  /// jeton d'accès : le refresh token sorti du coffre porte le même compte.
+  Future<String?> _proprietaireCourant() async {
+    try {
+      return _proprietaire(
+          await _storage.getAccessToken() ?? await _storage.getRefreshToken());
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 502, 503, 504 : le proxy répond, pas l'application. Pour l'écran, c'est

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/core_providers.dart';
+import '../../../../core/providers/lecture_avec_cache.dart';
 import '../../../auth/presentation/providers/auth_controller.dart';
 import '../../data/datasources/compte_remote_datasource.dart';
 import '../../data/repositories_impl/compte_repository_impl.dart';
@@ -29,21 +30,24 @@ final getSoldeUseCaseProvider = Provider<GetSoldeUseCase>(
 );
 
 final profilProvider = FutureProvider.autoDispose<Profil>((ref) async {
-  final result = await ref.watch(getProfilUseCaseProvider).call();
-  return result.fold((f) => throw f.message, (p) {
-    // Le prénom métier alimente l'écran de code, qui s'affiche avant tout appel
-    // réseau : il doit donc être connu à l'avance. C'est la source de vérité,
-    // plus fiable que le `given_name` du jeton si le gestionnaire l'a corrigé.
-    if (p.prenom.isNotEmpty) {
-      unawaited(
-        ref.read(authControllerProvider.notifier).saveDisplayName(p.prenom),
-      );
-    }
-    return p;
-  });
+  final profil = ref.watch(getProfilUseCaseProvider);
+  final p = await lectureAvecCache(
+    ref,
+    serveur: profil.call(),
+    cache: profil.enCache,
+  );
+  // Le prénom métier alimente l'écran de code, qui s'affiche avant tout appel
+  // réseau : il doit donc être connu à l'avance. C'est la source de vérité,
+  // plus fiable que le `given_name` du jeton si le gestionnaire l'a corrigé.
+  if (p.prenom.isNotEmpty) {
+    unawaited(
+      ref.read(authControllerProvider.notifier).saveDisplayName(p.prenom),
+    );
+  }
+  return p;
 });
 
-final soldeProvider = FutureProvider.autoDispose<Solde>((ref) async {
-  final result = await ref.watch(getSoldeUseCaseProvider).call();
-  return result.fold((f) => throw f.message, (s) => s);
+final soldeProvider = FutureProvider.autoDispose<Solde>((ref) {
+  final solde = ref.watch(getSoldeUseCaseProvider);
+  return lectureAvecCache(ref, serveur: solde.call(), cache: solde.enCache);
 });

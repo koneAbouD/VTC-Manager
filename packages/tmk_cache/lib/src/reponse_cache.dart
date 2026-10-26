@@ -13,12 +13,14 @@ class ReponseEnCache {
   const ReponseEnCache(this.corps, this.enregistreLe);
 }
 
-/// Dernière réponse connue de chaque lecture (GET), rejouée quand le réseau
-/// manque.
+/// Dernière réponse connue de chaque lecture (GET).
 ///
-/// Ce n'est pas un cache de performance : une lecture qui aboutit va toujours
-/// au serveur. Il ne sert qu'en secours, pour qu'une coupure n'affiche pas un
-/// écran vide là où l'on avait des chiffres une minute plus tôt.
+/// Une lecture va toujours au serveur ; le cache sert à trois choses :
+/// - le secours, pour qu'une coupure n'affiche pas un écran vide là où l'on
+///   avait des chiffres une minute plus tôt ;
+/// - la revalidation : son [etag] permet au serveur de répondre 304 sans
+///   renvoyer un corps inchangé ;
+/// - l'affichage immédiat d'un écran, le temps que le serveur réponde.
 ///
 /// Le cache ne doit jamais faire échouer un appel : toute erreur de stockage
 /// ou de chiffrement est avalée, et l'appel se comporte comme sans cache.
@@ -49,7 +51,10 @@ class ReponseCache {
         _maintenant = maintenant ?? DateTime.now;
 
   /// Partagé par tous les clients HTTP de l'application.
-  static final instance = ReponseCache();
+  ///
+  /// Remplaçable dans les tests des applications (`flutter_test_config.dart`) :
+  /// la base SQLite n'y répond pas, une lecture y resterait en suspens.
+  static ReponseCache instance = ReponseCache();
 
   StockageReponses get _base => _stockage ??= _ouvrir();
 
@@ -63,6 +68,7 @@ class ReponseCache {
     String url,
     List<int> corps, {
     String? proprietaire,
+    String? etag,
   }) async {
     try {
       final cle = await _chiffreur.hacher(url);
@@ -76,6 +82,7 @@ class ReponseCache {
         proprietaire: proprietaire,
         contenu: contenu,
         enregistreLe: _maintenant(),
+        etag: etag,
       ));
       if (++_ecrituresDepuisElagage >= _elagageToutesLes) {
         _ecrituresDepuisElagage = 0;
@@ -95,19 +102,44 @@ class ReponseCache {
   /// pas servie.
   Future<ReponseEnCache?> lire(String url, {String? proprietaire}) async {
     try {
-      final cle = await _chiffreur.hacher(url);
-      final ligne = await _base.lire(cle);
+      final ligne = await _servable(url, proprietaire);
       if (ligne == null) return null;
-      if (proprietaire != null && ligne.proprietaire != proprietaire) {
-        return null;
-      }
-      if (_maintenant().difference(ligne.enregistreLe) > ageMax) return null;
-      final corps = await _chiffreur.dechiffrer(ligne.contenu, cle: cle);
+      final corps = await _chiffreur.dechiffrer(ligne.contenu, cle: ligne.cle);
       return ReponseEnCache(corps, ligne.enregistreLe);
     } catch (e) {
       debugPrint('tmk_cache : lecture ignorée ($e)');
       return null;
     }
+  }
+
+  /// ETag de la réponse que [lire] servirait, sans la déchiffrer : de quoi
+  /// demander au serveur si elle a changé (`If-None-Match`).
+  Future<String?> etag(String url, {String? proprietaire}) async {
+    try {
+      return (await _servable(url, proprietaire))?.etag;
+    } catch (e) {
+      debugPrint('tmk_cache : lecture ignorée ($e)');
+      return null;
+    }
+  }
+
+  /// Le serveur a répondu 304 : la réponse enregistrée est à jour à cet
+  /// instant. Le bandeau hors connexion, s'il la sert plus tard, datera les
+  /// données de cette confirmation.
+  Future<void> confirmer(String url) async {
+    try {
+      await _base.confirmer(await _chiffreur.hacher(url), _maintenant());
+    } catch (e) {
+      debugPrint('tmk_cache : confirmation ignorée ($e)');
+    }
+  }
+
+  Future<LigneStockee?> _servable(String url, String? proprietaire) async {
+    final ligne = await _base.lire(await _chiffreur.hacher(url));
+    if (ligne == null) return null;
+    if (proprietaire != null && ligne.proprietaire != proprietaire) return null;
+    if (_maintenant().difference(ligne.enregistreLe) > ageMax) return null;
+    return ligne;
   }
 
   /// Déconnexion : rien de la session ne doit survivre sur l'appareil.

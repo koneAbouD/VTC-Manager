@@ -1,7 +1,8 @@
 # tmk_cache
 
-Cache local partagé par `mobile` (gestionnaire) et `mobile-chauffeur`. C'est la
-phase 1 de la consultation hors ligne.
+Cache local partagé par `mobile` (gestionnaire) et `mobile-chauffeur` :
+consultation hors ligne, revalidation par ETag, affichage immédiat des écrans
+et préchargement.
 
 ## Réponses de l'API
 
@@ -23,8 +24,43 @@ le serveur est hors d'atteinte (pas de réseau, portail Wi-Fi qui redirige, 502,
 - **Jamais bloquant.** Une erreur de stockage ou de chiffrement est avalée, et
   l'appel se comporte comme s'il n'y avait pas de cache.
 
-Stockage : SQLite via drift (`tmk_cache.sqlite`, isolate dédié) sur mobile, et
-la mémoire seule sur le web.
+Stockage : SQLite via drift (`tmk_cache.sqlite`, isolate dédié, schéma 2) sur
+mobile, et la mémoire seule sur le web. Une seule table de réponses : les écrans
+lisent des listes complètes qu'ils filtrent en mémoire, la réponse rejouée
+suffit donc à les servir hors connexion, filtres et recherche compris.
+
+Dans les tests des applications, la base ne répond pas : chaque app remplace
+`ReponseCache.instance` par un cache en mémoire dans
+`test/flutter_test_config.dart`.
+
+## Revalidation (ETag)
+
+Le backend pose un ETag faible sur chaque lecture de `/api/*`
+(`EtagLecturesFilter`) et compresse le JSON en gzip. `ApiClient` renvoie l'ETag
+de la réponse en cache (`If-None-Match`). Si rien n'a changé, le serveur répond
+304 sans corps : la réponse en cache sert et sa date est rafraîchie. Une
+lecture du cache qui tarde au-delà de 500 ms est abandonnée, et la requête part
+alors sans condition.
+
+## Affichage immédiat
+
+`ApiClient.lireCache` rend la dernière réponse sans appeler le serveur ni
+toucher au bandeau. `afficherEnAttendant` l'affiche pendant que la lecture
+réseau, déjà lancée, est en cours. Une réponse fraîche n'est jamais écrasée par
+l'ancienne, et un rafraîchissement garde ce que l'écran montre déjà. Écrans
+branchés :
+
+- gestionnaire : véhicules et chauffeurs (flotte), tableau de bord ;
+- chauffeur : profil, solde et opérations (accueil).
+
+## Préchargement
+
+`PrechargementPeriodique` enveloppe l'accueil des deux apps. Il lit d'avance
+les écrans clés (`core/network/prechargement.dart` de chaque app) trois
+secondes après l'ouverture de la session, puis à chaque retour au premier
+plan, au plus une fois par quart d'heure. Les lectures partent une par une et
+s'arrêtent dès que le serveur est hors d'atteinte, sans bandeau ni erreur.
+Chaque lecture doit reprendre l'URL exacte de l'écran, paramètres compris.
 
 ## Bandeau
 

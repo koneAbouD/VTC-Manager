@@ -16,17 +16,42 @@ class TableauBordRemoteDatasource {
     int? groupeId,
     int? activiteId,
   }) async {
-    final query = <String, String>{
-      if (annee != null) 'annee': '$annee',
-      if (mois != null) 'mois': '$mois',
-      'base': base,
-      if (groupeId != null) 'groupeId': '$groupeId',
-      if (activiteId != null) 'activiteId': '$activiteId',
-    };
-    final data = await _client.get('/tableau-bord', query: query);
+    final data = await _client.get('/tableau-bord',
+        query: requete(annee, mois, base, groupeId, activiteId));
     if (data is! Map<String, dynamic>) {
       throw const ApiException(500, 'Format de réponse inattendu');
     }
     return TableauBordModel.fromJson(data);
   }
+
+  /// Dernière photo reçue pour ce cadrage, à afficher en attendant le
+  /// serveur (`null` si rien n'est en cache).
+  Future<TableauBordModel?> getTableauBordEnCache({
+    int? annee,
+    int? mois,
+    String base = 'CAISSE',
+    int? groupeId,
+    int? activiteId,
+  }) async {
+    final data = await _client.lireCache('/tableau-bord',
+        query: requete(annee, mois, base, groupeId, activiteId));
+    return data is Map<String, dynamic> ? TableauBordModel.fromJson(data) : null;
+  }
+
+  /// Paramètres de `GET /tableau-bord` : la même requête doit donner la même
+  /// URL, sans quoi le cache ne la retrouve pas (lecture et préchargement).
+  static Map<String, String> requete(
+    int? annee,
+    int? mois,
+    String base,
+    int? groupeId,
+    int? activiteId,
+  ) =>
+      {
+        if (annee != null) 'annee': '$annee',
+        if (mois != null) 'mois': '$mois',
+        'base': base,
+        if (groupeId != null) 'groupeId': '$groupeId',
+        if (activiteId != null) 'activiteId': '$activiteId',
+      };
 }

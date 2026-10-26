@@ -33,6 +33,9 @@ class _FakeVehiculeRepo implements VehiculeRepository {
       ]);
 
   @override
+  Future<List<Vehicule>?> getVehiculesEnCache() async => null;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

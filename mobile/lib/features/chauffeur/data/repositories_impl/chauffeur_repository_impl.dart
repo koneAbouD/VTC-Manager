@@ -15,6 +15,10 @@ class ChauffeurRepositoryImpl implements ChauffeurRepository {
   const ChauffeurRepositoryImpl(this._datasource);
 
   @override
+  Future<List<Chauffeur>?> getChauffeursEnCache() =>
+      _datasource.getChauffeursEnCache();
+
+  @override
   Future<Either<Failure, List<Chauffeur>>> getChauffeurs() async {
     try {
       final result = await _datasource.getChauffeurs();

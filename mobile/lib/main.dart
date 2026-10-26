@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:tmk_cache/tmk_cache.dart';
 import 'package:tmk_push/tmk_push.dart';
 
+import 'core/network/prechargement.dart';
 import 'core/network/session_manager.dart';
 import 'core/storage/secure_storage.dart';
 import 'core/theme/app_colors.dart';
@@ -169,8 +170,13 @@ class _VtcManagerAppState extends ConsumerState<VtcManagerApp>
           AuthInitial() => const _SplashScreen(),
           // L'invite du déverrouillage biométrique s'accroche à l'accueil :
           // l'écran de code, lui, disparaît dès que le code est accepté.
-          AuthAuthenticated() =>
-            const BiometricProposal(child: HomeScreen()),
+          // Les écrans clés sont lus d'avance, pour être servis hors
+          // connexion même sans avoir été ouverts.
+          AuthAuthenticated() => PrechargementPeriodique(
+              precharger: () =>
+                  prechargerEcransCles(ref.read(apiClientProvider)),
+              child: const BiometricProposal(child: HomeScreen()),
+            ),
           AuthLocked() => const PinLockPage(),
           AuthPinSetup(:final displayName) =>
             PinSetupPage(displayName: displayName),

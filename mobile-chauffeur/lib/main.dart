@@ -5,6 +5,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:tmk_cache/tmk_cache.dart';
 import 'package:tmk_push/tmk_push.dart';
 
+import 'core/network/prechargement.dart';
+import 'core/providers/core_providers.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
@@ -103,7 +105,12 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
       AuthUnauthenticated() => const LoginPage(),
       // L'invite du déverrouillage biométrique s'accroche à l'accueil :
       // l'écran de code, lui, disparaît dès que le code est accepté.
-      AuthAuthenticated() => const BiometricProposal(child: HomePage()),
+      // Les écrans clés sont lus d'avance, pour être servis hors connexion
+      // même sans avoir été ouverts.
+      AuthAuthenticated() => PrechargementPeriodique(
+          precharger: () => prechargerEcransCles(ref.read(apiClientProvider)),
+          child: const BiometricProposal(child: HomePage()),
+        ),
       AuthLocked() => const PinLockPage(),
       AuthPinSetup(:final displayName) =>
         PinSetupPage(displayName: displayName),

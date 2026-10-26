@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/core_providers.dart';
+import '../../../../core/providers/lecture_avec_cache.dart';
 import '../../data/datasources/operation_remote_datasource.dart';
 import '../../data/repositories_impl/operation_repository_impl.dart';
 import '../../domain/entities/operation_financiere.dart';
@@ -20,7 +21,11 @@ final getOperationsUseCaseProvider = Provider<GetOperationsUseCase>(
 );
 
 final operationsProvider =
-    FutureProvider.autoDispose<List<OperationFinanciere>>((ref) async {
-  final result = await ref.watch(getOperationsUseCaseProvider).call();
-  return result.fold((f) => throw f.message, (r) => r);
+    FutureProvider.autoDispose<List<OperationFinanciere>>((ref) {
+  final operations = ref.watch(getOperationsUseCaseProvider);
+  return lectureAvecCache(
+    ref,
+    serveur: operations.call(),
+    cache: operations.enCache,
+  );
 });
