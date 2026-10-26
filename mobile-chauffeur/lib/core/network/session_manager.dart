@@ -23,7 +23,8 @@ enum LockReason {
   /// Aucune interaction pendant [SessionManager._inactivityTimeout].
   inactivite,
 
-  /// Retour au premier plan après un séjour prolongé en arrière-plan.
+  /// L'utilisateur a quitté l'application (autre application, écran
+  /// d'accueil) : elle se verrouille aussitôt, et redemande le code au retour.
   arrierePlan,
 
   /// L'appareil lui-même a été verrouillé : l'application suit, sans délai
@@ -50,9 +51,15 @@ class SessionManager with WidgetsBindingObserver {
   /// remise sous clé (code d'accès) ou fermée (à défaut de code).
   static const _inactivityTimeout = Duration(minutes: 15);
 
-  /// Tolérance sur un aller-retour en arrière-plan : consulter une notification
-  /// ou une pièce jointe ne doit pas redemander le code.
-  static const _backgroundGrace = Duration(seconds: 60);
+  /// Sortie voulue par l'application (appareil photo, choix d'un fichier,
+  /// partage, WhatsApp…) : au-delà de cette absence, le retour redemande
+  /// quand même le code — le téléphone a pu être posé et changer de mains.
+  static const _absenceVoulueMax = Duration(minutes: 10);
+
+  /// Une sortie lancée par l'application peut quitter l'écran juste après que
+  /// son appel a rendu la main (lien ouvert dans une autre application) : elle
+  /// reste « voulue » pendant ce délai.
+  static const _delaiApresSortie = Duration(seconds: 3);
 
   static const _msgSessionExpiree =
       'Votre session a expiré. Veuillez vous reconnecter.';
@@ -73,8 +80,12 @@ class SessionManager with WidgetsBindingObserver {
   Timer? _inactivityTimer;
   bool _started = false;
 
-  /// Horodatage du passage en arrière-plan, pour mesurer le délai de grâce.
+  /// Horodatage du passage en arrière-plan, pour une sortie voulue.
   DateTime? _backgroundedAt;
+
+  /// Sorties voulues en cours (voir [sortieAttendue]), et fin de la dernière.
+  int _sortiesEnCours = 0;
+  DateTime? _finDerniereSortie;
 
   /// Abonnement au verrouillage de l'appareil (canal natif).
   StreamSubscription<void>? _deviceLockSub;
@@ -97,6 +108,12 @@ class SessionManager with WidgetsBindingObserver {
   /// Appelé après chaque renouvellement réussi des tokens, avec le refresh
   /// token neuf, afin que le code d'accès rechiffre son coffre.
   void Function(String refreshToken)? onTokensRenewed;
+
+  /// Horloge du cycle de vie (durée d'une absence) ; remplaçable en test.
+  DateTime Function() _maintenant = DateTime.now;
+
+  @visibleForTesting
+  set horloge(DateTime Function() horloge) => _maintenant = horloge;
 
   /// Permet l'injection d'un client HTTP en test.
   @visibleForTesting
@@ -134,10 +151,33 @@ class SessionManager with WidgetsBindingObserver {
     _proactiveTimer = null;
     _inactivityTimer?.cancel();
     _inactivityTimer = null;
+    // Une absence en cours ne survit pas à la session : sinon, après un
+    // verrouillage pendant une sortie voulue, la sortie suivante passerait
+    // pour la même et ne verrouillerait plus.
+    _backgroundedAt = null;
     if (_started) {
       _started = false;
       WidgetsBinding.instance.removeObserver(this);
     }
+  }
+
+  /// Exécute [action], qui fait quitter l'application pour revenir avec un
+  /// résultat (photo, fichier choisi, partage, lien ouvert) : cette sortie-là
+  /// ne verrouille pas l'application. Toute autre sortie la verrouille aussitôt.
+  Future<T> sortieAttendue<T>(Future<T> Function() action) async {
+    _sortiesEnCours++;
+    try {
+      return await action();
+    } finally {
+      _sortiesEnCours--;
+      _finDerniereSortie = _maintenant();
+    }
+  }
+
+  bool get _sortieVoulue {
+    if (_sortiesEnCours > 0) return true;
+    final fin = _finDerniereSortie;
+    return fin != null && _maintenant().difference(fin) < _delaiApresSortie;
   }
 
   /// À appeler à chaque interaction utilisateur (tap, scroll, saisie) pour
@@ -165,9 +205,9 @@ class SessionManager with WidgetsBindingObserver {
         final backgroundedAt = _backgroundedAt;
         _backgroundedAt = null;
         if (backgroundedAt != null &&
-            DateTime.now().difference(backgroundedAt) > _backgroundGrace) {
-          // Absence prolongée : inutile de rafraîchir, la session doit d'abord
-          // être rouverte par l'utilisateur.
+            _maintenant().difference(backgroundedAt) > _absenceVoulueMax) {
+          // Sortie voulue, mais trop longue : le téléphone a pu changer de
+          // mains entre-temps.
           stop();
           _emitLock(LockReason.arrierePlan);
           return;
@@ -176,14 +216,27 @@ class SessionManager with WidgetsBindingObserver {
         // n'est pas proche d'expirer) + réarmement du compteur d'inactivité.
         unawaited(refresh());
         _restartInactivityTimer();
-      case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
+        // Volet de notifications, centre de contrôle, invite système : l'écran
+        // reste celui de l'application, rien à verrouiller.
+        break;
       case AppLifecycleState.hidden:
-        // Arrière-plan : on suspend les timers (pas de travail en fond) et on
-        // note l'heure pour mesurer la durée de l'absence au retour.
-        _backgroundedAt ??= DateTime.now();
+      case AppLifecycleState.paused:
+        // Déjà sous clé, ou hidden puis paused d'une même sortie : déjà traité.
+        if (!_started || _backgroundedAt != null) return;
         _proactiveTimer?.cancel();
         _inactivityTimer?.cancel();
+        if (_sortieVoulue) {
+          // L'application a ouvert l'appareil photo, un sélecteur, un partage :
+          // elle attend un résultat, on note seulement l'heure du départ.
+          _backgroundedAt = _maintenant();
+          return;
+        }
+        // L'utilisateur quitte l'application : verrouillage immédiat, avant
+        // même le retour — l'aperçu du sélecteur d'applications et le retour
+        // montrent l'écran de code, jamais les données.
+        stop();
+        _emitLock(LockReason.arrierePlan);
       case AppLifecycleState.detached:
         // Fermeture de l'app : on purge les tokens **en clair**. Avec un code
         // d'accès, le coffre chiffré subsiste et rouvrira la session au

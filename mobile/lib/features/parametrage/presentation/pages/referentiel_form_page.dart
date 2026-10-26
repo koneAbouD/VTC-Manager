@@ -1,3 +1,4 @@
+import '../../../../core/network/session_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -374,10 +375,12 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
 
   // ── Champ image (aperçu + choisir/changer/supprimer) ──────────────────────
   Future<void> _choisirImage(String nom) async {
-    final XFile? picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1280,
-      imageQuality: 85,
+    final XFile? picked = await SessionManager.instance.sortieAttendue(
+      () => ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1280,
+        imageQuality: 85,
+      ),
     );
     if (picked == null) return;
     setState(() => _uploading.add(nom));

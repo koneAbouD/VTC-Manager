@@ -1,3 +1,4 @@
+import '../../../../core/network/session_manager.dart';
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
@@ -2131,17 +2132,21 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
     String? name;
 
     if (action == 0) {
-      final img = await ImagePicker()
-          .pickImage(source: ImageSource.camera, imageQuality: 85);
+      final img = await SessionManager.instance.sortieAttendue(
+        () => ImagePicker()
+            .pickImage(source: ImageSource.camera, imageQuality: 85),
+      );
       if (img != null) {
         bytes = await img.readAsBytes();
         name = img.name;
       }
     } else if (action == 1) {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'heic'],
-        withData: true,
+      final result = await SessionManager.instance.sortieAttendue(
+        () => FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'heic'],
+          withData: true,
+        ),
       );
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;

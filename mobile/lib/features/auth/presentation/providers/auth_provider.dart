@@ -408,8 +408,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return UnlockBiometricsFailed(dispo.raison);
     }
 
-    final autorisation = await _biometrics.authenticate(
-      raison: 'Confirmez votre identité pour rouvrir l\'application.',
+    final autorisation = await SessionManager.instance.sortieAttendue(
+      () => _biometrics.authenticate(
+        raison: 'Confirmez votre identité pour rouvrir l\'application.',
+      ),
     );
 
     switch (autorisation) {
@@ -560,9 +562,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
               'appareil.';
     }
 
-    final autorisation = await _biometrics.authenticate(
-      raison: 'Confirmez votre identité pour activer '
-          '${dispo.libelleAvecArticle}.',
+    final autorisation = await SessionManager.instance.sortieAttendue(
+      () => _biometrics.authenticate(
+        raison: 'Confirmez votre identité pour activer '
+            '${dispo.libelleAvecArticle}.',
+      ),
     );
 
     switch (autorisation) {

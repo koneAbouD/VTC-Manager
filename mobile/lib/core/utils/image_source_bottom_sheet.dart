@@ -1,3 +1,4 @@
+import '../network/session_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -68,9 +69,11 @@ Future<XFile?> pickImageFromSource(BuildContext context) async {
   );
   if (source == null) return null;
 
-  return ImagePicker().pickImage(
-    source: source,
-    maxWidth: 1600,
-    imageQuality: 80,
+  return SessionManager.instance.sortieAttendue(
+    () => ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1600,
+      imageQuality: 80,
+    ),
   );
 }

@@ -9,6 +9,7 @@
 /// possible par ce chemin.
 library;
 
+import '../network/session_manager.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'phone_formatter.dart';
@@ -35,5 +36,7 @@ Uri lienWhatsApp({String? telephone, required String message}) {
 /// Retourne false si aucune application ne sait ouvrir le lien (WhatsApp
 /// absent et aucun navigateur) ; lève si la plateforme refuse le lancement.
 Future<bool> ouvrirWhatsApp({String? telephone, required String message}) =>
-    launchUrl(lienWhatsApp(telephone: telephone, message: message),
-        mode: LaunchMode.externalApplication);
+    SessionManager.instance.sortieAttendue(
+      () => launchUrl(lienWhatsApp(telephone: telephone, message: message),
+          mode: LaunchMode.externalApplication),
+    );

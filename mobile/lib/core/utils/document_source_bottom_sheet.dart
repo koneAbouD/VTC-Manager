@@ -1,3 +1,4 @@
+import '../network/session_manager.dart';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -117,10 +118,12 @@ Future<PickedDocument?> pickDocumentFromSource(BuildContext context) async {
 
   switch (source) {
     case _DocumentSource.fichier:
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
-        withData: true,
+      final result = await SessionManager.instance.sortieAttendue(
+        () => FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
+          withData: true,
+        ),
       );
       if (result == null || result.files.isEmpty) return null;
       final file = result.files.first;
@@ -133,10 +136,12 @@ Future<PickedDocument?> pickDocumentFromSource(BuildContext context) async {
       return PickedDocument(bytes: file.bytes!, fileName: file.name);
 
     case _DocumentSource.camera:
-      final photo = await ImagePicker().pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1600,
-        imageQuality: 80,
+      final photo = await SessionManager.instance.sortieAttendue(
+        () => ImagePicker().pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1600,
+          imageQuality: 80,
+        ),
       );
       if (photo == null) return null;
       // Après la prise, on propose de rogner/recadrer la photo.
@@ -162,30 +167,32 @@ Future<PickedDocument?> _rognerImage(String sourcePath, String fileName) async {
   if (kIsWeb) return null;
 
   final estPng = fileName.toLowerCase().endsWith('.png');
-  final cropped = await ImageCropper().cropImage(
-    sourcePath: sourcePath,
-    compressFormat: estPng ? ImageCompressFormat.png : ImageCompressFormat.jpg,
-    compressQuality: 90,
-    uiSettings: [
-      AndroidUiSettings(
-        // En-tête (toolbar) de la même couleur que la barre de contrôles du bas
-        // « Rogner / Pivoter / Zoom » : fond ebony clay (#20242F) et accent vert
-        // sur les contrôles actifs. Les barres système sont gérées par le thème
-        // natif Theme.VtcUcrop, qui annule l'edge-to-edge.
-        toolbarTitle: 'Recadrer le document',
-        toolbarColor: const Color(0xFF20242F),
-        toolbarWidgetColor: Colors.white,
-        backgroundColor: AppColors.dark,
-        activeControlsWidgetColor: AppColors.primary,
-        lockAspectRatio: false,
-        hideBottomControls: false,
-      ),
-      IOSUiSettings(
-        title: 'Recadrer le document',
-        aspectRatioLockEnabled: false,
-        resetAspectRatioEnabled: true,
-      ),
-    ],
+  final cropped = await SessionManager.instance.sortieAttendue(
+    () => ImageCropper().cropImage(
+      sourcePath: sourcePath,
+      compressFormat: estPng ? ImageCompressFormat.png : ImageCompressFormat.jpg,
+      compressQuality: 90,
+      uiSettings: [
+        AndroidUiSettings(
+          // En-tête (toolbar) de la même couleur que la barre de contrôles du bas
+          // « Rogner / Pivoter / Zoom » : fond ebony clay (#20242F) et accent vert
+          // sur les contrôles actifs. Les barres système sont gérées par le thème
+          // natif Theme.VtcUcrop, qui annule l'edge-to-edge.
+          toolbarTitle: 'Recadrer le document',
+          toolbarColor: const Color(0xFF20242F),
+          toolbarWidgetColor: Colors.white,
+          backgroundColor: AppColors.dark,
+          activeControlsWidgetColor: AppColors.primary,
+          lockAspectRatio: false,
+          hideBottomControls: false,
+        ),
+        IOSUiSettings(
+          title: 'Recadrer le document',
+          aspectRatioLockEnabled: false,
+          resetAspectRatioEnabled: true,
+        ),
+      ],
+    ),
   );
   if (cropped == null) return null;
   final bytes = await cropped.readAsBytes();

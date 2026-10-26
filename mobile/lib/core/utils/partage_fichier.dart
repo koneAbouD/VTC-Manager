@@ -4,6 +4,7 @@
 /// Android seulement. Ailleurs (iOS, web), rien ne part et l'appelant se replie.
 library;
 
+import '../network/session_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -32,12 +33,14 @@ Future<IssuePartage> partagerFichier({
 }) async {
   if (!_android) return IssuePartage.indisponible;
   try {
-    final issue = await _canal.invokeMethod<String>('partagerFichier', {
-      'nomFichier': nomFichier,
-      'octets': octets,
-      'mime': mime,
-      'texte': texte,
-    });
+    final issue = await SessionManager.instance.sortieAttendue(
+      () => _canal.invokeMethod<String>('partagerFichier', {
+        'nomFichier': nomFichier,
+        'octets': octets,
+        'mime': mime,
+        'texte': texte,
+      }),
+    );
     return issue == 'WHATSAPP'
         ? IssuePartage.whatsapp
         : IssuePartage.feuilleDePartage;

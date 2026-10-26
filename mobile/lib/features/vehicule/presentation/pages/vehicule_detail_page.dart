@@ -1,3 +1,4 @@
+import '../../../../core/network/session_manager.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -884,7 +885,9 @@ class _DocumentViewerDialogState extends ConsumerState<_DocumentViewerDialog> {
       final uri = Uri.parse(rawUrl);
 
       if (!await canLaunchUrl(uri)) throw Exception('URL non accessible');
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await SessionManager.instance.sortieAttendue(
+        () => launchUrl(uri, mode: LaunchMode.externalApplication),
+      );
 
       if (!mounted) return;
       Navigator.pop(context);
