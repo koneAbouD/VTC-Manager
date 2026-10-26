@@ -72,12 +72,41 @@ plan, au plus une fois par quart d'heure. Les lectures partent une par une et
 s'arrêtent dès que le serveur est hors d'atteinte, sans bandeau ni erreur.
 Chaque lecture doit reprendre l'URL exacte de l'écran, paramètres compris.
 
+## Pas d'internet ou serveur indisponible
+
+Chaque échec de connexion des clients API passe par `DiagnosticReseau`, qui en
+établit la cause (`CauseIndisponibilite`) :
+
+- une connexion **refusée** (errno 61, 111 ou 10061) vient d'une machine qui
+  répond : c'est le **serveur** ;
+- aucun accès actif selon le système (connectivity_plus : Wi-Fi et données
+  coupés, mode avion) : **accès désactivé**, sans attendre de sonde ;
+- un réseau **injoignable** (errno 51, 101 ou 10051) : il n'y a **pas
+  d'internet** sur l'accès actif ;
+- les cas **ambigus** (délai dépassé, connexion coupée, échec DNS) sont
+  tranchés par une **sonde** : une connexion TCP vers `1.1.1.1:443`, refermée
+  aussitôt sans rien envoyer, en 3 s au plus. Si elle aboutit, c'est le
+  serveur ; sinon, c'est le réseau. Le résultat est retenu 10 s, et les échecs
+  simultanés partagent la même sonde ;
+- côté réseau, l'accès actif précise la cause : **Wi-Fi sans internet**
+  (vérifier la box) ou **données mobiles sans internet** (réseau faible,
+  forfait épuisé) ;
+- sur le web, rien n'est tranché (cause `inconnue`).
+
+Les 502, 503 et 504 sont classés côté serveur, les redirections 3xx (portail
+Wi-Fi) côté réseau. Le message de `NetworkException` dit à l'utilisateur quoi
+faire (vérifier son Wi-Fi, ou patienter), et sa cause choisit le libellé du
+bandeau. Dans les tests des applications, `flutter_test_config.dart` remplace
+la sonde : elle ne sort jamais sur internet.
+
 ## Bandeau
 
 `EtatHorsLigne` retient l'heure de la plus ancienne donnée servie depuis le
-cache, et la première réponse du serveur le remet à zéro. `BandeauHorsLigne`,
-posé dans `MaterialApp.builder`, affiche par exemple « Hors connexion · données
-de 14:32 ».
+cache et la cause de l'indisponibilité ; la première réponse du serveur le
+remet à zéro. `BandeauHorsLigne`, posé dans `MaterialApp.builder`, affiche
+selon la cause « Wi-Fi et données coupés », « Wi-Fi sans internet »,
+« Données mobiles sans internet », « Hors connexion », « Serveur
+indisponible » ou « Serveur injoignable », suivi de « · données de 14:32 ».
 
 ## Images
 

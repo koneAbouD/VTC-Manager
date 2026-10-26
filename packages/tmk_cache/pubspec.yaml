@@ -28,6 +28,10 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
 
+  # Accès réseau actif (Wi-Fi, données mobiles, aucun) : distingue un
+  # téléphone dont l'accès est coupé d'un accès actif sans internet.
+  connectivity_plus: ^7.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -17,6 +17,7 @@ import 'src/reponse_cache.dart';
 export 'src/affichage_immediat.dart';
 export 'src/bandeau_hors_ligne.dart';
 export 'src/chiffreur_cache.dart' show ChiffreurCache;
+export 'src/diagnostic_reseau.dart';
 export 'src/etat_hors_ligne.dart';
 export 'src/images.dart' show cacheImages, cleImage, imageReseau;
 export 'src/prechargement_periodique.dart';

@@ -14,10 +14,39 @@ import 'session_manager.dart';
 /// Messages réseau présentés au chauffeur — clairs et sans détail technique
 /// (type d'exception, hôte, code HTTP), qui n'aident pas et font « bug ».
 /// Mêmes textes que l'app gestionnaire.
-const String kMsgServeurTimeout =
-    'Le serveur met trop de temps à répondre. Vérifiez votre connexion, puis réessayez.';
+/// Ni Wi-Fi ni données mobiles actifs (désactivés, mode avion) : il suffit
+/// d'en activer un.
+const String kMsgReseauDesactive =
+    'Le Wi-Fi et les données mobiles sont désactivés. Activez l\'un des deux '
+    '(et désactivez le mode avion), puis réessayez.';
+
+/// Wi-Fi connecté, mais sans accès à internet.
+const String kMsgWifiSansInternet =
+    'Votre Wi-Fi est connecté mais n\'a pas accès à internet. Vérifiez la box '
+    'ou passez sur les données mobiles, puis réessayez.';
+
+/// Données mobiles actives, mais sans accès à internet.
+const String kMsgDonneesSansInternet =
+    'Les données mobiles sont activées mais n\'ont pas accès à internet '
+    '(réseau faible ou forfait épuisé). Réessayez, ou connectez-vous à un '
+    'Wi-Fi.';
+
+/// Pas d'accès à internet, sans savoir par quel accès : c'est au téléphone
+/// d'agir (Wi-Fi, données).
+const String kMsgPasInternet =
+    'Pas de connexion internet. Vérifiez le Wi-Fi ou les données mobiles, '
+    'puis réessayez.';
+
+/// Internet fonctionne, le serveur ne répond pas : inutile de toucher au
+/// téléphone, il faut patienter.
 const String kMsgServeurInjoignable =
-    'Impossible de joindre le serveur. Vérifiez votre connexion internet, puis réessayez.';
+    'Le serveur ne répond pas pour le moment. Votre connexion internet '
+    'fonctionne : réessayez dans quelques instants.';
+
+/// Cause impossible à établir (web) : on n'accuse ni l'un ni l'autre.
+const String kMsgConnexionImpossible =
+    'Impossible de joindre le serveur. Vérifiez votre connexion internet ; si '
+    'elle fonctionne, le serveur est peut-être momentanément indisponible.';
 
 /// Réponse 3xx : l'appel a été détourné avant d'atteindre le serveur — portail
 /// d'un Wi-Fi public, forfait épuisé, proxy. C'est un problème d'accès au
@@ -54,15 +83,18 @@ class ApiClient {
   final http.Client _http;
   final ReponseCache _cache;
   final EtatHorsLigne _horsLigne;
+  final DiagnosticReseau _diagnostic;
 
   ApiClient(
     this._storage, [
     http.Client? client,
     ReponseCache? cache,
     EtatHorsLigne? horsLigne,
+    DiagnosticReseau? diagnostic,
   ]) : _http = client ?? http.Client(),
        _cache = cache ?? ReponseCache.instance,
-       _horsLigne = horsLigne ?? EtatHorsLigne.instance;
+       _horsLigne = horsLigne ?? EtatHorsLigne.instance,
+       _diagnostic = diagnostic ?? DiagnosticReseau.instance;
 
   static const _timeout = Duration(seconds: 25);
 
@@ -80,13 +112,14 @@ class ApiClient {
     }
     try {
       return await _lireServeur(path, query);
-    } on NetworkException {
-      final secours = await _depuisLeCache(path, query);
+    } on NetworkException catch (e) {
+      final secours = await _depuisLeCache(path, query, e.cause);
       if (secours == null) rethrow;
       return secours.donnees;
     } on ApiException catch (e) {
       if (!_serveurIndisponible(e.statusCode)) rethrow;
-      final secours = await _depuisLeCache(path, query);
+      final secours =
+          await _depuisLeCache(path, query, CauseIndisponibilite.serveur);
       if (secours == null) rethrow;
       return secours.donnees;
     }
@@ -172,10 +205,10 @@ class ApiClient {
       final bytes = await streamed.stream.toBytes();
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) return bytes;
       throw _erreurHttp(streamed.statusCode, bytes);
-    } on TimeoutException {
-      throw const NetworkException(kMsgServeurTimeout);
-    } on http.ClientException {
-      throw const NetworkException(kMsgServeurInjoignable);
+    } on TimeoutException catch (e) {
+      throw await _echecConnexion(e);
+    } on http.ClientException catch (e) {
+      throw await _echecConnexion(e);
     }
   }
 
@@ -215,10 +248,10 @@ class ApiClient {
       }
       _noterReponse(method, path, uri, response, headers['Authorization']);
       return _handle(response);
-    } on TimeoutException {
-      throw const NetworkException(kMsgServeurTimeout);
-    } on http.ClientException {
-      throw const NetworkException(kMsgServeurInjoignable);
+    } on TimeoutException catch (e) {
+      throw await _echecConnexion(e);
+    } on http.ClientException catch (e) {
+      throw await _echecConnexion(e);
     }
   }
 
@@ -283,6 +316,7 @@ class ApiClient {
   Future<({Object? donnees})?> _depuisLeCache(
     String path,
     Map<String, String>? query,
+    CauseIndisponibilite cause,
   ) async {
     if (!_cachable(path)) return null;
     final enCache = await _cache
@@ -292,7 +326,7 @@ class ApiClient {
         )
         .timeout(_attenteCache * 4, onTimeout: () => null);
     if (enCache == null) return null;
-    _horsLigne.donneesDuCache(enCache.enregistreLe);
+    _horsLigne.donneesDuCache(enCache.enregistreLe, cause: cause);
     return (donnees: _decoder(enCache.corps) as Object?);
   }
 
@@ -307,6 +341,25 @@ class ApiClient {
       return null;
     }
   }
+
+  /// Échec de connexion (délai dépassé, connexion refusée ou coupée, pas de
+  /// réseau) : sa cause décide du message — activer le Wi-Fi ou les données,
+  /// vérifier sa box, ou patienter.
+  Future<NetworkException> _echecConnexion(Object erreur) async {
+    final cause = await _diagnostic.causeDe(erreur);
+    return NetworkException(messageIndisponibilite(cause), cause);
+  }
+
+  /// Message présenté pour une indisponibilité de [cause] donnée.
+  static String messageIndisponibilite(CauseIndisponibilite cause) =>
+      switch (cause) {
+        CauseIndisponibilite.reseauDesactive => kMsgReseauDesactive,
+        CauseIndisponibilite.wifiSansInternet => kMsgWifiSansInternet,
+        CauseIndisponibilite.donneesSansInternet => kMsgDonneesSansInternet,
+        CauseIndisponibilite.reseau => kMsgPasInternet,
+        CauseIndisponibilite.serveur => kMsgServeurInjoignable,
+        CauseIndisponibilite.inconnue => kMsgConnexionImpossible,
+      };
 
   /// 502, 503, 504 : le proxy répond, pas l'application. Pour l'écran, c'est
   /// une coupure comme une autre.
@@ -343,7 +396,8 @@ class ApiClient {
   /// décodage, qui remonterait à l'écran sous forme d'exception technique.
   Exception _erreurHttp(int status, List<int> corps) {
     if (status >= 300 && status < 400) {
-      return const NetworkException(kMsgAccesDetourne);
+      return const NetworkException(
+          kMsgAccesDetourne, CauseIndisponibilite.reseau);
     }
     final rawBody = utf8.decode(corps, allowMalformed: true);
     final parsedBody = _corpsJson(rawBody);

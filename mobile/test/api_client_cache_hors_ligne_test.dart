@@ -100,6 +100,18 @@ void main() {
 
     serveur = (_) => http.Response('<html>503</html>', 503);
     expect(await client().get('/tresorerie'), {'solde': 1000});
+    expect(horsLigne.cause, CauseIndisponibilite.serveur,
+        reason: 'bandeau « Serveur indisponible », pas « Hors connexion »');
+  });
+
+  test('sans internet, le bandeau dit « hors connexion »', () async {
+    serveur = (_) => json({'solde': 1000});
+    await client().get('/tresorerie');
+    await ecrituresTerminees();
+
+    serveur = (_) => null; // coupure, la sonde (tests) ne trouve pas internet
+    expect(await client().get('/tresorerie'), {'solde': 1000});
+    expect(horsLigne.cause, CauseIndisponibilite.reseau);
   });
 
   test("une erreur du serveur n'est jamais masquée par le cache", () async {
@@ -119,7 +131,7 @@ void main() {
     await expectLater(
       client().get('/jamais-lu'),
       throwsA(isA<NetworkException>()
-          .having((e) => e.message, 'message', kMsgServeurInjoignable)),
+          .having((e) => e.message, 'message', kMsgPasInternet)),
     );
     expect(horsLigne.value, isNull);
   });

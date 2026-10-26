@@ -1,3 +1,5 @@
+import 'package:tmk_cache/tmk_cache.dart' show CauseIndisponibilite;
+
 /// Exception lancée par la couche réseau (datasource).
 /// Toujours convertie en [Failure] dans le repository.
 class ApiException implements Exception {
@@ -10,10 +12,17 @@ class ApiException implements Exception {
   String toString() => 'ApiException($statusCode): $message';
 }
 
-/// Exception réseau bas niveau (timeout, pas de connexion).
+/// Exception réseau bas niveau : le serveur n'a pas répondu.
+///
+/// [cause] distingue l'absence d'internet d'un serveur indisponible ; le
+/// [message] le dit déjà à l'utilisateur, la cause sert au code (bandeau).
 class NetworkException implements Exception {
   final String message;
-  const NetworkException([this.message = 'Pas de connexion réseau.']);
+  final CauseIndisponibilite cause;
+  const NetworkException([
+    this.message = 'Pas de connexion réseau.',
+    this.cause = CauseIndisponibilite.inconnue,
+  ]);
 
   @override
   String toString() => message;

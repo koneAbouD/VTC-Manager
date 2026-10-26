@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:tmk_cache/tmk_cache.dart';
 
 import 'package:vtc_chauffeur/core/error/exception.dart';
 import 'package:vtc_chauffeur/core/network/api_client.dart';
@@ -129,17 +133,133 @@ void main() {
       final client = ApiClient(
         const _SansJeton(),
         MockClient(
-          (_) async => throw http.ClientException('Connection refused'),
+          (_) async => throw http.ClientException('coupure'),
         ),
       );
       await expectLater(
         client.get('/me/recettes'),
-        _reseau(kMsgServeurInjoignable),
+        _reseau(kMsgPasInternet),
       );
       await expectLater(
         client.getBytes('/me/arretes/1/pdf'),
-        _reseau(kMsgServeurInjoignable),
+        _reseau(kMsgPasInternet),
+      );
+    });
+  });
+
+  group('pas d\'internet ou serveur indisponible', () {
+    late int sondes;
+
+    ApiClient client(
+      Object erreur, {
+      bool? internet,
+      AccesReseau acces = AccesReseau.inconnu,
+    }) =>
+        ApiClient(
+          const _SansJeton(),
+          MockClient((_) async => throw erreur),
+          null,
+          null,
+          DiagnosticReseau(
+            acces: () async => acces,
+            sonde: () async {
+              sondes++;
+              return internet;
+            },
+          ),
+        );
+
+    Matcher cause(CauseIndisponibilite c, String message) => throwsA(
+        isA<NetworkException>()
+            .having((e) => e.cause, 'cause', c)
+            .having((e) => e.message, 'message', message));
+
+    setUp(() => sondes = 0);
+
+    test('connexion refusée : le serveur est arrêté, pas besoin de sonder',
+        () async {
+      await expectLater(
+        client(_ErreurSocket('Connection refused', 61)).get('/me/recettes'),
+        cause(CauseIndisponibilite.serveur, kMsgServeurInjoignable),
+      );
+      expect(sondes, 0);
+    });
+
+    test('réseau injoignable : pas d\'internet, pas besoin de sonder',
+        () async {
+      await expectLater(
+        client(_ErreurSocket('Network is unreachable', 101)).get('/me/recettes'),
+        cause(CauseIndisponibilite.reseau, kMsgPasInternet),
+      );
+      expect(sondes, 0);
+    });
+
+    test('délai dépassé, internet joignable : le serveur ne répond pas',
+        () async {
+      await expectLater(
+        client(TimeoutException('25 s'), internet: true).get('/me/recettes'),
+        cause(CauseIndisponibilite.serveur, kMsgServeurInjoignable),
+      );
+      expect(sondes, 1);
+    });
+
+    test('délai dépassé, internet injoignable : pas d\'internet', () async {
+      await expectLater(
+        client(TimeoutException('25 s'), internet: false).post('/me/paiements', {}),
+        cause(CauseIndisponibilite.reseau, kMsgPasInternet),
+      );
+    });
+
+    test('Wi-Fi et données coupés : il faut en activer un', () async {
+      await expectLater(
+        client(TimeoutException('25 s'), acces: AccesReseau.aucun)
+            .get('/me/recettes'),
+        cause(CauseIndisponibilite.reseauDesactive, kMsgReseauDesactive),
+      );
+      expect(sondes, 0, reason: 'rien à sonder, tout est coupé');
+    });
+
+    test('Wi-Fi connecté sans internet', () async {
+      await expectLater(
+        client(TimeoutException('25 s'),
+                internet: false, acces: AccesReseau.wifi)
+            .get('/me/recettes'),
+        cause(CauseIndisponibilite.wifiSansInternet, kMsgWifiSansInternet),
+      );
+    });
+
+    test('données mobiles actives sans internet', () async {
+      await expectLater(
+        client(_ErreurSocket('Network is unreachable', 101),
+                acces: AccesReseau.donneesMobiles)
+            .get('/me/recettes'),
+        cause(CauseIndisponibilite.donneesSansInternet,
+            kMsgDonneesSansInternet),
+      );
+    });
+
+    test('cause impossible à établir : message qui n\'accuse personne',
+        () async {
+      await expectLater(
+        client(http.ClientException('coupure'), internet: null).get('/me/recettes'),
+        cause(CauseIndisponibilite.inconnue, kMsgConnexionImpossible),
       );
     });
   });
 }
+
+/// Ce que lève le client HTTP sur une erreur système : une ClientException
+/// qui est aussi une SocketException (avec son code d'erreur).
+class _ErreurSocket extends http.ClientException implements SocketException {
+  @override
+  final OSError osError;
+
+  _ErreurSocket(super.message, int code) : osError = OSError(message, code);
+
+  @override
+  InternetAddress? get address => null;
+
+  @override
+  int? get port => null;
+}
+

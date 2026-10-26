@@ -16,6 +16,31 @@ void main() {
           "Hors connexion · données d'hier à 09:05");
     });
 
+    test('serveur en panne, internet joignable', () {
+      expect(
+          libelleHorsLigne(DateTime(2026, 10, 26, 14, 32), maintenant,
+              cause: CauseIndisponibilite.serveur),
+          'Serveur indisponible · données de 14:32');
+    });
+
+    test('cause inconnue : aucun des deux n\'est accusé', () {
+      expect(
+          libelleHorsLigne(DateTime(2026, 10, 26, 14, 32), maintenant,
+              cause: CauseIndisponibilite.inconnue),
+          'Serveur injoignable · données de 14:32');
+    });
+
+    test('accès coupé, Wi-Fi ou données sans internet', () {
+      String libelle(CauseIndisponibilite c) =>
+          libelleHorsLigne(DateTime(2026, 10, 26, 14, 32), maintenant, cause: c);
+      expect(libelle(CauseIndisponibilite.reseauDesactive),
+          'Wi-Fi et données coupés · données de 14:32');
+      expect(libelle(CauseIndisponibilite.wifiSansInternet),
+          'Wi-Fi sans internet · données de 14:32');
+      expect(libelle(CauseIndisponibilite.donneesSansInternet),
+          'Données mobiles sans internet · données de 14:32');
+    });
+
     test('plus ancien', () {
       expect(libelleHorsLigne(DateTime(2026, 10, 3, 18, 0), maintenant),
           'Hors connexion · données du 03/10 à 18:00');
@@ -30,6 +55,21 @@ void main() {
         ..donneesDuCache(DateTime(2026, 10, 26, 12));
 
       expect(etat.value, DateTime(2026, 10, 26, 9));
+    });
+
+    test('retient la cause de la dernière indisponibilité', () {
+      final etat = EtatHorsLigne();
+      var notifications = 0;
+      etat.addListener(() => notifications++);
+
+      etat.donneesDuCache(DateTime(2026, 10, 26, 9),
+          cause: CauseIndisponibilite.reseau);
+      etat.donneesDuCache(DateTime(2026, 10, 26, 12),
+          cause: CauseIndisponibilite.serveur);
+
+      expect(etat.cause, CauseIndisponibilite.serveur);
+      expect(etat.value, DateTime(2026, 10, 26, 9));
+      expect(notifications, 2, reason: 'le bandeau change de libellé');
     });
 
     test('le serveur qui répond efface le bandeau', () {
@@ -56,14 +96,18 @@ void main() {
     await tester.pump();
     expect(find.text('1'), findsOneWidget);
 
-    etat.donneesDuCache(DateTime.now());
+    etat.donneesDuCache(DateTime.now(), cause: CauseIndisponibilite.reseau);
     await tester.pump();
     expect(find.textContaining('Hors connexion'), findsOneWidget);
+
+    etat.donneesDuCache(DateTime.now(), cause: CauseIndisponibilite.serveur);
+    await tester.pump();
+    expect(find.textContaining('Serveur indisponible'), findsOneWidget);
     expect(find.text('1'), findsOneWidget, reason: "l'état de l'écran survit");
 
     etat.serveurJoignable();
     await tester.pump();
-    expect(find.textContaining('Hors connexion'), findsNothing);
+    expect(find.textContaining('données de'), findsNothing);
     expect(find.text('1'), findsOneWidget);
   });
 
