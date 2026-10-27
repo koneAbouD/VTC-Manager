@@ -26,7 +26,7 @@ void main() {
         const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
         (_) async => null);
     messager.setMockStreamHandler(const EventChannel('vtc/device_lock'),
-        MockStreamHandler.inline(onListen: (_, _) {}));
+        MockStreamHandler.inline(onListen: (_, __) {}));
     maintenant = DateTime(2026, 10, 26, 14);
     session.horloge = () => maintenant;
     verrous = [];
