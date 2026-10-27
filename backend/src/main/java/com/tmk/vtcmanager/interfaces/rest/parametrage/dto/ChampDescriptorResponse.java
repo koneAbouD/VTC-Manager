@@ -3,6 +3,7 @@ package com.tmk.vtcmanager.interfaces.rest.parametrage.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Description d'un champ d'un référentiel, destinée au front générique de
@@ -34,42 +35,58 @@ public record ChampDescriptorResponse(
         String refKey,
 
         @Schema(description = "Pour type=enum : valeurs autorisées (en lecture).", nullable = true)
-        List<String> options
+        List<String> options,
+
+        @Schema(description = "Pour type=enum : libellé à afficher pour chaque valeur (code → libellé). "
+                + "Absent quand les valeurs sont déjà lisibles.",
+                example = "{\"CHARGE_FIXE\": \"Charge fixe\"}", nullable = true)
+        Map<String, String> libelles
 ) {
 
     public static ChampDescriptorResponse texte(String nom, String label, boolean obligatoire) {
-        return new ChampDescriptorResponse(nom, label, "text", obligatoire, true, null, null);
+        return new ChampDescriptorResponse(nom, label, "text", obligatoire, true, null, null, null);
     }
 
     public static ChampDescriptorResponse nombre(String nom, String label, boolean obligatoire) {
-        return new ChampDescriptorResponse(nom, label, "number", obligatoire, true, null, null);
+        return new ChampDescriptorResponse(nom, label, "number", obligatoire, true, null, null, null);
     }
 
     public static ChampDescriptorResponse booleen(String nom, String label) {
-        return new ChampDescriptorResponse(nom, label, "bool", false, true, null, null);
+        return new ChampDescriptorResponse(nom, label, "bool", false, true, null, null, null);
     }
 
     public static ChampDescriptorResponse couleur(String nom, String label, boolean obligatoire) {
-        return new ChampDescriptorResponse(nom, label, "color", obligatoire, true, null, null);
+        return new ChampDescriptorResponse(nom, label, "color", obligatoire, true, null, null, null);
     }
 
     public static ChampDescriptorResponse reference(String nom, String label, boolean obligatoire, String refKey) {
-        return new ChampDescriptorResponse(nom, label, "reference", obligatoire, true, refKey, null);
+        return new ChampDescriptorResponse(nom, label, "reference", obligatoire, true, refKey, null, null);
     }
 
-    /** Champ énuméré : liste déroulante des valeurs autorisées (codes d'enum). */
+    /** Champ énuméré dont les valeurs sont déjà lisibles (libellés de groupes, par exemple). */
     public static ChampDescriptorResponse enumeration(
             String nom, String label, boolean obligatoire, java.util.List<String> valeurs) {
-        return new ChampDescriptorResponse(nom, label, "enum", obligatoire, true, null, valeurs);
+        return new ChampDescriptorResponse(nom, label, "enum", obligatoire, true, null, valeurs, null);
+    }
+
+    /**
+     * Champ énuméré sur des codes d'enum : [libelles] associe chaque code à son
+     * libellé, dans l'ordre de la liste déroulante. Le code reste la valeur
+     * envoyée et reçue ; seul le libellé s'affiche.
+     */
+    public static ChampDescriptorResponse enumeration(
+            String nom, String label, boolean obligatoire, Map<String, String> libelles) {
+        return new ChampDescriptorResponse(nom, label, "enum", obligatoire, true, null,
+                List.copyOf(libelles.keySet()), libelles);
     }
 
     /** Champ image : upload d'un fichier via {endpoint}/image, la valeur stockée est le nom d'objet. */
     public static ChampDescriptorResponse image(String nom, String label, boolean obligatoire) {
-        return new ChampDescriptorResponse(nom, label, "image", obligatoire, true, null, null);
+        return new ChampDescriptorResponse(nom, label, "image", obligatoire, true, null, null, null);
     }
 
     /** Champ non modifiable (clé immuable ou dérivé). */
     public static ChampDescriptorResponse lectureSeule(String nom, String label) {
-        return new ChampDescriptorResponse(nom, label, "text", false, false, null, null);
+        return new ChampDescriptorResponse(nom, label, "text", false, false, null, null, null);
     }
 }

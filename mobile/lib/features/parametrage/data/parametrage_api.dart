@@ -15,6 +15,10 @@ class ChampDescriptor {
   final String? refKey; // pour type=reference : clé du référentiel source
   final List<String> options; // pour type=enum
 
+  /// Pour type=enum : libellé de chaque code (« CHARGE_FIXE » → « Charge
+  /// fixe »). Vide quand les valeurs sont déjà lisibles.
+  final Map<String, String> libelles;
+
   const ChampDescriptor({
     required this.nom,
     required this.label,
@@ -23,6 +27,7 @@ class ChampDescriptor {
     required this.editable,
     this.refKey,
     this.options = const [],
+    this.libelles = const {},
   });
 
   factory ChampDescriptor.fromJson(Map<String, dynamic> j) => ChampDescriptor(
@@ -34,7 +39,14 @@ class ChampDescriptor {
         refKey: j['refKey'] as String?,
         options: (j['options'] as List?)?.map((e) => e.toString()).toList() ??
             const [],
+        libelles: (j['libelles'] as Map?)?.map(
+                (code, libelle) => MapEntry('$code', '$libelle')) ??
+            const {},
       );
+
+  /// Ce qu'on affiche pour une valeur : son libellé, à défaut le code tel quel
+  /// (catalogue d'un serveur plus ancien, valeur inconnue).
+  String libelleDe(String code) => libelles[code] ?? code;
 
   bool get isActif => nom == 'actif';
 }

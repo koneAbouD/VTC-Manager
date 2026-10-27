@@ -7,7 +7,9 @@ import com.tmk.vtcmanager.interfaces.rest.parametrage.dto.ReferentielDescriptorR
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.tmk.vtcmanager.interfaces.rest.parametrage.dto.ChampDescriptorResponse.*;
 
@@ -93,7 +95,9 @@ public class ReferentielCatalogue {
                 "id",
                 List.of(
                         texte("nom", "Nom", true),
-                        enumeration("cible", "Cible", true, List.of("VEHICULE", "CHAUFFEUR")),
+                        enumeration("cible", "Cible", true, libelles(
+                                "VEHICULE", "Véhicule",
+                                "CHAUFFEUR", "Chauffeur")),
                         booleen("obligatoire", "Obligatoire"),
                         booleen("actif", "Actif")));
     }
@@ -112,12 +116,25 @@ public class ReferentielCatalogue {
                         // (groupes) déjà existantes. Options calculées à la volée.
                         enumeration("sousCategorieLibelle", "Sous-catégorie", true,
                                 groupesSousCategorie()),
-                        enumeration("typeOperation", "Type d'opération", true,
-                                List.of("REVENU", "DEPENSE")),
-                        enumeration("natureResultat", "Nature de résultat", true,
-                                List.of("PRODUIT_EXPLOITATION", "CHARGE_VARIABLE",
-                                        "CHARGE_FIXE", "HORS_RESULTAT")),
+                        enumeration("typeOperation", "Type d'opération", true, libelles(
+                                "REVENU", "Revenu",
+                                "DEPENSE", "Dépense")),
+                        // Mêmes libellés que les refus de CategorieOperation.
+                        enumeration("natureResultat", "Nature de résultat", true, libelles(
+                                "PRODUIT_EXPLOITATION", "Produit d'exploitation",
+                                "CHARGE_VARIABLE", "Charge variable",
+                                "CHARGE_FIXE", "Charge fixe",
+                                "HORS_RESULTAT", "Hors résultat")),
                         booleen("actif", "Actif")));
+    }
+
+    /** Codes d'enum et leurs libellés, dans l'ordre donné : code, libellé, code, libellé… */
+    private static Map<String, String> libelles(String... codesEtLibelles) {
+        Map<String, String> libelles = new LinkedHashMap<>();
+        for (int i = 0; i < codesEtLibelles.length; i += 2) {
+            libelles.put(codesEtLibelles[i], codesEtLibelles[i + 1]);
+        }
+        return libelles;
     }
 
     /** Libellés distincts des sous-catégories existantes (groupes comptables),

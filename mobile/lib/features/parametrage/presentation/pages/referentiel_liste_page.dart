@@ -156,7 +156,10 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
       if (nom != null) return nom.toString();
       return item[champ.nom] == null ? '' : '#${item[champ.nom]}';
     }
-    return item[champ.nom]?.toString() ?? '';
+    final brute = item[champ.nom]?.toString() ?? '';
+    return champ.type == 'enum' && brute.isNotEmpty
+        ? champ.libelleDe(brute)
+        : brute;
   }
 
   String _sousTitre(Map<String, dynamic> item) {

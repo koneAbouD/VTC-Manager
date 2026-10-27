@@ -773,7 +773,9 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
 
   Widget _champEnum(ChampDescriptor c) {
     final options =
-        c.options.map((o) => SelectOption<String>(value: o, label: o)).toList();
+        c.options
+            .map((o) => SelectOption<String>(value: o, label: c.libelleDe(o)))
+            .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
