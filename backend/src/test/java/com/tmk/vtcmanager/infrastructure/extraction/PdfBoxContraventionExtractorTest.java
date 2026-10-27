@@ -126,10 +126,24 @@ class PdfBoxContraventionExtractorTest {
         assertThat(total).isEqualByComparingTo(new BigDecimal("20000"));
     }
 
+    /**
+     * Sonde le point de santé du service. Un simple connect TCP ne suffit pas :
+     * un autre processus peut écouter sur le port (ex. redirection de ports de
+     * VS Code sur 127.0.0.1:8884) et accepter la connexion sans jamais répondre
+     * — le test restait alors bloqué 2 min puis échouait au lieu d'être ignoré.
+     */
     private static boolean serviceOcrDisponible() {
-        try (java.net.Socket s = new java.net.Socket()) {
-            s.connect(new java.net.InetSocketAddress("localhost", 8884), 500);
-            return true;
+        try {
+            java.net.HttpURLConnection c = (java.net.HttpURLConnection)
+                    java.net.URI.create(OCR_URL + "/health").toURL().openConnection();
+            c.setConnectTimeout(500);
+            c.setReadTimeout(2_000);
+            c.setRequestMethod("GET");
+            try {
+                return c.getResponseCode() == 200;
+            } finally {
+                c.disconnect();
+            }
         } catch (Exception e) {
             return false;
         }
