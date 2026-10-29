@@ -954,7 +954,10 @@ class _TypeDropdownState extends ConsumerState<_TypeDropdown> {
       hint: 'Sélectionner un type',
       sheetTitle: 'Type de maintenance',
       fillColor: _kFieldFill,
+      // Un type désactivé n'est plus proposé, sauf s'il est déjà celui de la
+      // maintenance modifiée : elle doit pouvoir garder son type.
       options: categories
+          .where((c) => c.actif || c.id == selectedId)
           .map((c) => SelectOption<int>(value: c.id, label: c.libelle))
           .toList(),
       onChanged: (id) {
