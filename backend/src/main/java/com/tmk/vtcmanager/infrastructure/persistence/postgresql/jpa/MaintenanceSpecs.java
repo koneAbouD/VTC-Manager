@@ -2,12 +2,15 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa;
 
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceFiltres;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.ElementMaintenanceEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.MaintenanceEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
+import jakarta.persistence.criteria.AbstractQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
@@ -40,7 +43,7 @@ public class MaintenanceSpecs {
             if (!Long.class.equals(query.getResultType())) {
                 query.orderBy(cb.desc(root.get("datePrevue")), cb.desc(root.get("id")));
             }
-            return cb.and(predicats(filtres, aujourdhui, root, cb).toArray(new Predicate[0]));
+            return cb.and(predicats(filtres, aujourdhui, root, query, cb).toArray(new Predicate[0]));
         };
     }
 
@@ -49,7 +52,8 @@ public class MaintenanceSpecs {
      * savoir ce que « la sélection affichée » recouvre.
      */
     public static List<Predicate> predicats(MaintenanceFiltres filtres, LocalDate aujourdhui,
-                                            Root<MaintenanceEntity> root, CriteriaBuilder cb) {
+                                            Root<MaintenanceEntity> root, AbstractQuery<?> query,
+                                            CriteriaBuilder cb) {
         List<Predicate> predicates = new ArrayList<>();
 
         if (filtres.dateDebut() != null) {
@@ -87,9 +91,29 @@ public class MaintenanceSpecs {
                     cb.like(cb.lower(categorie.get("libelle")), motif),
                     cb.like(cb.lower(root.get("type")), motif),
                     cb.like(cb.lower(vehicule.get("immatriculation")), motif),
-                    cb.like(cb.lower(partenaire.get("nom")), motif)));
+                    cb.like(cb.lower(partenaire.get("nom")), motif),
+                    cb.exists(elementCorrespondant(motif, root, query, cb))));
         }
 
         return predicates;
+    }
+
+    /**
+     * Un élément de l'intervention dont le nom correspond — saisi librement ou
+     * repris du catalogue. En sous-requête plutôt qu'en jointure : une
+     * intervention à plusieurs éléments correspondants compterait sinon pour
+     * autant de lignes dans la page comme dans les cumuls.
+     */
+    private static Subquery<Long> elementCorrespondant(String motif, Root<MaintenanceEntity> root,
+                                                       AbstractQuery<?> query, CriteriaBuilder cb) {
+        Subquery<Long> sousRequete = query.subquery(Long.class);
+        Root<ElementMaintenanceEntity> element = sousRequete.from(ElementMaintenanceEntity.class);
+        var catalogue = element.join("catalogueElement", JoinType.LEFT);
+        return sousRequete.select(element.get("id")).where(
+                cb.equal(element.get("detailMaintenance").get("id"),
+                        root.get("detailMaintenance").get("id")),
+                cb.or(
+                        cb.like(cb.lower(element.get("libelle")), motif),
+                        cb.like(cb.lower(catalogue.get("libelle")), motif)));
     }
 }

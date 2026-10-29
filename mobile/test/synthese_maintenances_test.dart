@@ -84,24 +84,15 @@ void main() {
 
   group('TypeMaintenanceVisuel', () {
     test('reconnaît un type par son code comme par son libellé accentué', () {
-      final parCode = TypeMaintenanceVisuel.de(code: 'ELECTRICITE');
-      final parLibelle = TypeMaintenanceVisuel.de(libelle: 'Électricité');
-      expect(parLibelle.icone, parCode.icone);
-      expect(parLibelle.couleur, parCode.couleur);
+      expect(TypeMaintenanceVisuel.icone(libelle: 'Électricité'),
+          TypeMaintenanceVisuel.icone(code: 'ELECTRICITE'));
+      expect(TypeMaintenanceVisuel.icone(code: 'VIDANGE'),
+          Icons.oil_barrel_outlined);
     });
 
-    test('un type inconnu garde la même teinte de repli à chaque affichage', () {
-      final a = TypeMaintenanceVisuel.de(code: 'CARROSSERIE_X', id: 42);
-      final b = TypeMaintenanceVisuel.de(code: 'CARROSSERIE_X', id: 42);
-      expect(a.couleur, b.couleur);
-      expect(a.icone, Icons.construction_outlined);
-    });
-
-    test('la couleur du type suit le thème sombre', () {
-      final clair = TypeMaintenanceVisuel.de(code: 'VIDANGE').couleur;
-      AppColors.appliquer(AppAccent.vert, Brightness.dark);
-      final sombre = TypeMaintenanceVisuel.de(code: 'VIDANGE').couleur;
-      expect(sombre, isNot(clair));
+    test("un type inconnu reçoit l'icône générique", () {
+      expect(TypeMaintenanceVisuel.icone(code: 'CARROSSERIE_X'),
+          Icons.construction_outlined);
     });
   });
 }

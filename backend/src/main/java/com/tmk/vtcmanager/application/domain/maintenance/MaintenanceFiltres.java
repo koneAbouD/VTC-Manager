@@ -8,7 +8,8 @@ import java.util.List;
  * page et les cumuls, pour que « la période affichée » recouvre partout la même
  * chose.
  *
- * @param recherche        mot-clé libre (type, immatriculation, prestataire) ;
+ * @param recherche        mot-clé libre (type, immatriculation, prestataire,
+ *                         nom d'un élément de l'intervention) ;
  *                         ignoré s'il est vide.
  * @param categorieTypeIds types de maintenance retenus ; vide = tous les types.
  * @param enRetard         vrai pour ne garder que les planifiées dont la date

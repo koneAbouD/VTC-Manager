@@ -14,7 +14,8 @@ abstract interface class MaintenanceRepository {
   });
 
   /// [recherche] : mot-clé libre confronté côté serveur au type de maintenance,
-  /// à l'immatriculation du véhicule et au nom du prestataire.
+  /// au nom des éléments, à l'immatriculation du véhicule et au nom du
+  /// prestataire.
   /// [categorieTypeIds] : types retenus, vide pour tous. [enRetard] : seules
   /// les planifiées dont la date prévue est passée.
   Future<Either<Failure, PageResult<Maintenance>>> getMaintenancesPage({

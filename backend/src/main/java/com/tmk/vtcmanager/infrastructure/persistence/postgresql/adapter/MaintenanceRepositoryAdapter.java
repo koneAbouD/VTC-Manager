@@ -129,7 +129,7 @@ public class MaintenanceRepositoryAdapter implements MaintenanceRepository {
                         categorie.get("libelle"),
                         cb.count(root),
                         cb.sum(coutRealise)))
-                .where(MaintenanceSpecs.predicats(filtres, LocalDate.now(), root, cb)
+                .where(MaintenanceSpecs.predicats(filtres, LocalDate.now(), root, query, cb)
                         .toArray(new Predicate[0]))
                 .groupBy(categorie.get("id"), categorie.get("code"), categorie.get("libelle"));
 
@@ -145,7 +145,7 @@ public class MaintenanceRepositoryAdapter implements MaintenanceRepository {
         query.select(cb.construct(TotalMaintenanceParStatut.class,
                         root.get("statut"),
                         cb.count(root)))
-                .where(MaintenanceSpecs.predicats(filtres, LocalDate.now(), root, cb)
+                .where(MaintenanceSpecs.predicats(filtres, LocalDate.now(), root, query, cb)
                         .toArray(new Predicate[0]))
                 .groupBy(root.get("statut"));
 

@@ -10,8 +10,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/widgets/date_filter_dialogs.dart';
 import '../../../../core/widgets/motif_annulation_dialog.dart';
 import '../../../etat_parc/presentation/providers/etat_parc_provider.dart';
-import '../../../vehicule/domain/entities/vehicule.dart';
-import '../../../vehicule/presentation/pages/vehicule_selector_page.dart';
 import '../../domain/entities/maintenance.dart';
 import '../../domain/entities/synthese_maintenances.dart';
 import '../providers/maintenance_provider.dart';
@@ -58,9 +56,6 @@ class _LignesMaintenancePageState
   bool     _enRetard           = false;
   String   _recherche          = '';
   bool     _rechercheOuverte   = false;
-
-  int?    _vehiculeId;
-  String? _vehiculeImmatriculation;
 
   /// Types cochés dans la mosaïque (identifiants de catégorie).
   final Set<int> _typesCoches = {};
@@ -165,7 +160,6 @@ class _LignesMaintenancePageState
             dateDebut: _jour(debut),
             dateFin: _jour(fin),
             statut: _statutFiltre,
-            vehiculeId: _vehiculeId,
             recherche: _recherche,
             categorieTypeIds: types,
             enRetard: _enRetard,
@@ -180,7 +174,6 @@ class _LignesMaintenancePageState
     final result = await ref.read(maintenanceRepositoryProvider).getSynthese(
           dateDebut: _jour(debut),
           dateFin: _jour(fin),
-          vehiculeId: _vehiculeId,
           recherche: _recherche,
           categorieTypeIds: _typesCoches.toList(),
         );
@@ -235,27 +228,6 @@ class _LignesMaintenancePageState
     setState(() {
       _statutFiltre = enRetard ? null : statut;
       _enRetard = enRetard;
-    });
-    _load();
-  }
-
-  Future<void> _choisirVehicule() async {
-    final result = await Navigator.push<Vehicule>(
-      context,
-      MaterialPageRoute(builder: (_) => const VehiculeSelectorPage()),
-    );
-    if (result == null || !mounted) return;
-    setState(() {
-      _vehiculeId = result.id;
-      _vehiculeImmatriculation = result.immatriculation;
-    });
-    _load();
-  }
-
-  void _effacerVehicule() {
-    setState(() {
-      _vehiculeId = null;
-      _vehiculeImmatriculation = null;
     });
     _load();
   }
@@ -707,10 +679,6 @@ class _LignesMaintenancePageState
                                 periodeDebut:      _periodeDebut,
                                 periodeFin:        _periodeFin,
                                 onPickPeriode:     _pickPeriode,
-                                vehiculeImmatriculation:
-                                    _vehiculeImmatriculation,
-                                onPickVehicule:    _choisirVehicule,
-                                onEffacerVehicule: _effacerVehicule,
                               ),
                               if (types.isNotEmpty)
                                 _MosaiqueTypes(
@@ -909,7 +877,7 @@ class _SearchBar extends StatelessWidget {
             onChanged: onSearchChanged,
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
-              hintText: 'Type, immatriculation, prestataire…',
+              hintText: 'Type, élément, immatriculation, prestataire…',
               hintStyle: TextStyle(color: AppColors.hint, fontSize: 14),
               border: InputBorder.none,
               // Le cadre est porté par la boîte grise : sans cela, le thème
@@ -941,7 +909,7 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-// ── Barre filtre date + véhicule ──────────────────────────────────────────────
+// ── Barre filtre date ──────────────────────────────────────────────
 
 class _FiltreBar extends StatelessWidget {
   final _FiltreMode? mode;
@@ -957,9 +925,6 @@ class _FiltreBar extends StatelessWidget {
   final DateTime periodeDebut;
   final DateTime periodeFin;
   final VoidCallback onPickPeriode;
-  final String? vehiculeImmatriculation;
-  final VoidCallback onPickVehicule;
-  final VoidCallback onEffacerVehicule;
 
   const _FiltreBar({
     required this.mode,
@@ -975,9 +940,6 @@ class _FiltreBar extends StatelessWidget {
     required this.periodeDebut,
     required this.periodeFin,
     required this.onPickPeriode,
-    required this.vehiculeImmatriculation,
-    required this.onPickVehicule,
-    required this.onEffacerVehicule,
   });
 
   @override
@@ -1049,17 +1011,8 @@ class _FiltreBar extends StatelessWidget {
             ]),
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(flex: 3, child: datePill),
-        const SizedBox(width: 8),
-        Flexible(
-          flex: 2,
-          child: _VehiculePill(
-            immatriculation: vehiculeImmatriculation,
-            onTap: onPickVehicule,
-            onEffacer: onEffacerVehicule,
-          ),
-        ),
+        const SizedBox(width: 10),
+        Expanded(child: datePill),
       ]),
     );
   }
@@ -1096,58 +1049,6 @@ class _DatePill extends StatelessWidget {
           const SizedBox(width: 5),
           Icon(Icons.keyboard_arrow_down_rounded,
               size: 14, color: AppColors.grey600),
-        ]),
-      ),
-    );
-  }
-}
-
-/// Filtre véhicule : le sélecteur de véhicules existant, et une croix pour
-/// revenir à toute la flotte.
-class _VehiculePill extends StatelessWidget {
-  final String? immatriculation;
-  final VoidCallback onTap;
-  final VoidCallback onEffacer;
-
-  const _VehiculePill({
-    required this.immatriculation,
-    required this.onTap,
-    required this.onEffacer,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final actif = immatriculation != null;
-    final couleur = actif ? AppColors.primary : AppColors.grey600;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: actif
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : AppColors.grey200,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(children: [
-          Icon(Icons.directions_car_outlined, size: 13, color: couleur),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(immatriculation ?? 'Véhicule',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: actif ? AppColors.primary : AppColors.grey700,
-                    fontWeight: actif ? FontWeight.w700 : FontWeight.w500),
-                overflow: TextOverflow.ellipsis),
-          ),
-          const SizedBox(width: 4),
-          if (actif)
-            GestureDetector(
-              onTap: onEffacer,
-              child: Icon(Icons.close_rounded, size: 14, color: couleur),
-            )
-          else
-            Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: couleur),
         ]),
       ),
     );
@@ -1270,9 +1171,9 @@ class _TuileType extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visuel = TypeMaintenanceVisuel.de(
-        code: type.code, libelle: type.libelle, id: type.categorieTypeId);
-    final couleur = visuel.couleur;
+    final icone =
+        TypeMaintenanceVisuel.icone(code: type.code, libelle: type.libelle);
+    final couleur = AppColors.primary;
 
     return Semantics(
       button: true,
@@ -1316,7 +1217,7 @@ class _TuileType extends StatelessWidget {
                     color: couleur.withValues(alpha: 0.14),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(visuel.icone, size: 16, color: couleur),
+                  child: Icon(icone, size: 16, color: couleur),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1409,9 +1310,7 @@ class _RangeeTypes extends StatelessWidget {
         itemBuilder: (_, i) {
           final t = types[i];
           final coche = coches.contains(t.categorieTypeId);
-          final couleur = TypeMaintenanceVisuel.de(
-                  code: t.code, libelle: t.libelle, id: t.categorieTypeId)
-              .couleur;
+          final couleur = AppColors.primary;
           return GestureDetector(
             onTap: () => onToggle(t.categorieTypeId),
             child: Container(
@@ -1513,8 +1412,8 @@ class _TousTypesSheet extends StatelessWidget {
               itemBuilder: (_, i) {
                 final t = types[i];
                 final coche = coches.contains(t.categorieTypeId);
-                final visuel = TypeMaintenanceVisuel.de(
-                    code: t.code, libelle: t.libelle, id: t.categorieTypeId);
+                final icone = TypeMaintenanceVisuel.icone(
+                    code: t.code, libelle: t.libelle);
                 return GestureDetector(
                   onTap: () => onToggle(t.categorieTypeId),
                   child: Container(
@@ -1525,7 +1424,7 @@ class _TousTypesSheet extends StatelessWidget {
                       color: AppColors.blanc,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: coche ? visuel.couleur : Colors.transparent,
+                        color: coche ? AppColors.primary : Colors.transparent,
                         width: 1.5,
                       ),
                     ),
@@ -1534,11 +1433,11 @@ class _TousTypesSheet extends StatelessWidget {
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
-                          color: visuel.couleur.withValues(alpha: 0.14),
+                          color: AppColors.primary.withValues(alpha: 0.14),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(visuel.icone,
-                            size: 18, color: visuel.couleur),
+                        child: Icon(icone,
+                            size: 18, color: AppColors.primary),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1563,7 +1462,7 @@ class _TousTypesSheet extends StatelessWidget {
                         coche
                             ? Icons.check_circle_rounded
                             : Icons.radio_button_unchecked_rounded,
-                        color: coche ? visuel.couleur : AppColors.grey400,
+                        color: coche ? AppColors.primary : AppColors.grey400,
                         size: 22,
                       ),
                     ]),
@@ -1727,8 +1626,8 @@ class _MaintenanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final m      = maintenance;
     final statut = m.statut ?? 'PLANIFIEE';
-    final visuel = TypeMaintenanceVisuel.de(
-        code: m.type, libelle: m.categorieTypeLibelle, id: m.categorieTypeId);
+    final icone = TypeMaintenanceVisuel.icone(
+        code: m.type, libelle: m.categorieTypeLibelle);
     final couleurStatut = StatutMaintenanceVisuel.couleur(statut);
     final retard = StatutMaintenanceVisuel.joursDeRetard(statut, m.datePrevue);
 
@@ -1759,15 +1658,15 @@ class _MaintenanceCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // La pastille d'icône porte la couleur du type : c'est elle qui se
-          // repère d'un coup d'œil dans la liste, le statut a son badge.
+          // La pastille d'icône reste à l'accent du thème : l'icône suffit à
+          // distinguer le type, le statut a son badge.
           Container(
             width: 42, height: 42,
             decoration: BoxDecoration(
-              color: visuel.couleur.withValues(alpha: 0.12),
+              color: AppColors.primary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(visuel.icone, color: visuel.couleur, size: 20),
+            child: Icon(icone, color: AppColors.primary, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1905,8 +1804,8 @@ class _ActionsRapidesSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = maintenance;
-    final visuel = TypeMaintenanceVisuel.de(
-        code: m.type, libelle: m.categorieTypeLibelle, id: m.categorieTypeId);
+    final icone = TypeMaintenanceVisuel.icone(
+        code: m.type, libelle: m.categorieTypeLibelle);
     final retard =
         StatutMaintenanceVisuel.joursDeRetard(m.statut, m.datePrevue);
     final libelle = m.categorieTypeLibelle?.isNotEmpty == true
@@ -1933,10 +1832,10 @@ class _ActionsRapidesSheet extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: visuel.couleur.withValues(alpha: 0.14),
+                color: AppColors.primary.withValues(alpha: 0.14),
                 shape: BoxShape.circle,
               ),
-              child: Icon(visuel.icone, size: 20, color: visuel.couleur),
+              child: Icon(icone, size: 20, color: AppColors.primary),
             ),
             const SizedBox(width: 12),
             Expanded(
