@@ -58,7 +58,8 @@ class SessionManager with WidgetsBindingObserver {
 
   /// Une sortie lancée par l'application peut quitter l'écran juste après que
   /// son appel a rendu la main (lien ouvert dans une autre application) : elle
-  /// reste « voulue » pendant ce délai.
+  /// reste « voulue » pendant ce délai. Il suffit que l'écran commence à céder
+  /// la place (inactive) dans ce délai : voir [_departVoulu].
   static const _delaiApresSortie = Duration(seconds: 3);
 
   static const _msgSessionExpiree =
@@ -86,6 +87,16 @@ class SessionManager with WidgetsBindingObserver {
   /// Sorties voulues en cours (voir [sortieAttendue]), et fin de la dernière.
   int _sortiesEnCours = 0;
   DateTime? _finDerniereSortie;
+
+  /// L'écran a commencé à céder la place (inactive) pendant une sortie voulue :
+  /// le départ qui suit est le sien, si tard qu'il arrive.
+  ///
+  /// Android ne signale le départ (paused) qu'une fois l'autre application
+  /// affichée et prête — plusieurs secondes quand WhatsApp démarre à froid sur
+  /// un petit téléphone — et la feuille de partage, posée par-dessus, ne le
+  /// signale qu'au choix du destinataire. Le premier signal (inactive), lui,
+  /// arrive aussitôt.
+  bool _departVoulu = false;
 
   /// Abonnement au verrouillage de l'appareil (canal natif).
   StreamSubscription<void>? _deviceLockSub;
@@ -155,6 +166,7 @@ class SessionManager with WidgetsBindingObserver {
     // verrouillage pendant une sortie voulue, la sortie suivante passerait
     // pour la même et ne verrouillerait plus.
     _backgroundedAt = null;
+    _departVoulu = false;
     if (_started) {
       _started = false;
       WidgetsBinding.instance.removeObserver(this);
@@ -202,6 +214,7 @@ class SessionManager with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        _departVoulu = false;
         final backgroundedAt = _backgroundedAt;
         _backgroundedAt = null;
         if (backgroundedAt != null &&
@@ -218,15 +231,18 @@ class SessionManager with WidgetsBindingObserver {
         _restartInactivityTimer();
       case AppLifecycleState.inactive:
         // Volet de notifications, centre de contrôle, invite système : l'écran
-        // reste celui de l'application, rien à verrouiller.
-        break;
+        // reste celui de l'application, rien à verrouiller. Pendant une sortie
+        // voulue, c'est en revanche le début du départ : on le retient.
+        if (_started && _sortieVoulue) _departVoulu = true;
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
         // Déjà sous clé, ou hidden puis paused d'une même sortie : déjà traité.
         if (!_started || _backgroundedAt != null) return;
         _proactiveTimer?.cancel();
         _inactivityTimer?.cancel();
-        if (_sortieVoulue) {
+        final voulue = _sortieVoulue || _departVoulu;
+        _departVoulu = false;
+        if (voulue) {
           // L'application a ouvert l'appareil photo, un sélecteur, un partage :
           // elle attend un résultat, on note seulement l'heure du départ.
           _backgroundedAt = _maintenant();

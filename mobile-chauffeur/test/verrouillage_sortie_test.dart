@@ -113,6 +113,56 @@ void main() {
     expect(verrous, [LockReason.arrierePlan]);
   });
 
+  test('WhatsApp lent à s\'afficher : la sortie reste voulue', () async {
+    await session.sortieAttendue(() async => 'WHATSAPP'); // rend la main aussitôt
+    cycle(AppLifecycleState.inactive);
+    // Android ne signale le départ qu'une fois WhatsApp prêt.
+    maintenant = maintenant.add(const Duration(seconds: 8));
+    cycle(AppLifecycleState.hidden);
+    cycle(AppLifecycleState.paused);
+    maintenant = maintenant.add(const Duration(minutes: 3));
+    cycle(AppLifecycleState.resumed);
+    await laisserPasser();
+
+    expect(verrous, isEmpty);
+  });
+
+  test('feuille de partage : le choix du destinataire peut prendre son temps',
+      () async {
+    await session.sortieAttendue(() async => 'PARTAGE');
+    cycle(AppLifecycleState.inactive); // la feuille se pose par-dessus
+    maintenant = maintenant.add(const Duration(seconds: 30));
+    cycle(AppLifecycleState.paused); // destinataire choisi
+    await laisserPasser();
+
+    expect(verrous, isEmpty);
+  });
+
+  test('feuille de partage refermée : la sortie suivante verrouille',
+      () async {
+    await session.sortieAttendue(() async => 'PARTAGE');
+    cycle(AppLifecycleState.inactive);
+    maintenant = maintenant.add(const Duration(seconds: 10));
+    cycle(AppLifecycleState.resumed); // retour sans rien choisir
+    maintenant = maintenant.add(const Duration(seconds: 10));
+    cycle(AppLifecycleState.inactive);
+    cycle(AppLifecycleState.paused);
+    await laisserPasser();
+
+    expect(verrous, [LockReason.arrierePlan]);
+  });
+
+  test('volet de notifications hors partage, puis départ : verrouillage',
+      () async {
+    await session.sortieAttendue(() async => true);
+    maintenant = maintenant.add(const Duration(seconds: 5));
+    cycle(AppLifecycleState.inactive);
+    cycle(AppLifecycleState.paused);
+    await laisserPasser();
+
+    expect(verrous, [LockReason.arrierePlan]);
+  });
+
   test('verrouillée pendant une sortie voulue : la sortie suivante verrouille',
       () async {
     final photo = Completer<String>();
