@@ -70,7 +70,13 @@ void _showToast(BuildContext context, String message, {bool error = false}) {
 
 class MaintenanceFormPage extends ConsumerStatefulWidget {
   final Maintenance? initial;
-  const MaintenanceFormPage({super.key, this.initial});
+
+  /// Type déjà choisi pour une création, quand on arrive d'une tuile de type
+  /// de la liste (« Nouvelle vidange »). Ignoré en modification.
+  final int? categorieTypeInitialeId;
+
+  const MaintenanceFormPage(
+      {super.key, this.initial, this.categorieTypeInitialeId});
 
   @override
   ConsumerState<MaintenanceFormPage> createState() =>
@@ -390,6 +396,8 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                             onChanged: (cat) =>
                                 setState(() => _categorieType = cat),
                             initial: widget.initial,
+                            categorieTypeInitialeId:
+                                widget.categorieTypeInitialeId,
                             onInitResolved: (cat) {
                               if (_categorieType == null && cat != null) {
                                 setState(() => _categorieType = cat);
@@ -859,12 +867,14 @@ class _TypeDropdown extends ConsumerStatefulWidget {
   final CategorieOperation? selected;
   final void Function(CategorieOperation?) onChanged;
   final Maintenance? initial;
+  final int? categorieTypeInitialeId;
   final void Function(CategorieOperation?) onInitResolved;
 
   const _TypeDropdown({
     required this.selected,
     required this.onChanged,
     required this.initial,
+    required this.categorieTypeInitialeId,
     required this.onInitResolved,
   });
 
@@ -879,11 +889,13 @@ class _TypeDropdownState extends ConsumerState<_TypeDropdown> {
     final isLoading = async is AsyncLoading;
     final categories = async.value ?? [];
 
-    // Pré-sélectionner si édition et pas encore résolu
-    if (widget.selected == null && widget.initial?.categorieTypeId != null) {
-      final found = categories
-          .where((c) => c.id == widget.initial!.categorieTypeId)
-          .firstOrNull;
+    // Pré-sélectionner si édition (ou type imposé à la création) et pas encore
+    // résolu.
+    final idInitial = widget.initial != null
+        ? widget.initial!.categorieTypeId
+        : widget.categorieTypeInitialeId;
+    if (widget.selected == null && idInitial != null) {
+      final found = categories.where((c) => c.id == idInitial).firstOrNull;
       if (found != null) {
         Future.microtask(() => widget.onInitResolved(found));
       }

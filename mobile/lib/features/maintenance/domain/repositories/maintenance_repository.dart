@@ -3,6 +3,7 @@ import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/network/page_result.dart';
 import '../entities/maintenance.dart';
+import '../entities/synthese_maintenances.dart';
 
 abstract interface class MaintenanceRepository {
   Future<Either<Failure, List<Maintenance>>> getMaintenances({
@@ -14,6 +15,8 @@ abstract interface class MaintenanceRepository {
 
   /// [recherche] : mot-clé libre confronté côté serveur au type de maintenance,
   /// à l'immatriculation du véhicule et au nom du prestataire.
+  /// [categorieTypeIds] : types retenus, vide pour tous. [enRetard] : seules
+  /// les planifiées dont la date prévue est passée.
   Future<Either<Failure, PageResult<Maintenance>>> getMaintenancesPage({
     int page,
     int size,
@@ -22,6 +25,18 @@ abstract interface class MaintenanceRepository {
     String? statut,
     int? vehiculeId,
     String? recherche,
+    List<int> categorieTypeIds,
+    bool enRetard,
+  });
+
+  /// Compteurs de la page Maintenances sur la même sélection que la liste,
+  /// sans le statut : ils servent à le choisir.
+  Future<Either<Failure, SyntheseMaintenances>> getSynthese({
+    String? dateDebut,
+    String? dateFin,
+    int? vehiculeId,
+    String? recherche,
+    List<int> categorieTypeIds,
   });
   Future<Either<Failure, Maintenance>> getMaintenanceById(int id);
   /// Planifie une intervention. Si sa date prévue est passée, le serveur la

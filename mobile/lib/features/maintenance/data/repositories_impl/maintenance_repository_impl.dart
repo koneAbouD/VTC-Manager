@@ -4,6 +4,7 @@ import '../../../../core/error/exception.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/network/page_result.dart';
 import '../../domain/entities/maintenance.dart';
+import '../../domain/entities/synthese_maintenances.dart';
 import '../../domain/repositories/maintenance_repository.dart';
 import '../datasources/maintenance_remote_datasource.dart';
 import '../models/maintenance_model.dart';
@@ -45,6 +46,8 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
     String? statut,
     int? vehiculeId,
     String? recherche,
+    List<int> categorieTypeIds = const [],
+    bool enRetard = false,
   }) async {
     try {
       final result = await _datasource.getMaintenancesPage(
@@ -55,6 +58,34 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
         statut: statut,
         vehiculeId: vehiculeId,
         recherche: recherche,
+        categorieTypeIds: categorieTypeIds,
+        enRetard: enRetard,
+      );
+      return Right(result);
+    } on ApiException catch (e) {
+      return Left(_mapApiException(e));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, SyntheseMaintenances>> getSynthese({
+    String? dateDebut,
+    String? dateFin,
+    int? vehiculeId,
+    String? recherche,
+    List<int> categorieTypeIds = const [],
+  }) async {
+    try {
+      final result = await _datasource.getSynthese(
+        dateDebut: dateDebut,
+        dateFin: dateFin,
+        vehiculeId: vehiculeId,
+        recherche: recherche,
+        categorieTypeIds: categorieTypeIds,
       );
       return Right(result);
     } on ApiException catch (e) {

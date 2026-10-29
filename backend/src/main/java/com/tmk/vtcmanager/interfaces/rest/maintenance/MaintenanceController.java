@@ -1,6 +1,7 @@
 package com.tmk.vtcmanager.interfaces.rest.maintenance;
 
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
+import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceFiltres;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import com.tmk.vtcmanager.application.usecases.maintenance.AnnulerMaintenanceUseCase;
 import com.tmk.vtcmanager.application.usecases.maintenance.RestaurerMaintenanceUseCase;
@@ -18,6 +19,7 @@ import com.tmk.vtcmanager.interfaces.rest.common.PageResponse;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.request.CompleteMaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.request.MaintenanceRequest;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.response.MaintenanceResponse;
+import com.tmk.vtcmanager.interfaces.rest.maintenance.dto.response.SyntheseMaintenancesResponse;
 import com.tmk.vtcmanager.interfaces.rest.maintenance.mapper.MaintenanceRestMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -81,18 +83,39 @@ public class MaintenanceController {
             @RequestParam(required = false) LocalDate dateFin,
             @RequestParam(required = false) MaintenanceStatus statut,
             @RequestParam(required = false) String recherche,
+            @RequestParam(required = false) List<Long> categorieTypeIds,
+            @RequestParam(defaultValue = "false") boolean enRetard,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         // Les bornes des arrêtés sont lues une seule fois, puis appliquées en
         // mémoire : marquer une page ne doit pas coûter deux requêtes par ligne.
         var verrous = verrouArreteService.verrous();
+        var filtres = new MaintenanceFiltres(dateDebut, dateFin, statut, vehiculeId, recherche,
+                categorieTypeIds, enRetard);
         var result = getAllMaintenancesUseCase
-                .executePage(vehiculeId, dateDebut, dateFin, statut, recherche, page, size)
+                .executePage(filtres, page, size)
                 .map(m -> {
                     m.setRestaurable(verrous.autorise(m.getDatePrevue()));
                     return mapper.toResponse(m);
                 });
         return PageResponse.from(result);
+    }
+
+    /**
+     * Compteurs de l'écran de liste (tuiles de types, pastilles de statut,
+     * retard) sur la même sélection que {@code /page}. Le statut n'y figure
+     * pas : ces compteurs servent à le choisir.
+     */
+    @GetMapping("/synthese")
+    public SyntheseMaintenancesResponse synthese(
+            @RequestParam(required = false) Long vehiculeId,
+            @RequestParam(required = false) LocalDate dateDebut,
+            @RequestParam(required = false) LocalDate dateFin,
+            @RequestParam(required = false) String recherche,
+            @RequestParam(required = false) List<Long> categorieTypeIds) {
+        var filtres = new MaintenanceFiltres(dateDebut, dateFin, null, vehiculeId, recherche,
+                categorieTypeIds, false);
+        return SyntheseMaintenancesResponse.from(getAllMaintenancesUseCase.synthese(filtres));
     }
 
     @GetMapping("/{id:\\d+}")

@@ -1,6 +1,7 @@
 import '../../../../core/error/exception.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/page_result.dart';
+import '../../domain/entities/synthese_maintenances.dart';
 import '../models/maintenance_model.dart';
 
 class MaintenanceRemoteDatasource {
@@ -16,6 +17,8 @@ class MaintenanceRemoteDatasource {
     String? statut,
     int? vehiculeId,
     String? recherche,
+    List<int> categorieTypeIds = const [],
+    bool enRetard = false,
   }) async {
     final query = <String, String>{
       'page': '$page',
@@ -26,12 +29,40 @@ class MaintenanceRemoteDatasource {
       if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
       if (recherche != null && recherche.trim().isNotEmpty)
         'recherche': recherche.trim(),
+      if (categorieTypeIds.isNotEmpty)
+        'categorieTypeIds': categorieTypeIds.join(','),
+      if (enRetard) 'enRetard': 'true',
     };
     final data = await _client.get('/maintenances/page', query: query);
     if (data is! Map<String, dynamic>) {
       throw const ApiException(500, 'Format de réponse inattendu');
     }
     return PageResult.fromJson(data, (e) => MaintenanceModel.fromJson(e));
+  }
+
+  /// Compteurs de l'écran (tuiles de types, pastilles de statut, retard) via
+  /// `GET /maintenances/synthese`, sur la même sélection que la liste.
+  Future<SyntheseMaintenances> getSynthese({
+    String? dateDebut,
+    String? dateFin,
+    int? vehiculeId,
+    String? recherche,
+    List<int> categorieTypeIds = const [],
+  }) async {
+    final query = <String, String>{
+      if (dateDebut != null) 'dateDebut': dateDebut,
+      if (dateFin != null) 'dateFin': dateFin,
+      if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
+      if (recherche != null && recherche.trim().isNotEmpty)
+        'recherche': recherche.trim(),
+      if (categorieTypeIds.isNotEmpty)
+        'categorieTypeIds': categorieTypeIds.join(','),
+    };
+    final data = await _client.get('/maintenances/synthese', query: query);
+    if (data is! Map<String, dynamic>) {
+      throw const ApiException(500, 'Format de réponse inattendu');
+    }
+    return SyntheseMaintenances.fromJson(data);
   }
 
   Future<List<MaintenanceModel>> getMaintenances({

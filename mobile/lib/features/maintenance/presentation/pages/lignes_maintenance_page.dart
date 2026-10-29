@@ -1,14 +1,23 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/widgets/date_filter_dialogs.dart';
+import '../../../../core/widgets/motif_annulation_dialog.dart';
+import '../../../etat_parc/presentation/providers/etat_parc_provider.dart';
+import '../../../vehicule/domain/entities/vehicule.dart';
+import '../../../vehicule/presentation/pages/vehicule_selector_page.dart';
 import '../../domain/entities/maintenance.dart';
+import '../../domain/entities/synthese_maintenances.dart';
 import '../providers/maintenance_provider.dart';
 import '../../../../core/pagination/paged_list_notifier.dart';
+import '../widgets/maintenance_visuels.dart';
+import '../widgets/terminer_maintenance_dialog.dart';
 import 'maintenance_detail_page.dart';
 import 'maintenance_form_page.dart';
 import '../../../../screens/finance/finance_refresh.dart';
@@ -17,6 +26,9 @@ import '../../../../core/widgets/statut_filtre_chip.dart';
 // ── Constantes ────────────────────────────────────────────────────────────────
 
 enum _FiltreMode { mois, semaine, jour, periode }
+
+/// Tuiles affichées avant « Tout voir » : trois rangées de deux.
+const _kTuilesVisibles = 6;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -39,10 +51,39 @@ class _LignesMaintenancePageState
   DateTime _periodeDebut       =
       DateTime.now().subtract(const Duration(days: 30));
   DateTime _periodeFin         = DateTime.now();
+
+  /// Statut choisi ; exclusif avec [_enRetard], qui en est un sous-ensemble
+  /// calculé (planifiée dont la date est passée).
   String?  _statutFiltre;
+  bool     _enRetard           = false;
   String   _recherche          = '';
+  bool     _rechercheOuverte   = false;
+
+  int?    _vehiculeId;
+  String? _vehiculeImmatriculation;
+
+  /// Types cochés dans la mosaïque (identifiants de catégorie).
+  final Set<int> _typesCoches = {};
+
+  /// Compteurs de l'écran, calculés par le serveur. Null pendant le premier
+  /// chargement ou après un échec : les tuiles se masquent, la liste reste.
+  SyntheseMaintenances? _synthese;
+
+  /// Dernier libellé connu de chaque type : un type coché qui n'a plus
+  /// d'intervention sur la période garde sa tuile, sinon on ne pourrait plus
+  /// le décocher.
+  final Map<int, TotalMaintenanceParType> _typesConnus = {};
+
+  /// Écarte les réponses de synthèse arrivées après une demande plus récente.
+  int _jetonSynthese = 0;
+
+  /// Hauteur des filtres et de la mosaïque : passée cette distance de
+  /// défilement, la mosaïque se replie en une rangée de puces épinglée.
+  double _hauteurEntete = 0;
+  bool   _grilleRepliee = false;
 
   final _searchController  = TextEditingController();
+  final _searchFocus       = FocusNode();
   final _scrollController  = ScrollController();
   OverlayEntry? _overlayEntry;
   final _filtreButtonKey   = GlobalKey();
@@ -50,8 +91,6 @@ class _LignesMaintenancePageState
   /// La recherche part au serveur : on attend une pause de frappe pour ne pas
   /// lancer une requête par caractère.
   Timer? _debounceRecherche;
-
-  static const _statuts = ['PLANIFIEE', 'TERMINEE', 'ANNULEE'];
 
   @override
   void initState() {
@@ -64,6 +103,7 @@ class _LignesMaintenancePageState
   void dispose() {
     _debounceRecherche?.cancel();
     _searchController.dispose();
+    _searchFocus.dispose();
     _scrollController.dispose();
     _overlayEntry?.remove();
     super.dispose();
@@ -75,6 +115,8 @@ class _LignesMaintenancePageState
     if (pos.pixels >= pos.maxScrollExtent - 300) {
       ref.read(maintenancesListeProvider.notifier).loadMore();
     }
+    final repliee = _hauteurEntete > 0 && pos.pixels > _hauteurEntete - 8;
+    if (repliee != _grilleRepliee) setState(() => _grilleRepliee = repliee);
   }
 
   /// Frappe dans la barre de recherche : on laisse retomber la saisie avant
@@ -88,23 +130,76 @@ class _LignesMaintenancePageState
     });
   }
 
-  // ── Chargement (filtres serveur : date + statut + recherche) ──────────────
+  void _basculerRecherche() {
+    if (_rechercheOuverte) {
+      // Refermer la barre vide aussi la recherche : un filtre invisible
+      // laisserait croire que la liste est complète.
+      _searchFocus.unfocus();
+      final avaitTexte = _searchController.text.isNotEmpty;
+      _searchController.clear();
+      _debounceRecherche?.cancel();
+      setState(() {
+        _rechercheOuverte = false;
+        _recherche = '';
+      });
+      if (avaitTexte) _load();
+    } else {
+      setState(() => _rechercheOuverte = true);
+      _searchFocus.requestFocus();
+    }
+  }
+
+  // ── Chargement (filtres serveur) ──────────────────────────────────────────
+
+  String? _jour(DateTime? d) =>
+      d != null ? DateFormat('yyyy-MM-dd').format(d) : null;
 
   void _load() {
     final (debut, fin) = _plageActive();
     final repo = ref.read(maintenanceRepositoryProvider);
+    final types = _typesCoches.toList();
     ref.read(maintenancesListeProvider.notifier).load(
           (page, size) => repo.getMaintenancesPage(
             page: page,
             size: size,
-            dateDebut:
-                debut != null ? DateFormat('yyyy-MM-dd').format(debut) : null,
-            dateFin: fin != null ? DateFormat('yyyy-MM-dd').format(fin) : null,
+            dateDebut: _jour(debut),
+            dateFin: _jour(fin),
             statut: _statutFiltre,
+            vehiculeId: _vehiculeId,
             recherche: _recherche,
+            categorieTypeIds: types,
+            enRetard: _enRetard,
           ),
         );
+    _chargerSynthese();
   }
+
+  Future<void> _chargerSynthese() async {
+    final jeton = ++_jetonSynthese;
+    final (debut, fin) = _plageActive();
+    final result = await ref.read(maintenanceRepositoryProvider).getSynthese(
+          dateDebut: _jour(debut),
+          dateFin: _jour(fin),
+          vehiculeId: _vehiculeId,
+          recherche: _recherche,
+          categorieTypeIds: _typesCoches.toList(),
+        );
+    if (!mounted || jeton != _jetonSynthese) return;
+    result.fold(
+      (_) => setState(() => _synthese = null),
+      (synthese) => setState(() {
+        _synthese = synthese;
+        for (final t in synthese.parType) {
+          _typesConnus[t.categorieTypeId] = t;
+        }
+      }),
+    );
+  }
+
+  Future<void> _refresh() => Future.wait([
+        ref.read(maintenancesListeProvider.notifier).refresh(),
+        _chargerSynthese(),
+      ]);
 
   // (null, null) quand aucun filtre par date n'est actif.
   (DateTime?, DateTime?) _plageActive() => switch (_filtreMode) {
@@ -120,6 +215,70 @@ class _LignesMaintenancePageState
         _FiltreMode.jour    => (_jourSelectionne, _jourSelectionne),
         _FiltreMode.periode => (_periodeDebut, _periodeFin),
       };
+
+  // ── Filtres ───────────────────────────────────────────────────────────────
+
+  void _basculerType(int id) {
+    setState(() {
+      if (!_typesCoches.remove(id)) _typesCoches.add(id);
+    });
+    _load();
+  }
+
+  void _effacerTypes() {
+    if (_typesCoches.isEmpty) return;
+    setState(_typesCoches.clear);
+    _load();
+  }
+
+  void _choisirStatut(String? statut, {bool enRetard = false}) {
+    setState(() {
+      _statutFiltre = enRetard ? null : statut;
+      _enRetard = enRetard;
+    });
+    _load();
+  }
+
+  Future<void> _choisirVehicule() async {
+    final result = await Navigator.push<Vehicule>(
+      context,
+      MaterialPageRoute(builder: (_) => const VehiculeSelectorPage()),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _vehiculeId = result.id;
+      _vehiculeImmatriculation = result.immatriculation;
+    });
+    _load();
+  }
+
+  void _effacerVehicule() {
+    setState(() {
+      _vehiculeId = null;
+      _vehiculeImmatriculation = null;
+    });
+    _load();
+  }
+
+  /// Types présentés en tuiles : ceux de la synthèse, plus les types cochés
+  /// qui n'y figurent plus (aucune intervention sur la nouvelle sélection).
+  List<TotalMaintenanceParType> _typesAffiches() {
+    final synthese = _synthese;
+    if (synthese == null) return const [];
+    final presents = {for (final t in synthese.parType) t.categorieTypeId};
+    return [
+      ...synthese.parType,
+      for (final id in _typesCoches)
+        if (!presents.contains(id) && _typesConnus[id] != null)
+          TotalMaintenanceParType(
+            categorieTypeId: id,
+            code: _typesConnus[id]!.code,
+            libelle: _typesConnus[id]!.libelle,
+            nombre: 0,
+            coutRealise: 0,
+          ),
+    ];
+  }
 
   // ── Overlay filtre mode ───────────────────────────────────────────────────
 
@@ -266,6 +425,198 @@ class _LignesMaintenancePageState
     }
   }
 
+  // ── Navigation et actions rapides ─────────────────────────────────────────
+
+  Future<void> _nouvelle({int? categorieTypeId}) async {
+    final cree = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+          builder: (_) => MaintenanceFormPage(
+              categorieTypeInitialeId: categorieTypeId)),
+    );
+    if (cree == true && mounted) _load();
+  }
+
+  Future<void> _ouvrirFiche(Maintenance m) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MaintenanceDetailPage(maintenance: m),
+      ),
+    );
+    if (result == true && mounted) {
+      _load();
+      refreshFinances(ref);
+    }
+  }
+
+  void _toast(String message, {bool error = false}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Row(children: [
+          Icon(
+            error
+                ? Icons.error_outline_rounded
+                : Icons.check_circle_outline_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(message,
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white)),
+          ),
+        ]),
+        backgroundColor: error ? AppColors.error : AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration:
+            error ? const Duration(seconds: 4) : const Duration(seconds: 2),
+      ));
+  }
+
+  /// Après une action rapide : la liste, ses compteurs et l'état du véhicule
+  /// (immobilisation, retour en service) ont pu changer.
+  void _apresAction(String message) {
+    _toast(message);
+    _load();
+    ref.invalidate(etatParcSummaryProvider);
+  }
+
+  Future<void> _actionsRapides(Maintenance m) async {
+    HapticFeedback.mediumImpact();
+    final action = await showModalBottomSheet<_ActionRapide>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: AppColors.scaffold,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _ActionsRapidesSheet(maintenance: m),
+    );
+    if (action == null || !mounted) return;
+    switch (action) {
+      case _ActionRapide.terminer:
+        await _terminer(m);
+      case _ActionRapide.reporter:
+        await _reporter(m);
+      case _ActionRapide.annuler:
+        await _annuler(m);
+      case _ActionRapide.fiche:
+        await _ouvrirFiche(m);
+    }
+  }
+
+  String _libelleType(Maintenance m) =>
+      m.categorieTypeLibelle?.isNotEmpty == true
+          ? m.categorieTypeLibelle!
+          : m.type;
+
+  Future<void> _terminer(Maintenance m) async {
+    final choix = await showTerminerMaintenanceDialog(
+      context,
+      titre: 'Terminer la maintenance',
+      message: 'Renseignez le coût réel des travaux pour clôturer cette '
+          'maintenance.',
+      typeLabel: _libelleType(m),
+      partenaireNom: m.partenaireNom,
+      elements: m.detailMaintenance?.elements ?? const [],
+    );
+    if (choix == null || !mounted) return;
+    final result = await ref.read(maintenanceRepositoryProvider)
+        .completeMaintenance(m.id!, choix.cout,
+            aCredit: choix.aCredit, dateEcheance: choix.echeance);
+    if (!mounted) return;
+    result.fold(
+      (failure) => _toast(failure.message, error: true),
+      (_) {
+        // Une clôture produit une dépense, ou une dette envers le
+        // prestataire : les écrans Finances doivent la montrer sans attendre.
+        refreshFinances(ref);
+        _apresAction('Maintenance terminée');
+      },
+    );
+  }
+
+  Future<void> _reporter(Maintenance m) async {
+    final now = DateTime.now();
+    final aujourdhui = DateTime(now.year, now.month, now.day);
+    // Reporter, c'est repousser : la nouvelle date part d'aujourd'hui. Une
+    // date passée ferait passer l'intervention pour déjà réalisée.
+    final nouvelle = await showDialog<DateTime>(
+      context: context,
+      builder: (_) => SingleDatePickerDialog(
+        initialDate:
+            m.datePrevue.isBefore(aujourdhui) ? aujourdhui : m.datePrevue,
+        firstDate: aujourdhui,
+        lastDate: DateTime(2100),
+      ),
+    );
+    if (nouvelle == null || !mounted) return;
+    final result = await ref.read(maintenanceRepositoryProvider)
+        .updateMaintenance(m.id!, m.copyWith(datePrevue: nouvelle));
+    if (!mounted) return;
+    result.fold(
+      (failure) => _toast(failure.message, error: true),
+      (_) => _apresAction(
+          'Reportée au ${DateFormat('dd/MM/yyyy').format(nouvelle)}'),
+    );
+  }
+
+  Future<void> _annuler(Maintenance m) async {
+    // Même popup que la fiche : le motif est obligatoire, il reste attaché à
+    // l'intervention abandonnée.
+    final motif = await showMotifAnnulationDialog(
+      context,
+      titre: 'Annuler la maintenance ?',
+      message: 'L\'intervention quittera le programme du véhicule mais restera '
+          'à son historique. Indiquez le motif de l\'annulation.',
+    );
+    if (motif == null || !mounted) return;
+    final result = await ref.read(maintenanceRepositoryProvider)
+        .annulerMaintenance(m.id!, motif);
+    if (!mounted) return;
+    result.fold(
+      (failure) => _toast(failure.message, error: true),
+      (_) => _apresAction('Maintenance annulée'),
+    );
+  }
+
+  // ── Feuille « Tout voir » ─────────────────────────────────────────────────
+
+  Future<void> _toutVoir(NumberFormat money) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.scaffold,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) => _TousTypesSheet(
+          types: _typesAffiches(),
+          coches: _typesCoches,
+          money: money,
+          onToggle: (id) {
+            _basculerType(id);
+            setSheet(() {});
+          },
+          onEffacer: () {
+            _effacerTypes();
+            setSheet(() {});
+          },
+        ),
+      ),
+    );
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -273,16 +624,8 @@ class _LignesMaintenancePageState
     final money = NumberFormat.currency(
         locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
     final state = ref.watch(maintenancesListeProvider);
-    final filtered = state.items;
-
-    // Montant (coût) par statut sur les maintenances chargées, null = total.
-    double sommeCout(bool Function(Maintenance) test) =>
-        filtered.where(test).fold(0.0, (s, m) => s + (m.cout ?? 0));
-    final montantsStatut = <String?, double>{
-      null: sommeCout((_) => true),
-      for (final s in _statuts)
-        s: sommeCout((m) => (m.statut ?? 'PLANIFIEE') == s),
-    };
+    final items = state.items;
+    final types = _typesAffiches();
 
     return Scaffold(
       body: SafeArea(
@@ -294,17 +637,9 @@ class _LignesMaintenancePageState
               color: AppColors.header,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Row(children: [
-                GestureDetector(
+                _BoutonEntete(
+                  icon: Icons.arrow_back_rounded,
                   onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 56, height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.headerButton,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(Icons.arrow_back_rounded,
-                        size: 18, color: AppColors.dark),
-                  ),
                 ),
                 Expanded(
                   child: Text(
@@ -318,112 +653,149 @@ class _LignesMaintenancePageState
                     ),
                   ),
                 ),
-                GestureDetector(
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const MaintenanceFormPage()),
-                    );
-                    _load();
-                  },
-                  child: Container(
-                    width: 56,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.headerButton,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(Icons.add_rounded,
-                        size: 20, color: AppColors.dark),
-                  ),
+                _BoutonEntete(
+                  icon: _rechercheOuverte
+                      ? Icons.search_off_rounded
+                      : Icons.search_rounded,
+                  compact: true,
+                  actif: _rechercheOuverte,
+                  onTap: _basculerRecherche,
+                ),
+                const SizedBox(width: 8),
+                _BoutonEntete(
+                  icon: Icons.add_rounded,
+                  compact: true,
+                  onTap: () => _nouvelle(),
                 ),
               ]),
             ),
 
+            if (_rechercheOuverte)
+              _SearchBar(
+                controller: _searchController,
+                focusNode: _searchFocus,
+                onSearchChanged: _onRechercheChanged,
+              ),
+
             // ── Corps ──────────────────────────────────────────────────
             Expanded(
-              child: state.initialLoading && state.items.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: () => ref
-                          .read(maintenancesListeProvider.notifier)
-                          .refresh(),
-                      child: CustomScrollView(
-                        controller: _scrollController,
-                        slivers: [
-                          SliverToBoxAdapter(
-                            child: _FiltreBar(
-                              mode:              _filtreMode,
-                              filtreKey:         _filtreButtonKey,
-                              onFiltrePressed:   _showFiltreOverlay,
-                              moisSelectionne:   _moisSelectionne,
-                              anneeSelectionnee: _anneeSelectionnee,
-                              onPickMois:        _pickMois,
-                              semaineDebut:      _semaineDebut,
-                              onPickSemaine:     _pickSemaine,
-                              jourSelectionne:   _jourSelectionne,
-                              onPickJour:        _pickJour,
-                              periodeDebut:      _periodeDebut,
-                              periodeFin:        _periodeFin,
-                              onPickPeriode:     _pickPeriode,
-                            ),
-                          ),
-                          SliverToBoxAdapter(
-                            child: _SearchAndStatutBar(
-                              controller:        _searchController,
-                              onSearchChanged:   _onRechercheChanged,
-                              statutSelectionne: _statutFiltre,
-                              onStatutChanged:   (s) {
-                                setState(() => _statutFiltre = s);
-                                _load();
-                              },
-                              statuts: _statuts,
-                              montantsStatut:   montantsStatut,
-                              money:            money,
-                            ),
-                          ),
-                          if (filtered.isEmpty)
-                            const SliverFillRemaining(
-                                hasScrollBody: false, child: _EmptyState())
-                          else
-                            SliverPadding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 10, 16, 24),
-                              sliver: SliverList(
-                                delegate: SliverChildBuilderDelegate(
-                                  (_, i) {
-                                    if (i >= filtered.length) {
-                                      return const PagedListLoadMoreTile();
-                                    }
-                                    final m = filtered[i];
-                                    return _MaintenanceCard(
-                                      maintenance: m,
-                                      money: money,
-                                      onTap: () async {
-                                        final result = await Navigator.push<bool>(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => MaintenanceDetailPage(
-                                              maintenance: m,
-                                            ),
-                                          ),
-                                        );
-                                        if (result == true && mounted) {
-                                          _load();
-                                          refreshFinances(ref);
-                                        }
-                                      },
-                                    );
-                                  },
-                                  childCount:
-                                      filtered.length + (state.hasMore ? 1 : 0),
-                                ),
+              child: Stack(children: [
+                RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: _MesureTaille(
+                          onChange: (taille) =>
+                              _hauteurEntete = taille.height,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _FiltreBar(
+                                mode:              _filtreMode,
+                                filtreKey:         _filtreButtonKey,
+                                onFiltrePressed:   _showFiltreOverlay,
+                                moisSelectionne:   _moisSelectionne,
+                                anneeSelectionnee: _anneeSelectionnee,
+                                onPickMois:        _pickMois,
+                                semaineDebut:      _semaineDebut,
+                                onPickSemaine:     _pickSemaine,
+                                jourSelectionne:   _jourSelectionne,
+                                onPickJour:        _pickJour,
+                                periodeDebut:      _periodeDebut,
+                                periodeFin:        _periodeFin,
+                                onPickPeriode:     _pickPeriode,
+                                vehiculeImmatriculation:
+                                    _vehiculeImmatriculation,
+                                onPickVehicule:    _choisirVehicule,
+                                onEffacerVehicule: _effacerVehicule,
                               ),
+                              if (types.isNotEmpty)
+                                _MosaiqueTypes(
+                                  types: types,
+                                  coches: _typesCoches,
+                                  money: money,
+                                  onToggle: _basculerType,
+                                  onNouvelle: (t) => _nouvelle(
+                                      categorieTypeId: t.categorieTypeId),
+                                  onToutVoir: () => _toutVoir(money),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: _PastillesStatut(
+                          synthese: _synthese,
+                          statut: _statutFiltre,
+                          enRetard: _enRetard,
+                          onChoisir: _choisirStatut,
+                        ),
+                      ),
+                      if (state.initialLoading && items.isEmpty)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (items.isEmpty)
+                        const SliverFillRemaining(
+                            hasScrollBody: false, child: _EmptyState())
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (_, i) {
+                                if (i >= items.length) {
+                                  return const PagedListLoadMoreTile();
+                                }
+                                final m = items[i];
+                                return _MaintenanceCard(
+                                  maintenance: m,
+                                  money: money,
+                                  onTap: () => _ouvrirFiche(m),
+                                  onLongPress: m.estModifiable
+                                      ? () => _actionsRapides(m)
+                                      : null,
+                                );
+                              },
+                              childCount:
+                                  items.length + (state.hasMore ? 1 : 0),
                             ),
-                        ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // ── Mosaïque repliée, épinglée au défilement ─────────────
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: IgnorePointer(
+                    ignoring: !_grilleRepliee || types.isEmpty,
+                    child: AnimatedSlide(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      offset: _grilleRepliee && types.isNotEmpty
+                          ? Offset.zero
+                          : const Offset(0, -1),
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: _grilleRepliee && types.isNotEmpty ? 1 : 0,
+                        child: _RangeeTypes(
+                          types: types,
+                          coches: _typesCoches,
+                          onToggle: _basculerType,
+                        ),
                       ),
                     ),
+                  ),
+                ),
+              ]),
             ),
           ],
         ),
@@ -432,7 +804,144 @@ class _LignesMaintenancePageState
   }
 }
 
-// ── Barre filtre date ─────────────────────────────────────────────────────────
+// ── Mesure de la hauteur de l'en-tête défilant ───────────────────────────────
+
+/// Signale la taille de son enfant après chaque mise en page où elle change :
+/// la page en déduit le seuil où la mosaïque se replie.
+class _MesureTaille extends SingleChildRenderObjectWidget {
+  final ValueChanged<Size> onChange;
+
+  const _MesureTaille({required this.onChange, required Widget super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderMesureTaille(onChange);
+
+  @override
+  void updateRenderObject(
+      BuildContext context, _RenderMesureTaille renderObject) {
+    renderObject.onChange = onChange;
+  }
+}
+
+class _RenderMesureTaille extends RenderProxyBox {
+  ValueChanged<Size> onChange;
+  Size? _derniere;
+
+  _RenderMesureTaille(this.onChange);
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final taille = size;
+    if (taille == _derniere) return;
+    _derniere = taille;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onChange(taille));
+  }
+}
+
+// ── En-tête ───────────────────────────────────────────────────────────────────
+
+class _BoutonEntete extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool compact;
+  final bool actif;
+
+  const _BoutonEntete({
+    required this.icon,
+    required this.onTap,
+    this.compact = false,
+    this.actif = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: compact ? 40 : 56,
+        height: 38,
+        decoration: BoxDecoration(
+          color: actif
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : AppColors.headerButton,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Icon(icon,
+            size: compact ? 19 : 18,
+            color: actif ? AppColors.primary : AppColors.dark),
+      ),
+    );
+  }
+}
+
+class _SearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final void Function(String) onSearchChanged;
+
+  const _SearchBar({
+    required this.controller,
+    required this.focusNode,
+    required this.onSearchChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt qu'un
+        // blanc avec ombre portée ; contour à l'accent pendant la saisie.
+        color: AppColors.fieldFill,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary, width: 1.5),
+      ),
+      child: Row(children: [
+        Icon(Icons.search, color: AppColors.hint, size: 20),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            onChanged: onSearchChanged,
+            style: const TextStyle(fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Type, immatriculation, prestataire…',
+              hintStyle: TextStyle(color: AppColors.hint, fontSize: 14),
+              border: InputBorder.none,
+              // Le cadre est porté par la boîte grise : sans cela, le thème
+              // dessinerait son propre fond et son contour à l'intérieur.
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        // Croix d'effacement : la recherche partant au serveur, il faut
+        // pouvoir revenir à la liste complète sans effacer au clavier.
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (_, value, __) => value.text.isEmpty
+              ? const SizedBox.shrink()
+              : GestureDetector(
+                  onTap: () {
+                    controller.clear();
+                    onSearchChanged('');
+                  },
+                  child: Icon(Icons.close_rounded,
+                      size: 18, color: AppColors.hint),
+                ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── Barre filtre date + véhicule ──────────────────────────────────────────────
 
 class _FiltreBar extends StatelessWidget {
   final _FiltreMode? mode;
@@ -448,6 +957,9 @@ class _FiltreBar extends StatelessWidget {
   final DateTime periodeDebut;
   final DateTime periodeFin;
   final VoidCallback onPickPeriode;
+  final String? vehiculeImmatriculation;
+  final VoidCallback onPickVehicule;
+  final VoidCallback onEffacerVehicule;
 
   const _FiltreBar({
     required this.mode,
@@ -463,6 +975,9 @@ class _FiltreBar extends StatelessWidget {
     required this.periodeDebut,
     required this.periodeFin,
     required this.onPickPeriode,
+    required this.vehiculeImmatriculation,
+    required this.onPickVehicule,
+    required this.onEffacerVehicule,
   });
 
   @override
@@ -534,8 +1049,17 @@ class _FiltreBar extends StatelessWidget {
             ]),
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(child: datePill),
+        const SizedBox(width: 8),
+        Expanded(flex: 3, child: datePill),
+        const SizedBox(width: 8),
+        Flexible(
+          flex: 2,
+          child: _VehiculePill(
+            immatriculation: vehiculeImmatriculation,
+            onTap: onPickVehicule,
+            onEffacer: onEffacerVehicule,
+          ),
+        ),
       ]),
     );
   }
@@ -578,158 +1102,611 @@ class _DatePill extends StatelessWidget {
   }
 }
 
-// ── Barre recherche + statuts ─────────────────────────────────────────────────
+/// Filtre véhicule : le sélecteur de véhicules existant, et une croix pour
+/// revenir à toute la flotte.
+class _VehiculePill extends StatelessWidget {
+  final String? immatriculation;
+  final VoidCallback onTap;
+  final VoidCallback onEffacer;
 
-class _SearchAndStatutBar extends StatefulWidget {
-  final TextEditingController controller;
-  final void Function(String) onSearchChanged;
-  final String? statutSelectionne;
-  final void Function(String?) onStatutChanged;
-  final List<String> statuts;
-  final Map<String?, double> montantsStatut;
-  final NumberFormat money;
-
-  const _SearchAndStatutBar({
-    required this.controller,
-    required this.onSearchChanged,
-    required this.statutSelectionne,
-    required this.onStatutChanged,
-    required this.statuts,
-    required this.montantsStatut,
-    required this.money,
+  const _VehiculePill({
+    required this.immatriculation,
+    required this.onTap,
+    required this.onEffacer,
   });
 
   @override
-  State<_SearchAndStatutBar> createState() => _SearchAndStatutBarState();
+  Widget build(BuildContext context) {
+    final actif = immatriculation != null;
+    final couleur = actif ? AppColors.primary : AppColors.grey600;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: actif
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : AppColors.grey200,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(children: [
+          Icon(Icons.directions_car_outlined, size: 13, color: couleur),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(immatriculation ?? 'Véhicule',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: actif ? AppColors.primary : AppColors.grey700,
+                    fontWeight: actif ? FontWeight.w700 : FontWeight.w500),
+                overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: 4),
+          if (actif)
+            GestureDetector(
+              onTap: onEffacer,
+              child: Icon(Icons.close_rounded, size: 14, color: couleur),
+            )
+          else
+            Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: couleur),
+        ]),
+      ),
+    );
+  }
 }
 
-class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
-  final _focus = FocusNode();
+// ── Mosaïque des types ────────────────────────────────────────────────────────
 
-  @override
-  void initState() {
-    super.initState();
-    // Rebuild pour basculer loupe ↔ croix (ferme le clavier) selon le focus.
-    _focus.addListener(() => setState(() {}));
-  }
+class _MosaiqueTypes extends StatelessWidget {
+  final List<TotalMaintenanceParType> types;
+  final Set<int> coches;
+  final NumberFormat money;
+  final void Function(int) onToggle;
+  final void Function(TotalMaintenanceParType) onNouvelle;
+  final VoidCallback onToutVoir;
 
-  @override
-  void dispose() {
-    _focus.dispose();
-    super.dispose();
-  }
+  const _MosaiqueTypes({
+    required this.types,
+    required this.coches,
+    required this.money,
+    required this.onToggle,
+    required this.onNouvelle,
+    required this.onToutVoir,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      Container(
-        margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          // Fond gris (aligné sur les champs de VehiculeFormPage) plutôt qu'un
-          // blanc avec ombre portée.
-          color: AppColors.fieldFill,
-          borderRadius: BorderRadius.circular(12),
-          // Contour à l'accent pendant la saisie, comme les champs des
-          // formulaires ; aucun au repos.
-          border: Border.all(
-            color: _focus.hasFocus ? AppColors.primary : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
+    // Les six plus fréquents, plus tout type coché au-delà : une sélection
+    // active doit rester visible pour pouvoir être défaite.
+    final visibles = [
+      for (var i = 0; i < types.length; i++)
+        if (i < _kTuilesVisibles || coches.contains(types[i].categorieTypeId))
+          types[i],
+    ];
+    final coutTotal = types.fold(0.0, (s, t) => s + t.coutRealise);
+
+    final rangees = <Widget>[];
+    for (var i = 0; i < visibles.length; i += 2) {
+      rangees.add(Padding(
+        padding: const EdgeInsets.only(bottom: 8),
         child: Row(children: [
-          _focus.hasFocus
-              ? GestureDetector(
-                  onTap: _focus.unfocus,
-                  child: Icon(Icons.close,
-                      color: AppColors.hint, size: 20),
-                )
-              : Icon(Icons.search, color: AppColors.hint, size: 20),
+          Expanded(child: _tuile(visibles[i], coutTotal)),
           const SizedBox(width: 8),
           Expanded(
-            child: TextField(
-              controller: widget.controller,
-              focusNode: _focus,
-              onChanged: widget.onSearchChanged,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Type, immatriculation, prestataire…',
-                hintStyle:
-                    TextStyle(color: AppColors.hint, fontSize: 14),
-                border: InputBorder.none,
-                // Le cadre est porté par la boîte grise : sans cela, le thème
-                // dessinerait son propre fond et son contour à l'intérieur.
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ),
-          // Croix d'effacement : la recherche partant au serveur, il faut
-          // pouvoir revenir à la liste complète sans effacer au clavier.
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: widget.controller,
-            builder: (_, value, __) => value.text.isEmpty
-                ? const SizedBox.shrink()
-                : GestureDetector(
-                    onTap: () {
-                      widget.controller.clear();
-                      widget.onSearchChanged('');
-                    },
-                    child: Icon(Icons.close_rounded,
-                        size: 18, color: AppColors.hint),
-                  ),
+            child: i + 1 < visibles.length
+                ? _tuile(visibles[i + 1], coutTotal)
+                : const SizedBox.shrink(),
           ),
         ]),
+      ));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(children: [
+              Expanded(
+                child: Text(
+                  'TYPES DE MAINTENANCE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.hint,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              if (types.length > _kTuilesVisibles)
+                GestureDetector(
+                  onTap: onToutVoir,
+                  child: Text(
+                    'Tout voir (${types.length})',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+          ...rangees,
+        ],
       ),
-      SizedBox(
+    );
+  }
+
+  Widget _tuile(TotalMaintenanceParType t, double coutTotal) => _TuileType(
+        type: t,
+        coche: coches.contains(t.categorieTypeId),
+        part: coutTotal > 0 ? t.coutRealise / coutTotal : 0,
+        money: money,
+        onTap: () => onToggle(t.categorieTypeId),
+        onLongPress: () => onNouvelle(t),
+      );
+}
+
+class _TuileType extends StatelessWidget {
+  final TotalMaintenanceParType type;
+  final bool coche;
+
+  /// Part du type dans le coût réalisé de toute la sélection (0 à 1).
+  final double part;
+  final NumberFormat money;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const _TuileType({
+    required this.type,
+    required this.coche,
+    required this.part,
+    required this.money,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final visuel = TypeMaintenanceVisuel.de(
+        code: type.code, libelle: type.libelle, id: type.categorieTypeId);
+    final couleur = visuel.couleur;
+
+    return Semantics(
+      button: true,
+      selected: coche,
+      label: '${type.libelle}, ${type.nombre} interventions',
+      child: GestureDetector(
+        onTap: onTap,
+        onLongPress: () {
+          HapticFeedback.mediumImpact();
+          onLongPress();
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+          decoration: BoxDecoration(
+            color: coche
+                ? Color.alphaBlend(
+                    couleur.withValues(alpha: 0.08), AppColors.blanc)
+                : AppColors.blanc,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: coche ? couleur : Colors.transparent,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: couleur.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(visuel.icone, size: 16, color: couleur),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Expanded(
+                          child: Text(
+                            type.libelle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.dark,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${type.nombre}',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: couleur,
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 1),
+                      Text(
+                        money.format(type.coutRealise),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 10.5, color: AppColors.hint),
+                      ),
+                    ],
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 7),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: part.clamp(0.0, 1.0),
+                  minHeight: 3,
+                  backgroundColor: AppColors.fieldFill,
+                  valueColor: AlwaysStoppedAnimation(couleur),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mosaïque repliée : une rangée de puces colorées qui garde la sélection de
+/// types sous la main pendant qu'on parcourt la liste.
+class _RangeeTypes extends StatelessWidget {
+  final List<TotalMaintenanceParType> types;
+  final Set<int> coches;
+  final void Function(int) onToggle;
+
+  const _RangeeTypes({
+    required this.types,
+    required this.coches,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppColors.scaffold,
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 3)),
+        ],
+      ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: types.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (_, i) {
+          final t = types[i];
+          final coche = coches.contains(t.categorieTypeId);
+          final couleur = TypeMaintenanceVisuel.de(
+                  code: t.code, libelle: t.libelle, id: t.categorieTypeId)
+              .couleur;
+          return GestureDetector(
+            onTap: () => onToggle(t.categorieTypeId),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: coche
+                    ? Color.alphaBlend(
+                        couleur.withValues(alpha: 0.12), AppColors.surface)
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: coche ? couleur : AppColors.border),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration:
+                      BoxDecoration(color: couleur, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${t.libelle} ${t.nombre}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: coche ? FontWeight.w700 : FontWeight.w500,
+                    color: coche ? couleur : AppColors.label,
+                  ),
+                ),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TousTypesSheet extends StatelessWidget {
+  final List<TotalMaintenanceParType> types;
+  final Set<int> coches;
+  final NumberFormat money;
+  final void Function(int) onToggle;
+  final VoidCallback onEffacer;
+
+  const _TousTypesSheet({
+    required this.types,
+    required this.coches,
+    required this.money,
+    required this.onToggle,
+    required this.onEffacer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 10),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.grey300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 16, 8),
+            child: Row(children: [
+              Expanded(
+                child: Text(
+                  'Types de maintenance',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark,
+                  ),
+                ),
+              ),
+              if (coches.isNotEmpty)
+                TextButton(
+                  onPressed: onEffacer,
+                  child: Text('Effacer',
+                      style: TextStyle(color: AppColors.primary)),
+                ),
+            ]),
+          ),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.fromLTRB(
+                  16, 0, 16, 16 + MediaQuery.of(context).padding.bottom),
+              itemCount: types.length,
+              itemBuilder: (_, i) {
+                final t = types[i];
+                final coche = coches.contains(t.categorieTypeId);
+                final visuel = TypeMaintenanceVisuel.de(
+                    code: t.code, libelle: t.libelle, id: t.categorieTypeId);
+                return GestureDetector(
+                  onTap: () => onToggle(t.categorieTypeId),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.blanc,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: coche ? visuel.couleur : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: visuel.couleur.withValues(alpha: 0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(visuel.icone,
+                            size: 18, color: visuel.couleur),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(t.libelle,
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.dark)),
+                            Text(
+                              '${t.nombre} intervention${t.nombre > 1 ? 's' : ''}'
+                              ' · ${money.format(t.coutRealise)}',
+                              style: TextStyle(
+                                  fontSize: 12, color: AppColors.hint),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        coche
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        color: coche ? visuel.couleur : AppColors.grey400,
+                        size: 22,
+                      ),
+                    ]),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Pastilles de statut ───────────────────────────────────────────────────────
+
+class _PastillesStatut extends StatelessWidget {
+  final SyntheseMaintenances? synthese;
+  final String? statut;
+  final bool enRetard;
+  final void Function(String? statut, {bool enRetard}) onChoisir;
+
+  const _PastillesStatut({
+    required this.synthese,
+    required this.statut,
+    required this.enRetard,
+    required this.onChoisir,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = synthese;
+    // Compteurs serveur ; sans synthèse (chargement, échec), les libellés
+    // restent seuls plutôt que d'afficher un nombre faux.
+    String avec(String libelle, int? n) => n == null ? libelle : '$libelle $n';
+    final enCours = s?.nombre('EN_COURS') ?? 0;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 2),
+      child: SizedBox(
         height: 36,
         child: ListView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           children: [
             StatutFiltreChip(
-              label:    'Tous',
-              selected: widget.statutSelectionne == null,
-              color:    _hint,
-              onTap:    () => widget.onStatutChanged(null),
-              infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
+              label: avec('Tous', s?.total),
+              selected: statut == null && !enRetard,
+              color: AppColors.hint,
+              onTap: () => onChoisir(null),
             ),
-            ...widget.statuts.map((s) => StatutFiltreChip(
-                  label:    _labelStatut(s),
-                  selected: widget.statutSelectionne == s,
-                  color:    _couleurStatut(s),
-                  onTap:    () => widget.onStatutChanged(s),
-                  infoText: widget.money.format(widget.montantsStatut[s] ?? 0),
-                )),
+            StatutFiltreChip(
+              label: avec(StatutMaintenanceVisuel.libellePluriel('PLANIFIEE'),
+                  s?.nombre('PLANIFIEE')),
+              selected: statut == 'PLANIFIEE',
+              color: StatutMaintenanceVisuel.couleur('PLANIFIEE'),
+              onTap: () => onChoisir('PLANIFIEE'),
+            ),
+            _PastilleRetard(
+              label: avec('En retard', s?.enRetard),
+              selected: enRetard,
+              onTap: () => onChoisir(null, enRetard: true),
+            ),
+            if (enCours > 0 || statut == 'EN_COURS')
+              StatutFiltreChip(
+                label: avec(StatutMaintenanceVisuel.libellePluriel('EN_COURS'),
+                    s?.nombre('EN_COURS')),
+                selected: statut == 'EN_COURS',
+                color: StatutMaintenanceVisuel.couleur('EN_COURS'),
+                onTap: () => onChoisir('EN_COURS'),
+              ),
+            StatutFiltreChip(
+              label: avec(StatutMaintenanceVisuel.libellePluriel('TERMINEE'),
+                  s?.nombre('TERMINEE')),
+              selected: statut == 'TERMINEE',
+              color: StatutMaintenanceVisuel.couleur('TERMINEE'),
+              onTap: () => onChoisir('TERMINEE'),
+            ),
+            StatutFiltreChip(
+              label: avec(StatutMaintenanceVisuel.libellePluriel('ANNULEE'),
+                  s?.nombre('ANNULEE')),
+              selected: statut == 'ANNULEE',
+              color: StatutMaintenanceVisuel.couleur('ANNULEE'),
+              onTap: () => onChoisir('ANNULEE'),
+            ),
           ],
         ),
       ),
-      const SizedBox(height: 4),
-    ]);
+    );
   }
+}
 
-  String _labelStatut(String s) => switch (s) {
-        'PLANIFIEE' => 'Planifiée',
-        'TERMINEE'  => 'Terminée',
-        'ANNULEE'   => 'Annulée',
-        _           => s,
-      };
+/// Pastille du retard : rouge même au repos, c'est ce qui demande une action.
+class _PastilleRetard extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
-  /// Palette des chips de statut, alignée sur celle de ContraventionsPage :
-  /// trois teintes seulement — gris pour l'attente et les fins de course
-  /// neutres, ambre pour ce qui est en cours, vert pour ce qui est soldé.
-  static const _ambre = Color(0xFF854F0B);
-  static Color get _vert => AppColors.positive;
-  static Color get _hint => AppColors.hint;
+  const _PastilleRetard({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
-  Color _couleurStatut(String s) => switch (s) {
-        'PLANIFIEE' => _ambre,
-        'TERMINEE'  => _vert,
-        'ANNULEE'   => _hint,
-        _           => _hint,
-      };
+  @override
+  Widget build(BuildContext context) {
+    final rouge = StatutMaintenanceVisuel.retard;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.only(right: 8),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? rouge.withValues(alpha: 0.12) : AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? rouge.withValues(alpha: 0.6)
+                  : rouge.withValues(alpha: 0.35),
+            ),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.schedule_rounded, size: 13, color: rouge),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                color: rouge,
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Carte maintenance ─────────────────────────────────────────────────────────
@@ -738,16 +1715,34 @@ class _MaintenanceCard extends StatelessWidget {
   final Maintenance maintenance;
   final NumberFormat money;
   final VoidCallback? onTap;
-  const _MaintenanceCard(
-      {required this.maintenance, required this.money, this.onTap});
+  final VoidCallback? onLongPress;
+  const _MaintenanceCard({
+    required this.maintenance,
+    required this.money,
+    this.onTap,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final m     = maintenance;
-    final color = _couleurStatut(m.statut ?? 'PLANIFIEE');
+    final m      = maintenance;
+    final statut = m.statut ?? 'PLANIFIEE';
+    final visuel = TypeMaintenanceVisuel.de(
+        code: m.type, libelle: m.categorieTypeLibelle, id: m.categorieTypeId);
+    final couleurStatut = StatutMaintenanceVisuel.couleur(statut);
+    final retard = StatutMaintenanceVisuel.joursDeRetard(statut, m.datePrevue);
+
+    // Une intervention au programme n'a pas encore de coût : on montre ce que
+    // ses éléments annoncent, en retrait, pour ne pas le confondre avec un
+    // montant payé.
+    final estime = (m.detailMaintenance?.elements ?? const [])
+        .fold(0.0, (s, e) => s + e.montant);
+    final aCout = m.cout != null && m.cout! > 0;
+    final aEstime = !aCout && m.isPending && estime > 0;
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -764,13 +1759,15 @@ class _MaintenanceCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // La pastille d'icône porte la couleur du type : c'est elle qui se
+          // repère d'un coup d'œil dans la liste, le statut a son badge.
           Container(
             width: 42, height: 42,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
+              color: visuel.couleur.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(_iconeType(m.type), color: color, size: 20),
+            child: Icon(visuel.icone, color: visuel.couleur, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -780,7 +1777,7 @@ class _MaintenanceCard extends StatelessWidget {
                 Text(
                     m.categorieTypeLibelle?.isNotEmpty == true
                         ? m.categorieTypeLibelle!
-                        : _labelType(m.type),
+                        : m.type,
                     style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
@@ -800,27 +1797,50 @@ class _MaintenanceCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Row(children: [
-                  Icon(Icons.calendar_today_outlined,
-                      size: 11, color: AppColors.grey400),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(_labelDate(m.datePrevue),
+                if (retard > 0)
+                  Row(children: [
+                    Icon(Icons.schedule_rounded,
+                        size: 12, color: StatutMaintenanceVisuel.retard),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'En retard · $retard j',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 11, color: AppColors.grey500)),
-                  ),
-                  if (m.dureeHeures != null) ...[
-                    const SizedBox(width: 8),
-                    Icon(Icons.timer_outlined,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: StatutMaintenanceVisuel.retard),
+                      ),
+                    ),
+                  ])
+                else
+                  Row(children: [
+                    Icon(Icons.calendar_today_outlined,
                         size: 11, color: AppColors.grey400),
-                    const SizedBox(width: 3),
-                    Text('${m.dureeHeures}h',
-                        style: TextStyle(
-                            fontSize: 11, color: AppColors.grey500)),
-                  ],
-                ]),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                          [
+                            _labelDate(m.datePrevue),
+                            if (m.partenaireNom?.isNotEmpty == true)
+                              m.partenaireNom!,
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11, color: AppColors.grey500)),
+                    ),
+                    if (m.dureeHeures != null) ...[
+                      const SizedBox(width: 8),
+                      Icon(Icons.timer_outlined,
+                          size: 11, color: AppColors.grey400),
+                      const SizedBox(width: 3),
+                      Text('${m.dureeHeures}h',
+                          style: TextStyle(
+                              fontSize: 11, color: AppColors.grey500)),
+                    ],
+                  ]),
               ],
             ),
           ),
@@ -829,24 +1849,29 @@ class _MaintenanceCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.10),
+                color: couleurStatut.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(_labelStatut(m.statut ?? 'PLANIFIEE'),
+              child: Text(StatutMaintenanceVisuel.libelle(statut),
                   style: TextStyle(
                       fontSize: 10,
-                      color: color,
+                      color: couleurStatut,
                       fontWeight: FontWeight.w700)),
             ),
-            if (m.cout != null && m.cout! > 0) ...[
+            if (aCout) ...[
               const SizedBox(height: 6),
-              // Coût toujours en noir : la pastille au-dessus porte déjà la
-              // couleur du statut.
               Text(money.format(m.cout),
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.dark)),
+            ] else if (aEstime) ...[
+              const SizedBox(height: 6),
+              Text('≈ ${money.format(estime)}',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.hint)),
             ],
           ]),
         ],
@@ -866,59 +1891,150 @@ class _MaintenanceCard extends StatelessWidget {
     if (diff > 1 && diff <= 7) return 'Dans $diff jours';
     return DateFormat('dd/MM/yyyy').format(d);
   }
+}
 
-  /// Même palette que les chips de filtre : la pastille d'icône reprend la
-  /// couleur du statut telle qu'elle est présentée en haut de page.
-  Color _couleurStatut(String s) => switch (s) {
-        'PLANIFIEE' => const Color(0xFF854F0B),
-        'TERMINEE'  => AppColors.positive,
-        'ANNULEE'   => AppColors.hint,
-        _           => AppColors.hint,
-      };
+// ── Actions rapides (appui long) ──────────────────────────────────────────────
 
-  String _labelStatut(String s) => switch (s) {
-        'PLANIFIEE' => 'Planifiée',
-        'TERMINEE'  => 'Terminée',
-        'ANNULEE'   => 'Annulée',
-        _           => s,
-      };
+enum _ActionRapide { terminer, reporter, annuler, fiche }
 
-  /// Icône dérivée du libellé de catégorie retourné par le backend.
-  /// Aucun code de catégorie figé — correspondance sur mots-clés du libellé.
-  IconData _iconeType(String t) {
-    final u = t.toUpperCase();
-    if (u.contains('VIDANGE'))     return Icons.oil_barrel_outlined;
-    if (u.contains('REVISION'))    return Icons.settings_outlined;
-    if (u.contains('REPARATION'))  return Icons.handyman_outlined;
-    if (u.contains('CONTROLE'))    return Icons.fact_check_outlined;
-    if (u.contains('PNEUMATIQUE')) return Icons.tire_repair_outlined;
-    if (u.contains('FREINAGE'))    return Icons.emergency_outlined;
-    if (u.contains('PARALISE') || u.contains('PARALYSIE')) {
-      return Icons.car_crash_outlined;
-    }
-    if (u.contains('TOLERIE') || u.contains('TÔLERIE')) {
-      return Icons.car_repair_outlined;
-    }
-    if (u.contains('PEINTURE'))    return Icons.brush_outlined;
-    if (u.contains('ELECTRIC'))    return Icons.electrical_services_outlined;
-    return Icons.construction_outlined;
+class _ActionsRapidesSheet extends StatelessWidget {
+  final Maintenance maintenance;
+
+  const _ActionsRapidesSheet({required this.maintenance});
+
+  @override
+  Widget build(BuildContext context) {
+    final m = maintenance;
+    final visuel = TypeMaintenanceVisuel.de(
+        code: m.type, libelle: m.categorieTypeLibelle, id: m.categorieTypeId);
+    final retard =
+        StatutMaintenanceVisuel.joursDeRetard(m.statut, m.datePrevue);
+    final libelle = m.categorieTypeLibelle?.isNotEmpty == true
+        ? m.categorieTypeLibelle!
+        : m.type;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          16, 10, 16, 16 + MediaQuery.of(context).padding.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.grey300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: visuel.couleur.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(visuel.icone, size: 20, color: visuel.couleur),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(libelle,
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark)),
+                  Text(
+                    [
+                      if (m.vehiculeImmatriculation?.isNotEmpty == true)
+                        m.vehiculeImmatriculation!,
+                      retard > 0
+                          ? 'en retard de $retard j'
+                          : 'prévue le ${DateFormat('dd/MM/yyyy').format(m.datePrevue)}',
+                    ].join(' · '),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: retard > 0
+                            ? StatutMaintenanceVisuel.retard
+                            : AppColors.hint),
+                  ),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: 14),
+          _LigneAction(
+            icon: Icons.check_circle_outline_rounded,
+            label: 'Terminer',
+            couleur: AppColors.positive,
+            onTap: () => Navigator.pop(context, _ActionRapide.terminer),
+          ),
+          _LigneAction(
+            icon: Icons.event_outlined,
+            label: 'Reporter',
+            couleur: AppColors.dark,
+            onTap: () => Navigator.pop(context, _ActionRapide.reporter),
+          ),
+          _LigneAction(
+            icon: Icons.cancel_outlined,
+            label: 'Annuler',
+            couleur: AppColors.error,
+            onTap: () => Navigator.pop(context, _ActionRapide.annuler),
+          ),
+          _LigneAction(
+            icon: Icons.open_in_new_rounded,
+            label: 'Voir la fiche',
+            couleur: AppColors.label,
+            onTap: () => Navigator.pop(context, _ActionRapide.fiche),
+          ),
+        ],
+      ),
+    );
   }
+}
 
-  /// Libellé de repli — utilisé uniquement si `categorieTypeLibelle` est absent.
-  /// La valeur principale est toujours `m.categorieTypeLibelle` (données backend).
-  String _labelType(String t) {
-    final u = t.toUpperCase();
-    if (u.contains('VIDANGE'))     return 'Vidange';
-    if (u.contains('REVISION'))    return 'Révision';
-    if (u.contains('REPARATION'))  return 'Réparation';
-    if (u.contains('CONTROLE'))    return 'Contrôle technique';
-    if (u.contains('PNEUMATIQUE')) return 'Pneumatiques';
-    if (u.contains('FREINAGE'))    return 'Freinage';
-    if (u.contains('PARALISE') || u.contains('PARALYSIE')) return 'Paralysie';
-    if (u.contains('TOLERIE') || u.contains('TÔLERIE'))    return 'Tôlerie';
-    if (u.contains('PEINTURE'))    return 'Peinture';
-    if (u.contains('ELECTRIC'))    return 'Électricité';
-    return t; // Retourner le libellé brut plutôt que 'Autre'
+class _LigneAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color couleur;
+  final VoidCallback onTap;
+
+  const _LigneAction({
+    required this.icon,
+    required this.label,
+    required this.couleur,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: AppColors.blanc,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(children: [
+          Icon(icon, size: 20, color: couleur),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: couleur)),
+          ),
+          Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.hint),
+        ]),
+      ),
+    );
   }
 }
 
@@ -942,7 +2058,7 @@ class _EmptyState extends StatelessWidget {
           Icon(Icons.handyman_outlined, size: 38, color: AppColors.grey300),
         ]),
         const SizedBox(height: 16),
-        Text('Aucune maintenance sur cette période',
+        Text('Aucune maintenance',
             style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,

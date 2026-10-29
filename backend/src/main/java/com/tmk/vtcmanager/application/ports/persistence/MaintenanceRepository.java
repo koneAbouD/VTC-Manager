@@ -2,7 +2,10 @@ package com.tmk.vtcmanager.application.ports.persistence;
 
 import com.tmk.vtcmanager.application.common.PageResult;
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
+import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceFiltres;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
+import com.tmk.vtcmanager.application.domain.maintenance.TotalMaintenanceParStatut;
+import com.tmk.vtcmanager.application.domain.maintenance.TotalMaintenanceParType;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -17,12 +20,18 @@ public interface MaintenanceRepository {
     List<Maintenance> findAll();
 
     /**
-     * @param recherche mot-clé libre (type de maintenance, immatriculation du
-     *                  véhicule, nom du prestataire) ; ignoré s'il est vide
+     * @param aujourdhui jour de référence du filtre « en retard »
      */
-    PageResult<Maintenance> findPageByFiltres(LocalDate dateDebut, LocalDate dateFin,
-                                              MaintenanceStatus statut, Long vehiculeId,
-                                              String recherche, int page, int size);
+    PageResult<Maintenance> findPageByFiltres(MaintenanceFiltres filtres, LocalDate aujourdhui,
+                                              int page, int size);
+
+    /** Cumuls par type de maintenance, appliqués tels quels aux filtres reçus. */
+    List<TotalMaintenanceParType> totauxParType(MaintenanceFiltres filtres);
+
+    /** Cumuls par statut, appliqués tels quels aux filtres reçus. */
+    List<TotalMaintenanceParStatut> totauxParStatut(MaintenanceFiltres filtres);
+
+    long compter(MaintenanceFiltres filtres, LocalDate aujourdhui);
 
     List<Maintenance> findByVehiculeId(Long vehiculeId);
 
