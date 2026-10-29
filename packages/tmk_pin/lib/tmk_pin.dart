@@ -15,6 +15,7 @@ export 'src/pin_store.dart'
         PinKeyValueStore,
         PinStore,
         SecureKeyValueStore;
+export 'src/widgets/conservation_sous_verrou.dart';
 export 'src/widgets/pin_boxes.dart';
 export 'src/widgets/pin_keypad.dart';
 export 'src/widgets/pin_layout.dart';

@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:tmk_cache/tmk_cache.dart';
+import 'package:tmk_pin/tmk_pin.dart';
 import 'package:tmk_push/tmk_push.dart';
 
 import 'core/network/prechargement.dart';
@@ -29,50 +30,70 @@ Future<void> main() async {
   runApp(const ProviderScope(child: ChauffeurApp()));
 }
 
-/// Clé du navigateur racine : au verrouillage comme à la déconnexion, elle
-/// permet de vider la pile de navigation pour que l'écran de code apparaisse
-/// aussitôt, quelle que soit la page ouverte par-dessus.
+/// Clé du navigateur racine : à la déconnexion, ou quand la page quittée n'est
+/// plus conservée sous l'écran de code, elle permet de vider la pile de
+/// navigation pour révéler la page d'accès.
 final _navigatorKey = GlobalKey<NavigatorState>();
 
-class ChauffeurApp extends StatelessWidget {
+class ChauffeurApp extends ConsumerWidget {
   const ChauffeurApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Autour de MaterialApp, jamais dedans : le routeur pousse sur le
     // navigateur racine, qui doit déjà exister quand un lien arrive.
     return PushRouter(
       navigatorKey: _navigatorKey,
-      child: MaterialApp(
-        title: 'VTC Chauffeur',
+      // Verrouillée puis rouverte dans les dix minutes, l'application revient
+      // sur la page quittée ; au-delà, ou à la déconnexion, la pile de
+      // navigation est vidée pour révéler la page d'accès.
+      child: ConservationSousVerrou(
+        etat: _etatSession(ref.watch(authControllerProvider)),
         navigatorKey: _navigatorKey,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        locale: const Locale('fr'),
-        supportedLocales: const [Locale('fr'), Locale('en')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        // Hors connexion, les écrans montrent leurs dernières données : le
-        // bandeau dit de quand elles datent.
-        builder: (context, child) => BandeauHorsLigne(
-          fond: AppColors.warningTint,
-          texte: AppColors.warning,
-          child: child ?? const SizedBox.shrink(),
+        builder: (context, conservation) => MaterialApp(
+          title: 'VTC Chauffeur',
+          navigatorKey: _navigatorKey,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          locale: const Locale('fr'),
+          supportedLocales: const [Locale('fr'), Locale('en')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          // Hors connexion, les écrans montrent leurs dernières données : le
+          // bandeau dit de quand elles datent.
+          builder: (context, child) => BandeauHorsLigne(
+            fond: AppColors.warningTint,
+            texte: AppColors.warning,
+            child: CouvertureVerrou(
+              conservation: conservation,
+              ecranVerrou: const PinLockPage(),
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
+          home: _AuthGate(conservation: conservation),
         ),
-        home: const _AuthGate(),
       ),
     );
   }
+
+  static EtatSession _etatSession(AuthState state) => switch (state) {
+    AuthAuthenticated() => EtatSession.ouverte,
+    AuthLocked() => EtatSession.verrouillee,
+    AuthUnauthenticated() => EtatSession.fermee,
+    _ => EtatSession.transitoire,
+  };
 }
 
 /// Aiguille entre écran de connexion, verrouillage par code et tableau de bord
 /// selon l'état d'auth. L'expiration de session est traitée par
 /// [AuthController], qui remet sous clé plutôt que de déconnecter.
 class _AuthGate extends ConsumerStatefulWidget {
-  const _AuthGate();
+  final Conservation conservation;
+
+  const _AuthGate({required this.conservation});
 
   @override
   ConsumerState<_AuthGate> createState() => _AuthGateState();
@@ -89,16 +110,6 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    // Session close ou remise sous clé : on retire les écrans empilés pour
-    // révéler la page d'accès, sans quoi ils resteraient visibles par-dessus.
-    ref.listen<AuthState>(authControllerProvider, (_, next) {
-      if (next is AuthUnauthenticated || next is AuthLocked) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _navigatorKey.currentState?.popUntil((route) => route.isFirst);
-        });
-      }
-    });
-
     final state = ref.watch(authControllerProvider);
     return switch (state) {
       AuthUnknown() => const _Splash(),
@@ -107,17 +118,29 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
       // l'écran de code, lui, disparaît dès que le code est accepté.
       // Les écrans clés sont lus d'avance, pour être servis hors connexion
       // même sans avoir été ouverts.
-      AuthAuthenticated() => PrechargementPeriodique(
-          precharger: () => prechargerEcransCles(ref.read(apiClientProvider)),
-          child: const BiometricProposal(child: HomePage()),
-        ),
+      AuthAuthenticated() => _accueil(),
+      // Les écrans ouverts restent construits sous l'écran de code.
+      AuthLocked() when widget.conservation.couverte => _accueil(),
       AuthLocked() => const PinLockPage(),
-      AuthPinSetup(:final displayName) =>
-        PinSetupPage(displayName: displayName),
-      AuthPinResume(:final displayName) =>
-        PinResumePage(displayName: displayName),
+      AuthPinSetup(:final displayName) => PinSetupPage(
+        displayName: displayName,
+      ),
+      AuthPinResume(:final displayName) => PinResumePage(
+        displayName: displayName,
+      ),
     };
   }
+
+  Widget _accueil() => PrechargementPeriodique(
+    key: widget.conservation.cleAccueil,
+    // Sous l'écran de code, plus de jeton : un retour au premier plan n'a
+    // rien à précharger.
+    precharger: () async {
+      if (ref.read(authControllerProvider) is! AuthAuthenticated) return;
+      await prechargerEcransCles(ref.read(apiClientProvider));
+    },
+    child: const BiometricProposal(child: HomePage()),
+  );
 }
 
 class _Splash extends StatelessWidget {

@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:tmk_cache/tmk_cache.dart';
+import 'package:tmk_pin/tmk_pin.dart';
 import 'package:tmk_push/tmk_push.dart';
 
 import 'core/network/prechargement.dart';
@@ -107,19 +108,6 @@ class _VtcManagerAppState extends ConsumerState<VtcManagerApp>
     }
     _construit = true;
 
-    // Déconnexion (volontaire ou subie) ou verrouillage par code : revenir à la
-    // racine en vidant la pile de navigation. On n'affiche PAS d'alerte
-    // d'expiration de session : la redirection vers la page d'accès suffit.
-    ref.listen<AuthState>(authNotifierProvider, (prev, next) {
-      if (next is AuthUnauthenticated || next is AuthLocked) {
-        // Après le frame courant (le home est déjà devenu LoginPage) : on retire
-        // tous les écrans empilés pour révéler la page de connexion aussitôt.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _navigatorKey.currentState?.popUntil((route) => route.isFirst);
-        });
-      }
-    });
-
     // Capte les interactions utilisateur (sans les intercepter) pour réarmer
     // le compteur d'inactivité du SessionManager.
     return Listener(
@@ -129,65 +117,92 @@ class _VtcManagerAppState extends ConsumerState<VtcManagerApp>
       // navigateur racine, qui doit déjà exister quand un lien arrive.
       child: PushRouter(
         navigatorKey: _navigatorKey,
-        child: MaterialApp(
-        title: 'VTC Manager',
-        navigatorKey: _navigatorKey,
-        scaffoldMessengerKey: _scaffoldMessengerKey,
-        debugShowCheckedModeBanner: false,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('fr', 'FR'),
-        Locale('en', 'US'),
-      ],
-      locale: const Locale('fr', 'FR'),
-      theme: AppTheme.clair(apparence.accent),
-      darkTheme: AppTheme.sombre(apparence.accent),
-      themeMode: apparence.mode,
-      // Les couleurs viennent d'AppColors, pas du thème : l'animation de
-      // transition mêlerait l'ancien et le nouveau jeu pendant 200 ms.
-      themeAnimationDuration: Duration.zero,
-      builder: (context, child) {
-        final sombre = AppColors.estSombre;
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: (sombre
-                  ? SystemUiOverlayStyle.light
-                  : SystemUiOverlayStyle.dark)
-              .copyWith(statusBarColor: Colors.transparent),
-          // Hors connexion, les écrans montrent leurs dernières données : le
-          // bandeau dit de quand elles datent.
-          child: BandeauHorsLigne(
-            fond: AppColors.warningTint,
-            texte: AppColors.warning,
-            child: child ?? const SizedBox.shrink(),
+        // Verrouillée puis rouverte dans les dix minutes, l'application revient
+        // sur la page quittée ; au-delà, ou à la déconnexion, la pile de
+        // navigation est vidée pour révéler la page d'accès.
+        child: ConservationSousVerrou(
+          etat: _etatSession(authState),
+          navigatorKey: _navigatorKey,
+          builder: (context, conservation) => MaterialApp(
+            title: 'VTC Manager',
+            navigatorKey: _navigatorKey,
+            scaffoldMessengerKey: _scaffoldMessengerKey,
+            debugShowCheckedModeBanner: false,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('fr', 'FR'),
+              Locale('en', 'US'),
+            ],
+            locale: const Locale('fr', 'FR'),
+            theme: AppTheme.clair(apparence.accent),
+            darkTheme: AppTheme.sombre(apparence.accent),
+            themeMode: apparence.mode,
+            // Les couleurs viennent d'AppColors, pas du thème : l'animation de
+            // transition mêlerait l'ancien et le nouveau jeu pendant 200 ms.
+            themeAnimationDuration: Duration.zero,
+            builder: (context, child) {
+              final sombre = AppColors.estSombre;
+              return AnnotatedRegion<SystemUiOverlayStyle>(
+                value: (sombre
+                        ? SystemUiOverlayStyle.light
+                        : SystemUiOverlayStyle.dark)
+                    .copyWith(statusBarColor: Colors.transparent),
+                // Hors connexion, les écrans montrent leurs dernières données : le
+                // bandeau dit de quand elles datent.
+                child: BandeauHorsLigne(
+                  fond: AppColors.warningTint,
+                  texte: AppColors.warning,
+                  child: CouvertureVerrou(
+                    conservation: conservation,
+                    ecranVerrou: const PinLockPage(),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
+              );
+            },
+            home: switch (authState) {
+              AuthInitial() => const _SplashScreen(),
+              // L'invite du déverrouillage biométrique s'accroche à l'accueil :
+              // l'écran de code, lui, disparaît dès que le code est accepté.
+              // Les écrans clés sont lus d'avance, pour être servis hors
+              // connexion même sans avoir été ouverts.
+              AuthAuthenticated() => _accueil(conservation),
+              // Les écrans ouverts restent construits sous l'écran de code.
+              AuthLocked() when conservation.couverte => _accueil(conservation),
+              AuthLocked() => const PinLockPage(),
+              AuthPinSetup(:final displayName) =>
+                PinSetupPage(displayName: displayName),
+              AuthPinResume(:final displayName) =>
+                PinResumePage(displayName: displayName),
+              _ => const LoginPage(),
+            },
           ),
-        );
-      },
-        home: switch (authState) {
-          AuthInitial() => const _SplashScreen(),
-          // L'invite du déverrouillage biométrique s'accroche à l'accueil :
-          // l'écran de code, lui, disparaît dès que le code est accepté.
-          // Les écrans clés sont lus d'avance, pour être servis hors
-          // connexion même sans avoir été ouverts.
-          AuthAuthenticated() => PrechargementPeriodique(
-              precharger: () =>
-                  prechargerEcransCles(ref.read(apiClientProvider)),
-              child: const BiometricProposal(child: HomeScreen()),
-            ),
-          AuthLocked() => const PinLockPage(),
-          AuthPinSetup(:final displayName) =>
-            PinSetupPage(displayName: displayName),
-          AuthPinResume(:final displayName) =>
-            PinResumePage(displayName: displayName),
-          _ => const LoginPage(),
-        },
         ),
       ),
     );
   }
+
+  Widget _accueil(Conservation conservation) => PrechargementPeriodique(
+        key: conservation.cleAccueil,
+        // Sous l'écran de code, plus de jeton : un retour au premier plan n'a
+        // rien à précharger.
+        precharger: () async {
+          if (ref.read(authNotifierProvider) is! AuthAuthenticated) return;
+          await prechargerEcransCles(ref.read(apiClientProvider));
+        },
+        child: const BiometricProposal(child: HomeScreen()),
+      );
+
+  static EtatSession _etatSession(AuthState state) => switch (state) {
+        AuthAuthenticated() => EtatSession.ouverte,
+        AuthLocked() => EtatSession.verrouillee,
+        AuthUnauthenticated() => EtatSession.fermee,
+        _ => EtatSession.transitoire,
+      };
 }
 
 /// Affiché pendant le bootstrap (vérification de session)
