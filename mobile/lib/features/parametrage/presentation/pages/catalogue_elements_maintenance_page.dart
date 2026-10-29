@@ -274,11 +274,11 @@ class _CatalogueElementsMaintenancePageState
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(child: _barreRecherche(tous.length)),
+                SliverToBoxAdapter(child: _barreRecherche()),
                 SliverToBoxAdapter(child: _pucesModeles(flotte)),
                 if (modele != null)
                   SliverToBoxAdapter(
-                      child: _resumeModele(modele, flotte, visibles.length)),
+                      child: _resumeModele(modele)),
                 if (visibles.isEmpty)
                   SliverToBoxAdapter(child: _vide(q.isNotEmpty || modele != null))
                 else
@@ -320,7 +320,7 @@ class _CatalogueElementsMaintenancePageState
 
   // ── Recherche et filtre ───────────────────────────────────────────────────
 
-  Widget _barreRecherche(int total) {
+  Widget _barreRecherche() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: TextField(
@@ -330,7 +330,7 @@ class _CatalogueElementsMaintenancePageState
         style: TextStyle(fontSize: 15, color: AppColors.dark),
         decoration: InputDecoration(
           isDense: true,
-          hintText: 'Rechercher parmi $total…',
+          hintText: 'Rechercher un élément…',
           hintStyle: TextStyle(color: AppColors.hint, fontSize: 15),
           prefixIcon: Icon(Icons.search, color: AppColors.hint, size: 20),
           suffixIcon: _query.isEmpty
@@ -374,7 +374,7 @@ class _CatalogueElementsMaintenancePageState
               choisie: modele == null,
               onTap: () => setState(() => _modele = null)),
           for (final m in flotte)
-            _puce('${m.modeleNom} · ${m.nombreVehicules}',
+            _puce(m.modeleNom,
                 choisie: modele?.modeleId == m.modeleId,
                 onTap: () => setState(() => _modele = CibleVehicule(
                       marqueId: m.marqueId,
@@ -431,18 +431,11 @@ class _CatalogueElementsMaintenancePageState
     );
   }
 
-  Widget _resumeModele(
-      CibleVehicule modele, List<ModeleFlotte> flotte, int nombre) {
-    final dansFlotte =
-        flotte.where((m) => m.modeleId == modele.modeleId).firstOrNull;
+  Widget _resumeModele(CibleVehicule modele) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
       child: Text(
-        [
-          '$nombre élément${nombre > 1 ? 's' : ''} proposé${nombre > 1 ? 's' : ''} pour ${modele.libelle}',
-          if (dansFlotte != null)
-            '${dansFlotte.nombreVehicules} véhicule${dansFlotte.nombreVehicules > 1 ? 's' : ''}',
-        ].join(' · '),
+        'Éléments proposés pour ${modele.libelle}',
         style: TextStyle(fontSize: 12.5, color: AppColors.label),
       ),
     );
@@ -463,8 +456,6 @@ class _CatalogueElementsMaintenancePageState
                 .map((t) => t.code)
                 .firstOrNull,
             libelle: premier['categorieTypeLibelle'] as String?);
-    final inactifs = items.where((it) => !_estActif(it)).length;
-    final accent = AppColors.primary;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -486,41 +477,28 @@ class _CatalogueElementsMaintenancePageState
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.12),
+              color: AppColors.fieldFill,
               shape: BoxShape.circle,
             ),
-            child: Icon(icone, size: 16, color: accent),
+            child: Icon(icone, size: 16, color: AppColors.label),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text.rich(
-              TextSpan(children: [
-                TextSpan(
-                    text: libelle,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.dark)),
-                TextSpan(
-                    text: '  ${items.length}',
-                    style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.hint)),
-                if (inactifs > 0)
-                  TextSpan(
-                      text: ' · $inactifs inactif${inactifs > 1 ? 's' : ''}',
-                      style: TextStyle(fontSize: 12, color: AppColors.hint)),
-              ]),
+            child: Text(
+              libelle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.dark),
             ),
           ),
           if (d.editable)
             IconButton(
               tooltip: 'Ajouter un élément',
               visualDensity: VisualDensity.compact,
-              icon: Icon(Icons.add_rounded, size: 20, color: accent),
+              icon: Icon(Icons.add_rounded, size: 20, color: AppColors.label),
               onPressed: _busy
                   ? null
                   : () => _ouvrirFormulaire(

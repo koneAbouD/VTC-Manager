@@ -64,8 +64,9 @@ class CibleVehicule {
   int get hashCode => Object.hash(marqueId, modeleId);
 }
 
-/// Pastille de la portée d'un élément : grise pour tous les véhicules, pleine
-/// à l'accent pour un modèle, cerclée pour une marque entière.
+/// Pastille de la portée d'un élément, sans couleur d'accent : discrète pour
+/// tous les véhicules, pleine pour un modèle, cerclée pour une marque entière.
+/// La forme et la graisse suffisent à repérer ce qui est réservé.
 class PastilleVehicule extends StatelessWidget {
   final CibleVehicule cible;
 
@@ -73,12 +74,11 @@ class PastilleVehicule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = AppColors.primary;
     final (fond, bord, texte) = cible.estModele
-        ? (accent.withValues(alpha: 0.12), Colors.transparent, accent)
+        ? (AppColors.fieldFill, Colors.transparent, AppColors.dark)
         : cible.estMarque
-            ? (Colors.transparent, accent.withValues(alpha: 0.45), accent)
-            : (AppColors.fieldFill, Colors.transparent, AppColors.hint);
+            ? (Colors.transparent, AppColors.border, AppColors.dark)
+            : (Colors.transparent, Colors.transparent, AppColors.hint);
     return Container(
       padding: const EdgeInsets.fromLTRB(5, 2, 7, 2),
       decoration: BoxDecoration(
@@ -88,7 +88,7 @@ class PastilleVehicule extends StatelessWidget {
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(cible.estMarque ? Icons.sell_outlined : Icons.directions_car_outlined,
-            size: 12, color: texte),
+            size: 12, color: AppColors.label),
         const SizedBox(width: 3),
         Flexible(
           child: Text(
@@ -249,8 +249,6 @@ class _CibleVehiculeSheetState extends ConsumerState<_CibleVehiculeSheet> {
                         modeleNom: m.modeleNom,
                       ),
                       icone: Icons.directions_car_outlined,
-                      sousTitre:
-                          '${m.nombreVehicules} véhicule${m.nombreVehicules > 1 ? 's' : ''}',
                     ),
                   if (!widget.modelesSeulement)
                     for (final e in marquesFlotte.entries)
@@ -269,7 +267,7 @@ class _CibleVehiculeSheetState extends ConsumerState<_CibleVehiculeSheet> {
                     style: TextStyle(fontSize: 14, color: AppColors.dark),
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: 'Rechercher parmi ${autres.length} modèles…',
+                      hintText: 'Rechercher un modèle…',
                       hintStyle: TextStyle(color: AppColors.hint, fontSize: 14),
                       prefixIcon:
                           Icon(Icons.search, color: AppColors.hint, size: 20),

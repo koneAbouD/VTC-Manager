@@ -170,14 +170,15 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('S-Presso · 9'));
+    await tester.tap(find.text('S-Presso'));
     await tester.pumpAndSettle();
 
     // Filtre actif : les sections s'ouvrent, l'élément de la Dzire disparaît.
     expect(find.text('Filtre à air'), findsOneWidget);
     expect(find.text("Main d'oeuvre"), findsOneWidget);
     expect(find.text('Plaquette Dzire'), findsNothing);
-    expect(find.textContaining('3 éléments proposés pour Suzuki S-Presso'),
-        findsOneWidget);
+    expect(find.text('Éléments proposés pour Suzuki S-Presso'), findsOneWidget);
+    // Plus de compteurs : ni nombre d'éléments, ni nombre de véhicules.
+    expect(find.textContaining('· 9'), findsNothing);
   });
 }

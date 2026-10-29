@@ -1124,7 +1124,7 @@ class _MosaiqueTypes extends StatelessWidget {
                 GestureDetector(
                   onTap: onToutVoir,
                   child: Text(
-                    'Tout voir (${types.length})',
+                    'Tout voir',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -1178,7 +1178,7 @@ class _TuileType extends StatelessWidget {
     return Semantics(
       button: true,
       selected: coche,
-      label: '${type.libelle}, ${type.nombre} interventions',
+      label: type.libelle,
       child: GestureDetector(
         onTap: onTap,
         onLongPress: () {
@@ -1210,43 +1210,32 @@ class _TuileType extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
+                // Icône neutre : le type se reconnaît à sa forme, la
+                // couleur d'accent reste aux états de sélection.
                 Container(
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: couleur.withValues(alpha: 0.14),
+                    color: AppColors.fieldFill,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icone, size: 16, color: couleur),
+                  child: Icon(icone, size: 16, color: AppColors.label),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        Expanded(
-                          child: Text(
-                            type.libelle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.dark,
-                            ),
-                          ),
+                      Text(
+                        type.libelle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${type.nombre}',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w800,
-                            color: couleur,
-                          ),
-                        ),
-                      ]),
+                      ),
                       const SizedBox(height: 1),
                       Text(
                         money.format(type.coutRealise),
@@ -1330,11 +1319,13 @@ class _RangeeTypes extends StatelessWidget {
                   width: 7,
                   height: 7,
                   decoration:
-                      BoxDecoration(color: couleur, shape: BoxShape.circle),
+                      BoxDecoration(
+                          color: coche ? couleur : AppColors.hint,
+                          shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '${t.libelle} ${t.nombre}',
+                  t.libelle,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: coche ? FontWeight.w700 : FontWeight.w500,
@@ -1433,11 +1424,11 @@ class _TousTypesSheet extends StatelessWidget {
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.14),
+                          color: AppColors.fieldFill,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(icone,
-                            size: 18, color: AppColors.primary),
+                            size: 18, color: AppColors.label),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1450,8 +1441,7 @@ class _TousTypesSheet extends StatelessWidget {
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.dark)),
                             Text(
-                              '${t.nombre} intervention${t.nombre > 1 ? 's' : ''}'
-                              ' · ${money.format(t.coutRealise)}',
+                              money.format(t.coutRealise),
                               style: TextStyle(
                                   fontSize: 12, color: AppColors.hint),
                             ),
@@ -1495,9 +1485,8 @@ class _PastillesStatut extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = synthese;
-    // Compteurs serveur ; sans synthèse (chargement, échec), les libellés
-    // restent seuls plutôt que d'afficher un nombre faux.
-    String avec(String libelle, int? n) => n == null ? libelle : '$libelle $n';
+    // Libellés seuls, sans compteur. La pastille « En cours » n'apparaît que
+    // si des interventions le sont.
     final enCours = s?.nombre('EN_COURS') ?? 0;
 
     return Padding(
@@ -1509,41 +1498,37 @@ class _PastillesStatut extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           children: [
             StatutFiltreChip(
-              label: avec('Tous', s?.total),
+              label: 'Tous',
               selected: statut == null && !enRetard,
               color: AppColors.hint,
               onTap: () => onChoisir(null),
             ),
             StatutFiltreChip(
-              label: avec(StatutMaintenanceVisuel.libellePluriel('PLANIFIEE'),
-                  s?.nombre('PLANIFIEE')),
+              label: StatutMaintenanceVisuel.libellePluriel('PLANIFIEE'),
               selected: statut == 'PLANIFIEE',
               color: StatutMaintenanceVisuel.couleur('PLANIFIEE'),
               onTap: () => onChoisir('PLANIFIEE'),
             ),
             _PastilleRetard(
-              label: avec('En retard', s?.enRetard),
+              label: 'En retard',
               selected: enRetard,
               onTap: () => onChoisir(null, enRetard: true),
             ),
             if (enCours > 0 || statut == 'EN_COURS')
               StatutFiltreChip(
-                label: avec(StatutMaintenanceVisuel.libellePluriel('EN_COURS'),
-                    s?.nombre('EN_COURS')),
+                label: StatutMaintenanceVisuel.libellePluriel('EN_COURS'),
                 selected: statut == 'EN_COURS',
                 color: StatutMaintenanceVisuel.couleur('EN_COURS'),
                 onTap: () => onChoisir('EN_COURS'),
               ),
             StatutFiltreChip(
-              label: avec(StatutMaintenanceVisuel.libellePluriel('TERMINEE'),
-                  s?.nombre('TERMINEE')),
+              label: StatutMaintenanceVisuel.libellePluriel('TERMINEE'),
               selected: statut == 'TERMINEE',
               color: StatutMaintenanceVisuel.couleur('TERMINEE'),
               onTap: () => onChoisir('TERMINEE'),
             ),
             StatutFiltreChip(
-              label: avec(StatutMaintenanceVisuel.libellePluriel('ANNULEE'),
-                  s?.nombre('ANNULEE')),
+              label: StatutMaintenanceVisuel.libellePluriel('ANNULEE'),
               selected: statut == 'ANNULEE',
               color: StatutMaintenanceVisuel.couleur('ANNULEE'),
               onTap: () => onChoisir('ANNULEE'),
@@ -1658,15 +1643,15 @@ class _MaintenanceCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // La pastille d'icône reste à l'accent du thème : l'icône suffit à
-          // distinguer le type, le statut a son badge.
+          // Pastille d'icône neutre : l'icône suffit à distinguer le type, le
+          // statut a son badge.
           Container(
             width: 42, height: 42,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+              color: AppColors.fieldFill,
               shape: BoxShape.circle,
             ),
-            child: Icon(icone, color: AppColors.primary, size: 20),
+            child: Icon(icone, color: AppColors.label, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1832,10 +1817,10 @@ class _ActionsRapidesSheet extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.14),
+                color: AppColors.fieldFill,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icone, size: 20, color: AppColors.primary),
+              child: Icon(icone, size: 20, color: AppColors.label),
             ),
             const SizedBox(width: 12),
             Expanded(

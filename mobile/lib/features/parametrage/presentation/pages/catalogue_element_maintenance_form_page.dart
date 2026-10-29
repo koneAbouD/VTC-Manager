@@ -295,13 +295,10 @@ class _CatalogueElementMaintenanceFormPageState
 
   Widget _champVehicule() {
     final flotte = ref.watch(modelesFlotteProvider).valueOrNull ?? const [];
-    final dansFlotte = _cible.estModele
-        ? flotte.where((m) => m.modeleId == _cible.modeleId).firstOrNull
-        : null;
+    final dansFlotte = _cible.estModele &&
+        flotte.any((m) => m.modeleId == _cible.modeleId);
     final precision = _cible.estModele
-        ? (dansFlotte != null
-            ? 'Modèle · ${dansFlotte.nombreVehicules} véhicule${dansFlotte.nombreVehicules > 1 ? 's' : ''} de la flotte'
-            : 'Modèle')
+        ? (dansFlotte ? 'Modèle de la flotte' : 'Modèle')
         : _cible.estMarque
             ? 'Marque entière'
             : 'Proposé pour toute la flotte';
@@ -322,7 +319,7 @@ class _CatalogueElementMaintenanceFormPageState
                     ? Icons.directions_car_outlined
                     : Icons.public_rounded,
             size: 20,
-            color: AppColors.primary,
+            color: AppColors.label,
           ),
           const SizedBox(width: 10),
           Expanded(
