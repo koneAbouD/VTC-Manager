@@ -48,9 +48,12 @@ public class CatalogueElementMaintenanceController {
     @GetMapping
     @Operation(summary = "Lister tous les éléments de maintenance",
                description = "Retourne la liste complète du catalogue (actifs ET inactifs). "
-                       + "Destiné au paramétrage. Pour la saisie d'une maintenance, utiliser /actifs.")
-    public List<CatalogueElementMaintenanceResponse> findAll() {
-        return getAllUseCase.execute().stream()
+                       + "Destiné au paramétrage. Pour la saisie d'une maintenance, utiliser /actifs. "
+                       + "Avec « modeleId », seuls les éléments que la saisie proposerait pour un "
+                       + "véhicule de ce modèle (génériques, de sa marque, ou de ce modèle).")
+    public List<CatalogueElementMaintenanceResponse> findAll(
+            @RequestParam(required = false) Long modeleId) {
+        return getAllUseCase.execute(modeleId).stream()
                 .map(this::toResponse)
                 .toList();
     }

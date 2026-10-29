@@ -35,6 +35,7 @@ class CatalogueElementMaintenanceUseCasesTest {
     private ToggleActifCatalogueElementMaintenanceUseCase toggleUseCase;
     private CreateCatalogueElementMaintenanceUseCase createUseCase;
     private GetActifsCatalogueElementsMaintenanceUseCase actifsUseCase;
+    private GetAllCatalogueElementsMaintenanceUseCase tousUseCase;
     private MarqueRepository marqueRepository;
     private ModeleRepository modeleRepository;
     private VehiculeRepository vehiculeRepository;
@@ -62,6 +63,7 @@ class CatalogueElementMaintenanceUseCasesTest {
         toggleUseCase = new ToggleActifCatalogueElementMaintenanceUseCase(repository);
         createUseCase = new CreateCatalogueElementMaintenanceUseCase(repository, cible, type);
         actifsUseCase = new GetActifsCatalogueElementsMaintenanceUseCase(repository, vehiculeRepository);
+        tousUseCase = new GetAllCatalogueElementsMaintenanceUseCase(repository, modeleRepository);
         when(marqueRepository.existsById(TOYOTA)).thenReturn(true);
         when(modeleRepository.findById(COROLLA)).thenReturn(Optional.of(
                 Modele.builder().id(COROLLA).nom("Corolla").marque(Marque.builder().id(TOYOTA).build()).build()));
@@ -269,5 +271,30 @@ class CatalogueElementMaintenanceUseCasesTest {
 
         assertThat(actifsUseCase.execute(42L, VIDANGE)).extracting(CatalogueElementMaintenance::getId)
                 .containsExactly(1L);
+    }
+
+    @Test
+    @DisplayName("le paramétrage filtré sur un modèle voit ce que la saisie proposerait, inactifs compris")
+    void tous_filtre_selon_le_modele() {
+        CatalogueElementMaintenance generique = CatalogueElementMaintenance.builder().id(1L)
+                .libelle("Main d'oeuvre").build();
+        CatalogueElementMaintenance toyotaInactif = CatalogueElementMaintenance.builder().id(2L)
+                .libelle("Filtre").marqueId(TOYOTA).actif(false).build();
+        CatalogueElementMaintenance corolla = CatalogueElementMaintenance.builder().id(3L)
+                .libelle("Plaquettes").marqueId(TOYOTA).modeleId(COROLLA).build();
+        CatalogueElementMaintenance yaris = CatalogueElementMaintenance.builder().id(4L)
+                .libelle("Plaquettes").marqueId(TOYOTA).modeleId(YARIS).build();
+        when(repository.findAll()).thenReturn(List.of(generique, toyotaInactif, corolla, yaris));
+
+        assertThat(tousUseCase.execute(COROLLA)).extracting(CatalogueElementMaintenance::getId)
+                .containsExactly(1L, 2L, 3L);
+        assertThat(tousUseCase.execute((Long) null)).hasSize(4);
+    }
+
+    @Test
+    @DisplayName("un modèle inconnu est signalé plutôt que de renvoyer une liste vide")
+    void tous_refuse_un_modele_inconnu() {
+        assertThatThrownBy(() -> tousUseCase.execute(999L))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 }

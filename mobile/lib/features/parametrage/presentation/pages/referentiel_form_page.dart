@@ -1,15 +1,12 @@
-import '../../../../core/network/session_manager.dart';
 import 'package:flutter/material.dart';
-import 'package:tmk_cache/tmk_cache.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../../../core/widgets/image_viewer.dart';
 import '../../../../core/widgets/premium_select_field.dart';
 import '../../data/parametrage_api.dart';
 import '../providers/parametrage_providers.dart';
+import '../widgets/champ_image_referentiel.dart';
 
 // Fond des champs, aligné sur VehiculeFormPage (au lieu de AppColors.fieldFill,
 // une nuance de gris légèrement différente).
@@ -37,7 +34,6 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
       {}; // champNom -> valeur (code) sélectionnée
   final Map<String, String?> _images = {}; // champNom -> nom d'objet
   final Map<String, String?> _imagePreview = {}; // champNom -> URL d'aperçu
-  final Set<String> _uploading = {};
   bool _saving = false;
 
   ReferentielDescriptor get d => widget.descriptor;
@@ -374,269 +370,22 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
   }
 
   // ── Champ image (aperçu + choisir/changer/supprimer) ──────────────────────
-  Future<void> _choisirImage(String nom) async {
-    final XFile? picked = await SessionManager.instance.sortieAttendue(
-      () => ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1280,
-        imageQuality: 85,
-      ),
-    );
-    if (picked == null) return;
-    setState(() => _uploading.add(nom));
-    try {
-      final bytes = await picked.readAsBytes();
-      final res = await ref
-          .read(parametrageApiProvider)
-          .uploaderImage(d.endpoint, bytes, picked.name);
-      if (!mounted) return;
-      setState(() {
-        _images[nom] = res.image;
-        _imagePreview[nom] = res.url;
-      });
-    } catch (e) {
-      _toast(_message(e), erreur: true);
-    } finally {
-      if (mounted) setState(() => _uploading.remove(nom));
-    }
-  }
-
   Widget _champImage(ChampDescriptor c) {
-    final preview = _imagePreview[c.nom];
-    final uploading = _uploading.contains(c.nom);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _label(c),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topCenter,
-          child: uploading
-              ? _imageUploading()
-              : preview == null
-                  ? _imageDropzone(c)
-                  : _imageRempli(c, preview),
+        ChampImageReferentiel(
+          endpoint: d.endpoint,
+          titre: c.label,
+          previewUrl: _imagePreview[c.nom],
+          onChanged: (image, url) => setState(() {
+            _images[c.nom] = image;
+            _imagePreview[c.nom] = url;
+          }),
+          onErreur: (message) => _toast(message, erreur: true),
         ),
       ],
-    );
-  }
-
-  /// État vide : zone d'ajout élégante, entièrement cliquable.
-  Widget _imageDropzone(ChampDescriptor c) {
-    return GestureDetector(
-      onTap: () => _choisirImage(c.nom),
-      child: Container(
-        height: 172,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.primaryTint, _kFieldFill],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.28)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.18),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.add_photo_alternate_rounded,
-                  size: 27, color: AppColors.primary),
-            ),
-            const SizedBox(height: 12),
-            Text('Ajouter une image',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.dark)),
-            const SizedBox(height: 3),
-            Text('JPG ou PNG · appuyez pour parcourir',
-                style: TextStyle(fontSize: 12, color: AppColors.label)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Image présente : plein cadre, ombre douce, actions flottantes superposées.
-  Widget _imageRempli(ChampDescriptor c, String preview) {
-    return Container(
-      height: 210,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.dark.withValues(alpha: 0.10),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            GestureDetector(
-              onTap: () => showImageViewer(context, preview, titre: c.label),
-              child: Image(
-                image: imageReseau(preview),
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    color: _kFieldFill,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.primary),
-                    ),
-                  );
-                },
-                errorBuilder: (_, __, ___) => Container(
-                  color: _kFieldFill,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.broken_image_outlined,
-                            color: AppColors.hint, size: 30),
-                        const SizedBox(height: 6),
-                        Text('Image indisponible',
-                            style:
-                                TextStyle(color: AppColors.hint, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // Voile bas + indice « agrandir ».
-            IgnorePointer(
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(14, 26, 14, 12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        AppColors.dark.withValues(alpha: 0.55),
-                      ],
-                    ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.zoom_out_map_rounded,
-                          size: 16, color: Colors.white),
-                      SizedBox(width: 6),
-                      Text('Appuyez pour agrandir',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Actions flottantes givrées.
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Row(
-                children: [
-                  _actionFlottante(
-                    icon: Icons.swap_horiz_rounded,
-                    tooltip: 'Changer',
-                    onTap: () => _choisirImage(c.nom),
-                  ),
-                  const SizedBox(width: 8),
-                  _actionFlottante(
-                    icon: Icons.delete_outline_rounded,
-                    tooltip: 'Supprimer',
-                    couleur: AppColors.error,
-                    onTap: () => setState(() {
-                      _images[c.nom] = null;
-                      _imagePreview[c.nom] = null;
-                    }),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Téléversement en cours : cadre neutre avec indicateur centré.
-  Widget _imageUploading() {
-    return Container(
-      height: 210,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: _kFieldFill,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-            const SizedBox(height: 12),
-            Text('Téléversement…',
-                style: TextStyle(color: AppColors.label, fontSize: 12.5)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Bouton circulaire givré posé sur l'image (changer / supprimer).
-  Widget _actionFlottante({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-    Color? couleur,
-  }) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.92),
-      shape: const CircleBorder(),
-      elevation: 2,
-      shadowColor: AppColors.dark.withValues(alpha: 0.3),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Tooltip(
-          message: tooltip,
-          child: SizedBox(
-            width: 38,
-            height: 38,
-            child: Icon(icon, size: 19, color: couleur ?? AppColors.dark),
-          ),
-        ),
-      ),
     );
   }
 

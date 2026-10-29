@@ -728,8 +728,9 @@ public class UseCaseBeanConfiguration {
 
     // ----- CatalogueElementMaintenance -----
     @Bean
-    public GetAllCatalogueElementsMaintenanceUseCase getAllCatalogueElementsMaintenanceUseCase(CatalogueElementMaintenanceRepository repo) {
-        return new GetAllCatalogueElementsMaintenanceUseCase(repo);
+    public GetAllCatalogueElementsMaintenanceUseCase getAllCatalogueElementsMaintenanceUseCase(
+            CatalogueElementMaintenanceRepository repo, ModeleRepository modeleRepository) {
+        return new GetAllCatalogueElementsMaintenanceUseCase(repo, modeleRepository);
     }
 
     @Bean

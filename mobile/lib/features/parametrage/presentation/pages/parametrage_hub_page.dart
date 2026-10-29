@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../providers/parametrage_providers.dart';
+import 'catalogue_elements_maintenance_page.dart';
 import 'referentiel_liste_page.dart';
 
 /// Écran d'accueil du paramétrage des données de référence.
@@ -45,7 +46,13 @@ class ParametrageHubPage extends ConsumerWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ReferentielListePage(descriptor: descriptor),
+                  // Les éléments de maintenance ont leur page : rangée par
+                  // type, portée véhicule en un seul champ.
+                  builder: (_) =>
+                      descriptor.key == 'catalogue-elements-maintenance'
+                          ? CatalogueElementsMaintenancePage(
+                              descriptor: descriptor)
+                          : ReferentielListePage(descriptor: descriptor),
                 ),
               ),
             );
