@@ -26,11 +26,18 @@ final _cemUCProvider = Provider((ref) =>
     GetCatalogueElementsMaintenanceUseCase(
         ref.watch(catalogueElementMaintenanceRepositoryProvider)));
 
+/// Ce qui restreint les éléments proposés : le véhicule (sa marque et son
+/// modèle) et le type de maintenance. `null` = pas de restriction.
+typedef FiltreCatalogueMaintenance = ({int? vehiculeId, int? categorieTypeId});
+
 /// Éléments actifs du catalogue, restreints à ceux compatibles avec le
-/// véhicule donné (marque / modèle) ; `null` = tous les éléments actifs.
+/// véhicule (marque / modèle) et avec le type de maintenance (communs ou
+/// réservés à ce type).
 final catalogueElementsMaintenanceProvider = FutureProvider.family<
-    List<CatalogueElementMaintenance>, int?>((ref, vehiculeId) async {
+    List<CatalogueElementMaintenance>,
+    FiltreCatalogueMaintenance>((ref, filtre) async {
   final uc = ref.watch(_cemUCProvider);
-  final result = await uc(vehiculeId: vehiculeId);
+  final result = await uc(
+      vehiculeId: filtre.vehiculeId, categorieTypeId: filtre.categorieTypeId);
   return result.fold((f) => throw Exception(f.message), (list) => list);
 });

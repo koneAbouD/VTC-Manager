@@ -48,4 +48,12 @@ public class CatalogueElementMaintenanceEntity extends AbstractAuditEntity {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "modele_id", insertable = false, updatable = false)
     private ModeleEntity modele;
+
+    /** Type de maintenance réservé ; null = élément commun à tous les types. */
+    @Column(name = "categorie_type_id")
+    private Long categorieTypeId;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "categorie_type_id", insertable = false, updatable = false)
+    private CategorieOperationEntity categorieType;
 }

@@ -37,6 +37,14 @@ public class CatalogueElementMaintenance {
     private Long modeleId;
     private String modeleNom;
 
+    /**
+     * Type de maintenance (catégorie de la sous-catégorie « Maintenances ») auquel
+     * l'élément est réservé. Sans type, l'élément est commun : proposé quel que
+     * soit le type de l'intervention (main d'œuvre, par exemple).
+     */
+    private Long categorieTypeId;
+    private String categorieTypeLibelle;
+
     public void update(String libelle, BigDecimal montantDefaut, String image) {
         this.libelle = libelle;
         this.montantDefaut = montantDefaut;
@@ -57,6 +65,22 @@ public class CatalogueElementMaintenance {
         if (marqueId == null) return true;
         if (!marqueId.equals(marqueVehicule)) return false;
         return modeleId == null || modeleId.equals(modeleVehicule);
+    }
+
+    public void affecterType(Long categorieTypeId, String categorieTypeLibelle) {
+        this.categorieTypeId = categorieTypeId;
+        this.categorieTypeLibelle = categorieTypeLibelle;
+    }
+
+    /**
+     * Vrai si l'élément peut être proposé pour une intervention de ce type :
+     * commun à tous les types, ou réservé à celui-ci. Sans type demandé, tout
+     * élément convient.
+     */
+    public boolean estCompatibleAvecType(Long typeIntervention) {
+        return typeIntervention == null
+                || categorieTypeId == null
+                || categorieTypeId.equals(typeIntervention);
     }
 
     public void changerActivation(boolean actif) {

@@ -745,11 +745,17 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
             // marque choisie) ; sans choix parent, tout reste proposé.
             final parent = _champParent(c, items);
             final valeurParent = parent != null ? _refs[parent.nom] : null;
-            final visibles = valeurParent == null
-                ? items
-                : items
-                    .where((it) => _idReference(it, parent!.nom) == valeurParent)
-                    .toList();
+            // Restreintes aussi par le filtre déclaré au catalogue (ex. seules
+            // les catégories de la sous-catégorie « Maintenances »), en gardant
+            // la valeur déjà enregistrée pour ne pas la perdre à l'édition.
+            final visibles = items
+                .where((it) =>
+                    c.accepteReference(it) ||
+                    it[refDesc.idField] == _refs[c.nom])
+                .where((it) =>
+                    valeurParent == null ||
+                    _idReference(it, parent!.nom) == valeurParent)
+                .toList();
             final options = visibles.map((it) {
               final id = it[refDesc.idField] as Object;
               final label = (it[titreChamp] ?? it['nom'] ?? it['libelle'] ?? id)

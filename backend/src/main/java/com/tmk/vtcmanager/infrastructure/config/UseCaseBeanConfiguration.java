@@ -745,9 +745,16 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public TypeMaintenanceCatalogue typeMaintenanceCatalogue(
+            CategorieOperationRepository categorieOperationRepository) {
+        return new TypeMaintenanceCatalogue(categorieOperationRepository);
+    }
+
+    @Bean
     public CreateCatalogueElementMaintenanceUseCase createCatalogueElementMaintenanceUseCase(
-            CatalogueElementMaintenanceRepository repo, CibleVehiculeCatalogue cibleVehicule) {
-        return new CreateCatalogueElementMaintenanceUseCase(repo, cibleVehicule);
+            CatalogueElementMaintenanceRepository repo, CibleVehiculeCatalogue cibleVehicule,
+            TypeMaintenanceCatalogue typeMaintenance) {
+        return new CreateCatalogueElementMaintenanceUseCase(repo, cibleVehicule, typeMaintenance);
     }
 
     @Bean
@@ -759,8 +766,8 @@ public class UseCaseBeanConfiguration {
     @Bean
     public UpdateCatalogueElementMaintenanceUseCase updateCatalogueElementMaintenanceUseCase(
             CatalogueElementMaintenanceRepository repo, FileStoragePort storage,
-            CibleVehiculeCatalogue cibleVehicule) {
-        return new UpdateCatalogueElementMaintenanceUseCase(repo, storage, cibleVehicule);
+            CibleVehiculeCatalogue cibleVehicule, TypeMaintenanceCatalogue typeMaintenance) {
+        return new UpdateCatalogueElementMaintenanceUseCase(repo, storage, cibleVehicule, typeMaintenance);
     }
 
     @Bean

@@ -40,33 +40,49 @@ public record ChampDescriptorResponse(
         @Schema(description = "Pour type=enum : libellé à afficher pour chaque valeur (code → libellé). "
                 + "Absent quand les valeurs sont déjà lisibles.",
                 example = "{\"CHARGE_FIXE\": \"Charge fixe\"}", nullable = true)
-        Map<String, String> libelles
+        Map<String, String> libelles,
+
+        @Schema(description = "Pour type=reference : valeurs que doivent porter les éléments du "
+                + "référentiel source pour être proposés (champ → valeur). Absent : tous sont proposés.",
+                example = "{\"sousCategorieLibelle\": \"Maintenances\"}", nullable = true)
+        Map<String, String> refFiltre
 ) {
 
     public static ChampDescriptorResponse texte(String nom, String label, boolean obligatoire) {
-        return new ChampDescriptorResponse(nom, label, "text", obligatoire, true, null, null, null);
+        return new ChampDescriptorResponse(nom, label, "text", obligatoire, true, null, null, null, null);
     }
 
     public static ChampDescriptorResponse nombre(String nom, String label, boolean obligatoire) {
-        return new ChampDescriptorResponse(nom, label, "number", obligatoire, true, null, null, null);
+        return new ChampDescriptorResponse(nom, label, "number", obligatoire, true, null, null, null, null);
     }
 
     public static ChampDescriptorResponse booleen(String nom, String label) {
-        return new ChampDescriptorResponse(nom, label, "bool", false, true, null, null, null);
+        return new ChampDescriptorResponse(nom, label, "bool", false, true, null, null, null, null);
     }
 
     public static ChampDescriptorResponse couleur(String nom, String label, boolean obligatoire) {
-        return new ChampDescriptorResponse(nom, label, "color", obligatoire, true, null, null, null);
+        return new ChampDescriptorResponse(nom, label, "color", obligatoire, true, null, null, null, null);
     }
 
     public static ChampDescriptorResponse reference(String nom, String label, boolean obligatoire, String refKey) {
-        return new ChampDescriptorResponse(nom, label, "reference", obligatoire, true, refKey, null, null);
+        return new ChampDescriptorResponse(nom, label, "reference", obligatoire, true, refKey, null, null, null);
+    }
+
+    /**
+     * Référence restreinte aux éléments du référentiel source qui portent les
+     * valeurs de [filtre] (ex. catégories d'opération de la sous-catégorie
+     * « Maintenances »).
+     */
+    public static ChampDescriptorResponse reference(String nom, String label, boolean obligatoire,
+                                                    String refKey, Map<String, String> filtre) {
+        return new ChampDescriptorResponse(nom, label, "reference", obligatoire, true, refKey, null, null,
+                Map.copyOf(filtre));
     }
 
     /** Champ énuméré dont les valeurs sont déjà lisibles (libellés de groupes, par exemple). */
     public static ChampDescriptorResponse enumeration(
             String nom, String label, boolean obligatoire, java.util.List<String> valeurs) {
-        return new ChampDescriptorResponse(nom, label, "enum", obligatoire, true, null, valeurs, null);
+        return new ChampDescriptorResponse(nom, label, "enum", obligatoire, true, null, valeurs, null, null);
     }
 
     /**
@@ -77,16 +93,16 @@ public record ChampDescriptorResponse(
     public static ChampDescriptorResponse enumeration(
             String nom, String label, boolean obligatoire, Map<String, String> libelles) {
         return new ChampDescriptorResponse(nom, label, "enum", obligatoire, true, null,
-                List.copyOf(libelles.keySet()), libelles);
+                List.copyOf(libelles.keySet()), libelles, null);
     }
 
     /** Champ image : upload d'un fichier via {endpoint}/image, la valeur stockée est le nom d'objet. */
     public static ChampDescriptorResponse image(String nom, String label, boolean obligatoire) {
-        return new ChampDescriptorResponse(nom, label, "image", obligatoire, true, null, null, null);
+        return new ChampDescriptorResponse(nom, label, "image", obligatoire, true, null, null, null, null);
     }
 
     /** Champ non modifiable (clé immuable ou dérivé). */
     public static ChampDescriptorResponse lectureSeule(String nom, String label) {
-        return new ChampDescriptorResponse(nom, label, "text", false, false, null, null, null);
+        return new ChampDescriptorResponse(nom, label, "text", false, false, null, null, null, null);
     }
 }

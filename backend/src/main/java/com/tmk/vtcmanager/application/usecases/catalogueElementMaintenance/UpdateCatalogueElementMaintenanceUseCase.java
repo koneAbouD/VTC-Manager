@@ -23,16 +23,19 @@ public class UpdateCatalogueElementMaintenanceUseCase {
     private final CatalogueElementMaintenanceRepository repository;
     private final FileStoragePort storage;
     private final CibleVehiculeCatalogue cibleVehicule;
+    private final TypeMaintenanceCatalogue typeMaintenance;
 
     @Transactional
     public CatalogueElementMaintenance execute(Long id, String libelle,
                                                BigDecimal montantDefaut, String image,
-                                               Long marqueId, Long modeleId) {
+                                               Long marqueId, Long modeleId,
+                                               Long categorieTypeId) {
         CatalogueElementMaintenance element = repository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Élément catalogue", id));
         String ancienneImage = element.getImage();
         element.update(libelle, montantDefaut, image);
         cibleVehicule.appliquer(element, marqueId, modeleId);
+        typeMaintenance.appliquer(element, categorieTypeId);
         CatalogueElementMaintenance saved = repository.save(element);
 
         // Nettoyage best-effort : supprime l'ancien fichier si l'image a changé

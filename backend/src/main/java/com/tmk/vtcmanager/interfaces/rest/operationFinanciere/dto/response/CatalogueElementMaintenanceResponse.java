@@ -15,5 +15,8 @@ public record CatalogueElementMaintenanceResponse(
         Long marqueId,
         String marqueNom,
         Long modeleId,
-        String modeleNom
+        String modeleNom,
+        // Type de maintenance réservé (null : élément commun à tous les types).
+        Long categorieTypeId,
+        String categorieTypeLibelle
 ) {}

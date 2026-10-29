@@ -1,16 +1,19 @@
 package com.tmk.vtcmanager.application.usecases.catalogueElementMaintenance;
 
 import com.tmk.vtcmanager.application.domain.operation.CatalogueElementMaintenance;
+import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.vehicule.Marque;
 import com.tmk.vtcmanager.application.domain.vehicule.Modele;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.CatalogueElementMaintenanceRepository;
+import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.MarqueRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ModeleRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -35,11 +38,15 @@ class CatalogueElementMaintenanceUseCasesTest {
     private MarqueRepository marqueRepository;
     private ModeleRepository modeleRepository;
     private VehiculeRepository vehiculeRepository;
+    private CategorieOperationRepository categorieRepository;
 
     private static final Long TOYOTA = 1L;
     private static final Long HYUNDAI = 2L;
     private static final Long COROLLA = 10L;
     private static final Long YARIS = 11L;
+    private static final Long VIDANGE = 13L;
+    private static final Long FREINAGE = 16L;
+    private static final Long RECETTE = 1L;
 
     @BeforeEach
     void setUp() {
@@ -48,15 +55,20 @@ class CatalogueElementMaintenanceUseCasesTest {
         marqueRepository = mock(MarqueRepository.class);
         modeleRepository = mock(ModeleRepository.class);
         vehiculeRepository = mock(VehiculeRepository.class);
+        categorieRepository = mock(CategorieOperationRepository.class);
         CibleVehiculeCatalogue cible = new CibleVehiculeCatalogue(marqueRepository, modeleRepository);
-        updateUseCase = new UpdateCatalogueElementMaintenanceUseCase(repository, storage, cible);
+        TypeMaintenanceCatalogue type = new TypeMaintenanceCatalogue(categorieRepository);
+        updateUseCase = new UpdateCatalogueElementMaintenanceUseCase(repository, storage, cible, type);
         toggleUseCase = new ToggleActifCatalogueElementMaintenanceUseCase(repository);
-        createUseCase = new CreateCatalogueElementMaintenanceUseCase(repository, cible);
+        createUseCase = new CreateCatalogueElementMaintenanceUseCase(repository, cible, type);
         actifsUseCase = new GetActifsCatalogueElementsMaintenanceUseCase(repository, vehiculeRepository);
         when(marqueRepository.existsById(TOYOTA)).thenReturn(true);
         when(modeleRepository.findById(COROLLA)).thenReturn(Optional.of(
                 Modele.builder().id(COROLLA).nom("Corolla").marque(Marque.builder().id(TOYOTA).build()).build()));
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(categorieRepository.findBySousCategorieLibelle("Maintenances")).thenReturn(List.of(
+                CategorieOperation.builder().id(VIDANGE).code("VIDANGE").libelle("Vidange").build(),
+                CategorieOperation.builder().id(FREINAGE).code("FREINAGE").libelle("Freinage").build()));
     }
 
     private CatalogueElementMaintenance element() {
@@ -68,7 +80,7 @@ class CatalogueElementMaintenanceUseCasesTest {
         when(repository.findById(7L)).thenReturn(Optional.of(element()));
 
         CatalogueElementMaintenance maj = updateUseCase.execute(
-                7L, "Vidange moteur", java.math.BigDecimal.valueOf(15000), "images/vidange.png", null, null);
+                7L, "Vidange moteur", java.math.BigDecimal.valueOf(15000), "images/vidange.png", null, null, null);
 
         assertThat(maj.getLibelle()).isEqualTo("Vidange moteur");
         assertThat(maj.getMontantDefaut()).isEqualByComparingTo("15000");
@@ -82,7 +94,7 @@ class CatalogueElementMaintenanceUseCasesTest {
                 .id(7L).libelle("Vidange").actif(true).image("images/ancienne.png").build();
         when(repository.findById(7L)).thenReturn(Optional.of(existant));
 
-        updateUseCase.execute(7L, "Vidange", null, "images/nouvelle.png", null, null);
+        updateUseCase.execute(7L, "Vidange", null, "images/nouvelle.png", null, null, null);
 
         verify(storage).delete("images/ancienne.png");
     }
@@ -93,7 +105,7 @@ class CatalogueElementMaintenanceUseCasesTest {
                 .id(7L).libelle("Vidange").actif(true).image("images/photo.png").build();
         when(repository.findById(7L)).thenReturn(Optional.of(existant));
 
-        updateUseCase.execute(7L, "Vidange", null, "images/photo.png", null, null);
+        updateUseCase.execute(7L, "Vidange", null, "images/photo.png", null, null, null);
 
         verify(storage, never()).delete(any());
     }
@@ -102,7 +114,7 @@ class CatalogueElementMaintenanceUseCasesTest {
     void update_leve_not_found_si_absent() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> updateUseCase.execute(99L, "X", null, null, null, null))
+        assertThatThrownBy(() -> updateUseCase.execute(99L, "X", null, null, null, null, null))
                 .isInstanceOf(ResourceNotFoundException.class);
         verify(repository, never()).save(any());
     }
@@ -160,7 +172,7 @@ class CatalogueElementMaintenanceUseCasesTest {
                 .id(7L).libelle("Vidange").actif(true).marqueId(TOYOTA).modeleId(COROLLA).build();
         when(repository.findById(7L)).thenReturn(Optional.of(existant));
 
-        CatalogueElementMaintenance maj = updateUseCase.execute(7L, "Vidange", null, null, null, null);
+        CatalogueElementMaintenance maj = updateUseCase.execute(7L, "Vidange", null, null, null, null, null);
 
         assertThat(maj.getMarqueId()).isNull();
         assertThat(maj.getModeleId()).isNull();
@@ -185,5 +197,77 @@ class CatalogueElementMaintenanceUseCasesTest {
         assertThat(actifsUseCase.execute(42L)).extracting(CatalogueElementMaintenance::getId)
                 .containsExactly(1L, 2L, 3L);
         assertThat(actifsUseCase.execute((Long) null)).hasSize(5);
+    }
+
+    // ── Type de maintenance ─────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("un élément se réserve à un type de maintenance, dont il garde le libellé")
+    void create_reserve_l_element_a_un_type() {
+        CatalogueElementMaintenance cree = createUseCase.execute(CatalogueElementMaintenance.builder()
+                .libelle("Filtre à huile").categorieTypeId(VIDANGE).build());
+
+        assertThat(cree.getCategorieTypeId()).isEqualTo(VIDANGE);
+        assertThat(cree.getCategorieTypeLibelle()).isEqualTo("Vidange");
+    }
+
+    @Test
+    @DisplayName("une catégorie qui n'est pas un type de maintenance est refusée")
+    void create_refuse_une_categorie_hors_maintenance() {
+        // Une recette n'est jamais proposée au formulaire de maintenance :
+        // l'élément qui s'y rattacherait ne serait plus jamais proposé.
+        assertThatThrownBy(() -> createUseCase.execute(CatalogueElementMaintenance.builder()
+                .libelle("Filtre à huile").categorieTypeId(RECETTE).build()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("type de maintenance");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("sans type, l'élément redevient commun à toutes les maintenances")
+    void update_rend_l_element_commun_sans_type() {
+        CatalogueElementMaintenance existant = CatalogueElementMaintenance.builder()
+                .id(7L).libelle("Main d'oeuvre").actif(true)
+                .categorieTypeId(FREINAGE).categorieTypeLibelle("Freinage").build();
+        when(repository.findById(7L)).thenReturn(Optional.of(existant));
+
+        CatalogueElementMaintenance maj = updateUseCase.execute(7L, "Main d'oeuvre", null, null, null, null, null);
+
+        assertThat(maj.getCategorieTypeId()).isNull();
+        assertThat(maj.getCategorieTypeLibelle()).isNull();
+    }
+
+    @Test
+    @DisplayName("pour un type, seuls les éléments communs et ceux de ce type sont proposés")
+    void actifs_filtre_selon_le_type() {
+        CatalogueElementMaintenance commun = CatalogueElementMaintenance.builder().id(1L)
+                .libelle("Main d'oeuvre").build();
+        CatalogueElementMaintenance filtre = CatalogueElementMaintenance.builder().id(2L)
+                .libelle("Filtre à huile").categorieTypeId(VIDANGE).build();
+        CatalogueElementMaintenance plaquette = CatalogueElementMaintenance.builder().id(3L)
+                .libelle("Plaquette").categorieTypeId(FREINAGE).build();
+        when(repository.findAllActifs()).thenReturn(List.of(commun, filtre, plaquette));
+
+        assertThat(actifsUseCase.execute(null, VIDANGE)).extracting(CatalogueElementMaintenance::getId)
+                .containsExactly(1L, 2L);
+        assertThat(actifsUseCase.execute(null, null)).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("véhicule et type se combinent")
+    void actifs_combine_vehicule_et_type() {
+        CatalogueElementMaintenance filtreToyota = CatalogueElementMaintenance.builder().id(1L)
+                .libelle("Filtre").marqueId(TOYOTA).categorieTypeId(VIDANGE).build();
+        CatalogueElementMaintenance filtreHyundai = CatalogueElementMaintenance.builder().id(2L)
+                .libelle("Filtre").marqueId(HYUNDAI).categorieTypeId(VIDANGE).build();
+        CatalogueElementMaintenance plaquetteToyota = CatalogueElementMaintenance.builder().id(3L)
+                .libelle("Plaquette").marqueId(TOYOTA).categorieTypeId(FREINAGE).build();
+        when(repository.findAllActifs()).thenReturn(List.of(filtreToyota, filtreHyundai, plaquetteToyota));
+        when(vehiculeRepository.findById(42L)).thenReturn(Optional.of(Vehicule.builder().id(42L)
+                .marque(Marque.builder().id(TOYOTA).build())
+                .modele(Modele.builder().id(COROLLA).build()).build()));
+
+        assertThat(actifsUseCase.execute(42L, VIDANGE)).extracting(CatalogueElementMaintenance::getId)
+                .containsExactly(1L);
     }
 }

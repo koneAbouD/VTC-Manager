@@ -8,6 +8,7 @@ class GetCatalogueElementsMaintenanceUseCase {
   const GetCatalogueElementsMaintenanceUseCase(this._repository);
 
   Future<Either<Failure, List<CatalogueElementMaintenance>>> call(
-          {int? vehiculeId}) =>
-      _repository.getAll(vehiculeId: vehiculeId);
+          {int? vehiculeId, int? categorieTypeId}) =>
+      _repository.getAll(
+          vehiculeId: vehiculeId, categorieTypeId: categorieTypeId);
 }

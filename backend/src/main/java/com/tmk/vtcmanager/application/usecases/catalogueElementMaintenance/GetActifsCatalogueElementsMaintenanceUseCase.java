@@ -15,7 +15,9 @@ import java.util.List;
  * consomme la liste complète via {@link GetAllCatalogueElementsMaintenanceUseCase}.
  *
  * <p>Pour un véhicule donné, seuls les éléments compatibles avec sa marque et
- * son modèle sont retenus (voir {@link CatalogueElementMaintenance#estCompatibleAvec}).</p>
+ * son modèle sont retenus (voir {@link CatalogueElementMaintenance#estCompatibleAvec}).
+ * Pour un type de maintenance donné, seuls les éléments communs ou réservés à
+ * ce type le sont (voir {@link CatalogueElementMaintenance#estCompatibleAvecType}).</p>
  */
 @RequiredArgsConstructor
 public class GetActifsCatalogueElementsMaintenanceUseCase {
@@ -28,11 +30,16 @@ public class GetActifsCatalogueElementsMaintenanceUseCase {
     }
 
     public List<CatalogueElementMaintenance> execute(Long vehiculeId) {
-        if (vehiculeId == null) return execute();
-        Vehicule vehicule = vehiculeRepository.findById(vehiculeId)
+        return execute(vehiculeId, null);
+    }
+
+    public List<CatalogueElementMaintenance> execute(Long vehiculeId, Long categorieTypeId) {
+        Vehicule vehicule = vehiculeId == null ? null : vehiculeRepository.findById(vehiculeId)
                 .orElseThrow(() -> new VehiculeNotFoundException(vehiculeId));
         return repository.findAllActifs().stream()
-                .filter(e -> e.estCompatibleAvec(vehicule.getMarqueId(), vehicule.getModeleId()))
+                .filter(e -> vehicule == null
+                        || e.estCompatibleAvec(vehicule.getMarqueId(), vehicule.getModeleId()))
+                .filter(e -> e.estCompatibleAvecType(categorieTypeId))
                 .toList();
     }
 }

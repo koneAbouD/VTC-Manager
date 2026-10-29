@@ -34,5 +34,9 @@ public record CatalogueElementMaintenanceRequest(
 
         @Schema(description = "Modèle de véhicule auquel l'élément est réservé (facultatif : "
                 + "sans modèle, l'élément vaut pour toute la marque). Sa marque en est déduite.", nullable = true)
-        Long modeleId
+        Long modeleId,
+        @Schema(description = "Type de maintenance (catégorie de la sous-catégorie « Maintenances ») "
+                + "auquel l'élément est réservé (facultatif : sans type, l'élément est proposé "
+                + "pour tous les types).", nullable = true)
+        Long categorieTypeId
 ) {}

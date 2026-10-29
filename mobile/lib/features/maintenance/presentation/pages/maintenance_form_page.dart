@@ -173,29 +173,41 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         _vehiculeId = result.id;
         _vehiculeImmatriculation = result.immatriculation;
       });
-      if (change) await _retirerElementsIncompatibles();
+      if (change) await _retirerElementsIncompatibles('ce véhicule');
     }
   }
 
-  /// Le catalogue proposé dépend de la marque et du modèle du véhicule : après
-  /// un changement de véhicule, les éléments du catalogue déjà retenus qui ne
-  /// le concernent pas sont retirés. Les éléments saisis librement restent.
-  Future<void> _retirerElementsIncompatibles() async {
+  /// Changement de type par l'utilisateur : le catalogue proposé en dépend.
+  Future<void> _changerType(CategorieOperation? cat) async {
+    final change = cat?.id != _categorieType?.id;
+    setState(() => _categorieType = cat);
+    if (change) await _retirerElementsIncompatibles('ce type de maintenance');
+  }
+
+  /// Le catalogue proposé dépend de la marque et du modèle du véhicule, et du
+  /// type de maintenance : après un changement de l'un ou de l'autre, les
+  /// éléments du catalogue déjà retenus qui ne conviennent plus sont retirés.
+  /// Les éléments saisis librement restent.
+  Future<void> _retirerElementsIncompatibles(String motif) async {
     final vehiculeId = _vehiculeId;
-    if (vehiculeId == null ||
+    final typeId = _categorieType?.id;
+    if ((vehiculeId == null && typeId == null) ||
         !_elements.any((e) => e.catalogueElementId != null)) {
       return;
     }
     final List<int> compatibles;
     try {
-      compatibles = (await ref
-              .read(catalogueElementsMaintenanceProvider(vehiculeId).future))
+      compatibles = (await ref.read(catalogueElementsMaintenanceProvider(
+                  (vehiculeId: vehiculeId, categorieTypeId: typeId))
+              .future))
           .map((c) => c.id)
           .toList();
     } catch (_) {
       return; // catalogue indisponible : la sélection reste telle quelle
     }
-    if (!mounted || vehiculeId != _vehiculeId) return;
+    if (!mounted || vehiculeId != _vehiculeId || typeId != _categorieType?.id) {
+      return;
+    }
     final retenus = _elements
         .where((e) =>
             e.catalogueElementId == null ||
@@ -207,12 +219,18 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     _showToast(
         context,
         '$retires élément${retires > 1 ? 's' : ''} retiré${retires > 1 ? 's' : ''} : '
-        'non prévu${retires > 1 ? 's' : ''} pour ce véhicule',
+        'non prévu${retires > 1 ? 's' : ''} pour $motif',
         error: true);
   }
 
   Future<void> _openElementsPage() async {
-    // Les éléments proposés dépendent du véhicule : il se choisit d'abord.
+    // Les éléments proposés dépendent du type de maintenance et du véhicule :
+    // ils se choisissent d'abord.
+    if (_categorieType == null) {
+      _showToast(context, 'Sélectionnez d\'abord le type de maintenance',
+          error: true);
+      return;
+    }
     if (_vehiculeId == null) {
       _showToast(context, 'Sélectionnez d\'abord le véhicule concerné',
           error: true);
@@ -224,7 +242,8 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
           builder: (_) => ElementsMaintenancePage(
               initial: _elements,
               partenaireDefautNom: _partenaireNom,
-              vehiculeId: _vehiculeId)),
+              vehiculeId: _vehiculeId,
+              categorieTypeId: _categorieType!.id)),
     );
     if (result != null && mounted) {
       setState(() => _elements = List.from(result));
@@ -393,8 +412,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                           isRequired: true,
                           child: _TypeDropdown(
                             selected: _categorieType,
-                            onChanged: (cat) =>
-                                setState(() => _categorieType = cat),
+                            onChanged: _changerType,
                             initial: widget.initial,
                             categorieTypeInitialeId:
                                 widget.categorieTypeInitialeId,
@@ -696,7 +714,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  _vehiculeId == null
+                  _categorieType == null
+                      ? 'Choisissez d\'abord le type'
+                      : _vehiculeId == null
                       ? 'Choisissez d\'abord le véhicule'
                       : _elements.isEmpty
                           ? 'Sélectionner les éléments'

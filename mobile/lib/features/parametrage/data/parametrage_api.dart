@@ -15,6 +15,11 @@ class ChampDescriptor {
   final String? refKey; // pour type=reference : clé du référentiel source
   final List<String> options; // pour type=enum
 
+  /// Pour type=reference : valeurs que doit porter un élément du référentiel
+  /// source pour être proposé (ex. sousCategorieLibelle → Maintenances). Vide :
+  /// tous les éléments sont proposés.
+  final Map<String, String> refFiltre;
+
   /// Pour type=enum : libellé de chaque code (« CHARGE_FIXE » → « Charge
   /// fixe »). Vide quand les valeurs sont déjà lisibles.
   final Map<String, String> libelles;
@@ -28,6 +33,7 @@ class ChampDescriptor {
     this.refKey,
     this.options = const [],
     this.libelles = const {},
+    this.refFiltre = const {},
   });
 
   factory ChampDescriptor.fromJson(Map<String, dynamic> j) => ChampDescriptor(
@@ -42,7 +48,14 @@ class ChampDescriptor {
         libelles: (j['libelles'] as Map?)?.map(
                 (code, libelle) => MapEntry('$code', '$libelle')) ??
             const {},
+        refFiltre: (j['refFiltre'] as Map?)?.map(
+                (champ, valeur) => MapEntry('$champ', '$valeur')) ??
+            const {},
       );
+
+  /// Vrai si l'élément [item] du référentiel source peut être proposé.
+  bool accepteReference(Map<String, dynamic> item) => refFiltre.entries
+      .every((f) => item[f.key]?.toString() == f.value);
 
   /// Ce qu'on affiche pour une valeur : son libellé, à défaut le code tel quel
   /// (catalogue d'un serveur plus ancien, valeur inconnue).

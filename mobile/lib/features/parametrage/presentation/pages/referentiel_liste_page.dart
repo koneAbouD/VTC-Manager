@@ -150,9 +150,9 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
         return (obj['nom'] ?? obj['libelle'] ?? obj['code'] ?? '').toString();
       }
       // Référence à plat : son nom est renvoyé à côté de l'identifiant
-      // (ex. marqueId + marqueNom). Sans nom, un identifiant nu n'apprendrait
-      // rien à l'utilisateur.
-      final nom = item['${nested}Nom'];
+      // (ex. marqueId + marqueNom, categorieTypeId + categorieTypeLibelle).
+      // Sans nom, un identifiant nu n'apprendrait rien à l'utilisateur.
+      final nom = item['${nested}Nom'] ?? item['${nested}Libelle'];
       if (nom != null) return nom.toString();
       return item[champ.nom] == null ? '' : '#${item[champ.nom]}';
     }

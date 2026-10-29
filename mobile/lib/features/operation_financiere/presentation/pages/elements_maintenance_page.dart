@@ -48,11 +48,16 @@ class ElementsMaintenancePage extends ConsumerStatefulWidget {
   /// modèle sont proposés. Sans véhicule, tout le catalogue actif.
   final int? vehiculeId;
 
+  /// Type de maintenance de l'intervention : seuls les éléments communs ou
+  /// réservés à ce type sont proposés. Sans type, aucune restriction.
+  final int? categorieTypeId;
+
   const ElementsMaintenancePage({
     super.key,
     required this.initial,
     this.partenaireDefautNom,
     this.vehiculeId,
+    this.categorieTypeId,
   });
 
   @override
@@ -62,6 +67,11 @@ class ElementsMaintenancePage extends ConsumerStatefulWidget {
 
 class _ElementsMaintenancePageState
     extends ConsumerState<ElementsMaintenancePage> {
+  FiltreCatalogueMaintenance get _filtre => (
+        vehiculeId: widget.vehiculeId,
+        categorieTypeId: widget.categorieTypeId,
+      );
+
   // Éléments catalogue sélectionnés : id → entry
   final Map<int, _CatalogueEntry> _catalogueSel = {};
   // Éléments libres ajoutés par l'utilisateur
@@ -90,7 +100,7 @@ class _ElementsMaintenancePageState
     // dépend du ProviderScope, indisponible pendant initState.
     if (!_refRafraichi) {
       _refRafraichi = true;
-      ref.invalidate(catalogueElementsMaintenanceProvider(widget.vehiculeId));
+      ref.invalidate(catalogueElementsMaintenanceProvider(_filtre));
     }
   }
 
@@ -187,7 +197,7 @@ class _ElementsMaintenancePageState
   @override
   Widget build(BuildContext context) {
     final catalogueAsync =
-        ref.watch(catalogueElementsMaintenanceProvider(widget.vehiculeId));
+        ref.watch(catalogueElementsMaintenanceProvider(_filtre));
     final catalogue = catalogueAsync.valueOrNull ?? [];
 
     final filtered = _query.isEmpty

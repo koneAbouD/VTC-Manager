@@ -205,6 +205,11 @@ public class ReferentielCatalogue {
                         // véhicules ; sans modèle, pour toute la marque.
                         reference("marqueId", "Marque du véhicule", false, "marques"),
                         reference("modeleId", "Modèle du véhicule", false, "modeles"),
+                        // Facultatif : sans type, l'élément est proposé pour
+                        // toutes les maintenances (main d'œuvre…).
+                        reference("categorieTypeId", "Type de maintenance", false,
+                                "categories-operation",
+                                Map.of("sousCategorieLibelle", "Maintenances")),
                         nombre("montantDefaut", "Montant par défaut", false),
                         image("image", "Image", false),
                         booleen("actif", "Actif")));
