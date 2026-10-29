@@ -6,14 +6,15 @@ import 'package:vtc_manager/features/maintenance/presentation/providers/type_mai
 import 'package:vtc_manager/features/operation_financiere/domain/entities/categorie_operation.dart';
 import 'package:vtc_manager/features/operation_financiere/domain/enums/type_operation.dart';
 import 'package:vtc_manager/features/parametrage/data/parametrage_api.dart';
+import 'package:vtc_manager/features/parametrage/presentation/pages/catalogue_element_maintenance_form_page.dart';
 import 'package:vtc_manager/features/parametrage/presentation/pages/catalogue_elements_maintenance_page.dart';
 import 'package:vtc_manager/features/parametrage/presentation/providers/catalogue_elements_providers.dart';
 import 'package:vtc_manager/features/parametrage/presentation/providers/parametrage_providers.dart';
 import 'package:vtc_manager/features/parametrage/presentation/widgets/cible_vehicule_catalogue.dart';
 
-/// Paramètres → Données de référence → Éléments de maintenance : le catalogue
-/// rangé par type, la portée véhicule lisible sur chaque ligne, et un filtre
-/// par modèle de la flotte.
+/// Paramètres → Données de référence → Éléments de maintenance : un onglet par
+/// modèle de la flotte, chacun rangé par type de maintenance de la même façon,
+/// le prix à droite quand il est renseigné.
 final _descripteur = ReferentielDescriptor.fromJson({
   'key': 'catalogue-elements-maintenance',
   'libelle': 'Éléments de maintenance',
@@ -30,27 +31,32 @@ const _vidange = 13;
 const _freinage = 16;
 const _sPresso = 51;
 const _dzire = 52;
+const _corolla = 99;
+
+final _filtreAir = <String, dynamic>{
+  'id': 1,
+  'libelle': 'Filtre à air',
+  'actif': true,
+  'montantDefaut': 2500,
+  'categorieTypeId': _vidange,
+  'categorieTypeLibelle': 'Vidange',
+  'marqueId': 1,
+  'marqueNom': 'Suzuki',
+  'modeleId': _sPresso,
+  'modeleNom': 'S-Presso',
+};
+
+final _filtreHuile = <String, dynamic>{
+  'id': 2,
+  'libelle': 'Filtre à huile',
+  'actif': true,
+  'categorieTypeId': _vidange,
+  'categorieTypeLibelle': 'Vidange',
+};
 
 final _elements = <Map<String, dynamic>>[
-  {
-    'id': 1,
-    'libelle': 'Filtre à air',
-    'actif': true,
-    'montantDefaut': 2500,
-    'categorieTypeId': _vidange,
-    'categorieTypeLibelle': 'Vidange',
-    'marqueId': 1,
-    'marqueNom': 'Suzuki',
-    'modeleId': _sPresso,
-    'modeleNom': 'S-Presso',
-  },
-  {
-    'id': 2,
-    'libelle': 'Filtre à huile',
-    'actif': true,
-    'categorieTypeId': _vidange,
-    'categorieTypeLibelle': 'Vidange',
-  },
+  _filtreAir,
+  _filtreHuile,
   {
     'id': 3,
     'libelle': 'Plaquette Dzire',
@@ -63,6 +69,19 @@ final _elements = <Map<String, dynamic>>[
     'modeleNom': 'Dzire',
   },
   {'id': 4, 'libelle': "Main d'oeuvre", 'actif': true},
+  // Réservé à un modèle absent de la flotte : seul l'onglet « Hors flotte »
+  // le montre.
+  {
+    'id': 5,
+    'libelle': 'Courroie Corolla',
+    'actif': true,
+    'categorieTypeId': _freinage,
+    'categorieTypeLibelle': 'Freinage',
+    'marqueId': 7,
+    'marqueNom': 'Toyota',
+    'modeleId': _corolla,
+    'modeleNom': 'Corolla',
+  },
 ];
 
 CategorieOperation _type(int id, String code, String libelle) =>
@@ -74,7 +93,7 @@ CategorieOperation _type(int id, String code, String libelle) =>
       actif: true,
     );
 
-Widget _app() => ProviderScope(
+Widget _app(Widget page) => ProviderScope(
       overrides: [
         referentielItemsProvider
             .overrideWith((ref, endpoint) async => _elements),
@@ -96,16 +115,19 @@ Widget _app() => ProviderScope(
               _type(_vidange, 'VIDANGE', 'Vidange'),
               _type(_freinage, 'FREINAGE', 'Freinage'),
             ]),
-        // Ce que le serveur répond pour la S-Presso : tout sauf l'élément
-        // réservé à la Dzire.
+        // Ce que le serveur répond pour chaque modèle : les communs et ce qui
+        // lui est réservé.
         elementsCompatiblesModeleProvider.overrideWith(
             (ref, modeleId) async => modeleId == _sPresso ? {1, 2, 4} : {2, 3, 4}),
       ],
-      child: MaterialApp(
-          home: CatalogueElementsMaintenancePage(descriptor: _descripteur)),
+      child: MaterialApp(home: page),
     );
 
+Widget _page() => _app(CatalogueElementsMaintenancePage(descriptor: _descripteur));
+
 void main() {
+  setUp(reinitialiserSectionsOuvertesCatalogue);
+
   group('CibleVehicule', () {
     test('un modèle part seul : le serveur en déduit la marque', () {
       const cible = CibleVehicule(
@@ -138,47 +160,91 @@ void main() {
         [('S-Presso', 2), ('Dzire', 1)]);
   });
 
-  testWidgets('le catalogue se range par type, communs en dernier', (tester) async {
-    await tester.pumpWidget(_app());
+  testWidgets('un onglet par modèle de la flotte, plus Hors flotte, sans « Tous les véhicules »',
+      (tester) async {
+    await tester.pumpWidget(_page());
     await tester.pumpAndSettle();
 
-    final vidange = tester.getTopLeft(find.textContaining('Vidange'));
-    final freinage = tester.getTopLeft(find.textContaining('Freinage'));
-    final communs = tester.getTopLeft(find.textContaining('Communs à tous les types'));
-    // Vidange (2 éléments) avant Freinage (1), communs à la fin.
-    expect(vidange.dy, lessThan(freinage.dy));
-    expect(freinage.dy, lessThan(communs.dy));
+    expect(find.widgetWithText(Tab, 'S-Presso'), findsOneWidget);
+    expect(find.widgetWithText(Tab, 'Dzire'), findsOneWidget);
+    expect(find.widgetWithText(Tab, 'Hors flotte'), findsOneWidget);
+    expect(find.text('Tous les véhicules'), findsNothing);
     // Sections repliées au départ : aucune ligne visible.
     expect(find.text('Filtre à air'), findsNothing);
   });
 
-  testWidgets('une section ouverte montre la portée véhicule de chaque élément',
-      (tester) async {
-    await tester.pumpWidget(_app());
+  testWidgets('les sections suivent le même ordre dans chaque onglet', (tester) async {
+    await tester.pumpWidget(_page());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('Vidange'));
-    await tester.pumpAndSettle();
+    double y(String texte) => tester.getTopLeft(find.text(texte).hitTestable()).dy;
+    // Ordre fixé sur tout le catalogue : Freinage (2 éléments) puis Vidange
+    // (2, départagés par le libellé), communs en dernier. Un onglet ne montre
+    // que les sections où il a des éléments : la S-Presso n'a pas de freinage.
+    expect(find.text('Freinage').hitTestable(), findsNothing);
+    expect(y('Vidange'), lessThan(y('Communs à tous les types')));
 
-    expect(find.text('Filtre à air'), findsOneWidget);
-    expect(find.text('Suzuki S-Presso'), findsOneWidget);
-    expect(find.text('Tous véhicules'), findsOneWidget);
+    await tester.tap(find.widgetWithText(Tab, 'Dzire'));
+    await tester.pumpAndSettle();
+    expect(y('Freinage'), lessThan(y('Vidange')));
+    expect(y('Vidange'), lessThan(y('Communs à tous les types')));
   });
 
-  testWidgets('le filtre par modèle montre ce que la saisie proposerait',
+  testWidgets('chaque onglet montre ce que la saisie proposerait pour son modèle, prix compris',
       (tester) async {
-    await tester.pumpWidget(_app());
+    await tester.pumpWidget(_page());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('S-Presso'));
+    await tester.tap(find.text('Vidange').hitTestable());
     await tester.pumpAndSettle();
 
-    // Filtre actif : les sections s'ouvrent, l'élément de la Dzire disparaît.
+    // S-Presso : son filtre à air, signalé « Ce modèle », avec son prix ;
+    // le filtre à huile commun ne porte aucune mention.
     expect(find.text('Filtre à air'), findsOneWidget);
-    expect(find.text("Main d'oeuvre"), findsOneWidget);
-    expect(find.text('Plaquette Dzire'), findsNothing);
-    expect(find.text('Éléments proposés pour Suzuki S-Presso'), findsOneWidget);
-    // Plus de compteurs : ni nombre d'éléments, ni nombre de véhicules.
-    expect(find.textContaining('· 9'), findsNothing);
+    expect(find.text('Ce modèle'), findsOneWidget);
+    expect(find.textContaining('2 500'), findsOneWidget);
+    expect(find.text('Filtre à huile'), findsOneWidget);
+
+    // Dzire : la section reste ouverte, sans le filtre à air de la S-Presso.
+    await tester.tap(find.widgetWithText(Tab, 'Dzire'));
+    await tester.pumpAndSettle();
+    expect(find.text('Filtre à huile').hitTestable(), findsOneWidget);
+    expect(find.text('Filtre à air').hitTestable(), findsNothing);
+  });
+
+  testWidgets('Hors flotte garde accessibles les éléments des modèles absents',
+      (tester) async {
+    await tester.pumpWidget(_page());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(Tab, 'Hors flotte'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Freinage').hitTestable());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Courroie Corolla').hitTestable(), findsOneWidget);
+    expect(find.text('Toyota Corolla').hitTestable(), findsOneWidget);
+    expect(find.text('Filtre à huile').hitTestable(), findsNothing);
+  });
+
+  testWidgets('modifier un élément commun rappelle les modèles concernés',
+      (tester) async {
+    await tester.pumpWidget(
+        _app(CatalogueElementMaintenanceFormPage(item: _filtreHuile)));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.text('Commun à tous les véhicules : la modification vaut pour '
+            'S-Presso et Dzire.'),
+        findsOneWidget);
+    expect(find.text('Prix par défaut', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets("un élément réservé à un modèle n'a pas de rappel", (tester) async {
+    await tester.pumpWidget(
+        _app(CatalogueElementMaintenanceFormPage(item: _filtreAir)));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('la modification vaut pour'), findsNothing);
   });
 }

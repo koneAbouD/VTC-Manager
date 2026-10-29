@@ -131,6 +131,10 @@ class _CatalogueElementMaintenanceFormPageState
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
+            if (_avertissementPortee() case final message?) ...[
+              _bandeau(message),
+              const SizedBox(height: 12),
+            ],
             Container(
               padding: const EdgeInsets.fromLTRB(16, 2, 16, 18),
               decoration: BoxDecoration(
@@ -158,7 +162,7 @@ class _CatalogueElementMaintenanceFormPageState
                   _label('Véhicule concerné'),
                   _champVehicule(),
                   const SizedBox(height: 16),
-                  _label('Montant par défaut'),
+                  _label('Prix par défaut'),
                   TextFormField(
                     controller: _montantCtrl,
                     keyboardType:
@@ -220,6 +224,49 @@ class _CatalogueElementMaintenanceFormPageState
       ),
     );
   }
+
+  // ── Portée partagée ───────────────────────────────────────────────────────
+
+  /// La liste montre un élément commun sous chaque modèle : à la modification,
+  /// on rappelle qu'il n'y en a qu'un, et quels modèles il touche.
+  String? _avertissementPortee() {
+    if (!_edition) return null;
+    final initiale = CibleVehicule.depuisElement(widget.item!);
+    if (initiale.estModele) return null;
+    final flotte = ref.watch(modelesFlotteProvider).valueOrNull ?? const [];
+    final touches = flotte
+        .where((m) => initiale.estTous || m.marqueId == initiale.marqueId)
+        .map((m) => m.modeleNom)
+        .toList();
+    if (touches.length < 2) return null;
+    final liste = touches.length == 2
+        ? touches.join(' et ')
+        : '${touches.sublist(0, touches.length - 1).join(', ')} et ${touches.last}';
+    return initiale.estTous
+        ? 'Commun à tous les véhicules : la modification vaut pour $liste.'
+        : 'Réservé à la marque ${initiale.marqueNom ?? ''} : la modification vaut pour $liste.';
+  }
+
+  Widget _bandeau(String message) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.info_outline_rounded, size: 18, color: AppColors.label),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(message,
+                  style: TextStyle(
+                      fontSize: 13, color: AppColors.dark, height: 1.35)),
+            ),
+          ],
+        ),
+      );
 
   // ── Type de maintenance ────────────────────────────────────────────────────
 

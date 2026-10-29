@@ -64,46 +64,6 @@ class CibleVehicule {
   int get hashCode => Object.hash(marqueId, modeleId);
 }
 
-/// Pastille de la portée d'un élément, sans couleur d'accent : discrète pour
-/// tous les véhicules, pleine pour un modèle, cerclée pour une marque entière.
-/// La forme et la graisse suffisent à repérer ce qui est réservé.
-class PastilleVehicule extends StatelessWidget {
-  final CibleVehicule cible;
-
-  const PastilleVehicule({super.key, required this.cible});
-
-  @override
-  Widget build(BuildContext context) {
-    final (fond, bord, texte) = cible.estModele
-        ? (AppColors.fieldFill, Colors.transparent, AppColors.dark)
-        : cible.estMarque
-            ? (Colors.transparent, AppColors.border, AppColors.dark)
-            : (Colors.transparent, Colors.transparent, AppColors.hint);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(5, 2, 7, 2),
-      decoration: BoxDecoration(
-        color: fond,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: bord),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(cible.estMarque ? Icons.sell_outlined : Icons.directions_car_outlined,
-            size: 12, color: AppColors.label),
-        const SizedBox(width: 3),
-        Flexible(
-          child: Text(
-            cible.estTous ? 'Tous véhicules' : cible.libelle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-                fontSize: 10.5, fontWeight: FontWeight.w700, color: texte),
-          ),
-        ),
-      ]),
-    );
-  }
-}
-
 /// Feuille de choix de la portée. Les modèles de la flotte viennent d'abord,
 /// avec leur nombre de véhicules ; les autres modèles du référentiel restent
 /// accessibles par la recherche. [modelesSeulement] retire « tous » et les

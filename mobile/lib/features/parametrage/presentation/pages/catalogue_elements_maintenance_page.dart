@@ -18,12 +18,21 @@ import 'catalogue_element_maintenance_form_page.dart';
 /// Clé de section des éléments communs à tous les types de maintenance.
 const _kCommuns = 'communs';
 
+/// Sections ouvertes, gardées le temps de la session et partagées par les
+/// onglets : on retrouve la même section ouverte d'un modèle à l'autre, et en
+/// revenant sur la page.
+final _sectionsOuvertes = <String>{};
+
+@visibleForTesting
+void reinitialiserSectionsOuvertesCatalogue() => _sectionsOuvertes.clear();
+
 /// Paramétrage › Éléments de maintenance.
 ///
-/// Le catalogue est rangé par type de maintenance — l'ordre dans lequel le
-/// formulaire de maintenance les demande —, chaque ligne portant la portée
-/// véhicule de l'élément. Des puces de modèles de la flotte restreignent la
-/// liste à ce que la saisie proposerait pour un véhicule de ce modèle.
+/// Un onglet par modèle de la flotte, chacun présenté de la même façon : les
+/// éléments que la saisie d'une maintenance proposerait pour ce modèle, rangés
+/// par type de maintenance, les communs à tous les types en dernier. Un onglet
+/// « Hors flotte » garde accessibles les éléments réservés à des modèles ou
+/// marques absents de la flotte.
 class CatalogueElementsMaintenancePage extends ConsumerStatefulWidget {
   final ReferentielDescriptor descriptor;
 
@@ -36,18 +45,13 @@ class CatalogueElementsMaintenancePage extends ConsumerStatefulWidget {
 
 class _CatalogueElementsMaintenancePageState
     extends ConsumerState<CatalogueElementsMaintenancePage> {
-  /// Sections ouvertes, gardées le temps de la session : on les retrouve en
-  /// revenant sur la page.
-  static final Set<String> _ouvertes = {};
+  Set<String> get _ouvertes => _sectionsOuvertes;
 
   ReferentielDescriptor get d => widget.descriptor;
 
   bool _busy = false;
   String _query = '';
   final _searchCtrl = TextEditingController();
-
-  /// Modèle filtré ; null = tous les véhicules.
-  CibleVehicule? _modele;
 
   /// Surcharge optimiste de l'état « actif » pendant l'appel réseau.
   final Map<Object, bool> _actifOverride = {};
@@ -155,16 +159,6 @@ class _CatalogueElementsMaintenancePageState
     }
   }
 
-  Future<void> _choisirAutreModele() async {
-    final choix = await choisirCibleVehicule(
-      context,
-      actuelle: _modele ?? CibleVehicule.tous,
-      modelesSeulement: true,
-      titre: 'Filtrer sur un modèle',
-    );
-    if (choix != null && mounted) setState(() => _modele = choix);
-  }
-
   void _toast(String message, {bool erreur = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -215,94 +209,178 @@ class _CatalogueElementsMaintenancePageState
   }
 
   Widget _corps(List<Map<String, dynamic>> tous) {
-    final flotte = ref.watch(modelesFlotteProvider).valueOrNull ?? const [];
+    final flotteAsync = ref.watch(modelesFlotteProvider);
+    if (flotteAsync.isLoading && !flotteAsync.hasValue) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final flotte = flotteAsync.valueOrNull ?? const <ModeleFlotte>[];
     final types =
         ref.watch(typeMaintenanceProvider('Maintenances')).valueOrNull ??
-            const [];
+            const <CategorieOperation>[];
 
-    // Filtre par modèle : la compatibilité est celle du serveur.
-    final modele = _modele;
-    final compatiblesAsync = modele?.modeleId == null
-        ? null
-        : ref.watch(elementsCompatiblesModeleProvider(modele!.modeleId!));
-    final compatibles = compatiblesAsync?.valueOrNull;
+    // Ordre des sections fixé sur tout le catalogue : chaque onglet présente
+    // les types dans le même ordre, communs à tous les types en dernier.
+    final ordre = _ordreSections(tous, types);
+    final horsFlotte = _horsFlotte(tous, flotte);
+    final onglets = <({String titre, ModeleFlotte? modele})>[
+      for (final m in flotte) (titre: m.modeleNom, modele: m),
+      if (horsFlotte.isNotEmpty) (titre: 'Hors flotte', modele: null),
+    ];
 
-    final q = _normaliser(_query.trim());
-    final visibles = tous
-        .where((it) => compatibles == null || compatibles.contains(it['id']))
-        .where((it) => q.isEmpty || _correspond(it, q))
-        .toList();
+    final progression = SizedBox(
+      height: 2,
+      child: _busy ? const LinearProgressIndicator(minHeight: 2) : null,
+    );
 
-    // Sections : une par type de maintenance présent, du plus fourni au moins
-    // fourni ; les éléments communs ferment la liste.
-    final parType = <String, List<Map<String, dynamic>>>{};
-    for (final it in visibles) {
-      final typeId = (it['categorieTypeId'] as num?)?.toInt();
-      parType.putIfAbsent(typeId == null ? _kCommuns : '$typeId', () => [])
-          .add(it);
+    // Sans véhicule dans la flotte, il n'y a pas de modèle à présenter : tout
+    // le catalogue reste visible pour pouvoir le préparer.
+    if (onglets.isEmpty) {
+      return Column(children: [
+        progression,
+        _barreRecherche(),
+        Expanded(child: _listeSections(tous, ordre, types, null)),
+      ]);
     }
-    for (final l in parType.values) {
-      l.sort((a, b) => _normaliser('${a['libelle'] ?? ''}')
-          .compareTo(_normaliser('${b['libelle'] ?? ''}')));
-    }
-    final cles = parType.keys.where((k) => k != _kCommuns).toList()
+
+    return DefaultTabController(
+      key: ValueKey(onglets.map((o) => o.titre).join('|')),
+      length: onglets.length,
+      child: Column(
+        children: [
+          progression,
+          _barreRecherche(),
+          TabBar(
+            isScrollable: onglets.length > 3,
+            tabAlignment: onglets.length > 3 ? TabAlignment.start : null,
+            labelColor: AppColors.dark,
+            unselectedLabelColor: AppColors.hint,
+            labelStyle:
+                const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
+            unselectedLabelStyle:
+                const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+            indicatorColor: AppColors.primary,
+            indicatorSize: TabBarIndicatorSize.label,
+            dividerColor: AppColors.border,
+            tabs: [for (final o in onglets) Tab(text: o.titre)],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                for (final o in onglets)
+                  o.modele == null
+                      ? _listeSections(horsFlotte, ordre, types, null)
+                      : _ongletModele(tous, o.modele!, ordre, types),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Onglet d'un modèle : ce que la saisie proposerait pour un véhicule de ce
+  /// modèle. La compatibilité est celle du serveur, pas une copie en Dart.
+  Widget _ongletModele(List<Map<String, dynamic>> tous, ModeleFlotte modele,
+      List<String> ordre, List<CategorieOperation> types) {
+    final compatibles =
+        ref.watch(elementsCompatiblesModeleProvider(modele.modeleId));
+    return compatibles.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => _erreur(),
+      data: (ids) => _listeSections(
+          tous.where((it) => ids.contains(it['id'])).toList(),
+          ordre,
+          types,
+          modele.modeleId),
+    );
+  }
+
+  /// Clés de section dans l'ordre d'affichage : types du plus fourni au moins
+  /// fourni sur tout le catalogue, puis les communs à tous les types.
+  List<String> _ordreSections(
+      List<Map<String, dynamic>> tous, List<CategorieOperation> types) {
+    final parType = _grouper(tous);
+    return parType.keys.where((k) => k != _kCommuns).toList()
       ..sort((a, b) {
         final parNombre = parType[b]!.length.compareTo(parType[a]!.length);
         return parNombre != 0
             ? parNombre
             : _libelleSection(a, parType, types)
                 .compareTo(_libelleSection(b, parType, types));
-      });
-    if (parType.containsKey(_kCommuns)) cles.add(_kCommuns);
+      })
+      ..add(_kCommuns);
+  }
 
-    // Une recherche ou un filtre de modèle montrent leurs résultats tout de
-    // suite : on ne fait pas ouvrir chaque section pour les trouver.
-    final toutOuvert = q.isNotEmpty || modele != null;
+  Map<String, List<Map<String, dynamic>>> _grouper(
+      List<Map<String, dynamic>> items) {
+    final parType = <String, List<Map<String, dynamic>>>{};
+    for (final it in items) {
+      final typeId = (it['categorieTypeId'] as num?)?.toInt();
+      parType.putIfAbsent(typeId == null ? _kCommuns : '$typeId', () => [])
+          .add(it);
+    }
+    return parType;
+  }
 
-    return Column(
-      children: [
-        SizedBox(
-          height: 2,
-          child: _busy || (compatiblesAsync?.isLoading ?? false)
-              ? const LinearProgressIndicator(minHeight: 2)
-              : null,
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _rafraichir,
-            color: AppColors.primary,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(child: _barreRecherche()),
-                SliverToBoxAdapter(child: _pucesModeles(flotte)),
-                if (modele != null)
-                  SliverToBoxAdapter(
-                      child: _resumeModele(modele)),
-                if (visibles.isEmpty)
-                  SliverToBoxAdapter(child: _vide(q.isNotEmpty || modele != null))
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 96),
-                    sliver: SliverList.list(children: [
-                      for (final cle in cles) ...[
-                        _enTeteSection(cle, parType[cle]!, types,
-                            ouverte: toutOuvert || _ouvertes.contains(cle),
-                            forcee: toutOuvert),
-                        if (toutOuvert || _ouvertes.contains(cle))
-                          for (final it in parType[cle]!) ...[
-                            const SizedBox(height: 6),
-                            _ligne(it),
-                          ],
-                        const SizedBox(height: 10),
-                      ],
-                    ]),
-                  ),
-              ],
+  /// Éléments réservés à un modèle, ou à une marque, absents de la flotte :
+  /// aucun onglet de modèle ne les montrerait.
+  List<Map<String, dynamic>> _horsFlotte(
+      List<Map<String, dynamic>> tous, List<ModeleFlotte> flotte) {
+    final modeles = {for (final m in flotte) m.modeleId};
+    final marques = {for (final m in flotte) m.marqueId};
+    return tous.where((it) {
+      final cible = CibleVehicule.depuisElement(it);
+      if (cible.estModele) return !modeles.contains(cible.modeleId);
+      if (cible.estMarque) return !marques.contains(cible.marqueId);
+      return false;
+    }).toList();
+  }
+
+  /// Sections de type d'un onglet. [modeleOnglet] : modèle présenté, pour
+  /// dire « Ce modèle » plutôt que son nom sur les éléments qui lui sont
+  /// réservés.
+  Widget _listeSections(List<Map<String, dynamic>> items, List<String> ordre,
+      List<CategorieOperation> types, int? modeleOnglet) {
+    final q = _normaliser(_query.trim());
+    final visibles =
+        items.where((it) => q.isEmpty || _correspond(it, q)).toList();
+    final parType = _grouper(visibles);
+    for (final l in parType.values) {
+      l.sort((a, b) => _normaliser('${a['libelle'] ?? ''}')
+          .compareTo(_normaliser('${b['libelle'] ?? ''}')));
+    }
+    final cles = ordre.where(parType.containsKey).toList();
+    // Une recherche montre ses résultats tout de suite : on ne fait pas ouvrir
+    // chaque section pour les trouver.
+    final toutOuvert = q.isNotEmpty;
+
+    return RefreshIndicator(
+      onRefresh: _rafraichir,
+      color: AppColors.primary,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (visibles.isEmpty)
+            SliverToBoxAdapter(child: _vide(q.isNotEmpty))
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              sliver: SliverList.list(children: [
+                for (final cle in cles) ...[
+                  _enTeteSection(cle, parType[cle]!, types,
+                      ouverte: toutOuvert || _ouvertes.contains(cle),
+                      forcee: toutOuvert),
+                  if (toutOuvert || _ouvertes.contains(cle))
+                    for (final it in parType[cle]!) ...[
+                      const SizedBox(height: 6),
+                      _ligne(it, modeleOnglet),
+                    ],
+                  const SizedBox(height: 10),
+                ],
+              ]),
             ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -322,7 +400,7 @@ class _CatalogueElementsMaintenancePageState
 
   Widget _barreRecherche() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: TextField(
         controller: _searchCtrl,
         onChanged: (v) => setState(() => _query = v),
@@ -356,87 +434,6 @@ class _CatalogueElementsMaintenancePageState
             borderSide: BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _pucesModeles(List<ModeleFlotte> flotte) {
-    final modele = _modele;
-    final horsFlotte = modele != null &&
-        !flotte.any((m) => m.modeleId == modele.modeleId);
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-        children: [
-          _puce('Tous les véhicules',
-              choisie: modele == null,
-              onTap: () => setState(() => _modele = null)),
-          for (final m in flotte)
-            _puce(m.modeleNom,
-                choisie: modele?.modeleId == m.modeleId,
-                onTap: () => setState(() => _modele = CibleVehicule(
-                      marqueId: m.marqueId,
-                      marqueNom: m.marqueNom,
-                      modeleId: m.modeleId,
-                      modeleNom: m.modeleNom,
-                    ))),
-          if (horsFlotte)
-            _puce(modele.libelle,
-                choisie: true, onTap: _choisirAutreModele),
-          _puce('Autres modèles',
-              icone: Icons.search_rounded,
-              choisie: false,
-              onTap: _choisirAutreModele),
-        ],
-      ),
-    );
-  }
-
-  Widget _puce(String libelle,
-      {required bool choisie, required VoidCallback onTap, IconData? icone}) {
-    final accent = AppColors.primary;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Semantics(
-        button: true,
-        selected: choisie,
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: choisie ? accent.withValues(alpha: 0.12) : AppColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: choisie ? accent.withValues(alpha: 0.5) : AppColors.border),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (icone != null) ...[
-                Icon(icone, size: 14, color: AppColors.label),
-                const SizedBox(width: 4),
-              ],
-              Text(libelle,
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: choisie ? FontWeight.w700 : FontWeight.w500,
-                      color: choisie ? accent : AppColors.label)),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _resumeModele(CibleVehicule modele) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-      child: Text(
-        'Éléments proposés pour ${modele.libelle}',
-        style: TextStyle(fontSize: 12.5, color: AppColors.label),
       ),
     );
   }
@@ -517,9 +514,17 @@ class _CatalogueElementsMaintenancePageState
     );
   }
 
-  Widget _ligne(Map<String, dynamic> item) {
+  Widget _ligne(Map<String, dynamic> item, int? modeleOnglet) {
     final actif = _estActif(item);
     final montant = item['montantDefaut'] as num?;
+    final cible = CibleVehicule.depuisElement(item);
+    // Un élément commun à tous les véhicules — le cas courant — ne porte
+    // aucune mention ; seul ce qui est réservé se signale.
+    final portee = cible.estModele
+        ? (cible.modeleId == modeleOnglet ? 'Ce modèle' : cible.libelle)
+        : cible.estMarque
+            ? 'Marque ${cible.marqueNom ?? ''}'.trim()
+            : null;
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 180),
       opacity: actif ? 1 : 0.5,
@@ -550,22 +555,24 @@ class _CatalogueElementsMaintenancePageState
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.dark)),
-                    const SizedBox(height: 4),
-                    Row(children: [
-                      Flexible(
-                        child: PastilleVehicule(
-                            cible: CibleVehicule.depuisElement(item)),
-                      ),
-                      if (montant != null && montant > 0) ...[
-                        const SizedBox(width: 8),
-                        Text(_money.format(montant),
-                            style: TextStyle(
-                                fontSize: 11.5, color: AppColors.label)),
-                      ],
-                    ]),
+                    if (portee != null) ...[
+                      const SizedBox(height: 4),
+                      _MentionPortee(
+                          libelle: portee, marque: cible.estMarque),
+                    ],
                   ],
                 ),
               ),
+              if (montant != null && montant > 0)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(_money.format(montant),
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                          fontFeatures: const [FontFeature.tabularFigures()])),
+                ),
               if (d.editable)
                 Transform.scale(
                   scale: 0.70,
@@ -716,6 +723,42 @@ class _CatalogueElementsMaintenancePageState
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Mention de portée d'un élément réservé : pleine pour un modèle, cerclée
+/// pour une marque entière. Sans couleur d'accent.
+class _MentionPortee extends StatelessWidget {
+  final String libelle;
+  final bool marque;
+
+  const _MentionPortee({required this.libelle, required this.marque});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(5, 2, 7, 2),
+      decoration: BoxDecoration(
+        color: marque ? Colors.transparent : AppColors.fieldFill,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+            color: marque ? AppColors.border : Colors.transparent),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(marque ? Icons.sell_outlined : Icons.directions_car_outlined,
+            size: 12, color: AppColors.label),
+        const SizedBox(width: 3),
+        Flexible(
+          child: Text(libelle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.dark)),
+        ),
+      ]),
     );
   }
 }
