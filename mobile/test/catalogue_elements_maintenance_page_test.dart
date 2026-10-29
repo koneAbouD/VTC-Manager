@@ -13,8 +13,8 @@ import 'package:vtc_manager/features/parametrage/presentation/providers/parametr
 import 'package:vtc_manager/features/parametrage/presentation/widgets/cible_vehicule_catalogue.dart';
 
 /// Paramètres → Données de référence → Éléments de maintenance : un onglet par
-/// modèle de la flotte, chacun rangé par type de maintenance de la même façon,
-/// le prix à droite quand il est renseigné.
+/// modèle de la flotte, chaque élément au prix et à l'image de ce modèle ; le
+/// formulaire sépare ce qui vaut pour tous les modèles de ce qui vaut pour un.
 final _descripteur = ReferentielDescriptor.fromJson({
   'key': 'catalogue-elements-maintenance',
   'libelle': 'Éléments de maintenance',
@@ -33,18 +33,20 @@ const _sPresso = 51;
 const _dzire = 52;
 const _corolla = 99;
 
-final _filtreAir = <String, dynamic>{
-  'id': 1,
-  'libelle': 'Filtre à air',
-  'actif': true,
-  'montantDefaut': 2500,
-  'categorieTypeId': _vidange,
-  'categorieTypeLibelle': 'Vidange',
-  'marqueId': 1,
-  'marqueNom': 'Suzuki',
-  'modeleId': _sPresso,
-  'modeleNom': 'S-Presso',
-};
+Map<String, dynamic> _tarif(int modeleId, String modeleNom, num? prix,
+        {String marqueNom = 'Suzuki', bool actif = true}) =>
+    {
+      'modeleId': modeleId,
+      'modeleNom': modeleNom,
+      'marqueNom': marqueNom,
+      'prix': prix,
+      'actif': actif,
+    };
+
+final _tarifsFiltre = [
+  _tarif(_sPresso, 'S-Presso', 1600),
+  _tarif(_dzire, 'Dzire', 2200),
+];
 
 final _filtreHuile = <String, dynamic>{
   'id': 2,
@@ -52,37 +54,75 @@ final _filtreHuile = <String, dynamic>{
   'actif': true,
   'categorieTypeId': _vidange,
   'categorieTypeLibelle': 'Vidange',
+  'tarifs': _tarifsFiltre,
 };
 
-final _elements = <Map<String, dynamic>>[
-  _filtreAir,
-  _filtreHuile,
-  {
-    'id': 3,
-    'libelle': 'Plaquette Dzire',
-    'actif': true,
-    'categorieTypeId': _freinage,
-    'categorieTypeLibelle': 'Freinage',
-    'marqueId': 1,
-    'marqueNom': 'Suzuki',
-    'modeleId': _dzire,
-    'modeleNom': 'Dzire',
-  },
-  {'id': 4, 'libelle': "Main d'oeuvre", 'actif': true},
-  // Réservé à un modèle absent de la flotte : seul l'onglet « Hors flotte »
-  // le montre.
-  {
-    'id': 5,
-    'libelle': 'Courroie Corolla',
-    'actif': true,
-    'categorieTypeId': _freinage,
-    'categorieTypeLibelle': 'Freinage',
-    'marqueId': 7,
-    'marqueNom': 'Toyota',
-    'modeleId': _corolla,
-    'modeleNom': 'Corolla',
-  },
-];
+final _plaquette = <String, dynamic>{
+  'id': 3,
+  'libelle': 'Plaquette',
+  'actif': true,
+  'categorieTypeId': _freinage,
+  'categorieTypeLibelle': 'Freinage',
+  'tarifs': [_tarif(_dzire, 'Dzire', 6000)],
+};
+
+final _mainOeuvre = <String, dynamic>{
+  'id': 4,
+  'libelle': "Main d'oeuvre",
+  'actif': true,
+  'tarifs': [_tarif(_sPresso, 'S-Presso', null), _tarif(_dzire, 'Dzire', null)],
+};
+
+// Réservé à un modèle absent de la flotte.
+final _courroie = <String, dynamic>{
+  'id': 5,
+  'libelle': 'Courroie Corolla',
+  'actif': true,
+  'categorieTypeId': _freinage,
+  'categorieTypeLibelle': 'Freinage',
+  'tarifs': [_tarif(_corolla, 'Corolla', 9000, marqueNom: 'Toyota')],
+};
+
+// Créé sans modèle : proposé nulle part.
+final _orphelin = <String, dynamic>{
+  'id': 6,
+  'libelle': 'Essuie-glaces',
+  'actif': true,
+  'tarifs': const [],
+};
+
+/// Vue d'un élément depuis l'onglet d'un modèle : prix et activation du modèle.
+Map<String, dynamic> _vue(Map<String, dynamic> el, int modeleId) {
+  final t = (el['tarifs'] as List).cast<Map<String, dynamic>>()
+      .firstWhere((t) => t['modeleId'] == modeleId);
+  return {
+    ...el,
+    'tarifModeleId': modeleId,
+    'montantDefaut': t['prix'],
+    'tarifActif': t['actif'],
+  };
+}
+
+/// Fausse API : garde la trace des appels d'écriture.
+class _FakeApi implements ParametrageApi {
+  final List<String> appels = [];
+
+  @override
+  Future<void> enregistrerTarif(String endpoint, Object elementId, int modeleId,
+      {num? prix, String? image, required bool actif}) async {
+    appels.add('tarif $elementId/$modeleId prix=$prix actif=$actif');
+  }
+
+  @override
+  Future<Map<String, dynamic>> mettreAJour(
+      String endpoint, Object id, Map<String, dynamic> body) async {
+    appels.add('element $id ${body['libelle']}');
+    return body;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 CategorieOperation _type(int id, String code, String libelle) =>
     CategorieOperation(
@@ -93,10 +133,19 @@ CategorieOperation _type(int id, String code, String libelle) =>
       actif: true,
     );
 
-Widget _app(Widget page) => ProviderScope(
+Widget _app(Widget page, {_FakeApi? api}) => ProviderScope(
       overrides: [
-        referentielItemsProvider
-            .overrideWith((ref, endpoint) async => _elements),
+        if (api != null) parametrageApiProvider.overrideWithValue(api),
+        referentielItemsProvider.overrideWith((ref, endpoint) async =>
+            [_filtreHuile, _plaquette, _mainOeuvre, _courroie, _orphelin]),
+        elementsDuModeleProvider.overrideWith((ref, modeleId) async =>
+            modeleId == _sPresso
+                ? [_vue(_filtreHuile, _sPresso), _vue(_mainOeuvre, _sPresso)]
+                : [
+                    _vue(_filtreHuile, _dzire),
+                    _vue(_plaquette, _dzire),
+                    _vue(_mainOeuvre, _dzire),
+                  ]),
         modelesFlotteProvider.overrideWith((ref) async => const [
               ModeleFlotte(
                   modeleId: _sPresso,
@@ -115,37 +164,22 @@ Widget _app(Widget page) => ProviderScope(
               _type(_vidange, 'VIDANGE', 'Vidange'),
               _type(_freinage, 'FREINAGE', 'Freinage'),
             ]),
-        // Ce que le serveur répond pour chaque modèle : les communs et ce qui
-        // lui est réservé.
-        elementsCompatiblesModeleProvider.overrideWith(
-            (ref, modeleId) async => modeleId == _sPresso ? {1, 2, 4} : {2, 3, 4}),
       ],
       child: MaterialApp(home: page),
     );
 
-Widget _page() => _app(CatalogueElementsMaintenancePage(descriptor: _descripteur));
+Widget _page({_FakeApi? api}) =>
+    _app(CatalogueElementsMaintenancePage(descriptor: _descripteur), api: api);
+
+const _modeleSPresso = CibleVehicule(
+    marqueId: 1, marqueNom: 'Suzuki', modeleId: _sPresso, modeleNom: 'S-Presso');
 
 void main() {
   setUp(reinitialiserSectionsOuvertesCatalogue);
 
-  group('CibleVehicule', () {
-    test('un modèle part seul : le serveur en déduit la marque', () {
-      const cible = CibleVehicule(
-          marqueId: 1, marqueNom: 'Suzuki', modeleId: _sPresso, modeleNom: 'S-Presso');
-      expect(cible.versCorps(), {'modeleId': _sPresso, 'marqueId': null});
-      expect(cible.libelle, 'Suzuki S-Presso');
-    });
-
-    test('une marque entière part sans modèle', () {
-      const cible = CibleVehicule(marqueId: 1, marqueNom: 'Suzuki');
-      expect(cible.versCorps(), {'modeleId': null, 'marqueId': 1});
-      expect(cible.libelle, 'Toute la marque Suzuki');
-    });
-
-    test('tous les véhicules : ni marque ni modèle', () {
-      expect(CibleVehicule.tous.versCorps(), {'modeleId': null, 'marqueId': null});
-      expect(CibleVehicule.depuisElement(const {'id': 4}).estTous, isTrue);
-    });
+  test('un modèle se désigne par sa marque et son nom', () {
+    expect(_modeleSPresso.libelle, 'Suzuki S-Presso');
+    expect(_modeleSPresso.estModele, isTrue);
   });
 
   test('la flotte se range du modèle le plus représenté, sans les véhicules sortis du parc', () {
@@ -160,8 +194,7 @@ void main() {
         [('S-Presso', 2), ('Dzire', 1)]);
   });
 
-  testWidgets('un onglet par modèle de la flotte, plus Hors flotte, sans « Tous les véhicules »',
-      (tester) async {
+  testWidgets('un onglet par modèle de la flotte, plus Hors flotte', (tester) async {
     await tester.pumpWidget(_page());
     await tester.pumpAndSettle();
 
@@ -169,8 +202,20 @@ void main() {
     expect(find.widgetWithText(Tab, 'Dzire'), findsOneWidget);
     expect(find.widgetWithText(Tab, 'Hors flotte'), findsOneWidget);
     expect(find.text('Tous les véhicules'), findsNothing);
-    // Sections repliées au départ : aucune ligne visible.
-    expect(find.text('Filtre à air'), findsNothing);
+  });
+
+  testWidgets('le même élément a le prix de chaque modèle', (tester) async {
+    await tester.pumpWidget(_page());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Vidange').hitTestable());
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 600').hitTestable(), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(Tab, 'Dzire'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('2 200').hitTestable(), findsOneWidget);
+    expect(find.textContaining('1 600').hitTestable(), findsNothing);
   });
 
   testWidgets('les sections suivent le même ordre dans chaque onglet', (tester) async {
@@ -178,41 +223,31 @@ void main() {
     await tester.pumpAndSettle();
 
     double y(String texte) => tester.getTopLeft(find.text(texte).hitTestable()).dy;
-    // Ordre fixé sur tout le catalogue : Freinage (2 éléments) puis Vidange
-    // (2, départagés par le libellé), communs en dernier. Un onglet ne montre
-    // que les sections où il a des éléments : la S-Presso n'a pas de freinage.
+    // La S-Presso n'a pas de freinage : la section n'apparaît pas.
     expect(find.text('Freinage').hitTestable(), findsNothing);
     expect(y('Vidange'), lessThan(y('Communs à tous les types')));
 
     await tester.tap(find.widgetWithText(Tab, 'Dzire'));
     await tester.pumpAndSettle();
+    // Freinage (2 éléments sur le catalogue) avant Vidange (1).
     expect(y('Freinage'), lessThan(y('Vidange')));
     expect(y('Vidange'), lessThan(y('Communs à tous les types')));
   });
 
-  testWidgets('chaque onglet montre ce que la saisie proposerait pour son modèle, prix compris',
-      (tester) async {
-    await tester.pumpWidget(_page());
+  testWidgets("l'interrupteur retire l'élément du seul modèle affiché", (tester) async {
+    final api = _FakeApi();
+    await tester.pumpWidget(_page(api: api));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Vidange').hitTestable());
     await tester.pumpAndSettle();
-
-    // S-Presso : son filtre à air, signalé « Ce modèle », avec son prix ;
-    // le filtre à huile commun ne porte aucune mention.
-    expect(find.text('Filtre à air'), findsOneWidget);
-    expect(find.text('Ce modèle'), findsOneWidget);
-    expect(find.textContaining('2 500'), findsOneWidget);
-    expect(find.text('Filtre à huile'), findsOneWidget);
-
-    // Dzire : la section reste ouverte, sans le filtre à air de la S-Presso.
-    await tester.tap(find.widgetWithText(Tab, 'Dzire'));
+    await tester.tap(find.byType(Switch).hitTestable().first);
     await tester.pumpAndSettle();
-    expect(find.text('Filtre à huile').hitTestable(), findsOneWidget);
-    expect(find.text('Filtre à air').hitTestable(), findsNothing);
+
+    expect(api.appels, contains('tarif 2/$_sPresso prix=1600 actif=false'));
   });
 
-  testWidgets('Hors flotte garde accessibles les éléments des modèles absents',
+  testWidgets('Hors flotte montre les modèles absents et les éléments sans modèle',
       (tester) async {
     await tester.pumpWidget(_page());
     await tester.pumpAndSettle();
@@ -220,31 +255,68 @@ void main() {
     await tester.tap(find.widgetWithText(Tab, 'Hors flotte'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Freinage').hitTestable());
+    await tester.tap(find.text('Communs à tous les types').hitTestable());
     await tester.pumpAndSettle();
 
     expect(find.text('Courroie Corolla').hitTestable(), findsOneWidget);
     expect(find.text('Toyota Corolla').hitTestable(), findsOneWidget);
+    expect(find.text('Essuie-glaces').hitTestable(), findsOneWidget);
+    expect(find.text('Aucun modèle').hitTestable(), findsOneWidget);
     expect(find.text('Filtre à huile').hitTestable(), findsNothing);
   });
 
-  testWidgets('modifier un élément commun rappelle les modèles concernés',
+  testWidgets('la fiche sépare ce qui vaut pour tous les modèles de ce qui vaut pour un',
       (tester) async {
-    await tester.pumpWidget(
-        _app(CatalogueElementMaintenanceFormPage(item: _filtreHuile)));
+    await tester.pumpWidget(_app(CatalogueElementMaintenanceFormPage(
+      element: _filtreHuile,
+      modele: _modeleSPresso,
+      prix: 1600,
+    )));
     await tester.pumpAndSettle();
 
     expect(
-        find.text('Commun à tous les véhicules : la modification vaut pour '
-            'S-Presso et Dzire.'),
+        find.text('Le libellé et le type valent pour S-Presso et Dzire. '
+            'Le prix et l\'image ne valent que pour S-Presso.'),
         findsOneWidget);
-    expect(find.text('Prix par défaut', findRichText: true), findsOneWidget);
+    expect(find.text('POUR TOUS LES MODÈLES'), findsOneWidget);
+    expect(find.text('POUR SUZUKI S-PRESSO'), findsOneWidget);
+    expect(find.text('1600'), findsOneWidget);
   });
 
-  testWidgets("un élément réservé à un modèle n'a pas de rappel", (tester) async {
-    await tester.pumpWidget(
-        _app(CatalogueElementMaintenanceFormPage(item: _filtreAir)));
+  testWidgets("enregistrer la fiche met à jour l'élément et le prix de ce modèle",
+      (tester) async {
+    final api = _FakeApi();
+    await tester.pumpWidget(_app(
+        CatalogueElementMaintenanceFormPage(
+          element: _filtreHuile,
+          modele: _modeleSPresso,
+          prix: 1600,
+        ),
+        api: api));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('la modification vaut pour'), findsNothing);
+    await tester.enterText(find.widgetWithText(TextFormField, '1600'), '1800');
+    await tester.tap(find.text('Enregistrer'));
+    await tester.pumpAndSettle();
+
+    expect(api.appels, [
+      'element 2 Filtre à huile',
+      'tarif 2/$_sPresso prix=1800 actif=true',
+    ]);
+  });
+
+  testWidgets("depuis l'onglet d'un modèle, on peut ajouter un élément existant",
+      (tester) async {
+    await tester.pumpWidget(_app(
+        const CatalogueElementMaintenanceFormPage(modele: _modeleSPresso)));
+    await tester.pumpAndSettle();
+
+    // Titre de la page et premier choix du sélecteur.
+    expect(find.text('Nouvel élément'), findsNWidgets(2));
+    await tester.tap(find.text('Élément existant'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choisir un élément…'), findsOneWidget);
+    expect(find.text('Ajouter au modèle'), findsOneWidget);
   });
 }

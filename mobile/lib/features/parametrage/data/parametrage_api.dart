@@ -190,6 +190,35 @@ class ParametrageApi {
   Future<void> supprimer(String endpoint, Object id) =>
       _client.delete('${_p(endpoint)}/$id');
 
+  // ── Catalogue des éléments de maintenance : tarifs par modèle ────────────
+
+  /// Prix, image et activation d'un élément pour un modèle : crée le tarif ou
+  /// le met à jour.
+  Future<void> enregistrerTarif(String endpoint, Object elementId, int modeleId,
+          {num? prix, String? image, required bool actif}) =>
+      _client.put('${_p(endpoint)}/$elementId/tarifs/$modeleId',
+          {'prix': prix, 'image': image, 'actif': actif});
+
+  /// Retire un élément d'un modèle : il n'y est plus proposé.
+  Future<void> supprimerTarif(String endpoint, Object elementId, int modeleId) =>
+      _client.delete('${_p(endpoint)}/$elementId/tarifs/$modeleId');
+
+  /// Reprend pour [versModeleId] les éléments de [deModeleId] qu'il n'a pas
+  /// encore ; renvoie le nombre d'éléments ajoutés.
+  Future<int> copierTarifs(String endpoint,
+      {required int deModeleId,
+      required int versModeleId,
+      required bool avecPrix,
+      required bool avecImages}) async {
+    final res = await _client.post('${_p(endpoint)}/tarifs/copier', {
+      'deModeleId': deModeleId,
+      'versModeleId': versModeleId,
+      'avecPrix': avecPrix,
+      'avecImages': avecImages,
+    });
+    return res is Map ? (res['copies'] as num?)?.toInt() ?? 0 : 0;
+  }
+
   /// Upload d'une image pour un champ de type `image` : envoie le fichier à
   /// `{endpoint}/image` (multipart) et retourne le nom d'objet (à enregistrer
   /// dans le champ) + une URL présignée d'aperçu.

@@ -9,34 +9,33 @@ import java.math.BigDecimal;
 
 /**
  * Requête de création / mise à jour d'un élément de catalogue de maintenance.
+ * Libellé et type valent pour tous les modèles ; le modèle, le prix et l'image
+ * ne servent qu'à la création, pour créer d'emblée le tarif de ce modèle.
  */
 @Schema(description = "Données d'un élément de catalogue de maintenance (référentiel de paramétrage).")
 public record CatalogueElementMaintenanceRequest(
-
         @Schema(description = "Libellé de l'élément de maintenance. Obligatoire, unique.",
-                example = "Vidange moteur", requiredMode = Schema.RequiredMode.REQUIRED)
+                example = "Filtre à huile", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "Le libellé est obligatoire")
         @Size(max = 255)
         String libelle,
 
-        @Schema(description = "Montant par défaut pré-rempli à la saisie (facultatif).", example = "15000")
-        @PositiveOrZero(message = "Le montant par défaut ne peut pas être négatif")
-        BigDecimal montantDefaut,
-
-        @Schema(description = "Nom d'objet de l'image d'illustration dans le stockage "
-                + "(retourné par POST /image ; facultatif).", nullable = true)
-        @Size(max = 512)
-        String image,
-
-        @Schema(description = "Marque de véhicule à laquelle l'élément est réservé "
-                + "(facultative : sans marque, l'élément vaut pour tous les véhicules).", nullable = true)
-        Long marqueId,
-
-        @Schema(description = "Modèle de véhicule auquel l'élément est réservé (facultatif : "
-                + "sans modèle, l'élément vaut pour toute la marque). Sa marque en est déduite.", nullable = true)
-        Long modeleId,
         @Schema(description = "Type de maintenance (catégorie de la sous-catégorie « Maintenances ») "
                 + "auquel l'élément est réservé (facultatif : sans type, l'élément est proposé "
                 + "pour tous les types).", nullable = true)
-        Long categorieTypeId
+        Long categorieTypeId,
+
+        @Schema(description = "Création seulement : modèle de véhicule pour lequel créer le tarif "
+                + "de l'élément.", nullable = true)
+        Long modeleId,
+
+        @Schema(description = "Création seulement : prix de l'élément pour ce modèle (facultatif).",
+                example = "15000", nullable = true)
+        @PositiveOrZero(message = "Le prix ne peut pas être négatif")
+        BigDecimal prix,
+
+        @Schema(description = "Création seulement : nom d'objet de l'image pour ce modèle "
+                + "(retourné par POST /image ; facultatif).", nullable = true)
+        @Size(max = 512)
+        String image
 ) {}

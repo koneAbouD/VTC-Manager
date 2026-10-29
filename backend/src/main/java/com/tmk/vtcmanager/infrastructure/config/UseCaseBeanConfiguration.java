@@ -77,6 +77,7 @@ import com.tmk.vtcmanager.application.ports.auth.OtpDeliveryPort;
 import com.tmk.vtcmanager.application.ports.auth.OtpHashPort;
 import com.tmk.vtcmanager.application.ports.persistence.OtpCodeRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CatalogueElementMaintenanceRepository;
+import com.tmk.vtcmanager.application.ports.persistence.TarifElementMaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.CategorieOperationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ClotureCaisseRepository;
 import com.tmk.vtcmanager.application.ports.persistence.ArreteCompteRepository;
@@ -729,20 +730,15 @@ public class UseCaseBeanConfiguration {
     // ----- CatalogueElementMaintenance -----
     @Bean
     public GetAllCatalogueElementsMaintenanceUseCase getAllCatalogueElementsMaintenanceUseCase(
-            CatalogueElementMaintenanceRepository repo, ModeleRepository modeleRepository) {
-        return new GetAllCatalogueElementsMaintenanceUseCase(repo, modeleRepository);
+            CatalogueElementMaintenanceRepository repo, TarifElementMaintenanceRepository tarifRepository) {
+        return new GetAllCatalogueElementsMaintenanceUseCase(repo, tarifRepository);
     }
 
     @Bean
     public GetActifsCatalogueElementsMaintenanceUseCase getActifsCatalogueElementsMaintenanceUseCase(
-            CatalogueElementMaintenanceRepository repo, VehiculeRepository vehiculeRepository) {
-        return new GetActifsCatalogueElementsMaintenanceUseCase(repo, vehiculeRepository);
-    }
-
-    @Bean
-    public CibleVehiculeCatalogue cibleVehiculeCatalogue(
-            MarqueRepository marqueRepository, ModeleRepository modeleRepository) {
-        return new CibleVehiculeCatalogue(marqueRepository, modeleRepository);
+            CatalogueElementMaintenanceRepository repo, TarifElementMaintenanceRepository tarifRepository,
+            VehiculeRepository vehiculeRepository) {
+        return new GetActifsCatalogueElementsMaintenanceUseCase(repo, tarifRepository, vehiculeRepository);
     }
 
     @Bean
@@ -752,23 +748,48 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public ImagesCatalogueMaintenance imagesCatalogueMaintenance(
+            TarifElementMaintenanceRepository tarifRepository, FileStoragePort storage) {
+        return new ImagesCatalogueMaintenance(tarifRepository, storage);
+    }
+
+    @Bean
+    public EnregistrerTarifElementMaintenanceUseCase enregistrerTarifElementMaintenanceUseCase(
+            CatalogueElementMaintenanceRepository repo, TarifElementMaintenanceRepository tarifRepository,
+            ModeleRepository modeleRepository, ImagesCatalogueMaintenance images) {
+        return new EnregistrerTarifElementMaintenanceUseCase(repo, tarifRepository, modeleRepository, images);
+    }
+
+    @Bean
+    public SupprimerTarifElementMaintenanceUseCase supprimerTarifElementMaintenanceUseCase(
+            TarifElementMaintenanceRepository tarifRepository, ImagesCatalogueMaintenance images) {
+        return new SupprimerTarifElementMaintenanceUseCase(tarifRepository, images);
+    }
+
+    @Bean
+    public CopierTarifsElementsMaintenanceUseCase copierTarifsElementsMaintenanceUseCase(
+            TarifElementMaintenanceRepository tarifRepository, ModeleRepository modeleRepository) {
+        return new CopierTarifsElementsMaintenanceUseCase(tarifRepository, modeleRepository);
+    }
+
+    @Bean
     public CreateCatalogueElementMaintenanceUseCase createCatalogueElementMaintenanceUseCase(
-            CatalogueElementMaintenanceRepository repo, CibleVehiculeCatalogue cibleVehicule,
-            TypeMaintenanceCatalogue typeMaintenance) {
-        return new CreateCatalogueElementMaintenanceUseCase(repo, cibleVehicule, typeMaintenance);
+            CatalogueElementMaintenanceRepository repo, TypeMaintenanceCatalogue typeMaintenance,
+            EnregistrerTarifElementMaintenanceUseCase enregistrerTarif) {
+        return new CreateCatalogueElementMaintenanceUseCase(repo, typeMaintenance, enregistrerTarif);
     }
 
     @Bean
     public DeleteCatalogueElementMaintenanceUseCase deleteCatalogueElementMaintenanceUseCase(
-            CatalogueElementMaintenanceRepository repo, FileStoragePort storage) {
-        return new DeleteCatalogueElementMaintenanceUseCase(repo, storage);
+            CatalogueElementMaintenanceRepository repo, TarifElementMaintenanceRepository tarifRepository,
+            ImagesCatalogueMaintenance images) {
+        return new DeleteCatalogueElementMaintenanceUseCase(repo, tarifRepository, images);
     }
 
     @Bean
     public UpdateCatalogueElementMaintenanceUseCase updateCatalogueElementMaintenanceUseCase(
-            CatalogueElementMaintenanceRepository repo, FileStoragePort storage,
-            CibleVehiculeCatalogue cibleVehicule, TypeMaintenanceCatalogue typeMaintenance) {
-        return new UpdateCatalogueElementMaintenanceUseCase(repo, storage, cibleVehicule, typeMaintenance);
+            CatalogueElementMaintenanceRepository repo, TypeMaintenanceCatalogue typeMaintenance) {
+        return new UpdateCatalogueElementMaintenanceUseCase(repo, typeMaintenance);
     }
 
     @Bean

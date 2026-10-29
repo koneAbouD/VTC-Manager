@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/premium_select_field.dart';
 import '../../../maintenance/presentation/providers/type_maintenance_provider.dart';
 import '../../../maintenance/presentation/widgets/maintenance_visuels.dart';
 import '../providers/catalogue_elements_providers.dart';
@@ -12,18 +13,37 @@ import '../widgets/cible_vehicule_catalogue.dart';
 
 /// Création / modification d'un élément du catalogue de maintenance.
 ///
-/// Remplace pour ce référentiel le formulaire générique : le véhicule concerné
-/// se choisit en un seul champ (la marque se déduit du modèle), et le type de
-/// maintenance en puces à icônes, « Commun à tous » compris.
+/// Deux parties : ce qui vaut pour tous les modèles (libellé, type de
+/// maintenance, activation) et ce qui vaut pour un modèle (prix, image,
+/// proposé ou non). Depuis l'onglet d'un modèle, on peut créer un élément ou
+/// lui ajouter un élément qui existe déjà pour d'autres modèles.
 class CatalogueElementMaintenanceFormPage extends ConsumerStatefulWidget {
   /// Élément à modifier ; null pour une création.
-  final Map<String, dynamic>? item;
+  final Map<String, dynamic>? element;
+
+  /// Modèle dont on règle le prix et l'image ; null : à choisir dans le
+  /// formulaire (création depuis l'en-tête, élément sans modèle).
+  final CibleVehicule? modele;
+
+  /// Prix, image et activation actuels pour [modele].
+  final num? prix;
+  final String? image;
+  final String? imageUrl;
+  final bool tarifActif;
 
   /// Type déjà choisi pour une création lancée depuis une section de la liste.
   final int? categorieTypeInitialeId;
 
-  const CatalogueElementMaintenanceFormPage(
-      {super.key, this.item, this.categorieTypeInitialeId});
+  const CatalogueElementMaintenanceFormPage({
+    super.key,
+    this.element,
+    this.modele,
+    this.prix,
+    this.image,
+    this.imageUrl,
+    this.tarifActif = true,
+    this.categorieTypeInitialeId,
+  });
 
   @override
   ConsumerState<CatalogueElementMaintenanceFormPage> createState() =>
@@ -34,63 +54,100 @@ class _CatalogueElementMaintenanceFormPageState
     extends ConsumerState<CatalogueElementMaintenanceFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _libelleCtrl;
-  late final TextEditingController _montantCtrl;
+  late final TextEditingController _prixCtrl;
   int? _typeId;
-  late CibleVehicule _cible;
+  late bool _elementActif;
+  CibleVehicule? _modele;
   String? _image;
   String? _imagePreview;
+  late bool _tarifActif;
   bool _saving = false;
 
-  bool get _edition => widget.item != null;
+  /// Création seulement : ajouter au modèle un élément qui existe déjà.
+  bool _existant = false;
+  Object? _elementExistantId;
+
+  bool get _edition => widget.element != null;
 
   @override
   void initState() {
     super.initState();
-    final item = widget.item;
-    _libelleCtrl = TextEditingController(text: item?['libelle'] as String? ?? '');
-    final montant = item?['montantDefaut'] as num?;
-    _montantCtrl = TextEditingController(
-        text: montant == null ? '' : montant.toStringAsFixed(0));
-    _typeId = item != null
-        ? (item['categorieTypeId'] as num?)?.toInt()
+    final el = widget.element;
+    _libelleCtrl = TextEditingController(text: el?['libelle'] as String? ?? '');
+    _prixCtrl = TextEditingController(
+        text: widget.prix == null ? '' : widget.prix!.toStringAsFixed(0));
+    _typeId = el != null
+        ? (el['categorieTypeId'] as num?)?.toInt()
         : widget.categorieTypeInitialeId;
-    _cible = item != null ? CibleVehicule.depuisElement(item) : CibleVehicule.tous;
-    _image = item?['image'] as String?;
-    _imagePreview = item?['imageUrl'] as String?;
+    _elementActif = el?['actif'] as bool? ?? true;
+    _modele = widget.modele;
+    _image = widget.image;
+    _imagePreview = widget.imageUrl;
+    _tarifActif = widget.tarifActif;
   }
 
   @override
   void dispose() {
     _libelleCtrl.dispose();
-    _montantCtrl.dispose();
+    _prixCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _choisirVehicule() async {
-    final choix = await choisirCibleVehicule(context, actuelle: _cible);
-    if (choix != null && mounted) setState(() => _cible = choix);
+  num? get _prix {
+    final saisi = _prixCtrl.text.trim().replaceAll(' ', '');
+    return saisi.isEmpty ? null : num.tryParse(saisi.replaceAll(',', '.'));
+  }
+
+  Future<void> _choisirModele() async {
+    final choix = await choisirCibleVehicule(context,
+        actuelle: _modele ?? CibleVehicule.tous,
+        modelesSeulement: true,
+        titre: 'Modèle de véhicule');
+    if (choix != null && mounted) setState(() => _modele = choix);
   }
 
   Future<void> _enregistrer() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    final montantSaisi = _montantCtrl.text.trim().replaceAll(' ', '');
-    final body = <String, dynamic>{
-      'libelle': _libelleCtrl.text.trim(),
-      'categorieTypeId': _typeId,
-      ..._cible.versCorps(),
-      'montantDefaut': montantSaisi.isEmpty
-          ? null
-          : num.tryParse(montantSaisi.replaceAll(',', '.')),
-      'image': _image,
-    };
+    final modeleId = _modele?.modeleId;
+    final api = ref.read(parametrageApiProvider);
+    // Un élément concerne un modèle à la fois : à la création, il en faut un,
+    // sinon l'élément ne serait proposé nulle part.
+    if (!_edition && modeleId == null) {
+      _toast('Choisissez le modèle de véhicule.', erreur: true);
+      return;
+    }
+    if (!_edition && _existant && _elementExistantId == null) {
+      _toast('Choisissez l\'élément à ajouter.', erreur: true);
+      return;
+    }
+
     setState(() => _saving = true);
     try {
-      final api = ref.read(parametrageApiProvider);
-      if (_edition) {
-        await api.mettreAJour(
-            kEndpointCatalogueElements, widget.item!['id'] as Object, body);
+      if (!_edition && _existant) {
+        await api.enregistrerTarif(
+            kEndpointCatalogueElements, _elementExistantId!, modeleId!,
+            prix: _prix, image: _image, actif: true);
+      } else if (!_edition) {
+        await api.creer(kEndpointCatalogueElements, {
+          'libelle': _libelleCtrl.text.trim(),
+          'categorieTypeId': _typeId,
+          'modeleId': modeleId,
+          'prix': _prix,
+          'image': _image,
+        });
       } else {
-        await api.creer(kEndpointCatalogueElements, body);
+        final id = widget.element!['id'] as Object;
+        await api.mettreAJour(kEndpointCatalogueElements, id, {
+          'libelle': _libelleCtrl.text.trim(),
+          'categorieTypeId': _typeId,
+        });
+        if (_elementActif != (widget.element!['actif'] as bool? ?? true)) {
+          await api.changerActivation(kEndpointCatalogueElements, id, _elementActif);
+        }
+        if (modeleId != null) {
+          await api.enregistrerTarif(kEndpointCatalogueElements, id, modeleId,
+              prix: _prix, image: _image, actif: _tarifActif);
+        }
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -122,6 +179,7 @@ class _CatalogueElementMaintenanceFormPageState
 
   @override
   Widget build(BuildContext context) {
+    final nomModele = _modele?.libelle;
     return Scaffold(
       backgroundColor: AppColors.scaffold,
       appBar: AppHeader(
@@ -135,36 +193,55 @@ class _CatalogueElementMaintenanceFormPageState
               _bandeau(message),
               const SizedBox(height: 12),
             ],
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 18),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 14),
-                  _label('Libellé', obligatoire: true),
+            // Depuis l'onglet d'un modèle : nouvel élément, ou élément déjà
+            // présent pour d'autres modèles.
+            if (!_edition && widget.modele != null) ...[
+              _choixCreation(),
+              const SizedBox(height: 12),
+            ],
+            _carte(
+              titre: 'Pour tous les modèles',
+              enfants: _existant && !_edition
+                  ? [
+                      _label('Élément', obligatoire: true),
+                      _champElementExistant(),
+                    ]
+                  : [
+                      _label('Libellé', obligatoire: true),
+                      TextFormField(
+                        controller: _libelleCtrl,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: _deco('Ex. Filtre à huile'),
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? 'Champ obligatoire'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      _label('Type de maintenance'),
+                      _champType(),
+                      if (_edition) ...[
+                        const SizedBox(height: 10),
+                        _interrupteur(
+                          'Actif pour tous les modèles',
+                          _elementActif,
+                          (v) => setState(() => _elementActif = v),
+                        ),
+                      ],
+                    ],
+            ),
+            const SizedBox(height: 12),
+            _carte(
+              titre: nomModele != null ? 'Pour $nomModele' : 'Pour un modèle',
+              enfants: [
+                if (widget.modele == null) ...[
+                  _label('Modèle de véhicule', obligatoire: !_edition),
+                  _champModele(),
+                  const SizedBox(height: 16),
+                ],
+                if (_modele != null) ...[
+                  _label('Prix'),
                   TextFormField(
-                    controller: _libelleCtrl,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: _deco('Ex. Filtre à huile'),
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Champ obligatoire'
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  _label('Type de maintenance'),
-                  _champType(),
-                  const SizedBox(height: 16),
-                  _label('Véhicule concerné'),
-                  _champVehicule(),
-                  const SizedBox(height: 16),
-                  _label('Prix par défaut'),
-                  TextFormField(
-                    controller: _montantCtrl,
+                    controller: _prixCtrl,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                     decoration: _deco('Facultatif', suffixe: 'XOF'),
@@ -181,8 +258,19 @@ class _CatalogueElementMaintenanceFormPageState
                     }),
                     onErreur: (message) => _toast(message, erreur: true),
                   ),
-                ],
-              ),
+                  if (_edition) ...[
+                    const SizedBox(height: 10),
+                    _interrupteur(
+                      'Proposé pour ce modèle',
+                      _tarifActif,
+                      (v) => setState(() => _tarifActif = v),
+                    ),
+                  ],
+                ] else
+                  Text(
+                      'Choisissez un modèle pour lui donner un prix et une image.',
+                      style: TextStyle(fontSize: 13, color: AppColors.label)),
+              ],
             ),
           ],
         ),
@@ -214,7 +302,12 @@ class _CatalogueElementMaintenanceFormPageState
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.check_rounded, size: 19),
-                label: Text(_edition ? 'Enregistrer' : 'Créer',
+                label: Text(
+                    _edition
+                        ? 'Enregistrer'
+                        : _existant
+                            ? 'Ajouter au modèle'
+                            : 'Créer',
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w700)),
               ),
@@ -227,24 +320,27 @@ class _CatalogueElementMaintenanceFormPageState
 
   // ── Portée partagée ───────────────────────────────────────────────────────
 
-  /// La liste montre un élément commun sous chaque modèle : à la modification,
-  /// on rappelle qu'il n'y en a qu'un, et quels modèles il touche.
+  /// Le libellé et le type d'un élément valent pour tous ses modèles : à la
+  /// modification, on rappelle lesquels, et que prix et image n'engagent que
+  /// le modèle affiché.
   String? _avertissementPortee() {
     if (!_edition) return null;
-    final initiale = CibleVehicule.depuisElement(widget.item!);
-    if (initiale.estModele) return null;
-    final flotte = ref.watch(modelesFlotteProvider).valueOrNull ?? const [];
-    final touches = flotte
-        .where((m) => initiale.estTous || m.marqueId == initiale.marqueId)
-        .map((m) => m.modeleNom)
+    final modeles = (widget.element!['tarifs'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map((t) => t['modeleNom'] as String?)
+        .whereType<String>()
         .toList();
-    if (touches.length < 2) return null;
-    final liste = touches.length == 2
-        ? touches.join(' et ')
-        : '${touches.sublist(0, touches.length - 1).join(', ')} et ${touches.last}';
-    return initiale.estTous
-        ? 'Commun à tous les véhicules : la modification vaut pour $liste.'
-        : 'Réservé à la marque ${initiale.marqueNom ?? ''} : la modification vaut pour $liste.';
+    if (modeles.isEmpty) {
+      return 'Cet élément n\'est proposé pour aucun modèle : choisissez-en un '
+          'pour lui donner un prix.';
+    }
+    if (modeles.length < 2) return null;
+    final liste = modeles.length == 2
+        ? modeles.join(' et ')
+        : '${modeles.sublist(0, modeles.length - 1).join(', ')} et ${modeles.last}';
+    final modele = widget.modele?.modeleNom;
+    return 'Le libellé et le type valent pour $liste.'
+        '${modele != null ? ' Le prix et l\'image ne valent que pour $modele.' : ''}';
   }
 
   Widget _bandeau(String message) => Container(
@@ -267,6 +363,77 @@ class _CatalogueElementMaintenanceFormPageState
           ],
         ),
       );
+
+  // ── Nouvel élément ou élément existant ───────────────────────────────────
+
+  Widget _choixCreation() {
+    Widget segment(String libelle, bool valeur) {
+      final choisi = _existant == valeur;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() => _existant = valeur),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: choisi ? AppColors.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: choisi ? AppColors.border : Colors.transparent),
+            ),
+            child: Text(libelle,
+                style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: choisi ? FontWeight.w700 : FontWeight.w500,
+                    color: choisi ? AppColors.dark : AppColors.label)),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.fieldFill,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(children: [
+        segment('Nouvel élément', false),
+        segment('Élément existant', true),
+      ]),
+    );
+  }
+
+  /// Éléments du catalogue que ce modèle n'a pas encore.
+  Widget _champElementExistant() {
+    final async = ref.watch(referentielItemsProvider(kEndpointCatalogueElements));
+    final modeleId = _modele?.modeleId;
+    final options = (async.valueOrNull ?? const <Map<String, dynamic>>[])
+        .where((it) => !(it['tarifs'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .any((t) => (t['modeleId'] as num?)?.toInt() == modeleId))
+        .map((it) => SelectOption<Object>(
+              value: it['id'] as Object,
+              label: '${it['libelle'] ?? ''}',
+              sousTitre: it['categorieTypeLibelle'] as String? ??
+                  'Commun à tous les types',
+            ))
+        .toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+    if (async.isLoading && options.isEmpty) {
+      return const LinearProgressIndicator(minHeight: 2);
+    }
+    return PremiumSelectField<Object>(
+      value: _elementExistantId,
+      options: options,
+      hint: 'Choisir un élément…',
+      sheetTitle: 'Élément à ajouter',
+      isRequired: true,
+      fillColor: AppColors.fieldFill,
+      onChanged: (v) => setState(() => _elementExistantId = v),
+    );
+  }
 
   // ── Type de maintenance ────────────────────────────────────────────────────
 
@@ -325,7 +492,7 @@ class _CatalogueElementMaintenanceFormPageState
                 color: choisi ? accent.withValues(alpha: 0.6) : Colors.transparent),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icone, size: 15, color: choisi ? accent : AppColors.label),
+            Icon(icone, size: 15, color: AppColors.label),
             const SizedBox(width: 5),
             Text(libelle,
                 style: TextStyle(
@@ -338,50 +505,28 @@ class _CatalogueElementMaintenanceFormPageState
     );
   }
 
-  // ── Véhicule concerné ─────────────────────────────────────────────────────
+  // ── Modèle ────────────────────────────────────────────────────────────────
 
-  Widget _champVehicule() {
-    final flotte = ref.watch(modelesFlotteProvider).valueOrNull ?? const [];
-    final dansFlotte = _cible.estModele &&
-        flotte.any((m) => m.modeleId == _cible.modeleId);
-    final precision = _cible.estModele
-        ? (dansFlotte ? 'Modèle de la flotte' : 'Modèle')
-        : _cible.estMarque
-            ? 'Marque entière'
-            : 'Proposé pour toute la flotte';
+  Widget _champModele() {
+    final modele = _modele;
     return GestureDetector(
-      onTap: _choisirVehicule,
+      onTap: _choisirModele,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
           color: AppColors.fieldFill,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
         ),
         child: Row(children: [
-          Icon(
-            _cible.estMarque
-                ? Icons.sell_outlined
-                : _cible.estModele
-                    ? Icons.directions_car_outlined
-                    : Icons.public_rounded,
-            size: 20,
-            color: AppColors.label,
-          ),
+          Icon(Icons.directions_car_outlined, size: 20, color: AppColors.label),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_cible.libelle,
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.dark)),
-                Text(precision,
-                    style: TextStyle(fontSize: 12, color: AppColors.label)),
-              ],
-            ),
+            child: Text(modele?.libelle ?? 'Choisir un modèle',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: modele == null ? AppColors.hint : AppColors.dark)),
           ),
           Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.hint),
         ]),
@@ -390,6 +535,46 @@ class _CatalogueElementMaintenanceFormPageState
   }
 
   // ── Habillage ─────────────────────────────────────────────────────────────
+
+  Widget _carte({required String titre, required List<Widget> enfants}) =>
+      Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(titre.toUpperCase(),
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.hint,
+                    letterSpacing: 0.5)),
+            const SizedBox(height: 12),
+            ...enfants,
+          ],
+        ),
+      );
+
+  Widget _interrupteur(
+          String libelle, bool valeur, ValueChanged<bool> onChanged) =>
+      Row(children: [
+        Expanded(
+          child: Text(libelle,
+              style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.dark)),
+        ),
+        Switch.adaptive(
+          value: valeur,
+          activeThumbColor: AppColors.primary,
+          onChanged: onChanged,
+        ),
+      ]);
 
   Widget _label(String libelle, {bool obligatoire = false}) => Padding(
         padding: const EdgeInsets.only(bottom: 6, left: 2),

@@ -1,45 +1,62 @@
 package com.tmk.vtcmanager.application.usecases.catalogueElementMaintenance;
 
-import com.tmk.vtcmanager.application.domain.operation.CatalogueElementMaintenance;
+import com.tmk.vtcmanager.application.domain.operation.ElementCatalogue;
+import com.tmk.vtcmanager.application.domain.operation.PropositionCatalogue;
+import com.tmk.vtcmanager.application.domain.operation.TarifElementMaintenance;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
 import com.tmk.vtcmanager.application.ports.persistence.CatalogueElementMaintenanceRepository;
+import com.tmk.vtcmanager.application.ports.persistence.TarifElementMaintenanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
- * Éléments de maintenance <b>actifs uniquement</b>, triés par libellé — destinés
- * à la sélection (saisie d'une opération de maintenance). Le paramétrage, lui,
- * consomme la liste complète via {@link GetAllCatalogueElementsMaintenanceUseCase}.
+ * Éléments de maintenance <b>proposés à la saisie</b>, triés par libellé. Le
+ * paramétrage, lui, consomme le catalogue complet via
+ * {@link GetAllCatalogueElementsMaintenanceUseCase}.
  *
- * <p>Pour un véhicule donné, seuls les éléments compatibles avec sa marque et
- * son modèle sont retenus (voir {@link CatalogueElementMaintenance#estCompatibleAvec}).
- * Pour un type de maintenance donné, seuls les éléments communs ou réservés à
- * ce type le sont (voir {@link CatalogueElementMaintenance#estCompatibleAvecType}).</p>
+ * <p>Pour un véhicule, seuls les éléments qui ont un tarif actif pour son modèle
+ * sont proposés, avec le prix et l'image de ce modèle (voir
+ * {@link ElementCatalogue#estProposePour}). Pour un type de maintenance, seuls
+ * les éléments communs ou réservés à ce type le sont.</p>
  */
 @RequiredArgsConstructor
 public class GetActifsCatalogueElementsMaintenanceUseCase {
 
     private final CatalogueElementMaintenanceRepository repository;
+    private final TarifElementMaintenanceRepository tarifRepository;
     private final VehiculeRepository vehiculeRepository;
 
-    public List<CatalogueElementMaintenance> execute() {
-        return repository.findAllActifs();
-    }
-
-    public List<CatalogueElementMaintenance> execute(Long vehiculeId) {
-        return execute(vehiculeId, null);
-    }
-
-    public List<CatalogueElementMaintenance> execute(Long vehiculeId, Long categorieTypeId) {
-        Vehicule vehicule = vehiculeId == null ? null : vehiculeRepository.findById(vehiculeId)
+    /**
+     * @param vehiculeId véhicule de l'intervention ; sans véhicule, tous les
+     *                   éléments actifs, sans prix ni image (aucun modèle ne les
+     *                   désigne).
+     */
+    public PropositionCatalogue execute(Long vehiculeId, Long categorieTypeId) {
+        if (vehiculeId == null) {
+            return new PropositionCatalogue(null, repository.findAllActifs().stream()
+                    .filter(e -> e.estCompatibleAvecType(categorieTypeId))
+                    .map(e -> new ElementCatalogue(e, List.of()))
+                    .toList());
+        }
+        Vehicule vehicule = vehiculeRepository.findById(vehiculeId)
                 .orElseThrow(() -> new VehiculeNotFoundException(vehiculeId));
-        return repository.findAllActifs().stream()
-                .filter(e -> vehicule == null
-                        || e.estCompatibleAvec(vehicule.getMarqueId(), vehicule.getModeleId()))
-                .filter(e -> e.estCompatibleAvecType(categorieTypeId))
-                .toList();
+        Long modeleId = vehicule.getModeleId();
+        // Un véhicule sans modèle n'a pas de tarifs : rien à proposer, les
+        // éléments se saisissent alors librement.
+        if (modeleId == null) return new PropositionCatalogue(null, List.of());
+
+        Map<Long, List<TarifElementMaintenance>> parElement = tarifRepository.findByModeleId(modeleId)
+                .stream()
+                .collect(Collectors.groupingBy(TarifElementMaintenance::getElementId));
+        return new PropositionCatalogue(modeleId, repository.findAllActifs().stream()
+                .map(e -> new ElementCatalogue(e, parElement.getOrDefault(e.getId(), List.of())))
+                .filter(ec -> ec.estProposePour(modeleId))
+                .filter(ec -> ec.element().estCompatibleAvecType(categorieTypeId))
+                .toList());
     }
 }

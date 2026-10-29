@@ -74,13 +74,10 @@ final modelesFlotteProvider = FutureProvider<List<ModeleFlotte>>((ref) async {
   );
 });
 
-/// Identifiants des éléments que la saisie d'une maintenance proposerait pour
-/// un véhicule de ce modèle (génériques, de sa marque, ou de ce modèle),
-/// inactifs compris. La règle reste celle du serveur, pas une copie en Dart.
-final elementsCompatiblesModeleProvider =
-    FutureProvider.family<Set<Object>, int>((ref, modeleId) async {
-  final items = await ref
-      .watch(parametrageApiProvider)
-      .lister('$kEndpointCatalogueElements?modeleId=$modeleId');
-  return {for (final it in items) it['id'] as Object};
-});
+/// Éléments d'un modèle, actifs ou non, avec le prix (`montantDefaut`),
+/// l'image et l'activation (`tarifActif`) de ce modèle — l'onglet du modèle.
+final elementsDuModeleProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, int>((ref, modeleId) =>
+        ref
+            .watch(parametrageApiProvider)
+            .lister('$kEndpointCatalogueElements?modeleId=$modeleId'));

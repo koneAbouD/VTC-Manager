@@ -5,9 +5,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../providers/catalogue_elements_providers.dart';
 import '../providers/parametrage_providers.dart';
 
-/// Véhicules auxquels un élément de maintenance s'adresse : tous, une marque
-/// entière, ou un seul modèle. Le modèle suffit à désigner sa marque — le
-/// serveur la déduit — d'où un seul choix au lieu de deux champs.
+/// Un modèle de véhicule (ou, pour la feuille de choix, une marque entière ou
+/// tous les véhicules) désigné avec ses noms, pour l'afficher sans relire le
+/// référentiel.
 class CibleVehicule {
   final int? marqueId;
   final String? marqueNom;
@@ -23,16 +23,6 @@ class CibleVehicule {
 
   static const tous = CibleVehicule();
 
-  /// Portée lue sur un élément du catalogue (réponse à plat : marqueId,
-  /// marqueNom, modeleId, modeleNom).
-  factory CibleVehicule.depuisElement(Map<String, dynamic> item) =>
-      CibleVehicule(
-        marqueId: (item['marqueId'] as num?)?.toInt(),
-        marqueNom: item['marqueNom'] as String?,
-        modeleId: (item['modeleId'] as num?)?.toInt(),
-        modeleNom: item['modeleNom'] as String?,
-      );
-
   bool get estTous => marqueId == null && modeleId == null;
   bool get estMarque => modeleId == null && marqueId != null;
   bool get estModele => modeleId != null;
@@ -46,13 +36,6 @@ class CibleVehicule {
     if (estMarque) return 'Toute la marque ${marqueNom ?? ''}'.trim();
     return 'Tous les véhicules';
   }
-
-  /// Ce que le formulaire envoie : le modèle seul (sa marque en est déduite),
-  /// la marque seule, ou rien.
-  Map<String, dynamic> versCorps() => {
-        'modeleId': modeleId,
-        'marqueId': estModele ? null : marqueId,
-      };
 
   @override
   bool operator ==(Object other) =>

@@ -10,13 +10,9 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface CatalogueElementMaintenancePersistenceMapper {
 
-    @Mapping(target = "marque", ignore = true)
-    @Mapping(target = "modele", ignore = true)
     @Mapping(target = "categorieType", ignore = true)
     CatalogueElementMaintenanceEntity toEntity(CatalogueElementMaintenance domain);
 
-    @Mapping(target = "marqueNom", source = "marque.nom")
-    @Mapping(target = "modeleNom", source = "modele.nom")
     @Mapping(target = "categorieTypeLibelle", source = "categorieType.libelle")
     CatalogueElementMaintenance toDomain(CatalogueElementMaintenanceEntity entity);
 

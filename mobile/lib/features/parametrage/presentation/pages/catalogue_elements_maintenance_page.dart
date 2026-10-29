@@ -7,8 +7,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/image_viewer.dart';
 import '../../../maintenance/presentation/providers/type_maintenance_provider.dart';
-import '../../../operation_financiere/domain/entities/categorie_operation.dart';
 import '../../../maintenance/presentation/widgets/maintenance_visuels.dart';
+import '../../../operation_financiere/domain/entities/categorie_operation.dart';
 import '../../data/parametrage_api.dart';
 import '../providers/catalogue_elements_providers.dart';
 import '../providers/parametrage_providers.dart';
@@ -26,13 +26,44 @@ final _sectionsOuvertes = <String>{};
 @visibleForTesting
 void reinitialiserSectionsOuvertesCatalogue() => _sectionsOuvertes.clear();
 
+/// Une ligne de la liste : un élément pour un modèle, avec le prix, l'image et
+/// l'activation de ce modèle. [modele] est nul pour un élément qui n'a encore
+/// de tarif pour aucun modèle.
+class _Ligne {
+  final Map<String, dynamic> element;
+  final CibleVehicule? modele;
+  final num? prix;
+  final String? image;
+  final String? imageUrl;
+  final bool tarifActif;
+
+  /// Mention affichée sous le libellé (modèle hors flotte, aucun modèle).
+  final String? mention;
+
+  const _Ligne({
+    required this.element,
+    required this.modele,
+    this.prix,
+    this.image,
+    this.imageUrl,
+    this.tarifActif = true,
+    this.mention,
+  });
+
+  Object get elementId => element['id'] as Object;
+
+  String get cle => '$elementId-${modele?.modeleId}';
+
+  bool get elementActif => element['actif'] as bool? ?? true;
+}
+
 /// Paramétrage › Éléments de maintenance.
 ///
-/// Un onglet par modèle de la flotte, chacun présenté de la même façon : les
-/// éléments que la saisie d'une maintenance proposerait pour ce modèle, rangés
-/// par type de maintenance, les communs à tous les types en dernier. Un onglet
-/// « Hors flotte » garde accessibles les éléments réservés à des modèles ou
-/// marques absents de la flotte.
+/// Un onglet par modèle de la flotte : les éléments que ce modèle se voit
+/// proposer à la saisie d'une maintenance, avec leur prix et leur image pour
+/// ce modèle, rangés par type de maintenance (communs à tous les types en
+/// dernier). Un onglet « Hors flotte » garde accessibles les éléments des
+/// modèles absents de la flotte et ceux qui n'ont encore aucun modèle.
 class CatalogueElementsMaintenancePage extends ConsumerStatefulWidget {
   final ReferentielDescriptor descriptor;
 
@@ -53,8 +84,9 @@ class _CatalogueElementsMaintenancePageState
   String _query = '';
   final _searchCtrl = TextEditingController();
 
-  /// Surcharge optimiste de l'état « actif » pendant l'appel réseau.
-  final Map<Object, bool> _actifOverride = {};
+  /// Surcharge optimiste de « proposé pour ce modèle » pendant l'appel réseau
+  /// (clé de ligne → valeur souhaitée).
+  final Map<String, bool> _actifOverride = {};
 
   final _money =
       NumberFormat.currency(locale: 'fr_FR', symbol: 'XOF', decimalDigits: 0);
@@ -69,14 +101,11 @@ class _CatalogueElementsMaintenancePageState
 
   Future<void> _rafraichir() async {
     ref.invalidate(referentielItemsProvider(d.endpoint));
-    ref.invalidate(elementsCompatiblesModeleProvider);
+    ref.invalidate(elementsDuModeleProvider);
     try {
       await ref.read(referentielItemsProvider(d.endpoint).future);
     } catch (_) {}
   }
-
-  bool _estActif(Map<String, dynamic> item) =>
-      _actifOverride[item['id']] ?? item['actif'] as bool? ?? true;
 
   static String _normaliser(String s) => s
       .toLowerCase()
@@ -87,51 +116,56 @@ class _CatalogueElementsMaintenancePageState
       .replaceAll(RegExp('[ùûü]'), 'u')
       .replaceAll('ç', 'c');
 
-  bool _correspond(Map<String, dynamic> item, String q) => [
-        item['libelle'],
-        item['categorieTypeLibelle'],
-        item['marqueNom'],
-        item['modeleNom'],
+  bool _correspond(_Ligne l, String q) => [
+        l.element['libelle'],
+        l.element['categorieTypeLibelle'],
+        l.mention,
       ].any((v) => v != null && _normaliser('$v').contains(q));
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
   Future<void> _ouvrirFormulaire(
-      {Map<String, dynamic>? item, int? categorieTypeId}) async {
+      {_Ligne? ligne, CibleVehicule? modele, int? categorieTypeId}) async {
     final modifie = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => CatalogueElementMaintenanceFormPage(
-            item: item, categorieTypeInitialeId: categorieTypeId),
+          element: ligne?.element,
+          modele: ligne?.modele ?? modele,
+          prix: ligne?.prix,
+          image: ligne?.image,
+          imageUrl: ligne?.imageUrl,
+          tarifActif: ligne?.tarifActif ?? true,
+          categorieTypeInitialeId: categorieTypeId,
+        ),
       ),
     );
     if (modifie == true) await _rafraichir();
   }
 
-  Future<void> _basculerActif(Map<String, dynamic> item, bool actif) async {
-    final id = item['id'] as Object;
-    setState(() => _actifOverride[id] = actif);
+  Future<void> _basculerTarif(_Ligne l, bool actif) async {
+    final modele = l.modele;
+    if (modele?.modeleId == null) return;
+    setState(() => _actifOverride[l.cle] = actif);
     try {
-      await ref
-          .read(parametrageApiProvider)
-          .changerActivation(d.endpoint, id, actif);
+      await ref.read(parametrageApiProvider).enregistrerTarif(
+          d.endpoint, l.elementId, modele!.modeleId!,
+          prix: l.prix, image: l.image, actif: actif);
       await _rafraichir();
     } catch (e) {
       _toast(_message(e), erreur: true);
     } finally {
-      if (mounted) setState(() => _actifOverride.remove(id));
+      if (mounted) setState(() => _actifOverride.remove(l.cle));
     }
   }
 
-  Future<void> _supprimer(Map<String, dynamic> item) async {
-    final libelle = item['libelle'] ?? '';
+  Future<bool> _confirmer(String titre, String message, String action) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Supprimer',
-            style: TextStyle(fontWeight: FontWeight.w800)),
-        content: Text('Supprimer « $libelle » ? Cette action est définitive.'),
+        title: Text(titre, style: const TextStyle(fontWeight: FontWeight.w800)),
+        content: Text(message),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -139,19 +173,88 @@ class _CatalogueElementsMaintenancePageState
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Supprimer'),
+            child: Text(action),
           ),
         ],
       ),
     );
-    if (ok != true) return;
+    return ok == true;
+  }
+
+  Future<void> _retirerDuModele(_Ligne l) async {
+    final modele = l.modele;
+    if (modele?.modeleId == null) return;
+    final libelle = l.element['libelle'] ?? '';
+    if (!await _confirmer(
+        'Retirer du modèle',
+        '« $libelle » ne sera plus proposé pour ${modele!.libelle}. '
+            'Les maintenances passées ne changent pas.',
+        'Retirer')) {
+      return;
+    }
+    await _executer(
+      () => ref
+          .read(parametrageApiProvider)
+          .supprimerTarif(d.endpoint, l.elementId, modele.modeleId!),
+      succes: '« $libelle » retiré de ${modele.libelle}.',
+    );
+  }
+
+  Future<void> _supprimer(_Ligne l) async {
+    final libelle = l.element['libelle'] ?? '';
+    if (!await _confirmer(
+        'Supprimer',
+        'Supprimer « $libelle » de tous les modèles ? Cette action est définitive.',
+        'Supprimer')) {
+      return;
+    }
+    await _executer(
+      () => ref.read(parametrageApiProvider).supprimer(d.endpoint, l.elementId),
+      succes: '« $libelle » supprimé.',
+    );
+  }
+
+  Future<void> _copierVers(ModeleFlotte cible, List<ModeleFlotte> flotte) async {
+    final choix = await showModalBottomSheet<_ChoixCopie>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: AppColors.scaffold,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _CopieSheet(
+        cible: cible,
+        sources: flotte.where((m) => m.modeleId != cible.modeleId).toList(),
+      ),
+    );
+    if (choix == null || !mounted) return;
     setState(() => _busy = true);
     try {
-      await ref
-          .read(parametrageApiProvider)
-          .supprimer(d.endpoint, item['id'] as Object);
+      final copies = await ref.read(parametrageApiProvider).copierTarifs(
+            d.endpoint,
+            deModeleId: choix.source.modeleId,
+            versModeleId: cible.modeleId,
+            avecPrix: choix.avecPrix,
+            avecImages: choix.avecImages,
+          );
       await _rafraichir();
-      _toast('« $libelle » supprimé.');
+      _toast(copies == 0
+          ? '${cible.modeleNom} a déjà tous les éléments de ${choix.source.modeleNom}.'
+          : '$copies élément${copies > 1 ? 's' : ''} ajouté${copies > 1 ? 's' : ''} à ${cible.modeleNom}.');
+    } catch (e) {
+      _toast(_message(e), erreur: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _executer(Future<void> Function() action,
+      {required String succes}) async {
+    setState(() => _busy = true);
+    try {
+      await action();
+      await _rafraichir();
+      _toast(succes);
     } catch (e) {
       _toast(_message(e), erreur: true);
     } finally {
@@ -221,33 +324,22 @@ class _CatalogueElementsMaintenancePageState
     // Ordre des sections fixé sur tout le catalogue : chaque onglet présente
     // les types dans le même ordre, communs à tous les types en dernier.
     final ordre = _ordreSections(tous, types);
-    final horsFlotte = _horsFlotte(tous, flotte);
+    final horsFlotte = _lignesHorsFlotte(tous, flotte);
     final onglets = <({String titre, ModeleFlotte? modele})>[
       for (final m in flotte) (titre: m.modeleNom, modele: m),
-      if (horsFlotte.isNotEmpty) (titre: 'Hors flotte', modele: null),
+      if (horsFlotte.isNotEmpty || flotte.isEmpty)
+        (titre: 'Hors flotte', modele: null),
     ];
-
-    final progression = SizedBox(
-      height: 2,
-      child: _busy ? const LinearProgressIndicator(minHeight: 2) : null,
-    );
-
-    // Sans véhicule dans la flotte, il n'y a pas de modèle à présenter : tout
-    // le catalogue reste visible pour pouvoir le préparer.
-    if (onglets.isEmpty) {
-      return Column(children: [
-        progression,
-        _barreRecherche(),
-        Expanded(child: _listeSections(tous, ordre, types, null)),
-      ]);
-    }
 
     return DefaultTabController(
       key: ValueKey(onglets.map((o) => o.titre).join('|')),
       length: onglets.length,
       child: Column(
         children: [
-          progression,
+          SizedBox(
+            height: 2,
+            child: _busy ? const LinearProgressIndicator(minHeight: 2) : null,
+          ),
           _barreRecherche(),
           TabBar(
             isScrollable: onglets.length > 3,
@@ -268,8 +360,8 @@ class _CatalogueElementsMaintenancePageState
               children: [
                 for (final o in onglets)
                   o.modele == null
-                      ? _listeSections(horsFlotte, ordre, types, null)
-                      : _ongletModele(tous, o.modele!, ordre, types),
+                      ? _listeSections(horsFlotte, ordre, types)
+                      : _ongletModele(o.modele!, flotte, ordre, types),
               ],
             ),
           ),
@@ -278,20 +370,40 @@ class _CatalogueElementsMaintenancePageState
     );
   }
 
-  /// Onglet d'un modèle : ce que la saisie proposerait pour un véhicule de ce
-  /// modèle. La compatibilité est celle du serveur, pas une copie en Dart.
-  Widget _ongletModele(List<Map<String, dynamic>> tous, ModeleFlotte modele,
+  /// Onglet d'un modèle : ses éléments, avec le prix et l'image de ce modèle.
+  Widget _ongletModele(ModeleFlotte modele, List<ModeleFlotte> flotte,
       List<String> ordre, List<CategorieOperation> types) {
-    final compatibles =
-        ref.watch(elementsCompatiblesModeleProvider(modele.modeleId));
-    return compatibles.when(
+    final cible = CibleVehicule(
+      marqueId: modele.marqueId,
+      marqueNom: modele.marqueNom,
+      modeleId: modele.modeleId,
+      modeleNom: modele.modeleNom,
+    );
+    final elements = ref.watch(elementsDuModeleProvider(modele.modeleId));
+    return elements.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, __) => _erreur(),
-      data: (ids) => _listeSections(
-          tous.where((it) => ids.contains(it['id'])).toList(),
-          ordre,
-          types,
-          modele.modeleId),
+      data: (items) => _listeSections(
+        [
+          for (final it in items)
+            _Ligne(
+              element: it,
+              modele: cible,
+              prix: it['montantDefaut'] as num?,
+              image: it['image'] as String?,
+              imageUrl: it['imageUrl'] as String?,
+              tarifActif: it['tarifActif'] as bool? ?? true,
+            ),
+        ],
+        ordre,
+        types,
+        modele: cible,
+        // Reprendre les éléments d'un autre modèle n'a de sens que s'il y en
+        // a un autre dans la flotte.
+        copie: d.editable && flotte.length > 1
+            ? () => _copierVers(modele, flotte)
+            : null,
+      ),
     );
   }
 
@@ -299,55 +411,78 @@ class _CatalogueElementsMaintenancePageState
   /// fourni sur tout le catalogue, puis les communs à tous les types.
   List<String> _ordreSections(
       List<Map<String, dynamic>> tous, List<CategorieOperation> types) {
-    final parType = _grouper(tous);
+    final parType = _grouper(tous, (it) => it);
     return parType.keys.where((k) => k != _kCommuns).toList()
       ..sort((a, b) {
         final parNombre = parType[b]!.length.compareTo(parType[a]!.length);
         return parNombre != 0
             ? parNombre
-            : _libelleSection(a, parType, types)
-                .compareTo(_libelleSection(b, parType, types));
+            : _libelleSection(a, parType[a]!.first, types)
+                .compareTo(_libelleSection(b, parType[b]!.first, types));
       })
       ..add(_kCommuns);
   }
 
-  Map<String, List<Map<String, dynamic>>> _grouper(
-      List<Map<String, dynamic>> items) {
-    final parType = <String, List<Map<String, dynamic>>>{};
+  Map<String, List<T>> _grouper<T>(
+      List<T> items, Map<String, dynamic> Function(T) element) {
+    final parType = <String, List<T>>{};
     for (final it in items) {
-      final typeId = (it['categorieTypeId'] as num?)?.toInt();
+      final typeId = (element(it)['categorieTypeId'] as num?)?.toInt();
       parType.putIfAbsent(typeId == null ? _kCommuns : '$typeId', () => [])
           .add(it);
     }
     return parType;
   }
 
-  /// Éléments réservés à un modèle, ou à une marque, absents de la flotte :
-  /// aucun onglet de modèle ne les montrerait.
-  List<Map<String, dynamic>> _horsFlotte(
+  /// Lignes hors flotte : tarifs des modèles absents de la flotte, et
+  /// éléments qui n'ont encore aucun modèle — aucun onglet de modèle ne les
+  /// montrerait.
+  List<_Ligne> _lignesHorsFlotte(
       List<Map<String, dynamic>> tous, List<ModeleFlotte> flotte) {
-    final modeles = {for (final m in flotte) m.modeleId};
-    final marques = {for (final m in flotte) m.marqueId};
-    return tous.where((it) {
-      final cible = CibleVehicule.depuisElement(it);
-      if (cible.estModele) return !modeles.contains(cible.modeleId);
-      if (cible.estMarque) return !marques.contains(cible.marqueId);
-      return false;
-    }).toList();
+    final modelesFlotte = {for (final m in flotte) m.modeleId};
+    final lignes = <_Ligne>[];
+    for (final it in tous) {
+      final tarifs =
+          (it['tarifs'] as List? ?? const []).whereType<Map<String, dynamic>>();
+      if (tarifs.isEmpty) {
+        lignes.add(_Ligne(element: it, modele: null, mention: 'Aucun modèle'));
+        continue;
+      }
+      for (final t in tarifs) {
+        final modeleId = (t['modeleId'] as num?)?.toInt();
+        if (modeleId == null || modelesFlotte.contains(modeleId)) continue;
+        final cible = CibleVehicule(
+          marqueId: (t['marqueId'] as num?)?.toInt(),
+          marqueNom: t['marqueNom'] as String?,
+          modeleId: modeleId,
+          modeleNom: t['modeleNom'] as String?,
+        );
+        lignes.add(_Ligne(
+          element: it,
+          modele: cible,
+          prix: t['prix'] as num?,
+          image: t['image'] as String?,
+          imageUrl: t['imageUrl'] as String?,
+          tarifActif: t['actif'] as bool? ?? true,
+          mention: cible.libelle,
+        ));
+      }
+    }
+    return lignes;
   }
 
-  /// Sections de type d'un onglet. [modeleOnglet] : modèle présenté, pour
-  /// dire « Ce modèle » plutôt que son nom sur les éléments qui lui sont
-  /// réservés.
-  Widget _listeSections(List<Map<String, dynamic>> items, List<String> ordre,
-      List<CategorieOperation> types, int? modeleOnglet) {
+  /// Sections de type d'un onglet. [modele] : modèle de l'onglet, repris par
+  /// le « + » d'une section ; [copie] : reprise des éléments d'un autre modèle.
+  Widget _listeSections(List<_Ligne> lignes, List<String> ordre,
+      List<CategorieOperation> types,
+      {CibleVehicule? modele, VoidCallback? copie}) {
     final q = _normaliser(_query.trim());
     final visibles =
-        items.where((it) => q.isEmpty || _correspond(it, q)).toList();
-    final parType = _grouper(visibles);
+        lignes.where((l) => q.isEmpty || _correspond(l, q)).toList();
+    final parType = _grouper(visibles, (l) => l.element);
     for (final l in parType.values) {
-      l.sort((a, b) => _normaliser('${a['libelle'] ?? ''}')
-          .compareTo(_normaliser('${b['libelle'] ?? ''}')));
+      l.sort((a, b) => _normaliser('${a.element['libelle'] ?? ''}')
+          .compareTo(_normaliser('${b.element['libelle'] ?? ''}')));
     }
     final cles = ordre.where(parType.containsKey).toList();
     // Une recherche montre ses résultats tout de suite : on ne fait pas ouvrir
@@ -361,22 +496,35 @@ class _CatalogueElementsMaintenancePageState
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           if (visibles.isEmpty)
-            SliverToBoxAdapter(child: _vide(q.isNotEmpty))
+            SliverToBoxAdapter(
+                child: _vide(q.isNotEmpty, modele: modele, copie: copie))
           else
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
               sliver: SliverList.list(children: [
                 for (final cle in cles) ...[
-                  _enTeteSection(cle, parType[cle]!, types,
+                  _enTeteSection(cle, parType[cle]!.first.element, types,
+                      modele: modele,
                       ouverte: toutOuvert || _ouvertes.contains(cle),
                       forcee: toutOuvert),
                   if (toutOuvert || _ouvertes.contains(cle))
-                    for (final it in parType[cle]!) ...[
+                    for (final l in parType[cle]!) ...[
                       const SizedBox(height: 6),
-                      _ligne(it, modeleOnglet),
+                      _ligne(l),
                     ],
                   const SizedBox(height: 10),
                 ],
+                if (copie != null && q.isEmpty)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: _busy ? null : copie,
+                      icon: Icon(Icons.content_copy_rounded,
+                          size: 17, color: AppColors.label),
+                      label: Text('Reprendre les éléments d\'un autre modèle',
+                          style: TextStyle(color: AppColors.label)),
+                    ),
+                  ),
               ]),
             ),
         ],
@@ -384,10 +532,9 @@ class _CatalogueElementsMaintenancePageState
     );
   }
 
-  String _libelleSection(String cle, Map<String, List<Map<String, dynamic>>> parType,
+  String _libelleSection(String cle, Map<String, dynamic> premier,
       List<CategorieOperation> types) {
     if (cle == _kCommuns) return 'Communs à tous les types';
-    final premier = parType[cle]!.first;
     return (premier['categorieTypeLibelle'] as String?) ??
         types
             .where((t) => '${t.id}' == cle)
@@ -396,7 +543,7 @@ class _CatalogueElementsMaintenancePageState
         'Type #$cle';
   }
 
-  // ── Recherche et filtre ───────────────────────────────────────────────────
+  // ── Recherche ─────────────────────────────────────────────────────────────
 
   Widget _barreRecherche() {
     return Padding(
@@ -440,11 +587,12 @@ class _CatalogueElementsMaintenancePageState
 
   // ── Sections ──────────────────────────────────────────────────────────────
 
-  Widget _enTeteSection(String cle, List<Map<String, dynamic>> items,
+  Widget _enTeteSection(String cle, Map<String, dynamic> premier,
       List<CategorieOperation> types,
-      {required bool ouverte, required bool forcee}) {
-    final libelle = _libelleSection(cle, {cle: items}, types);
-    final premier = items.first;
+      {required CibleVehicule? modele,
+      required bool ouverte,
+      required bool forcee}) {
+    final libelle = _libelleSection(cle, premier, types);
     final icone = cle == _kCommuns
         ? Icons.all_inclusive_rounded
         : TypeMaintenanceVisuel.icone(
@@ -499,6 +647,7 @@ class _CatalogueElementsMaintenancePageState
               onPressed: _busy
                   ? null
                   : () => _ouvrirFormulaire(
+                      modele: modele,
                       categorieTypeId:
                           cle == _kCommuns ? null : int.tryParse(cle)),
             ),
@@ -514,20 +663,17 @@ class _CatalogueElementsMaintenancePageState
     );
   }
 
-  Widget _ligne(Map<String, dynamic> item, int? modeleOnglet) {
-    final actif = _estActif(item);
-    final montant = item['montantDefaut'] as num?;
-    final cible = CibleVehicule.depuisElement(item);
-    // Un élément commun à tous les véhicules — le cas courant — ne porte
-    // aucune mention ; seul ce qui est réservé se signale.
-    final portee = cible.estModele
-        ? (cible.modeleId == modeleOnglet ? 'Ce modèle' : cible.libelle)
-        : cible.estMarque
-            ? 'Marque ${cible.marqueNom ?? ''}'.trim()
-            : null;
+  Widget _ligne(_Ligne l) {
+    final tarifActif = _actifOverride[l.cle] ?? l.tarifActif;
+    final propose = l.elementActif && tarifActif;
+    final prix = l.prix;
+    final mentions = [
+      if (l.mention != null) l.mention!,
+      if (!l.elementActif) 'Désactivé pour tous les modèles',
+    ];
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 180),
-      opacity: actif ? 1 : 0.5,
+      opacity: propose ? 1 : 0.5,
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -535,55 +681,54 @@ class _CatalogueElementsMaintenancePageState
           border: Border.all(color: AppColors.border),
         ),
         child: InkWell(
-          onTap: d.editable && !_busy
-              ? () => _ouvrirFormulaire(item: item)
-              : null,
+          onTap: d.editable && !_busy ? () => _ouvrirFormulaire(ligne: l) : null,
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 9, 4, 9),
             child: Row(children: [
-              _vignette(item['imageUrl'] as String?),
+              _vignette(l.imageUrl),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${item['libelle'] ?? ''}',
+                    Text('${l.element['libelle'] ?? ''}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.dark)),
-                    if (portee != null) ...[
+                    for (final m in mentions) ...[
                       const SizedBox(height: 4),
-                      _MentionPortee(
-                          libelle: portee, marque: cible.estMarque),
+                      _Mention(libelle: m),
                     ],
                   ],
                 ),
               ),
-              if (montant != null && montant > 0)
+              if (prix != null && prix > 0)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: Text(_money.format(montant),
+                  child: Text(_money.format(prix),
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: AppColors.dark,
                           fontFeatures: const [FontFeature.tabularFigures()])),
                 ),
-              if (d.editable)
+              // L'interrupteur dit si l'élément est proposé pour ce modèle ;
+              // l'activation pour tous les modèles se règle dans la fiche.
+              if (d.editable && l.modele?.modeleId != null)
                 Transform.scale(
                   scale: 0.70,
                   child: Switch.adaptive(
-                    value: actif,
+                    value: tarifActif,
                     activeThumbColor: AppColors.primary,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    onChanged: _busy ? null : (v) => _basculerActif(item, v),
+                    onChanged: _busy ? null : (v) => _basculerTarif(l, v),
                   ),
                 ),
-              if (d.editable) _menuActions(item),
+              if (d.editable) _menuActions(l),
             ]),
           ),
         ),
@@ -591,8 +736,8 @@ class _CatalogueElementsMaintenancePageState
     );
   }
 
-  /// Vignette de l'image de l'élément ; une pastille neutre à défaut, pour
-  /// garder les libellés alignés.
+  /// Vignette de l'image de l'élément pour ce modèle ; une pastille neutre à
+  /// défaut, pour garder les libellés alignés.
   Widget _vignette(String? imageUrl) {
     Widget pastille() => Container(
           width: 36,
@@ -621,7 +766,7 @@ class _CatalogueElementsMaintenancePageState
     );
   }
 
-  Widget _menuActions(Map<String, dynamic> item) {
+  Widget _menuActions(_Ligne l) {
     return PopupMenuButton<String>(
       enabled: !_busy,
       tooltip: 'Actions',
@@ -632,21 +777,25 @@ class _CatalogueElementsMaintenancePageState
       shadowColor: AppColors.dark.withValues(alpha: 0.18),
       position: PopupMenuPosition.under,
       offset: const Offset(0, 4),
-      constraints: const BoxConstraints(minWidth: 190),
+      constraints: const BoxConstraints(minWidth: 210),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: AppColors.border),
       ),
       menuPadding: const EdgeInsets.symmetric(vertical: 6),
       onSelected: (v) {
-        if (v == 'edit') _ouvrirFormulaire(item: item);
-        if (v == 'delete') _supprimer(item);
+        if (v == 'edit') _ouvrirFormulaire(ligne: l);
+        if (v == 'retirer') _retirerDuModele(l);
+        if (v == 'delete') _supprimer(l);
       },
       itemBuilder: (_) => [
         _entreeMenu('edit', Icons.edit_outlined, 'Modifier', AppColors.dark),
+        if (l.modele?.modeleId != null)
+          _entreeMenu('retirer', Icons.remove_circle_outline_rounded,
+              'Retirer de ce modèle', AppColors.dark),
         const PopupMenuDivider(height: 9),
-        _entreeMenu('delete', Icons.delete_outline_rounded, 'Supprimer',
-            AppColors.error),
+        _entreeMenu('delete', Icons.delete_outline_rounded,
+            'Supprimer de tous les modèles', AppColors.error),
       ],
     );
   }
@@ -678,22 +827,42 @@ class _CatalogueElementsMaintenancePageState
 
   // ── États ─────────────────────────────────────────────────────────────────
 
-  Widget _vide(bool filtre) {
+  Widget _vide(bool recherche,
+      {CibleVehicule? modele, VoidCallback? copie}) {
     return Padding(
-      padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.18),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.16),
       child: Center(
-        child: Column(
-          children: [
-            Icon(filtre ? Icons.search_off_rounded : Icons.inbox_rounded,
-                size: 44, color: AppColors.hint),
-            const SizedBox(height: 10),
-            Text(
-              filtre
-                  ? 'Aucun élément ne correspond.'
-                  : 'Aucun élément. Ajoutez-en un.',
-              style: TextStyle(color: AppColors.label),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            children: [
+              Icon(recherche ? Icons.search_off_rounded : Icons.inbox_rounded,
+                  size: 44, color: AppColors.hint),
+              const SizedBox(height: 10),
+              Text(
+                recherche
+                    ? 'Aucun élément ne correspond.'
+                    : modele != null
+                        ? 'Aucun élément pour ${modele.libelle}.'
+                        : 'Aucun élément hors flotte.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.label),
+              ),
+              // Un modèle qui entre dans la flotte n'a encore rien : on le
+              // remplit en reprenant les éléments d'un modèle existant.
+              if (!recherche && copie != null) ...[
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: _busy ? null : copie,
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryDark,
+                      foregroundColor: Colors.white),
+                  icon: const Icon(Icons.content_copy_rounded, size: 18),
+                  label: const Text('Reprendre les éléments d\'un autre modèle'),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -712,8 +881,7 @@ class _CatalogueElementsMaintenancePageState
                 style: TextStyle(color: AppColors.label)),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: () =>
-                  ref.invalidate(referentielItemsProvider(d.endpoint)),
+              onPressed: _rafraichir,
               style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white),
@@ -727,38 +895,156 @@ class _CatalogueElementsMaintenancePageState
   }
 }
 
-/// Mention de portée d'un élément réservé : pleine pour un modèle, cerclée
-/// pour une marque entière. Sans couleur d'accent.
-class _MentionPortee extends StatelessWidget {
+/// Mention sous le libellé d'une ligne (modèle hors flotte, aucun modèle,
+/// désactivé partout). Sans couleur d'accent.
+class _Mention extends StatelessWidget {
   final String libelle;
-  final bool marque;
 
-  const _MentionPortee({required this.libelle, required this.marque});
+  const _Mention({required this.libelle});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(5, 2, 7, 2),
+      padding: const EdgeInsets.fromLTRB(6, 2, 7, 2),
       decoration: BoxDecoration(
-        color: marque ? Colors.transparent : AppColors.fieldFill,
+        color: AppColors.fieldFill,
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(
-            color: marque ? AppColors.border : Colors.transparent),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(marque ? Icons.sell_outlined : Icons.directions_car_outlined,
-            size: 12, color: AppColors.label),
-        const SizedBox(width: 3),
-        Flexible(
-          child: Text(libelle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+      child: Text(libelle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.dark)),
+    );
+  }
+}
+
+// ── Reprise des éléments d'un autre modèle ────────────────────────────────────
+
+class _ChoixCopie {
+  final ModeleFlotte source;
+  final bool avecPrix;
+  final bool avecImages;
+
+  const _ChoixCopie(this.source, this.avecPrix, this.avecImages);
+}
+
+class _CopieSheet extends StatefulWidget {
+  final ModeleFlotte cible;
+  final List<ModeleFlotte> sources;
+
+  const _CopieSheet({required this.cible, required this.sources});
+
+  @override
+  State<_CopieSheet> createState() => _CopieSheetState();
+}
+
+class _CopieSheetState extends State<_CopieSheet> {
+  late ModeleFlotte? _source =
+      widget.sources.isEmpty ? null : widget.sources.first;
+  bool _avecPrix = true;
+  bool _avecImages = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.primary;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          16, 10, 16, 16 + MediaQuery.of(context).padding.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.grey300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text('Reprendre pour ${widget.cible.modeleNom}',
               style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.dark)),
-        ),
-      ]),
+          const SizedBox(height: 4),
+          Text(
+              'Les éléments du modèle choisi que ${widget.cible.modeleNom} '
+              'n\'a pas encore lui sont ajoutés. Ceux qu\'il a déjà ne changent pas.',
+              style: TextStyle(fontSize: 13, color: AppColors.label)),
+          const SizedBox(height: 12),
+          for (final m in widget.sources)
+            GestureDetector(
+              onTap: () => setState(() => _source = m),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: _source == m ? accent : Colors.transparent,
+                      width: 1.5),
+                ),
+                child: Row(children: [
+                  Icon(Icons.directions_car_outlined,
+                      size: 20, color: AppColors.label),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(m.libelle,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.dark)),
+                  ),
+                  if (_source == m)
+                    Icon(Icons.check_circle_rounded, size: 20, color: accent),
+                ]),
+              ),
+            ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: _avecPrix,
+            activeThumbColor: accent,
+            onChanged: (v) => setState(() => _avecPrix = v),
+            title: Text('Reprendre aussi les prix',
+                style: TextStyle(fontSize: 14, color: AppColors.dark)),
+          ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: _avecImages,
+            activeThumbColor: accent,
+            onChanged: (v) => setState(() => _avecImages = v),
+            title: Text('Reprendre aussi les images',
+                style: TextStyle(fontSize: 14, color: AppColors.dark)),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 50,
+            child: FilledButton(
+              onPressed: _source == null
+                  ? null
+                  : () => Navigator.pop(
+                      context, _ChoixCopie(_source!, _avecPrix, _avecImages)),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryDark,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('Reprendre',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
