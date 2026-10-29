@@ -1,31 +1,61 @@
-# Passage en HTTPS du VPS (155.133.27.101)
+# Passage en HTTPS du VPS (155.133.27.101) — par nom de domaine
 
-Certificat **Let's Encrypt pour adresse IP** (sans nom de domaine).
-Contraintes à connaître :
+Certificat **Let's Encrypt classique (90 jours)** pour trois sous-domaines :
 
-- validité **6 jours** (profil `shortlived`, imposé pour les IP) → le
-  renouvellement automatique n'est pas optionnel : s'il casse, tout tombe en
-  moins d'une semaine ;
-- certbot **≥ 5.4** (support `--ip-address` + `--webroot`) ;
-- le **port 80 doit rester ouvert** sur Internet (défi HTTP-01).
+| Nom | Rôle |
+|---|---|
+| `api.<domaine>` | API des deux apps mobiles (`/api/`) |
+| `s3.<domaine>` | API S3 de MinIO : URLs signées des photos et documents |
+| `grafana.<domaine>` | Grafana (facultatif) |
 
-Une seule entrée HTTPS (`https://155.133.27.101`), les applications sont
-distinguées par chemin : `/api/` (VTC Manager), `/grafana/`, `/minio/`, `/auth/`.
+La console MinIO, Keycloak et Prometheus ne sont **pas** publiés : accès par
+tunnel SSH (§8).
+
+Dans tout le dépôt, `tmk.example` est un domaine factice qui ne résout jamais.
+Il est à remplacer par le vrai domaine dans :
+
+- `deploy/https/vtc-https.conf` ;
+- `mobile/lib/core/network/api_config.dart` et
+  `mobile-chauffeur/lib/core/network/api_config.dart` (`_prodBaseUrl`) ;
+- le `.env` du VPS (`MINIO_PUBLIC_ENDPOINT`).
+
+```bash
+grep -rn "tmk\.example" --exclude-dir=.git .
+```
 
 ---
 
-## 0. Sauvegarde et repérage (sur le VPS)
+## 0. Domaine et DNS
+
+1. Acheter le domaine (ex. `.ci` ou `.com`).
+2. Chez le registrar, créer trois enregistrements **A** vers `155.133.27.101` :
+   `api`, `s3`, `grafana`. Aucun AAAA, sauf si le VPS a une IPv6 servie par
+   nginx.
+3. Vérifier la propagation avant d'aller plus loin :
+
+```bash
+for h in api s3 grafana; do dig +short $h.<domaine>; done   # → 155.133.27.101
+```
+
+## 1. Sauvegarde et repérage (sur le VPS)
 
 ```bash
 cd /opt          # dossier du compose d'infra (adapter)
 cp -r nginx nginx.bak-$(date +%F)
-docker ps --format '{{.Names}}\t{{.Ports}}'
+docker ps --format '{{.Names}}\t{{.Ports}}\t{{.Networks}}'
+grep -rn proxy_pass nginx/conf.d/
 ```
 
-Noter le nom exact des conteneurs (backend, keycloak, grafana, minio) et
-reporter-les dans `vtc-https.conf` si différents.
+À vérifier :
 
-## 1. Pare-feu
+- les noms exacts des conteneurs (backend, minio, grafana), à reporter dans
+  `vtc-https.conf` s'ils diffèrent ;
+- **nginx joint le backend par son nom de conteneur** (`vtc-manager-backend:8081`),
+  sur le même réseau Docker. Si l'actuelle conf vise l'IP de l'hôte ou
+  `172.17.0.1:8081`, le passage du port backend sur `127.0.0.1` (compose.prod.yml)
+  la casserait : brancher d'abord nginx sur le réseau infra.
+
+## 2. Pare-feu
 
 ```bash
 ufw allow 80/tcp
@@ -33,19 +63,15 @@ ufw allow 443/tcp
 ufw status
 ```
 
-(Aussi dans le pare-feu de l'hébergeur s'il y en a un.)
+(Aussi dans le pare-feu de l'hébergeur s'il y en a un.) Le port 80 reste
+ouvert en permanence : il sert au renouvellement du certificat.
 
-## 2. Installer certbot récent
+## 3. Certbot et webroot
 
 ```bash
-apt remove -y certbot          # la version apt est trop ancienne
-snap install --classic certbot
-ln -sf /snap/bin/certbot /usr/bin/certbot
-certbot --version              # doit afficher >= 5.4
+apt install -y certbot       # la version apt suffit pour un domaine
 mkdir -p /var/www/certbot
 ```
-
-## 3. Monter le webroot et les certificats dans nginx
 
 Dans le service `nginx` du compose d'infra :
 
@@ -53,16 +79,16 @@ Dans le service `nginx` du compose d'infra :
     ports:
       - "80:80"
       - "443:443"
-      - "5001:5001"        # transitoire, voir §7
+      - "5001:5001"        # transitoire, voir §9
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - /var/www/certbot:/var/www/certbot:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
 ```
 
-**Avant** d'avoir le certificat, nginx ne démarrerait pas avec le bloc 443.
-Donc d'abord, ne garder que le bloc `listen 80` (défi ACME) dans la conf
-actuelle, en ajoutant simplement :
+**Avant** d'avoir le certificat, nginx refuserait de démarrer avec les blocs
+443. On ne garde donc d'abord que le bloc `listen 80` (défi ACME) dans la conf
+actuelle, en ajoutant :
 
 ```nginx
 location /.well-known/acme-challenge/ { root /var/www/certbot; }
@@ -73,58 +99,88 @@ puis :
 ```bash
 docker compose up -d nginx
 echo ok > /var/www/certbot/test.txt
-curl http://155.133.27.101/.well-known/acme-challenge/test.txt   # doit afficher ok
+curl http://api.<domaine>/.well-known/acme-challenge/test.txt   # doit afficher ok
 rm /var/www/certbot/test.txt
 ```
 
 ## 4. Obtenir le certificat
 
-D'abord en **staging** (pas de quota consommé) :
+Un seul certificat (nommé `vtc`) couvre les trois noms. D'abord en
+**staging** (aucun quota consommé) :
 
 ```bash
-certbot certonly --staging --preferred-profile shortlived \
+certbot certonly --staging --cert-name vtc \
   --webroot --webroot-path /var/www/certbot \
-  --ip-address 155.133.27.101 \
+  -d api.<domaine> -d s3.<domaine> -d grafana.<domaine> \
   --agree-tos -m talibkone@gmail.com --non-interactive
 ```
 
 Si OK, en vrai :
 
 ```bash
-certbot delete --cert-name 155.133.27.101
-certbot certonly --preferred-profile shortlived \
+certbot delete --cert-name vtc
+certbot certonly --cert-name vtc \
   --webroot --webroot-path /var/www/certbot \
-  --ip-address 155.133.27.101 \
+  -d api.<domaine> -d s3.<domaine> -d grafana.<domaine> \
   --agree-tos -m talibkone@gmail.com --non-interactive
-ls /etc/letsencrypt/live/155.133.27.101/
+ls /etc/letsencrypt/live/vtc/        # fullchain.pem, privkey.pem
 ```
 
 ## 5. Activer la conf HTTPS
 
-Copier `deploy/https/vtc-https.conf` dans `nginx/conf.d/` du VPS (en
-remplacement de l'ancienne conf ; garder les `location` existantes utiles,
-ex. flowable), puis :
+```bash
+sed -i 's/tmk\.example/<domaine>/g' vtc-https.conf
+```
+
+Copier `vtc-https.conf` dans `nginx/conf.d/` du VPS, à la place de l'ancienne
+conf. Garder les `location` existantes encore utiles (ex. flowable). Puis :
 
 ```bash
 docker exec nginx nginx -t && docker exec nginx nginx -s reload
-curl -sI https://155.133.27.101/api/tableau-bord   # attendu : 401 (et non 502)
+curl -sI https://api.<domaine>/api/tableau-bord    # attendu : 401 (et non 502)
+curl -sI https://api.<domaine>/actuator/health     # attendu : 404 (non publié)
+curl -sI https://s3.<domaine>/minio/health/live    # attendu : 200
 ```
 
-**Keycloak (`/auth/`) — à part, en connaissance de cause.** Le backend parle à
-Keycloak en interne et les jetons portent un `iss`. Si on fixe `KC_HOSTNAME`
-sur l'URL HTTPS publique, l'`iss` change : il faut alors mettre
-`KEYCLOAK_ISSUER_URI=https://155.133.27.101/auth/realms/vtc-manager` côté
-backend, et **toutes les sessions `offline_access` existantes deviennent
-invalides** → chaque utilisateur des deux apps doit se reconnecter et refaire
-son code d'accès. Les apps mobiles n'appellent pas Keycloak directement : on
-peut donc exposer la console d'admin en HTTPS **sans toucher `KC_HOSTNAME`**,
-ou bien la laisser fermée à Internet et y accéder par tunnel SSH
-(`ssh -L 8080:localhost:8080 root@155.133.27.101`) — recommandé.
+Puis vérifier la note sur https://www.ssllabs.com/ssltest/ (objectif : **A**).
 
-**Grafana / MinIO** : définir les variables indiquées en commentaire dans la
-conf, redémarrer ces conteneurs.
+**Grafana** : `GF_SERVER_ROOT_URL=https://grafana.<domaine>/`, puis
+redémarrer le conteneur.
 
-## 6. Renouvellement automatique (indispensable)
+## 6. Backend
+
+Dans le `.env` du VPS :
+
+```dotenv
+MINIO_PUBLIC_ENDPOINT=https://s3.<domaine>
+CORS_ALLOWED_ORIGINS=
+PAYMENT_CALLBACK_BASE_URL=https://api.<domaine>   # webhooks agrégateur
+```
+
+puis redéployer le backend (nouvelle image) :
+
+```bash
+docker compose -f compose.prod.yml --env-file .env up -d --build backend
+docker logs vtc-manager-backend | grep "URLs MinIO signées"   # → https://s3.<domaine>
+```
+
+Ce que contient cette version du backend :
+
+- les URLs signées (photos des chauffeurs et des véhicules, documents) visent
+  `https://s3.<domaine>` au lieu du nom interne `minio:9000`, que les
+  téléphones ne peuvent pas joindre ;
+- `forward-headers-strategy: native` : Spring sait qu'il est derrière HTTPS ;
+- Actuator limité à `health` (sans détails), Swagger et OpenAPI désactivés en
+  prod, CORS fermé ;
+- port 8081 publié sur `127.0.0.1` seulement.
+
+**Keycloak : ne pas toucher `KC_HOSTNAME`.** Le backend parle à Keycloak en
+interne et les jetons portent un `iss`. Le modifier invaliderait toutes les
+sessions `offline_access` : chaque utilisateur des deux apps devrait se
+reconnecter et refaire son code d'accès. Les apps n'appellent jamais Keycloak
+directement, donc rien ne l'impose.
+
+## 7. Renouvellement automatique et surveillance
 
 ```bash
 cat > /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh <<'EOF'
@@ -133,36 +189,59 @@ docker exec nginx nginx -s reload
 EOF
 chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
 
-systemctl list-timers | grep certbot     # le timer snap tourne 2×/jour
+systemctl list-timers | grep certbot     # le timer tourne 2×/jour
 certbot renew --dry-run
 ```
 
-Surveillance conseillée : un cron quotidien qui alerte si l'expiration est
-à moins de 3 jours :
+Certbot renouvelle à 30 jours de l'échéance. Ajouter un cron quotidien qui
+alerte si l'expiration approche de **14 jours**, signe que le renouvellement
+est cassé :
 
 ```bash
-openssl s_client -connect 155.133.27.101:443 </dev/null 2>/dev/null \
-  | openssl x509 -noout -enddate
+echo | openssl s_client -connect api.<domaine>:443 -servername api.<domaine> 2>/dev/null \
+  | openssl x509 -noout -checkend $((14*86400)) || echo "Certificat VTC : expiration < 14 jours"
 ```
 
-## 7. Bascule des apps mobiles
-
-1. Publier une version des deux apps avec
-   `_prodBaseUrl = 'https://155.133.27.101/api'`
-   (`mobile/lib/core/network/api_config.dart`,
-   `mobile-chauffeur/lib/core/network/api_config.dart`) et
-   `android:usesCleartextTraffic="false"` dans les deux `AndroidManifest.xml`.
-2. Tant que d'anciennes installations existent, le port **5001 (HTTP)** reste
-   servi par le bloc transitoire.
-3. Quand tout le monde est à jour : supprimer ce bloc, retirer `5001:5001` du
-   compose, `ufw delete allow 5001/tcp`, et passer HSTS à `31536000`.
+Let's Encrypt n'envoie plus d'e-mail avant l'expiration : cette alerte est
+la seule.
 
 ## 8. Fermer les ports en clair
 
-Les ports publiés directement (8080 Keycloak, 3000 Grafana, 9000/9001 MinIO,
-9090 Prometheus, 5432 Postgres…) contournent HTTPS. Les retirer du compose
-d'infra ou les bloquer au pare-feu. Pour Postgres, la sauvegarde
-(`scripts/backup-db.sh`) passe alors par tunnel SSH.
+Les ports publiés directement (3000 Grafana, 9000/9001 MinIO, 9090
+Prometheus, 8080 Keycloak, 5432 Postgres) contournent HTTPS.
+
+**Attention : Docker contourne `ufw`.** Un port déclaré en `ports:` est ouvert
+par les règles iptables de Docker, même si `ufw` le bloque. Pour les fermer, il
+faut retirer ces `ports:` du compose d'infra ou les lier à la boucle locale
+(`"127.0.0.1:9001:9001"`).
+
+Accès d'administration par tunnel SSH :
+
+```bash
+ssh -L 9001:localhost:9001 -L 8080:localhost:8080 -L 9090:localhost:9090 root@155.133.27.101
+# puis http://localhost:9001 (console MinIO), :8080 (Keycloak), :9090 (Prometheus)
+```
+
+Pour Postgres, `scripts/backup-db.sh` passe alors par un tunnel
+(`ssh -L 5432:localhost:5432 …` puis `DB_HOST=localhost`).
+
+Contrôle depuis l'extérieur :
+
+```bash
+for p in 3000 5432 8080 8081 9000 9001 9090; do nc -z -G 3 155.133.27.101 $p && echo "$p OUVERT"; done
+```
+
+## 9. Bascule des apps mobiles
+
+1. Remplacer `tmk.example` par le domaine dans les deux `api_config.dart`,
+   puis publier les deux apps. Le manifeste Android de release interdit
+   désormais le HTTP (`usesCleartextTraffic="false"`). Il reste autorisé en
+   debug et profile pour le backend local.
+2. Tant que d'anciennes installations existent, le port **5001 (HTTP)** reste
+   servi par le bloc transitoire.
+3. Quand tout le monde est à jour : supprimer ce bloc, retirer `5001:5001` du
+   compose, `ufw delete allow 5001/tcp`, et passer HSTS à `31536000` sur les
+   trois noms.
 
 ## Retour arrière
 
@@ -170,3 +249,6 @@ d'infra ou les bloquer au pare-feu. Pour Postgres, la sauvegarde
 rm -r nginx && mv nginx.bak-AAAA-MM-JJ nginx
 docker compose up -d nginx
 ```
+
+Côté backend, vider `MINIO_PUBLIC_ENDPOINT` ramène les URLs signées sur
+`MINIO_ENDPOINT`.

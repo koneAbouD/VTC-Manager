@@ -20,13 +20,18 @@ import 'package:flutter/foundation.dart';
 /// │                                                                         │
 /// │  CAS PARTICULIERS                                                       │
 /// │    flutter run --dart-define=DEV_HOST=172.20.10.3   (IP du Mac sur LAN) │
-/// │    flutter run --dart-define=API_BASE_URL=http://155.133.27.101:5001/api│
+/// │    flutter run --dart-define=API_BASE_URL=https://api.tmk.example/api   │
 /// └─────────────────────────────────────────────────────────────────────────┘
 class ApiConfig {
   static const _port = 8081;
 
-  /// URL de l'API en production (VPS, servie via nginx → /api).
-  static const String _prodBaseUrl = 'http://155.133.27.101:5001/api';
+  /// URL de l'API en production (VPS, nginx en HTTPS → /api).
+  ///
+  /// Toujours en https : le trafic en clair est refusé par Android en build
+  /// release (usesCleartextTraffic="false", autorisé seulement en debug/profile
+  /// pour le backend local).
+  // TODO(https): remplacer tmk.example par le domaine réel avant publication.
+  static const String _prodBaseUrl = 'https://api.tmk.example/api';
 
   /// URL complète (priorité absolue)
   static const String _urlOverride = String.fromEnvironment('API_BASE_URL');

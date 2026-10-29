@@ -42,6 +42,12 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET:-vtc-documents}
+      # Adresse publique HTTPS de MinIO : les URLs de photos/documents remises
+      # aux apps sont signées pour elle (https://s3.<domaine>, voir deploy/https).
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-}
+
+      # Les apps natives n'envoient pas d'Origin : vide = aucun navigateur autorisé.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
 
       # --- OCR des quittances (service Tesseract ci-dessous) ---
       OCR_URL: ${OCR_URL:-http://tesseract:8884}
@@ -53,8 +59,11 @@ services:
       # reste du service.
       PUSH_ENABLED: ${PUSH_ENABLED:-false}
       FCM_CREDENTIALS_B64: ${FCM_CREDENTIALS_B64:-}
+    # Lié à la boucle locale : l'accès public passe uniquement par nginx (HTTPS),
+    # qui joint le backend par le réseau infra. Un port publié sur 0.0.0.0
+    # contournerait le pare-feu (Docker écrit ses propres règles iptables).
     ports:
-      - "${APP_PORT:-8081}:8081"
+      - "127.0.0.1:${APP_PORT:-8081}:8081"
     networks:
       - infra
     depends_on:

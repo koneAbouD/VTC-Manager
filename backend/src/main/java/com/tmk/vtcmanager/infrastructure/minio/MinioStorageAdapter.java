@@ -4,6 +4,7 @@ import com.tmk.vtcmanager.application.ports.storage.FileStoragePort;
 import io.minio.*;
 import io.minio.http.Method;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -15,12 +16,16 @@ import java.util.concurrent.TimeUnit;
 public class MinioStorageAdapter implements FileStoragePort {
 
     private final MinioClient minioClient;
+    /** Signe pour l'adresse publique de MinIO (voir MinioConfig#minioPresignClient). */
+    private final MinioClient presignClient;
     private final String bucket;
 
     public MinioStorageAdapter(
             MinioClient minioClient,
+            @Qualifier("minioPresignClient") MinioClient presignClient,
             @Value("${app.minio.bucket}") String bucket) {
         this.minioClient = minioClient;
+        this.presignClient = presignClient;
         this.bucket = bucket;
     }
 
@@ -85,7 +90,7 @@ public class MinioStorageAdapter implements FileStoragePort {
     @Override
     public String presignedUrl(String objectName, int expirySeconds) {
         try {
-            return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+            return presignClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                     .bucket(bucket)
                     .object(objectName)
                     .method(Method.GET)

@@ -39,6 +39,11 @@ spring:
 
 server:
   port: 8081
+  # En prod, nginx termine le TLS et relaie en HTTP : on lit X-Forwarded-Proto
+  # / -For pour que Spring connaisse le schéma (https) et l'IP réelle du client.
+  # « native » (RemoteIpValve de Tomcat) ne croit ces en-têtes que s'ils
+  # viennent d'un réseau privé, celui du conteneur nginx.
+  forward-headers-strategy: native
   tomcat:
     # Laisse Tomcat consommer tout le corps d'une requête trop volumineuse afin
     # que Spring renvoie proprement le 413 (sinon la connexion est coupée et le
@@ -51,14 +56,28 @@ server:
     mime-types: application/json
     min-response-size: 1KB
 
+# Seul l'état de santé est publié (healthcheck Docker) ; les autres endpoints
+# (env, beans, mappings…) exposeraient la configuration. Détails masqués.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 # Configuration pour le scheduler (rappels de maintenance)
 app:
   scheduler:
     maintenance-reminder-cron: "0 0 8 * * *" # tous les jours à 8h
     indisponibilite-cron: "0 5 0 * * *"      # tous les jours à 00h05 (active/clôture)
     vidange-reminder-cron: "0 30 8 * * *"    # tous les jours à 8h30 (planifie les vidanges à J-7)
+  # Les apps natives n'envoient pas d'en-tête Origin : CORS ne concerne que les
+  # navigateurs. Ouvert en local ; en prod, CORS_ALLOWED_ORIGINS vide = aucune
+  # origine autorisée.
   cors:
-    allowed-origins: "*"
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
 
   # OCR des quittances de paiement scannées / photographiées (Phase 2).
   # Le backend rend la page en image (PDFBox) puis l'envoie au service OCR
@@ -133,6 +152,9 @@ app:
 
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    # Adresse publique (https://s3.domaine) pour laquelle sont signées les URLs
+    # remises aux applications. Vide = même adresse que endpoint (local).
+    public-endpoint: ${MINIO_PUBLIC_ENDPOINT:}
     access-key: ${MINIO_ACCESS_KEY:minioadmin}
     secret-key: ${MINIO_SECRET_KEY:minioadmin}
     bucket: ${MINIO_BUCKET:vtc-documents}
