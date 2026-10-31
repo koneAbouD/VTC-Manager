@@ -79,6 +79,15 @@ public class ProvisionChauffeurAccountUseCase {
         String keycloakUserId = keycloakAdminPort.findUserIdByUsername(username).orElse(null);
 
         if (keycloakUserId != null) {
+            // Contrôle avant toute écriture : une violation d'unicité en base
+            // condamnerait la transaction appelante (création de la fiche).
+            String compte = keycloakUserId;
+            chauffeurRepository.findByKeycloakUserId(compte)
+                    .filter(autre -> !autre.getId().equals(chauffeurId))
+                    .ifPresent(autre -> {
+                        throw new IllegalStateException("Le compte " + username
+                                + " est déjà lié au chauffeur " + autre.getId() + ".");
+                    });
             keycloakAdminPort.updateUser(keycloakUserId, UserInfo.builder()
                     .username(username)
                     .email(email)

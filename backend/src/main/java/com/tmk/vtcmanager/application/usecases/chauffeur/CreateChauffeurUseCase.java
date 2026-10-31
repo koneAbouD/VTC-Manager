@@ -43,6 +43,7 @@ public class CreateChauffeurUseCase {
         if (chauffeur.getStatut() == null) {
             chauffeur.setStatut(ChauffeurStatus.ACTIF);
         }
+        TelephoneChauffeurUnique.verifier(chauffeurRepository, chauffeur.getTelephone(), null);
 
         Chauffeur saved = chauffeurRepository.save(chauffeur);
 

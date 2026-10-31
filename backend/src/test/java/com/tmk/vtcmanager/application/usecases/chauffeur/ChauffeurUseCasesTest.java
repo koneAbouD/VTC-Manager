@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.application.domain.programmeTravail.ProgrammeTravail;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.exception.ChauffeurNotFoundException;
 import com.tmk.vtcmanager.application.exception.FicheModifieeEntreTempsException;
+import com.tmk.vtcmanager.application.exception.ResourceAlreadyExistsException;
 import com.tmk.vtcmanager.application.exception.VehiculeNotFoundException;
 import com.tmk.vtcmanager.application.ports.event.ChauffeurStatutEventPublisher;
 import com.tmk.vtcmanager.application.ports.event.VehiculeStatutEventPublisher;
@@ -128,6 +129,25 @@ class ChauffeurUseCasesTest {
             verifyNoInteractions(typeDocumentRepository, documentRepository);
             verify(fileStoragePort, never()).upload(anyString(), any(), anyLong(), any());
             verify(syncUseCase).synchroniser(any());
+        }
+
+        @Test
+        @DisplayName("Un numéro déjà porté par un autre chauffeur est refusé, rien n'est écrit")
+        void telephone_deja_utilise() {
+            SyncChauffeurAccountUseCase syncUseCase = mock(SyncChauffeurAccountUseCase.class);
+            CreateChauffeurUseCase createUseCase = new CreateChauffeurUseCase(chauffeurRepository,
+                    mock(TypeDocumentRepository.class), mock(DocumentRepository.class),
+                    fileStoragePort, syncUseCase);
+            when(chauffeurRepository.findByTelephone("0707070707")).thenReturn(Optional.of(
+                    Chauffeur.builder().id(9L).nom("Traoré").prenom("Issa").build()));
+            Chauffeur nouveau = Chauffeur.builder().nom("Kouassi").prenom("Aya")
+                    .telephone("0707070707").build();
+
+            assertThatThrownBy(() -> createUseCase.execute(nouveau, null, null, null, null, null, null))
+                    .isInstanceOf(ResourceAlreadyExistsException.class)
+                    .hasMessageContaining("Issa Traoré");
+            verify(chauffeurRepository, never()).save(any());
+            verifyNoInteractions(syncUseCase);
         }
     }
 
@@ -359,6 +379,32 @@ class ChauffeurUseCasesTest {
         @DisplayName("Une saisie partie de la version actuelle est enregistrée")
         void version_a_jour() {
             assertThat(modifier(7L).getPrenom()).isEqualTo("Awa");
+        }
+
+        @Test
+        @DisplayName("Garder son propre numéro n'est pas un doublon")
+        void propre_telephone() {
+            when(chauffeurRepository.findByTelephone("0707070707")).thenReturn(Optional.of(
+                    Chauffeur.builder().id(CHAUFFEUR).build()));
+            Chauffeur saisie = saisie(7L);
+            saisie.setTelephone("0707070707");
+
+            assertThat(updateUseCase.execute(CHAUFFEUR, saisie, null, null, null, null, null, null, false)
+                    .getTelephone()).isEqualTo("0707070707");
+        }
+
+        @Test
+        @DisplayName("Prendre le numéro d'un autre chauffeur est refusé")
+        void telephone_d_un_autre() {
+            when(chauffeurRepository.findByTelephone("0707070707")).thenReturn(Optional.of(
+                    Chauffeur.builder().id(9L).nom("Traoré").prenom("Issa").build()));
+            Chauffeur saisie = saisie(7L);
+            saisie.setTelephone("0707070707");
+
+            assertThatThrownBy(() -> updateUseCase.execute(CHAUFFEUR, saisie,
+                    null, null, null, null, null, null, false))
+                    .isInstanceOf(ResourceAlreadyExistsException.class);
+            verify(chauffeurRepository, never()).save(any());
         }
 
         @Test

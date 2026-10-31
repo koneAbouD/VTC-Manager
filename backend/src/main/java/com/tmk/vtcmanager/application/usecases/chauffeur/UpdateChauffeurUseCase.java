@@ -45,6 +45,7 @@ public class UpdateChauffeurUseCase {
         Chauffeur existing = chauffeurRepository.findById(id)
                 .orElseThrow(() -> new ChauffeurNotFoundException(id));
         FicheModifieeEntreTempsException.verifier("chauffeur", data.getVersion(), existing.getVersion());
+        TelephoneChauffeurUnique.verifier(chauffeurRepository, data.getTelephone(), id);
 
         existing.setNom(data.getNom());
         existing.setPrenom(data.getPrenom());
