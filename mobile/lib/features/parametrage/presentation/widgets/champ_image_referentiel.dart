@@ -24,6 +24,9 @@ class ChampImageReferentiel extends ConsumerStatefulWidget {
   final void Function(String? image, String? url) onChanged;
   final void Function(String message) onErreur;
 
+  /// Fond teinté de l'accent sur la zone d'ajout ; false : fond neutre.
+  final bool fondTeinte;
+
   const ChampImageReferentiel({
     super.key,
     required this.endpoint,
@@ -31,6 +34,7 @@ class ChampImageReferentiel extends ConsumerStatefulWidget {
     required this.previewUrl,
     required this.onChanged,
     required this.onErreur,
+    this.fondTeinte = true,
   });
 
   @override
@@ -98,11 +102,14 @@ class _ChampImageReferentielState extends ConsumerState<ChampImageReferentiel> {
         height: 172,
         width: double.infinity,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.primaryTint, _fieldFill],
-          ),
+          color: widget.fondTeinte ? null : _fieldFill,
+          gradient: widget.fondTeinte
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primaryTint, _fieldFill],
+                )
+              : null,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.28)),
         ),

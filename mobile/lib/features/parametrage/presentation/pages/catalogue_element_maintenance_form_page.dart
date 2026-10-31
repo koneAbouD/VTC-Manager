@@ -257,6 +257,7 @@ class _CatalogueElementMaintenanceFormPageState
                       _imagePreview = url;
                     }),
                     onErreur: (message) => _toast(message, erreur: true),
+                    fondTeinte: false,
                   ),
                   if (_edition) ...[
                     const SizedBox(height: 10),
