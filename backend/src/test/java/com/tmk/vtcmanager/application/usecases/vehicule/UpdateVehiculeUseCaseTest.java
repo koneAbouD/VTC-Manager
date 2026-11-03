@@ -61,10 +61,11 @@ class UpdateVehiculeUseCaseTest {
     }
 
     private UpdateVehiculeCommand commande(BigDecimal prixAchat, Long version) {
-        // Ordre : …, dateAchat, prixAchat, dureeAmortissementMois, dates…, version
+        // Ordre : …, dateAchat, prixAchat, dureeAmortissementMois,
+        // dureeAmortissementParDefaut, dates…, version
         return new UpdateVehiculeCommand(
                 null, null, null, null, null, null, null, null, null, null,
-                null, null, null, prixAchat, null, null, null, null, version);
+                null, null, null, prixAchat, null, null, null, null, null, version);
     }
 
     @Nested
@@ -128,5 +129,53 @@ class UpdateVehiculeUseCaseTest {
         Vehicule maj = useCase.execute(1L, commandeAvecPrix(null));
 
         assertThat(maj.getPrixAchat()).isEqualByComparingTo("5000000");
+    }
+
+    @Nested
+    @DisplayName("Durée d'amortissement propre au véhicule")
+    class DureeAmortissement {
+
+        private UpdateVehiculeCommand commandeDuree(Integer duree, Boolean parDefaut) {
+            return new UpdateVehiculeCommand(
+                    null, null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, duree, parDefaut, null, null, null, null);
+        }
+
+        private Vehicule existantSur60Mois() {
+            Vehicule existant = vehiculeExistant();
+            existant.setDureeAmortissementMois(60);
+            when(vehiculeRepository.findById(1L)).thenReturn(Optional.of(existant));
+            return existant;
+        }
+
+        @Test
+        @DisplayName("le champ vidé retire la durée propre : le véhicule reprend la durée globale")
+        void retourALaDureeGlobale() {
+            existantSur60Mois();
+
+            Vehicule maj = useCase.execute(1L, commandeDuree(null, true));
+
+            assertThat(maj.getDureeAmortissementMois()).isNull();
+        }
+
+        @Test
+        @DisplayName("une durée absente, sans demande de retour, laisse la durée inchangée")
+        void dureeAbsenteInchangee() {
+            existantSur60Mois();
+
+            Vehicule maj = useCase.execute(1L, commandeDuree(null, null));
+
+            assertThat(maj.getDureeAmortissementMois()).isEqualTo(60);
+        }
+
+        @Test
+        @DisplayName("une nouvelle durée remplace l'ancienne")
+        void nouvelleDuree() {
+            existantSur60Mois();
+
+            Vehicule maj = useCase.execute(1L, commandeDuree(36, null));
+
+            assertThat(maj.getDureeAmortissementMois()).isEqualTo(36);
+        }
     }
 }

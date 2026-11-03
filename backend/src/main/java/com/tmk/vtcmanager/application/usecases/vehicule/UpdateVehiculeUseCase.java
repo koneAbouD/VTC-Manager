@@ -43,7 +43,8 @@ public class UpdateVehiculeUseCase {
         if (cmd.statut() != null) existing.appliquerStatutManuel(cmd.statut());
         if (cmd.dateAchat() != null) existing.setDateAchat(cmd.dateAchat());
         if (cmd.prixAchat() != null) existing.setPrixAchat(cmd.prixAchat());
-        if (cmd.dureeAmortissementMois() != null) existing.setDureeAmortissementMois(cmd.dureeAmortissementMois());
+        if (Boolean.TRUE.equals(cmd.dureeAmortissementParDefaut())) existing.setDureeAmortissementMois(null);
+        else if (cmd.dureeAmortissementMois() != null) existing.setDureeAmortissementMois(cmd.dureeAmortissementMois());
         if (cmd.dateProchaineMaintenance() != null) existing.setDateProchaineMaintenance(cmd.dateProchaineMaintenance());
         if (cmd.dateMiseEnCirculation() != null) existing.setDateMiseEnCirculation(cmd.dateMiseEnCirculation());
         if (cmd.dateEntreeFlotte() != null) existing.setDateEntreeFlotte(cmd.dateEntreeFlotte());

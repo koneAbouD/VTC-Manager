@@ -19,6 +19,9 @@ public record UpdateVehiculeCommand(
         LocalDate dateAchat,
         BigDecimal prixAchat,
         Integer dureeAmortissementMois,
+        /** Vrai = retirer la durée propre au véhicule, il reprend la durée globale.
+         *  Un {@code null} sur la durée ne suffit pas : il veut dire « inchangée ». */
+        Boolean dureeAmortissementParDefaut,
         LocalDate dateProchaineMaintenance,
         LocalDate dateMiseEnCirculation,
         LocalDate dateEntreeFlotte,

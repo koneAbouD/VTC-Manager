@@ -58,7 +58,13 @@ class VehiculeRemoteDatasource {
   }
 
   Future<VehiculeModel> updateVehicule(int id, VehiculeModel vehicule) async {
-    final data = await _client.put('/vehicules/$id', vehicule.toJson());
+    final data = await _client.put('/vehicules/$id', {
+      ...vehicule.toJson(),
+      // Champ durée vidé : une clé absente laisserait l'ancienne durée en place,
+      // on demande explicitement le retour à la durée globale.
+      if (vehicule.dureeAmortissementMois == null)
+        'dureeAmortissementParDefaut': true,
+    });
     return VehiculeModel.fromJson(data as Map<String, dynamic>);
   }
 

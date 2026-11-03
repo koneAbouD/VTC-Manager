@@ -20,6 +20,8 @@ public record UpdateVehiculeRequest(
         LocalDate dateAchat,
         @PositiveOrZero BigDecimal prixAchat,
         @Positive Integer dureeAmortissementMois,
+        /** Vrai = revenir à la durée globale (champ vidé dans le formulaire). */
+        Boolean dureeAmortissementParDefaut,
         LocalDate dateProchaineMaintenance,
         LocalDate dateMiseEnCirculation,
         LocalDate dateEntreeFlotte,
