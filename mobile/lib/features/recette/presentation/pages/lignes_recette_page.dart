@@ -58,7 +58,8 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
   DateTime _semaineDebut = mondayOf(DateTime.now());
   DateTime _periodeDebut = DateTime.now().subtract(const Duration(days: 30));
   DateTime _periodeFin = DateTime.now();
-  StatutLigneRecette? _statutFiltre;
+  /// Statuts filtrés (OU) ; vide = tous.
+  final Set<StatutLigneRecette> _statuts = {};
   String _recherche = '';
 
   // ── Sélection multiple, ouverte par un appui long sur une ligne ──────────
@@ -111,6 +112,17 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
     });
   }
 
+  /// Pastille statut : « Tous » (null) vide la sélection, un statut s'ajoute
+  /// ou se retire ; tout cocher revient à « Tous ».
+  void _basculerStatut(StatutLigneRecette? s) {
+    if (s == null) {
+      _statuts.clear();
+    } else if (!_statuts.remove(s)) {
+      _statuts.add(s);
+      if (_statuts.length == StatutLigneRecette.values.length) _statuts.clear();
+    }
+  }
+
   // Filtres serveur (date + statut + recherche), page par page.
   void _load() {
     final (dateDebut, dateFin) = _plageActive();
@@ -119,7 +131,7 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
           (page, size) => repo.getLignesPage(
             page: page,
             size: size,
-            statut: _statutFiltre,
+            statuts: {..._statuts},
             dateDebut: dateDebut,
             dateFin: dateFin,
             recherche: _recherche,
@@ -645,9 +657,9 @@ class _LignesRecettePageState extends ConsumerState<LignesRecettePage> {
                               child: _SearchAndStatutBar(
                                 controller: _searchController,
                                 onSearchChanged: _onRechercheChanged,
-                                statutSelectionne: _statutFiltre,
+                                statutsSelectionnes: _statuts,
                                 onStatutChanged: (s) {
-                                  setState(() => _statutFiltre = s);
+                                  setState(() => _basculerStatut(s));
                                   _load();
                                 },
                                 montantsStatut: montantsStatut,
@@ -919,7 +931,7 @@ class _DatePill extends StatelessWidget {
 class _SearchAndStatutBar extends StatefulWidget {
   final TextEditingController controller;
   final void Function(String) onSearchChanged;
-  final StatutLigneRecette? statutSelectionne;
+  final Set<StatutLigneRecette> statutsSelectionnes;
   final void Function(StatutLigneRecette?) onStatutChanged;
   final Map<StatutLigneRecette?, double> montantsStatut;
   final NumberFormat money;
@@ -927,7 +939,7 @@ class _SearchAndStatutBar extends StatefulWidget {
   const _SearchAndStatutBar({
     required this.controller,
     required this.onSearchChanged,
-    required this.statutSelectionne,
+    required this.statutsSelectionnes,
     required this.onStatutChanged,
     required this.montantsStatut,
     required this.money,
@@ -1030,14 +1042,14 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
             children: [
               StatutFiltreChip(
                 label: 'Tous',
-                selected: widget.statutSelectionne == null,
+                selected: widget.statutsSelectionnes.isEmpty,
                 color: _hint,
                 onTap: () => widget.onStatutChanged(null),
                 infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
               ),
               ...StatutLigneRecette.values.map((s) => StatutFiltreChip(
                     label: s.label,
-                    selected: widget.statutSelectionne == s,
+                    selected: widget.statutsSelectionnes.contains(s),
                     color: _couleurStatut(s),
                     onTap: () => widget.onStatutChanged(s),
                     infoText:

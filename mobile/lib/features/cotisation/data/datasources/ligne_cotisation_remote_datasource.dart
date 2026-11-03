@@ -17,7 +17,7 @@ class LigneCotisationRemoteDatasource {
     int size = 20,
     int? vehiculeId,
     int? chauffeurId,
-    String? statut,
+    List<String> statuts = const [],
     String? dateDebut,
     String? dateFin,
     String? recherche,
@@ -27,7 +27,8 @@ class LigneCotisationRemoteDatasource {
       'size': '$size',
       if (vehiculeId != null) 'vehiculeId': '$vehiculeId',
       if (chauffeurId != null) 'chauffeurId': '$chauffeurId',
-      if (statut != null) 'statut': statut,
+      // Plusieurs statuts : séparés par des virgules, Spring les relit en liste.
+      if (statuts.isNotEmpty) 'statut': statuts.join(','),
       if (dateDebut != null) 'dateDebut': dateDebut,
       if (dateFin != null) 'dateFin': dateFin,
       if (recherche != null && recherche.trim().isNotEmpty)

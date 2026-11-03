@@ -96,7 +96,7 @@ public class LigneRecetteController {
     public PageResponse<LigneRecetteResponse> getLignesPage(
             @RequestParam(required = false) Long vehiculeId,
             @RequestParam(required = false) Long chauffeurId,
-            @RequestParam(required = false) StatutLigneRecette statut,
+            @RequestParam(required = false) List<StatutLigneRecette> statut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
             @RequestParam(required = false) String recherche,
@@ -105,7 +105,7 @@ public class LigneRecetteController {
         LigneRecetteFiltres filtres = LigneRecetteFiltres.builder()
                 .vehiculeId(vehiculeId)
                 .chauffeurId(chauffeurId)
-                .statut(statut)
+                .statuts(statut)
                 .dateDebut(dateDebut)
                 .dateFin(dateFin)
                 .recherche(recherche)

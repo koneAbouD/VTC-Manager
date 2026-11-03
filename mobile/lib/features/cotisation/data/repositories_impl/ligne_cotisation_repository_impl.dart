@@ -56,7 +56,10 @@ class LigneCotisationRepositoryImpl implements LigneCotisationRepository {
         size: size,
         vehiculeId: f.vehiculeId,
         chauffeurId: f.chauffeurId,
-        statut: _statutStr(f.statut),
+        statuts: [
+          for (final s in {...f.statuts, if (f.statut != null) f.statut!})
+            s.json,
+        ],
         dateDebut: f.dateDebut?.toIso8601String().substring(0, 10),
         dateFin: f.dateFin?.toIso8601String().substring(0, 10),
         recherche: f.recherche,

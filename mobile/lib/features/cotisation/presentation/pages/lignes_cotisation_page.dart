@@ -61,7 +61,8 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
   DateTime    _periodeFin         = DateTime.now();
 
   // ── Filtres serveur (statut + recherche) ───────────────────────────────
-  StatutLigneCotisation? _statut;
+  /// Statuts filtrés (OU) ; vide = tous.
+  final Set<StatutLigneCotisation> _statuts = {};
   String _recherche = '';
 
   // ── Sélection multiple, ouverte par un appui long sur une ligne ──────────
@@ -134,6 +135,17 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
         _FiltreMode.periode => (_periodeDebut, _periodeFin),
       };
 
+  /// Pastille statut : « Tous » (null) vide la sélection, un statut s'ajoute
+  /// ou se retire ; tout cocher revient à « Tous ».
+  void _basculerStatut(StatutLigneCotisation? s) {
+    if (s == null) {
+      _statuts.clear();
+    } else if (!_statuts.remove(s)) {
+      _statuts.add(s);
+      if (_statuts.length == StatutLigneCotisation.values.length) _statuts.clear();
+    }
+  }
+
   // Filtres serveur (date + statut + recherche), page par page.
   void _load() {
     final (debut, fin) = _plageActive();
@@ -141,7 +153,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
     ref.read(lignesCotisationListeProvider.notifier).load(
           (page, size) => repo.getLignesPage(
             LigneCotisationFiltres(
-              statut: _statut,
+              statuts: {..._statuts},
               dateDebut: debut,
               dateFin: fin,
               recherche: _recherche,
@@ -710,9 +722,9 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
                                   child: _SearchAndStatutBar(
                                     controller: _searchController,
                                     onSearchChanged: _onRechercheChanged,
-                                    statutSelectionne: _statut,
+                                    statutsSelectionnes: _statuts,
                                     onStatutChanged: (s) {
-                                      setState(() => _statut = s);
+                                      setState(() => _basculerStatut(s));
                                       _load();
                                     },
                                     montantsStatut: montantsStatut,
@@ -952,7 +964,7 @@ class _DatePill extends StatelessWidget {
 class _SearchAndStatutBar extends StatefulWidget {
   final TextEditingController controller;
   final void Function(String) onSearchChanged;
-  final StatutLigneCotisation? statutSelectionne;
+  final Set<StatutLigneCotisation> statutsSelectionnes;
   final void Function(StatutLigneCotisation?) onStatutChanged;
   final Map<StatutLigneCotisation?, double> montantsStatut;
   final NumberFormat money;
@@ -960,7 +972,7 @@ class _SearchAndStatutBar extends StatefulWidget {
   const _SearchAndStatutBar({
     required this.controller,
     required this.onSearchChanged,
-    required this.statutSelectionne,
+    required this.statutsSelectionnes,
     required this.onStatutChanged,
     required this.montantsStatut,
     required this.money,
@@ -1058,14 +1070,14 @@ class _SearchAndStatutBarState extends State<_SearchAndStatutBar> {
             children: [
               StatutFiltreChip(
                 label: 'Tous',
-                selected: widget.statutSelectionne == null,
+                selected: widget.statutsSelectionnes.isEmpty,
                 color: _hint,
                 onTap: () => widget.onStatutChanged(null),
                 infoText: widget.money.format(widget.montantsStatut[null] ?? 0),
               ),
               ...StatutLigneCotisation.values.map((s) => StatutFiltreChip(
                     label: s.label,
-                    selected: widget.statutSelectionne == s,
+                    selected: widget.statutsSelectionnes.contains(s),
                     color: _couleur(s),
                     onTap: () => widget.onStatutChanged(s),
                     infoText:

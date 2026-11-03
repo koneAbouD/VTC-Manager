@@ -4,6 +4,9 @@ class LigneCotisationFiltres {
   final int? vehiculeId;
   final int? chauffeurId;
   final StatutLigneCotisation? statut;
+
+  /// Plusieurs statuts à la fois (liste paginée) ; vide = tous.
+  final Set<StatutLigneCotisation> statuts;
   final DateTime? dateDebut;
   final DateTime? dateFin;
 
@@ -15,6 +18,7 @@ class LigneCotisationFiltres {
     this.vehiculeId,
     this.chauffeurId,
     this.statut,
+    this.statuts = const {},
     this.dateDebut,
     this.dateFin,
     this.recherche,

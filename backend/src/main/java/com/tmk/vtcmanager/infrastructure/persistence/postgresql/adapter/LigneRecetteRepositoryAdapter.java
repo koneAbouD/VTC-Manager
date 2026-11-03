@@ -112,6 +112,9 @@ public class LigneRecetteRepositoryAdapter implements LigneRecetteRepository {
             if (filtres.getStatut() != null) {
                 predicates.add(cb.equal(root.get("statut"), filtres.getStatut()));
             }
+            if (filtres.getStatuts() != null && !filtres.getStatuts().isEmpty()) {
+                predicates.add(root.get("statut").in(filtres.getStatuts()));
+            }
             if (filtres.getDateDebut() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("dateRecette"), filtres.getDateDebut()));
             }

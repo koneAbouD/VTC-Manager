@@ -24,7 +24,7 @@ abstract interface class LigneRecetteRepository {
     int size,
     int? vehiculeId,
     int? chauffeurId,
-    StatutLigneRecette? statut,
+    Set<StatutLigneRecette> statuts,
     DateTime? dateDebut,
     DateTime? dateFin,
     String? recherche,

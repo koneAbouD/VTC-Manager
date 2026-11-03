@@ -85,7 +85,7 @@ public class LigneCotisationController {
     public PageResponse<LigneCotisationResponse> getLignesPage(
             @RequestParam(required = false) Long vehiculeId,
             @RequestParam(required = false) Long chauffeurId,
-            @RequestParam(required = false) StatutLigneCotisation statut,
+            @RequestParam(required = false) List<StatutLigneCotisation> statut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
             @RequestParam(required = false) String recherche,
@@ -94,7 +94,7 @@ public class LigneCotisationController {
         var result = getLignesCotisationUseCase.findPageByCriteres(
                 LigneCotisationFiltres.builder()
                         .vehiculeId(vehiculeId).chauffeurId(chauffeurId)
-                        .statut(statut).dateDebut(dateDebut).dateFin(dateFin)
+                        .statuts(statut).dateDebut(dateDebut).dateFin(dateFin)
                         .recherche(recherche)
                         .build(),
                 page, size).map(mapper::toResponse);

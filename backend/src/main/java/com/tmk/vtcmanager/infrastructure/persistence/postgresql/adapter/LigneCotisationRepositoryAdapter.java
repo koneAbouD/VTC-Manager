@@ -150,6 +150,8 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
             predicates.add(cb.equal(root.get("chauffeur").get("id"), filtres.getChauffeurId()));
         if (avecStatut && filtres.getStatut() != null)
             predicates.add(cb.equal(root.get("statut"), filtres.getStatut()));
+        if (avecStatut && filtres.getStatuts() != null && !filtres.getStatuts().isEmpty())
+            predicates.add(root.get("statut").in(filtres.getStatuts()));
         if (filtres.getDateDebut() != null)
             predicates.add(cb.greaterThanOrEqualTo(root.get("dateCotisation"), filtres.getDateDebut()));
         if (filtres.getDateFin() != null)
