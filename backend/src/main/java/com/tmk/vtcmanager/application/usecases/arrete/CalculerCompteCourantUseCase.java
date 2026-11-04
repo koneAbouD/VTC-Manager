@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -227,6 +228,103 @@ public class CalculerCompteCourantUseCase {
                 .reglements(reglements)
                 .dettesRestantes(dettesRestantes(decomptes, perimetre, perimetreId, fin))
                 .build();
+    }
+
+    /**
+     * L'arrêté tel qu'il serait enregistré pour cette sélection, sans rien
+     * écrire : mêmes lignes, mêmes règlements, même reste dû que
+     * {@link ArreterCompteUseCase}. C'est la matière du PDF d'aperçu — à la
+     * différence de {@link #construireApercu}, qui montre toutes les lignes pour
+     * qu'on choisisse, celui-ci ne garde que ce que la sélection arrête.
+     *
+     * <p>Ni identifiant ni référence : le document doit se lire comme un
+     * projet. Les noms et immatriculations sont laissés à l'appelant.</p>
+     */
+    public ArreteCompte simuler(PerimetreArrete perimetre, Long perimetreId,
+                                LocalDate debut, LocalDate fin, SelectionArrete selection) {
+        List<DecompteBeneficiaire> tousDecomptes = calculer(perimetre, perimetreId, debut, fin, selection);
+        List<DecompteBeneficiaire> decomptes = tousDecomptes.stream()
+                .filter(DecompteBeneficiaire::aMatiereAArreter)
+                .toList();
+
+        List<LigneArrete> lignes = new ArrayList<>();
+        for (DecompteBeneficiaire d : decomptes) {
+            for (LigneCotisation cot : d.getCotisations()) {
+                lignes.add(LigneArrete.builder()
+                        .document(TypeDocumentCreance.COTISATION)
+                        .documentId(cot.getId())
+                        .chauffeurId(cot.getChauffeurId())
+                        .chauffeurNom(d.getChauffeurNom())
+                        .vehiculeId(cot.getVehiculeId())
+                        .dateDocument(cot.getDateCotisation())
+                        .montant(cot.fondRestituable())
+                        .sens(SensArrete.CREDIT)
+                        .build());
+            }
+        }
+        for (DecompteBeneficiaire.Allocation alloc : compensationsCumulees(decomptes)) {
+            LigneCreance creance = alloc.getCreance();
+            lignes.add(LigneArrete.builder()
+                    .document(creance.getDocument())
+                    .documentId(creance.getDocumentId())
+                    .chauffeurId(creance.getChauffeurId())
+                    .chauffeurNom(creance.getChauffeurNom())
+                    .vehiculeId(creance.getVehiculeId())
+                    .dateDocument(creance.getDateReference())
+                    .montant(alloc.getMontant())
+                    .resteApres(creance.getRestant().subtract(alloc.getMontant()).max(BigDecimal.ZERO))
+                    .sens(SensArrete.DEBIT)
+                    .build());
+        }
+
+        List<ReglementArrete> reglements = decomptes.stream()
+                .map(d -> ReglementArrete.builder()
+                        .chauffeurId(d.getChauffeurId())
+                        .chauffeurNom(d.getChauffeurNom())
+                        .totalCotisations(d.getFond())
+                        .totalCreancesCompensees(d.getTotalCompense())
+                        .montantNet(d.getNet())
+                        .reliquatReporte(d.getReliquat())
+                        .reliquatAnterieur(d.getReliquatAnterieur())
+                        .build())
+                .toList();
+
+        return ArreteCompte.builder()
+                .perimetre(perimetre)
+                .perimetreId(perimetreId)
+                .periodeDebut(debutEffectif(decomptes, debut))
+                .periodeFin(finEffective(decomptes, fin))
+                .dateArrete(LocalDate.now())
+                .lignes(lignes)
+                .reglements(reglements)
+                .dettesRestantes(dettesRestantes(tousDecomptes, perimetre, perimetreId, fin))
+                .build();
+    }
+
+    /**
+     * Période réellement couverte : les mois des cotisations restituées, du
+     * premier au dernier jour.
+     *
+     * <p>Un arrêté se lit au mois — « septembre », pas « du 4 au 27 » parce
+     * que la première cotisation tombe un 4. L'utilisateur qui vide tout un
+     * compte courant demande « depuis toujours » : on borne donc aux mois
+     * réellement arrêtés, en gardant les mois demandés quand rien ne permet
+     * de resserrer (arrêté de pures dettes).
+     */
+    static LocalDate debutEffectif(List<DecompteBeneficiaire> decomptes, LocalDate demande) {
+        return datesCotisations(decomptes).min(LocalDate::compareTo).orElse(demande).withDayOfMonth(1);
+    }
+
+    static LocalDate finEffective(List<DecompteBeneficiaire> decomptes, LocalDate demandee) {
+        LocalDate fin = datesCotisations(decomptes).max(LocalDate::compareTo).orElse(demandee);
+        return fin.withDayOfMonth(fin.lengthOfMonth());
+    }
+
+    private static Stream<LocalDate> datesCotisations(List<DecompteBeneficiaire> decomptes) {
+        return decomptes.stream()
+                .flatMap(d -> d.getCotisations().stream())
+                .map(LigneCotisation::getDateCotisation)
+                .filter(Objects::nonNull);
     }
 
     /**

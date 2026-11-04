@@ -143,6 +143,20 @@ public class ArreteCompteController {
     }
 
     /**
+     * Décompte PDF de l'arrêté avant validation, restreint aux lignes cochées
+     * (même corps que {@link #arreter}) : rien n'est enregistré.
+     */
+    @PostMapping("/arretes/apercu/pdf")
+    public ResponseEntity<byte[]> apercuPdf(@Valid @RequestBody ArreterCompteRequest request) {
+        byte[] pdf = getArreteDecompteUseCase.apercu(request.perimetre(), request.perimetreId(),
+                request.periodeDebut(), request.periodeFin(), toSelection(request));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=apercu_decompte.pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
+    /**
      * Chauffeurs concernés par l'arrêté, avec leur téléphone : les destinataires
      * du décompte envoyé par WhatsApp. Volontairement absent d'{@link ArreteResponse},
      * que l'application chauffeur reçoit aussi : le numéro d'un chauffeur n'a pas à

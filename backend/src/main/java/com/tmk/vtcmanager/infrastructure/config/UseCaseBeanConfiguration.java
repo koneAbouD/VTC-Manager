@@ -1692,8 +1692,11 @@ public class UseCaseBeanConfiguration {
     public GetArreteDecompteUseCase getArreteDecompteUseCase(
             GetArreteUseCase getArreteUseCase,
             ArreteDocumentRenderer arreteDocumentRenderer,
-            LigneRecetteRepository ligneRecetteRepository) {
-        return new GetArreteDecompteUseCase(getArreteUseCase, arreteDocumentRenderer, ligneRecetteRepository);
+            LigneRecetteRepository ligneRecetteRepository,
+            CalculerCompteCourantUseCase calculerCompteCourantUseCase,
+            VehiculeRepository vehiculeRepository) {
+        return new GetArreteDecompteUseCase(getArreteUseCase, arreteDocumentRenderer, ligneRecetteRepository,
+                calculerCompteCourantUseCase, vehiculeRepository);
     }
 
     // ----- Partenaires : dettes et échéancier -----

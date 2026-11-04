@@ -98,13 +98,20 @@ public class ArreteDecomptePdfRenderer implements ArreteDocumentRenderer {
     private void entete(Curseur c, ArreteCompte arrete, LocalDate debut, LocalDate fin) throws IOException {
         c.ligne(BOLD, 16, MARGE, "Décompte de restitution des cotisations");
         c.y -= 6;
-        c.ligne(REGULAR, 10, MARGE, "Référence : " + valeur(arrete.getReference()));
+        // Sans identifiant, c'est l'aperçu d'un arrêté pas encore validé : il
+        // ne doit pas pouvoir passer pour un décompte arrêté.
+        if (arrete.getId() == null) {
+            c.ligne(BOLD, 11, MARGE, "*** APERÇU — arrêté non encore validé ***");
+        } else {
+            c.ligne(REGULAR, 10, MARGE, "Référence : " + valeur(arrete.getReference()));
+        }
         c.ligne(REGULAR, 10, MARGE,
                 (arrete.getPerimetre() == PerimetreArrete.VEHICULE ? "Véhicule : " : "Chauffeur : ")
                         + valeur(arrete.getPerimetreLibelle()));
         c.ligne(REGULAR, 10, MARGE,
                 "Période : du " + date(debut) + " au " + date(fin)
-                        + "   |   Arrêté le : " + date(arrete.getDateArrete()));
+                        + (arrete.getId() == null ? "   |   Édité le : " : "   |   Arrêté le : ")
+                        + date(arrete.getDateArrete()));
         if (arrete.getStatut() != null && arrete.getStatut().name().equals("ANNULE")) {
             c.y -= 4;
             c.ligne(BOLD, 11, MARGE, "*** ARRÊTÉ ANNULÉ ***");

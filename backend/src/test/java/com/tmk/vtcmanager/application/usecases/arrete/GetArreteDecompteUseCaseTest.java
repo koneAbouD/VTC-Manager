@@ -1,12 +1,19 @@
 package com.tmk.vtcmanager.application.usecases.arrete;
 
 import com.tmk.vtcmanager.application.domain.arrete.ArreteCompte;
+import com.tmk.vtcmanager.application.domain.arrete.DetteRestanteArrete;
+import com.tmk.vtcmanager.application.domain.arrete.LigneArrete;
 import com.tmk.vtcmanager.application.domain.arrete.PerimetreArrete;
+import com.tmk.vtcmanager.application.domain.arrete.ReglementArrete;
+import com.tmk.vtcmanager.application.domain.arrete.SensArrete;
+import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecetteFiltres;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.ports.document.ArreteDocumentRenderer;
+import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
+import com.tmk.vtcmanager.application.ports.persistence.VehiculeRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,10 +25,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,6 +42,8 @@ class GetArreteDecompteUseCaseTest {
     @Mock private GetArreteUseCase getArreteUseCase;
     @Mock private ArreteDocumentRenderer renderer;
     @Mock private LigneRecetteRepository ligneRecetteRepository;
+    @Mock private CalculerCompteCourantUseCase calculerCompteCourantUseCase;
+    @Mock private VehiculeRepository vehiculeRepository;
     @InjectMocks private GetArreteDecompteUseCase useCase;
 
     private static ArreteCompte arrete(PerimetreArrete perimetre) {
@@ -73,5 +85,46 @@ class GetArreteDecompteUseCaseTest {
         verify(ligneRecetteRepository).findByCriteres(filtres.capture());
         assertThat(filtres.getValue().getChauffeurId()).isEqualTo(7L);
         assertThat(filtres.getValue().getVehiculeId()).isNull();
+    }
+
+    private static final LocalDate DEBUT = LocalDate.of(2000, 1, 1);
+    private static final LocalDate FIN = LocalDate.of(2100, 12, 31);
+
+    @Test
+    @DisplayName("aperçu : décompte simulé sur la sélection, nommé comme un arrêté enregistré")
+    void apercuSurSelection() {
+        SelectionArrete selection = new SelectionArrete(Set.of(10L), Set.of());
+        ArreteCompte simule = ArreteCompte.builder()
+                .perimetre(PerimetreArrete.VEHICULE).perimetreId(7L)
+                .periodeDebut(LocalDate.of(2026, 9, 1)).periodeFin(LocalDate.of(2026, 9, 30))
+                .lignes(List.of(LigneArrete.builder().document(TypeDocumentCreance.COTISATION)
+                        .documentId(10L).vehiculeId(7L).sens(SensArrete.CREDIT).build()))
+                .reglements(List.of(ReglementArrete.builder().chauffeurId(3L).chauffeurNom("Kouassi").build()))
+                .dettesRestantes(List.of(DetteRestanteArrete.builder().vehiculeId(7L).build()))
+                .build();
+        when(calculerCompteCourantUseCase.simuler(PerimetreArrete.VEHICULE, 7L, DEBUT, FIN, selection))
+                .thenReturn(simule);
+        when(vehiculeRepository.findById(7L))
+                .thenReturn(Optional.of(Vehicule.builder().immatriculation("1234-AB-01").build()));
+        when(ligneRecetteRepository.findByCriteres(any())).thenReturn(List.of());
+
+        useCase.apercu(PerimetreArrete.VEHICULE, 7L, DEBUT, FIN, selection);
+
+        assertThat(simule.getPerimetreLibelle()).isEqualTo("1234-AB-01");
+        assertThat(simule.getLignes().get(0).getImmatriculation()).isEqualTo("1234-AB-01");
+        assertThat(simule.getDettesRestantes().get(0).getImmatriculation()).isEqualTo("1234-AB-01");
+        verify(renderer).renderDecomptePdf(eq(simule), eq(List.of()));
+    }
+
+    @Test
+    @DisplayName("aperçu sans cotisation cochée : refusé, aucun PDF")
+    void apercuSansCotisation() {
+        SelectionArrete selection = new SelectionArrete(Set.of(), null);
+        when(calculerCompteCourantUseCase.simuler(PerimetreArrete.CHAUFFEUR, 3L, DEBUT, FIN, selection))
+                .thenReturn(ArreteCompte.builder().perimetre(PerimetreArrete.CHAUFFEUR).perimetreId(3L).build());
+
+        assertThatThrownBy(() -> useCase.apercu(PerimetreArrete.CHAUFFEUR, 3L, DEBUT, FIN, selection))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(renderer, never()).renderDecomptePdf(any(), any());
     }
 }

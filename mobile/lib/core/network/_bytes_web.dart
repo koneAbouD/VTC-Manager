@@ -9,12 +9,14 @@ import 'dart:typed_data';
 Future<({int statusCode, Uint8List bytes})> fetchBytesNative(
   Uri uri,
   Map<String, String> headers,
-  Duration timeout,
-) async {
+  Duration timeout, {
+  String method = 'GET',
+  String? body,
+}) async {
   final completer = Completer<({int statusCode, Uint8List bytes})>();
 
   final xhr = html.HttpRequest();
-  xhr.open('GET', uri.toString(), async: true);
+  xhr.open(method, uri.toString(), async: true);
   xhr.responseType = 'arraybuffer';
   xhr.timeout = timeout.inMilliseconds;
   headers.forEach(xhr.setRequestHeader);
@@ -39,6 +41,6 @@ Future<({int statusCode, Uint8List bytes})> fetchBytesNative(
     );
   });
 
-  xhr.send();
+  xhr.send(body);
   return completer.future;
 }

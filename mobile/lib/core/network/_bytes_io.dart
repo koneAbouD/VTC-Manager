@@ -5,7 +5,9 @@ import 'dart:typed_data';
 Future<({int statusCode, Uint8List bytes})> fetchBytesNative(
   Uri uri,
   Map<String, String> headers,
-  Duration timeout,
-) {
+  Duration timeout, {
+  String method = 'GET',
+  String? body,
+}) {
   throw UnsupportedError('fetchBytesNative ne doit pas être appelé sur natif');
 }

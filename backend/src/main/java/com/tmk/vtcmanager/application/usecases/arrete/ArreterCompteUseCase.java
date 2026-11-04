@@ -41,8 +41,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 /**
  * Exécute un arrêté de compte : fige le décompte, compense les créances par
@@ -156,8 +154,8 @@ public class ArreterCompteUseCase {
         ArreteCompte entete = arreteCompteRepository.enregistrerEntete(ArreteCompte.builder()
                 .perimetre(perimetre)
                 .perimetreId(perimetreId)
-                .periodeDebut(debutEffectif(decomptes, periodeDebut))
-                .periodeFin(finEffective(decomptes, periodeFin))
+                .periodeDebut(CalculerCompteCourantUseCase.debutEffectif(decomptes, periodeDebut))
+                .periodeFin(CalculerCompteCourantUseCase.finEffective(decomptes, periodeFin))
                 .dateArrete(effetArrete)
                 .reference(reference)
                 .statut(StatutArrete.VALIDE)
@@ -373,32 +371,6 @@ public class ArreterCompteUseCase {
                 .statut(StatutOperation.PAYE)
                 .build();
         return operationFinanciereRepository.save(op);
-    }
-
-    /**
-     * Période réellement couverte : les mois des cotisations restituées, du
-     * premier au dernier jour.
-     *
-     * <p>Un arrêté se lit au mois — « septembre », pas « du 4 au 27 » parce
-     * que la première cotisation tombe un 4. L'utilisateur qui vide tout un
-     * compte courant demande « depuis toujours » : on borne donc aux mois
-     * réellement arrêtés, en gardant les mois demandés quand rien ne permet
-     * de resserrer (arrêté de pures dettes).
-     */
-    private LocalDate debutEffectif(List<DecompteBeneficiaire> decomptes, LocalDate demande) {
-        return datesCotisations(decomptes).min(LocalDate::compareTo).orElse(demande).withDayOfMonth(1);
-    }
-
-    private LocalDate finEffective(List<DecompteBeneficiaire> decomptes, LocalDate demandee) {
-        LocalDate fin = datesCotisations(decomptes).max(LocalDate::compareTo).orElse(demandee);
-        return fin.withDayOfMonth(fin.lengthOfMonth());
-    }
-
-    private Stream<LocalDate> datesCotisations(List<DecompteBeneficiaire> decomptes) {
-        return decomptes.stream()
-                .flatMap(d -> d.getCotisations().stream())
-                .map(LigneCotisation::getDateCotisation)
-                .filter(Objects::nonNull);
     }
 
     private Vehicule vehiculeRef(Long id) {

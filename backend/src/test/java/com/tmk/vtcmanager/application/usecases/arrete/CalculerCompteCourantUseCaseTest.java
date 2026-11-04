@@ -772,4 +772,31 @@ class CalculerCompteCourantUseCaseTest {
         assertThat(decompte.estNonVide()).isTrue();
         assertThat(decompte.aMatiereAArreter()).isFalse();
     }
+
+    @Test
+    @DisplayName("Simulation : seules les lignes cochées et les compensations figurent, période resserrée au mois")
+    void simulation_restreinte_a_la_selection() {
+        cotisations(cotisation(1L, 6_000, StatutLigneCotisation.ENCAISSE),
+                cotisation(2L, 4_000, StatutLigneCotisation.ENCAISSE));
+        creances(
+                creance(TypeDocumentCreance.RECETTE, 100L, 3_000, DEBUT.minusDays(30)),
+                creance(TypeDocumentCreance.PENALITE, 200L, 5_000, DEBUT.minusDays(10)));
+
+        ArreteCompte arrete = useCase.simuler(PerimetreArrete.CHAUFFEUR, CHAUFFEUR,
+                LocalDate.of(2000, 1, 1), LocalDate.of(2100, 12, 31),
+                new SelectionArrete(Set.of(1L), Set.of(
+                        new SelectionArrete.CreanceKey(TypeDocumentCreance.PENALITE, 200L))));
+
+        assertThat(arrete.getId()).isNull();
+        assertThat(arrete.getLignes())
+                .extracting(LigneArrete::getDocument, LigneArrete::getDocumentId, LigneArrete::getSens)
+                .containsExactly(
+                        tuple(TypeDocumentCreance.COTISATION, 1L, SensArrete.CREDIT),
+                        tuple(TypeDocumentCreance.PENALITE, 200L, SensArrete.DEBIT));
+        assertThat(arrete.getReglements().get(0).getMontantNet()).isEqualByComparingTo("1000");
+        // La recette décochée reste due : elle figure au reste dû du décompte.
+        assertThat(arrete.getDettesRestantes()).extracting(d -> d.getDocumentId()).containsExactly(100L);
+        assertThat(arrete.getPeriodeDebut()).isEqualTo(DEBUT);
+        assertThat(arrete.getPeriodeFin()).isEqualTo(FIN);
+    }
 }

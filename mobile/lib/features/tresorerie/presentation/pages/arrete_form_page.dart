@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/bytes_downloader.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/month_filter_pill.dart';
@@ -45,6 +46,7 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
   ArreteCompte? _apercu;
   bool _loading = true;
   bool _submitting = false;
+  bool _telechargement = false;
   String? _erreur;
 
   /// Cotisations retenues (documentId de la ligne de cotisation).
@@ -276,13 +278,49 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
         }
       });
 
+  /// Créances cochées, au format attendu par le serveur.
+  List<Map<String, dynamic>> get _creancesSelection => _apercu!.lignes
+      .where((l) => !l.estCredit && _creChoisie(l))
+      .map((l) => {'document': l.document, 'documentId': l.documentId})
+      .toList();
+
+  /// Le décompte que l'arrêté produirait avec les cases cochées, à remettre au
+  /// chauffeur avant de valider. Calculé par le serveur sur la même sélection
+  /// que [_confirmer] : le PDF et l'arrêté enregistré disent la même chose.
+  Future<void> _telechargerPdf() async {
+    setState(() => _telechargement = true);
+    try {
+      final bytes =
+          await ref.read(tresorerieDatasourceProvider).getApercuArretePdf(
+                perimetre: widget.perimetre,
+                perimetreId: widget.perimetreId,
+                periodeDebut: _debut,
+                periodeFin: _fin,
+                cotisationIds: _cotisationsChoisies.toList(),
+                creances: _creancesSelection,
+              );
+      final nom = widget.libelle.replaceAll(RegExp(r'[^\w-]+'), '_');
+      final path = await downloadBytesFile(
+          bytes, 'apercu_decompte_$nom.pdf', 'application/pdf');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Aperçu du décompte téléchargé'
+                '${path != null ? '\n$path' : ''}')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Échec du téléchargement : $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _telechargement = false);
+    }
+  }
+
   Future<void> _confirmer() async {
     setState(() => _submitting = true);
     try {
-      final creances = _apercu!.lignes
-          .where((l) => !l.estCredit && _creChoisie(l))
-          .map((l) => {'document': l.document, 'documentId': l.documentId})
-          .toList();
+      final creances = _creancesSelection;
       // Le compte à débiter se déduit du mode : espèces → la caisse, mobile
       // money → le portefeuille. C'est le serveur qui le résout, sur les
       // comptes marqués par défaut ; l'écran n'a rien à désigner.
@@ -328,7 +366,18 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
     final decompte = _calculer();
 
     return Scaffold(
-      appBar: AppHeader(title: 'Arrêté — ${widget.libelle}'),
+      appBar: AppHeader(
+        title: 'Arrêté — ${widget.libelle}',
+        // Même condition que la validation : sans cotisation cochée il n'y a
+        // pas de décompte à éditer.
+        action: rien || _loading || !_peutValider
+            ? null
+            : AppHeaderAction(
+                icon: Icons.picture_as_pdf_outlined,
+                loading: _telechargement,
+                onTap: _telechargement ? null : _telechargerPdf,
+              ),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
         children: [

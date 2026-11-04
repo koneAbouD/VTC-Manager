@@ -192,28 +192,40 @@ class ApiClient {
   /// le bug "detached ArrayBuffer" du BrowserClient (ByteConversionSink.add
   /// sur un buffer XHR déjà détaché par le GC).
   /// Sur natif (iOS/Android), utilise le streaming HTTP classique.
-  Future<Uint8List> getBytes(String path) async {
+  Future<Uint8List> getBytes(String path) => _bytes('GET', path);
+
+  /// Fichier binaire produit à partir d'un corps JSON (ex. aperçu PDF d'une
+  /// sélection trop longue pour tenir dans une URL).
+  Future<Uint8List> postBytes(String path, Object body) =>
+      _bytes('POST', path, body: jsonEncode(body));
+
+  Future<Uint8List> _bytes(String method, String path,
+      {String? body, bool retry = true}) async {
     final uri = _buildUri(path, null);
     final headers = await _buildHeaders();
     headers['Accept'] = '*/*';
-    headers.remove('Content-Type');
+    if (body == null) headers.remove('Content-Type');
 
     if (kIsWeb) {
-      return _getBytesWeb(path, uri, headers);
+      return _getBytesWeb(method, path, uri, headers, body, retry);
     }
-    return _getBytesNative(path, uri, headers);
+    return _getBytesNative(method, path, uri, headers, body, retry);
   }
 
   Future<Uint8List> _getBytesWeb(
+    String method,
     String path,
     Uri uri,
     Map<String, String> headers,
+    String? body,
+    bool retry,
   ) async {
     try {
-      final result = await fetchBytesNative(uri, headers, _timeout);
-      if (result.statusCode == 401) {
+      final result = await fetchBytesNative(uri, headers, _timeout,
+          method: method, body: body);
+      if (result.statusCode == 401 && retry) {
         final refreshed = await _tryRefresh();
-        if (refreshed) return getBytes(path);
+        if (refreshed) return _bytes(method, path, body: body, retry: false);
       }
       if (result.statusCode >= 200 && result.statusCode < 300) {
         return result.bytes;
@@ -229,17 +241,21 @@ class ApiClient {
   }
 
   Future<Uint8List> _getBytesNative(
+    String method,
     String path,
     Uri uri,
     Map<String, String> headers,
+    String? body,
+    bool retry,
   ) async {
     try {
-      final request = http.Request('GET', uri)..headers.addAll(headers);
+      final request = http.Request(method, uri)..headers.addAll(headers);
+      if (body != null) request.body = body;
       final streamed = await _http.send(request).timeout(_timeout);
 
-      if (streamed.statusCode == 401) {
+      if (streamed.statusCode == 401 && retry) {
         final refreshed = await _tryRefresh();
-        if (refreshed) return getBytes(path);
+        if (refreshed) return _bytes(method, path, body: body, retry: false);
       }
 
       final parts = <Uint8List>[];

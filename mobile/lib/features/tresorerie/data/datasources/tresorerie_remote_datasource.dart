@@ -149,6 +149,26 @@ class TresorerieRemoteDatasource {
     return _client.getBytes('/finances/arretes/$id/pdf');
   }
 
+  /// Décompte PDF de l'arrêté avant validation, restreint aux lignes cochées.
+  /// Même corps que [arreter] ; rien n'est enregistré.
+  Future<Uint8List> getApercuArretePdf({
+    required String perimetre,
+    required int perimetreId,
+    required DateTime periodeDebut,
+    required DateTime periodeFin,
+    required List<int> cotisationIds,
+    required List<Map<String, dynamic>> creances,
+  }) {
+    return _client.postBytes('/finances/arretes/apercu/pdf', {
+      'perimetre': perimetre,
+      'perimetreId': perimetreId,
+      'periodeDebut': _isoDate(periodeDebut),
+      'periodeFin': _isoDate(periodeFin),
+      'cotisationIds': cotisationIds,
+      'creances': creances,
+    });
+  }
+
   /// Chauffeurs concernés par l'arrêté, avec leur téléphone : les destinataires
   /// du décompte.
   Future<List<ChauffeurArrete>> getChauffeursArrete(int id) async {
