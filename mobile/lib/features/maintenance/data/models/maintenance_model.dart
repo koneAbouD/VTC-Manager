@@ -21,6 +21,8 @@ class MaintenanceModel extends Maintenance {
     super.vehiculeImmatriculation,
     super.categorieTypeId,
     super.categorieTypeLibelle,
+    super.categorieTypeIds,
+    super.categoriesTypesLibelles,
     super.detailMaintenance,
     super.motifAnnulation,
     super.annulePar,
@@ -48,6 +50,8 @@ class MaintenanceModel extends Maintenance {
 
     final categorieTypeJson =
         json['categorieType'] as Map<String, dynamic>?;
+    final typesJson = (json['categoriesTypes'] as List<dynamic>? ?? const [])
+        .cast<Map<String, dynamic>>();
 
     return MaintenanceModel(
       id:                  json['id'] as int?,
@@ -72,6 +76,10 @@ class MaintenanceModel extends Maintenance {
           immatriculation.isEmpty ? null : immatriculation,
       categorieTypeId:     categorieTypeJson?['id'] as int?,
       categorieTypeLibelle: categorieTypeJson?['libelle'] as String?,
+      categorieTypeIds:    [for (final t in typesJson) (t['id'] as num).toInt()],
+      categoriesTypesLibelles: [
+        for (final t in typesJson) t['libelle'] as String? ?? '',
+      ],
       detailMaintenance:   json['detailMaintenance'] != null
           ? DetailMaintenanceModel.fromJson(
               json['detailMaintenance'] as Map<String, dynamic>)
@@ -105,6 +113,8 @@ class MaintenanceModel extends Maintenance {
         vehiculeImmatriculation: m.vehiculeImmatriculation,
         categorieTypeId:     m.categorieTypeId,
         categorieTypeLibelle: m.categorieTypeLibelle,
+        categorieTypeIds:    m.categorieTypeIds,
+        categoriesTypesLibelles: m.categoriesTypesLibelles,
         detailMaintenance:   m.detailMaintenance != null
             ? DetailMaintenanceModel(
                 id:       m.detailMaintenance!.id,
@@ -115,6 +125,7 @@ class MaintenanceModel extends Maintenance {
 
   Map<String, dynamic> toJson() => {
         if (categorieTypeId != null) 'categorieTypeId': categorieTypeId,
+        if (idsTypes.isNotEmpty) 'categorieTypeIds': idsTypes,
         if (type.isNotEmpty) 'type': type,
         'datePrevue': datePrevue.toIso8601String().substring(0, 10),
         if (dateEffectuee != null)

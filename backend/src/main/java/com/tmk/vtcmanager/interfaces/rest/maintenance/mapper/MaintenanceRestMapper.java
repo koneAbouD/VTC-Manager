@@ -17,7 +17,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring", uses = {VehiculeRestMapper.class, CategorieOperationRestMapper.class})
@@ -32,6 +34,7 @@ public interface MaintenanceRestMapper {
     // Drapeau de lecture posé par le contrôleur (verrou d'arrêté) : aucune source ici.
     @Mapping(target = "restaurable", ignore = true)
     @Mapping(target = "categorieType", source = "categorieTypeId", qualifiedByName = "categorieTypeRef")
+    @Mapping(target = "categoriesTypes", source = "categorieTypeIds", qualifiedByName = "categoriesTypesRefs")
     @Mapping(target = "partenaire", source = "partenaireId", qualifiedByName = "partenaireRef")
     @Mapping(target = "detailMaintenance", source = "detailMaintenance", qualifiedByName = "detailMaintenanceToDomain")
     Maintenance toDomain(MaintenanceRequest request);
@@ -59,6 +62,15 @@ public interface MaintenanceRestMapper {
     default CategorieOperation categorieTypeRef(Long id) {
         if (id == null) return null;
         return CategorieOperation.builder().id(id).build();
+    }
+
+    @Named("categoriesTypesRefs")
+    default List<CategorieOperation> categoriesTypesRefs(List<Long> ids) {
+        if (ids == null) return new ArrayList<>();
+        return ids.stream()
+                .filter(Objects::nonNull)
+                .map(this::categorieTypeRef)
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     @Named("partenaireRef")

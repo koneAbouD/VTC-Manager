@@ -486,8 +486,8 @@ class _LignesMaintenancePageState
   }
 
   String _libelleType(Maintenance m) =>
-      m.categorieTypeLibelle?.isNotEmpty == true
-          ? m.categorieTypeLibelle!
+      m.libelleTypes?.isNotEmpty == true
+          ? m.libelleTypes!
           : m.type;
 
   Future<void> _terminer(Maintenance m) async {
@@ -1659,8 +1659,8 @@ class _MaintenanceCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                    m.categorieTypeLibelle?.isNotEmpty == true
-                        ? m.categorieTypeLibelle!
+                    m.libelleTypes?.isNotEmpty == true
+                        ? m.libelleTypes!
                         : m.type,
                     style: TextStyle(
                         fontWeight: FontWeight.w700,
@@ -1793,8 +1793,8 @@ class _ActionsRapidesSheet extends StatelessWidget {
         code: m.type, libelle: m.categorieTypeLibelle);
     final retard =
         StatutMaintenanceVisuel.joursDeRetard(m.statut, m.datePrevue);
-    final libelle = m.categorieTypeLibelle?.isNotEmpty == true
-        ? m.categorieTypeLibelle!
+    final libelle = m.libelleTypes?.isNotEmpty == true
+        ? m.libelleTypes!
         : m.type;
 
     return Padding(

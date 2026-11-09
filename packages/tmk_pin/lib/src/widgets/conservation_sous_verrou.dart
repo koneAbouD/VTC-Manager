@@ -159,6 +159,7 @@ class _ConservationSousVerrouState extends State<ConservationSousVerrou>
         widget.horloge().difference(verrouilleeLe) >= widget.delai;
     if (!expiree) {
       _couverte = false;
+      _annoncerRetour();
       return;
     }
     // Délai dépassé sans que le minuteur ait sonné (application suspendue) :
@@ -171,6 +172,7 @@ class _ConservationSousVerrouState extends State<ConservationSousVerrou>
         _generation++;
         _couverte = false;
       });
+      _annoncerRetour();
     });
   }
 
@@ -178,6 +180,33 @@ class _ConservationSousVerrouState extends State<ConservationSousVerrou>
     _peremption?.cancel();
     _couverte = false;
     _generation++;
+    _annoncerRetour();
+  }
+
+  /// Rend au système l'état du retour arrière de l'application, une fois
+  /// l'écran de code retiré.
+  ///
+  /// Sous le verrou, c'est [CouvertureVerrou] qui l'annonce. Au retrait, le
+  /// navigateur de l'application ne le republie pas : sa pile n'a pas bougé.
+  /// Le système garderait alors l'état du verrou, et sur Android avec le
+  /// retour prédictif, le geste fermerait l'application depuis n'importe quelle
+  /// page, au lieu de dépiler l'écran ou de ramener à l'accueil.
+  void _annoncerRetour() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _couverte) return;
+      final navigateur = widget.navigatorKey.currentState;
+      if (navigateur == null) return;
+      // Le sommet de la pile, sans rien dépiler : le prédicat accepte la
+      // première route qu'on lui présente.
+      Route<dynamic>? sommet;
+      navigateur.popUntil((route) {
+        sommet = route;
+        return true;
+      });
+      final gere = navigateur.canPop() ||
+          sommet?.popDisposition == RoutePopDisposition.doNotPop;
+      SystemNavigator.setFrameworkHandlesBack(gere);
+    });
   }
 
   /// Retire les écrans empilés pour révéler la page d'accès.
@@ -252,10 +281,22 @@ class CouvertureVerrou extends StatelessWidget {
           // dialogue émis par la page cachée reste sous le verrou.
           ScaffoldMessenger(
             child: HeroControllerScope.none(
-              child: Navigator(
-                key: conservation.cleNavigateurVerrou,
-                onGenerateRoute: (_) =>
-                    MaterialPageRoute<void>(builder: (_) => ecranVerrou),
+              // Le navigateur du verrou n'a qu'une page : laissé faire, il
+              // dirait au système que l'application ne gère pas le retour, et
+              // celui-ci fermerait l'application sans passer par
+              // [ConservationSousVerrou.didPopRoute] — qui doit d'abord fermer
+              // une boîte de dialogue de l'écran de code.
+              child: NotificationListener<NavigationNotification>(
+                onNotification: (_) {
+                  const NavigationNotification(canHandlePop: true)
+                      .dispatch(context);
+                  return true;
+                },
+                child: Navigator(
+                  key: conservation.cleNavigateurVerrou,
+                  onGenerateRoute: (_) =>
+                      MaterialPageRoute<void>(builder: (_) => ecranVerrou),
+                ),
               ),
             ),
           ),

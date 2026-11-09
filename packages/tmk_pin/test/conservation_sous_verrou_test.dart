@@ -206,4 +206,95 @@ void main() {
     await passerA(tester, EtatSession.ouverte);
     expect(find.text('Onglet 0'), findsOneWidget);
   });
+
+  group('retour arrière annoncé au système', () {
+    late List<Object?> annonces;
+
+    setUp(() => annonces = []);
+
+    void ecouter(WidgetTester tester) {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'SystemNavigator.setFrameworkHandlesBack') {
+            annonces.add(call.arguments);
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+    }
+
+    testWidgets(
+        'sous le verrou, l\'application garde la main sur le retour '
+        '(sinon le système la ferme sans fermer les dialogues du verrou)',
+        (tester) async {
+      await ouvrirDetail(tester);
+      ecouter(tester);
+      // Hors test, WidgetsApp relaie ces annonces au système dès que
+      // l'application est au premier plan.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+
+      await passerA(tester, EtatSession.verrouillee);
+      await tester.pumpAndSettle();
+
+      expect(annonces, isNot(contains(false)));
+    });
+
+    testWidgets(
+        'déverrouillée sur une page empilée, le retour reste à l\'application',
+        (tester) async {
+      await ouvrirDetail(tester);
+      await passerA(tester, EtatSession.verrouillee);
+      ecouter(tester);
+
+      await passerA(tester, EtatSession.ouverte);
+      await tester.pumpAndSettle();
+
+      expect(annonces.last, isTrue);
+    });
+
+    testWidgets(
+        'déverrouillée sur l\'accueil, le retour revient au système (sortie)',
+        (tester) async {
+      await tester.pumpWidget(app());
+      await passerA(tester, EtatSession.verrouillee);
+      ecouter(tester);
+
+      await passerA(tester, EtatSession.ouverte);
+      await tester.pumpAndSettle();
+
+      expect(annonces.last, isFalse);
+    });
+
+    testWidgets(
+        'déverrouillée sur un écran qui retient le retour (onglet hors accueil), '
+        'le retour reste à l\'application', (tester) async {
+      await tester.pumpWidget(ValueListenableBuilder<EtatSession>(
+        valueListenable: etat,
+        builder: (_, e, __) => ConservationSousVerrou(
+          etat: e,
+          navigatorKey: navigatorKey,
+          horloge: () => maintenant,
+          builder: (_, conservation) => MaterialApp(
+            navigatorKey: navigatorKey,
+            builder: (_, child) => CouvertureVerrou(
+              conservation: conservation,
+              ecranVerrou: const Scaffold(body: Text('Écran de code')),
+              child: child!,
+            ),
+            home: const PopScope(canPop: false, child: Text('Onglet Flotte')),
+          ),
+        ),
+      ));
+      await passerA(tester, EtatSession.verrouillee);
+      ecouter(tester);
+
+      await passerA(tester, EtatSession.ouverte);
+      await tester.pumpAndSettle();
+
+      expect(annonces.last, isTrue);
+    });
+  });
 }

@@ -2,11 +2,13 @@ package com.tmk.vtcmanager.infrastructure.persistence.postgresql.jpa;
 
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceFiltres;
 import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
+import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.CategorieOperationEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.ElementMaintenanceEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.entities.MaintenanceEntity;
 import com.tmk.vtcmanager.infrastructure.persistence.postgresql.spec.RechercheVehiculeChauffeur;
 import jakarta.persistence.criteria.AbstractQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -16,6 +18,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 public class MaintenanceSpecs {
 
@@ -68,8 +71,10 @@ public class MaintenanceSpecs {
         if (filtres.vehiculeId() != null) {
             predicates.add(cb.equal(root.get("vehicule").get("id"), filtres.vehiculeId()));
         }
+        // Une intervention à plusieurs types répond à chacun d'eux.
         if (!filtres.categorieTypeIds().isEmpty()) {
-            predicates.add(root.get("categorieType").get("id").in(filtres.categorieTypeIds()));
+            predicates.add(cb.exists(typeCorrespondant(root, query, cb,
+                    type -> type.get("id").in(filtres.categorieTypeIds()))));
         }
         // En retard : encore au programme alors que sa date est passée. Un état
         // calculé, pas un statut : la maintenance reste planifiée en base.
@@ -83,12 +88,13 @@ public class MaintenanceSpecs {
             // le type n'est pas encore rattaché à une catégorie, doit rester
             // trouvable par les autres critères.
             var vehicule = root.join("vehicule", JoinType.LEFT);
-            var categorie = root.join("categorieType", JoinType.LEFT);
             var partenaire = root.join("partenaire", JoinType.LEFT);
             predicates.add(cb.or(
                     // Le type se cherche par son libellé — celui que la
-                    // liste affiche — comme par son code historique.
-                    cb.like(cb.lower(categorie.get("libelle")), motif),
+                    // liste affiche — comme par son code historique ; chacun
+                    // des types de l'intervention compte.
+                    cb.exists(typeCorrespondant(root, query, cb,
+                            type -> cb.like(cb.lower(type.get("libelle")), motif))),
                     cb.like(cb.lower(root.get("type")), motif),
                     cb.like(cb.lower(vehicule.get("immatriculation")), motif),
                     cb.like(cb.lower(partenaire.get("nom")), motif),
@@ -96,6 +102,22 @@ public class MaintenanceSpecs {
         }
 
         return predicates;
+    }
+
+    /**
+     * Un type de l'intervention qui satisfait la condition. En sous-requête
+     * plutôt qu'en jointure, pour la même raison que les éléments : une
+     * intervention à deux types correspondants compterait deux fois.
+     */
+    private static Subquery<Long> typeCorrespondant(
+            Root<MaintenanceEntity> root, AbstractQuery<?> query, CriteriaBuilder cb,
+            Function<Join<MaintenanceEntity, CategorieOperationEntity>, Predicate> condition) {
+        Subquery<Long> sousRequete = query.subquery(Long.class);
+        Root<MaintenanceEntity> maintenance = sousRequete.from(MaintenanceEntity.class);
+        Join<MaintenanceEntity, CategorieOperationEntity> type = maintenance.join("categoriesTypes");
+        return sousRequete.select(maintenance.get("id")).where(
+                cb.equal(maintenance.get("id"), root.get("id")),
+                condition.apply(type));
     }
 
     /**

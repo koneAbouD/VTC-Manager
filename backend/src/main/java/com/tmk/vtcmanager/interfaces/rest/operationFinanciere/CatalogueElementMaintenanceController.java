@@ -32,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -73,12 +74,16 @@ public class CatalogueElementMaintenanceController {
     @Operation(summary = "Lister les éléments de maintenance proposés à la saisie",
                description = "Éléments actifs, triés par libellé. Avec « vehiculeId », seuls ceux qui ont un "
                        + "tarif actif pour le modèle du véhicule, avec le prix (montantDefaut) et l'image de "
-                       + "ce modèle. Avec « categorieTypeId », seuls les éléments communs ou réservés à ce "
-                       + "type de maintenance.")
+                       + "ce modèle. Avec « categorieTypeIds » (ou « categorieTypeId »), seuls les éléments "
+                       + "communs ou réservés à l'un de ces types de maintenance.")
     public List<CatalogueElementMaintenanceResponse> findActifs(
             @RequestParam(required = false) Long vehiculeId,
-            @RequestParam(required = false) Long categorieTypeId) {
-        PropositionCatalogue proposition = getActifsUseCase.execute(vehiculeId, categorieTypeId);
+            @RequestParam(required = false) Long categorieTypeId,
+            @RequestParam(required = false) List<Long> categorieTypeIds) {
+        List<Long> types = new ArrayList<>();
+        if (categorieTypeIds != null) types.addAll(categorieTypeIds);
+        if (categorieTypeId != null) types.add(categorieTypeId);
+        PropositionCatalogue proposition = getActifsUseCase.execute(vehiculeId, types);
         return proposition.elements().stream()
                 .map(ec -> toResponse(ec, proposition.modeleId()))
                 .toList();

@@ -4,5 +4,5 @@ import '../entities/catalogue_element_maintenance.dart';
 
 abstract class CatalogueElementMaintenanceRepository {
   Future<Either<Failure, List<CatalogueElementMaintenance>>> getAll(
-      {int? vehiculeId, int? categorieTypeId});
+      {int? vehiculeId, List<int> categorieTypeIds = const []});
 }

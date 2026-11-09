@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public record MaintenanceRequest(
         String type,
@@ -21,7 +22,10 @@ public record MaintenanceRequest(
         Long partenaireId,
         MaintenanceStatus statut,
         Long vehiculeId,
+        /** Type principal ; ignoré si categorieTypeIds est renseigné. */
         Long categorieTypeId,
+        /** Tous les types de l'intervention, type principal en tête. */
+        List<Long> categorieTypeIds,
         @Valid DetailMaintenanceRequest detailMaintenance,
         /**
          * Vrai si l'intervention déjà réalisée — date prévue passée, donc

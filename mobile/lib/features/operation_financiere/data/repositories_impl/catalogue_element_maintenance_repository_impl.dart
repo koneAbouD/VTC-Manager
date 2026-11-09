@@ -13,10 +13,10 @@ class CatalogueElementMaintenanceRepositoryImpl
 
   @override
   Future<Either<Failure, List<CatalogueElementMaintenance>>> getAll(
-      {int? vehiculeId, int? categorieTypeId}) async {
+      {int? vehiculeId, List<int> categorieTypeIds = const []}) async {
     try {
       return Right(await _datasource.getAll(
-          vehiculeId: vehiculeId, categorieTypeId: categorieTypeId));
+          vehiculeId: vehiculeId, categorieTypeIds: categorieTypeIds));
     } on ApiException catch (e) {
       return Left(ServerFailure(e.message, statusCode: e.statusCode));
     } on NetworkException catch (e) {

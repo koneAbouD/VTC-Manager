@@ -121,8 +121,8 @@ class _MaintenanceDetailPageState
   }
 
   String _displayType() =>
-      (_m.categorieTypeLibelle?.isNotEmpty == true)
-          ? _m.categorieTypeLibelle!
+      (_m.libelleTypes?.isNotEmpty == true)
+          ? _m.libelleTypes!
           : _m.type;
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -447,9 +447,10 @@ class _MaintenanceDetailPageState
               _fmtDate(_m.dateEffectuee!)),
         if (_m.dureeHeures != null)
           _infoRow(Icons.timer_outlined, 'Durée', '${_m.dureeHeures} heure(s)'),
-        if (_m.categorieTypeLibelle != null)
-          _infoRow(Icons.label_outline_rounded, 'Catégorie',
-              _m.categorieTypeLibelle!),
+        if (_m.libelleTypes != null)
+          _infoRow(Icons.label_outline_rounded,
+              _m.idsTypes.length > 1 ? 'Catégories' : 'Catégorie',
+              _m.libelleTypes!),
       ]),
     ];
 

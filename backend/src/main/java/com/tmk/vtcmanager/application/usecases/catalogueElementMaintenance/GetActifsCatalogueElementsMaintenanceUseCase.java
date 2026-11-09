@@ -21,8 +21,9 @@ import java.util.stream.Collectors;
  *
  * <p>Pour un véhicule, seuls les éléments qui ont un tarif actif pour son modèle
  * sont proposés, avec le prix et l'image de ce modèle (voir
- * {@link ElementCatalogue#estProposePour}). Pour un type de maintenance, seuls
- * les éléments communs ou réservés à ce type le sont.</p>
+ * {@link ElementCatalogue#estProposePour}). Pour une intervention d'un ou
+ * plusieurs types, seuls les éléments communs ou réservés à l'un de ces types
+ * le sont.</p>
  */
 @RequiredArgsConstructor
 public class GetActifsCatalogueElementsMaintenanceUseCase {
@@ -35,11 +36,12 @@ public class GetActifsCatalogueElementsMaintenanceUseCase {
      * @param vehiculeId véhicule de l'intervention ; sans véhicule, tous les
      *                   éléments actifs, sans prix ni image (aucun modèle ne les
      *                   désigne).
+     * @param categorieTypeIds types de l'intervention ; vide = tous les types.
      */
-    public PropositionCatalogue execute(Long vehiculeId, Long categorieTypeId) {
+    public PropositionCatalogue execute(Long vehiculeId, List<Long> categorieTypeIds) {
         if (vehiculeId == null) {
             return new PropositionCatalogue(null, repository.findAllActifs().stream()
-                    .filter(e -> e.estCompatibleAvecType(categorieTypeId))
+                    .filter(e -> e.estCompatibleAvecTypes(categorieTypeIds))
                     .map(e -> new ElementCatalogue(e, List.of()))
                     .toList());
         }
@@ -56,7 +58,7 @@ public class GetActifsCatalogueElementsMaintenanceUseCase {
         return new PropositionCatalogue(modeleId, repository.findAllActifs().stream()
                 .map(e -> new ElementCatalogue(e, parElement.getOrDefault(e.getId(), List.of())))
                 .filter(ec -> ec.estProposePour(modeleId))
-                .filter(ec -> ec.element().estCompatibleAvecType(categorieTypeId))
+                .filter(ec -> ec.element().estCompatibleAvecTypes(categorieTypeIds))
                 .toList());
     }
 }

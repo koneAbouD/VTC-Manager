@@ -17,8 +17,14 @@ class Maintenance {
   final int? vehiculeId;
   final String? vehiculeNom;
   final String? vehiculeImmatriculation;
+  /// Type principal : le premier de [categorieTypeIds].
   final int? categorieTypeId;
   final String? categorieTypeLibelle;
+
+  /// Tous les types de l'intervention (vidange et freinage au même passage
+  /// au garage), type principal en tête.
+  final List<int> categorieTypeIds;
+  final List<String> categoriesTypesLibelles;
   final DetailMaintenance? detailMaintenance;
 
   /// Pourquoi l'intervention a été annulée, par qui et quand. Nul tant qu'elle
@@ -50,12 +56,25 @@ class Maintenance {
     this.vehiculeImmatriculation,
     this.categorieTypeId,
     this.categorieTypeLibelle,
+    this.categorieTypeIds = const [],
+    this.categoriesTypesLibelles = const [],
     this.detailMaintenance,
     this.motifAnnulation,
     this.annulePar,
     this.annuleLe,
     this.restaurable = false,
   });
+
+  /// Libellé de tous les types (« Vidange · Freinage »), à défaut celui du
+  /// type principal.
+  String? get libelleTypes => categoriesTypesLibelles.isNotEmpty
+      ? categoriesTypesLibelles.join(' · ')
+      : categorieTypeLibelle;
+
+  /// Identifiants des types, type principal en tête.
+  List<int> get idsTypes => categorieTypeIds.isNotEmpty
+      ? categorieTypeIds
+      : [if (categorieTypeId != null) categorieTypeId!];
 
   bool get isPending => statut == 'PLANIFIEE' || statut == null;
   bool get isDone => statut == 'TERMINEE';
@@ -84,6 +103,8 @@ class Maintenance {
     String? vehiculeImmatriculation,
     int? categorieTypeId,
     String? categorieTypeLibelle,
+    List<int>? categorieTypeIds,
+    List<String>? categoriesTypesLibelles,
     DetailMaintenance? detailMaintenance,
   }) {
     return Maintenance(
@@ -105,6 +126,9 @@ class Maintenance {
           vehiculeImmatriculation ?? this.vehiculeImmatriculation,
       categorieTypeId: categorieTypeId ?? this.categorieTypeId,
       categorieTypeLibelle: categorieTypeLibelle ?? this.categorieTypeLibelle,
+      categorieTypeIds: categorieTypeIds ?? this.categorieTypeIds,
+      categoriesTypesLibelles:
+          categoriesTypesLibelles ?? this.categoriesTypesLibelles,
       detailMaintenance: detailMaintenance ?? this.detailMaintenance,
       // Le marquage d'annulation et la restaurabilité ne se saisissent pas :
       // ils viennent du serveur et suivent la copie, sinon une maintenance

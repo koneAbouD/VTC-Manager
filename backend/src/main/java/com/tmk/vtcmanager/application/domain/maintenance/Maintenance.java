@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 @Data
 @Builder
@@ -39,7 +42,16 @@ public class Maintenance {
     private Partenaire partenaire;
     private MaintenanceStatus statut;
     private Vehicule vehicule;
+    /** Type principal : le premier de {@link #categoriesTypes}. Il catégorise
+     *  la dépense ou la dette générée à la clôture. */
     private CategorieOperation categorieType;
+    /**
+     * Tous les types couverts par l'intervention, dans l'ordre de saisie : un
+     * même passage au garage fait souvent la vidange et les freins. Les
+     * éléments proposés à la saisie sont ceux de ces types.
+     */
+    @Builder.Default
+    private List<CategorieOperation> categoriesTypes = new ArrayList<>();
     private DetailMaintenance detailMaintenance;
 
     /**
@@ -59,6 +71,35 @@ public class Maintenance {
      * refus.
      */
     private Boolean restaurable;
+
+    /**
+     * Accorde le type principal et la liste des types : une liste vide reprend
+     * le type principal (saisie d'avant la multi-sélection, planification
+     * automatique), sinon le principal devient le premier de la liste. Les
+     * doublons sont écartés.
+     */
+    public void normaliserTypes() {
+        List<CategorieOperation> uniques = new ArrayList<>();
+        if (categoriesTypes != null) {
+            for (CategorieOperation c : categoriesTypes) {
+                if (c == null || c.getId() == null) continue;
+                if (uniques.stream().noneMatch(u -> Objects.equals(u.getId(), c.getId()))) uniques.add(c);
+            }
+        }
+        if (uniques.isEmpty() && categorieType != null && categorieType.getId() != null) {
+            uniques.add(categorieType);
+        }
+        this.categoriesTypes = uniques;
+        this.categorieType = uniques.isEmpty() ? null : uniques.get(0);
+    }
+
+    /** Identifiants des types de l'intervention, type principal en tête. */
+    public List<Long> idsTypes() {
+        if (categoriesTypes != null && !categoriesTypes.isEmpty()) {
+            return categoriesTypes.stream().map(CategorieOperation::getId).filter(Objects::nonNull).toList();
+        }
+        return categorieType != null && categorieType.getId() != null ? List.of(categorieType.getId()) : List.of();
+    }
 
     public void initializeDefaults() {
         if (this.statut == null) this.statut = MaintenanceStatus.PLANIFIEE;
@@ -107,9 +148,14 @@ public class Maintenance {
         this.cout = null;
     }
 
-    /** Vrai pour une intervention de type « Vidange » (rappel automatique ou saisie). */
+    /**
+     * Vrai pour une intervention qui comprend une vidange (rappel automatique
+     * ou saisie), qu'elle soit le type principal ou l'un des autres types.
+     */
     public boolean estVidange() {
-        return TYPE_VIDANGE.equalsIgnoreCase(type);
+        if (TYPE_VIDANGE.equalsIgnoreCase(type)) return true;
+        return categoriesTypes != null && categoriesTypes.stream()
+                .anyMatch(c -> c != null && TYPE_VIDANGE.equalsIgnoreCase(c.getCode()));
     }
 
     public boolean isPlanifiee() {

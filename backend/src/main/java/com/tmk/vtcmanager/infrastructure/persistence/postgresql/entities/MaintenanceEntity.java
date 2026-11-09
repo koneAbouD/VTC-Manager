@@ -7,6 +7,8 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = MaintenanceEntity.TABLE_NAME)
@@ -62,6 +64,15 @@ public class MaintenanceEntity extends AbstractAuditEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categorie_type_id")
     private CategorieOperationEntity categorieType;
+
+    /** Tous les types de l'intervention, type principal (categorieType) en tête. */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "maintenance_types",
+            joinColumns = @JoinColumn(name = "maintenance_id"),
+            inverseJoinColumns = @JoinColumn(name = "categorie_type_id"))
+    @OrderColumn(name = "ordre")
+    @Builder.Default
+    private List<CategorieOperationEntity> categoriesTypes = new ArrayList<>();
 
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "detail_maintenance_id")

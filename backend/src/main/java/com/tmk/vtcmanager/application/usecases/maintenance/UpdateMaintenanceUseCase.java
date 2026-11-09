@@ -1,7 +1,6 @@
 package com.tmk.vtcmanager.application.usecases.maintenance;
 
 import com.tmk.vtcmanager.application.domain.maintenance.Maintenance;
-import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.DetailMaintenance;
 import com.tmk.vtcmanager.application.services.SynchronisationDetteMaintenanceService;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
@@ -12,7 +11,6 @@ import com.tmk.vtcmanager.application.domain.maintenance.MaintenanceStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 
 @RequiredArgsConstructor
 public class UpdateMaintenanceUseCase {
@@ -24,7 +22,7 @@ public class UpdateMaintenanceUseCase {
 
     @Transactional
     public Maintenance execute(Long id, Maintenance data) {
-        validerType(data.getType());
+        TypesMaintenance.resoudre(data, categorieOperationRepository);
 
         Maintenance existing = maintenanceRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Maintenance", id));
@@ -48,7 +46,14 @@ public class UpdateMaintenanceUseCase {
                     + " plus. Planifiez une nouvelle intervention.");
         }
 
-        existing.setType(data.getType());
+        // Les types se modifient avec l'intervention : ils décident des
+        // éléments proposés et de la catégorie de la dépense à la clôture.
+        // Une requête qui n'en donne aucun garde ceux de l'intervention.
+        if (data.getCategorieType() != null) {
+            existing.setType(data.getType());
+            existing.setCategorieType(data.getCategorieType());
+            existing.setCategoriesTypes(data.getCategoriesTypes());
+        }
         existing.setDatePrevue(data.getDatePrevue());
         // Coût et date d'exécution sont posés à la clôture, pas dans ce
         // formulaire : une requête qui n'en parle pas ne doit pas les effacer.
@@ -92,20 +97,5 @@ public class UpdateMaintenanceUseCase {
         DetailMaintenance actuel = existing.getDetailMaintenance();
         if (actuel != null) entrant.setId(actuel.getId());
         return entrant;
-    }
-
-    private void validerType(String type) {
-        if (type == null || type.isBlank()) return;
-        List<CategorieOperation> typesValides =
-                categorieOperationRepository.findBySousCategorieLibelle("Maintenances");
-        boolean valide = typesValides.stream()
-                .anyMatch(c -> c.getCode().equals(type));
-        if (!valide) {
-            List<String> codes = typesValides.stream()
-                    .map(CategorieOperation::getCode)
-                    .toList();
-            throw new IllegalArgumentException(
-                    "Type de maintenance invalide : '" + type + "'. Types disponibles : " + codes);
-        }
     }
 }

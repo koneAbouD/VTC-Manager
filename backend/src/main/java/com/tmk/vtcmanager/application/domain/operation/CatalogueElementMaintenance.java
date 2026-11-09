@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Collection;
+
 /**
  * Élément du catalogue de maintenance : ce qui vaut pour tous les modèles de
  * véhicule — son libellé, son type de maintenance, son activation.
@@ -48,6 +50,17 @@ public class CatalogueElementMaintenance {
         return typeIntervention == null
                 || categorieTypeId == null
                 || categorieTypeId.equals(typeIntervention);
+    }
+
+    /**
+     * Proposé pour une intervention qui couvre plusieurs types : élément commun,
+     * ou réservé à l'un d'eux. Sans type retenu, tout élément convient.
+     */
+    public boolean estCompatibleAvecTypes(Collection<Long> typesIntervention) {
+        return typesIntervention == null
+                || typesIntervention.isEmpty()
+                || categorieTypeId == null
+                || typesIntervention.contains(categorieTypeId);
     }
 
     public void changerActivation(boolean actif) {

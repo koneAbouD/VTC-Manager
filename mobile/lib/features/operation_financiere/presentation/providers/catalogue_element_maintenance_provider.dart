@@ -27,17 +27,29 @@ final _cemUCProvider = Provider((ref) =>
         ref.watch(catalogueElementMaintenanceRepositoryProvider)));
 
 /// Ce qui restreint les éléments proposés : le véhicule (sa marque et son
-/// modèle) et le type de maintenance. `null` = pas de restriction.
-typedef FiltreCatalogueMaintenance = ({int? vehiculeId, int? categorieTypeId});
+/// modèle) et les types de maintenance, en clé texte triée (« 3,7 ») pour que
+/// deux sélections égales désignent la même famille. `null` / vide = pas de
+/// restriction. Se construit avec [filtreCatalogueMaintenance].
+typedef FiltreCatalogueMaintenance = ({int? vehiculeId, String categorieTypeIds});
+
+FiltreCatalogueMaintenance filtreCatalogueMaintenance(
+    {int? vehiculeId, Iterable<int> categorieTypeIds = const []}) {
+  final ids = categorieTypeIds.toSet().toList()..sort();
+  return (vehiculeId: vehiculeId, categorieTypeIds: ids.join(','));
+}
 
 /// Éléments actifs du catalogue, restreints à ceux compatibles avec le
-/// véhicule (marque / modèle) et avec le type de maintenance (communs ou
-/// réservés à ce type).
+/// véhicule (marque / modèle) et avec les types de maintenance (communs ou
+/// réservés à l'un de ces types).
 final catalogueElementsMaintenanceProvider = FutureProvider.family<
     List<CatalogueElementMaintenance>,
     FiltreCatalogueMaintenance>((ref, filtre) async {
   final uc = ref.watch(_cemUCProvider);
   final result = await uc(
-      vehiculeId: filtre.vehiculeId, categorieTypeId: filtre.categorieTypeId);
+      vehiculeId: filtre.vehiculeId,
+      categorieTypeIds: [
+        for (final id in filtre.categorieTypeIds.split(','))
+          if (id.isNotEmpty) int.parse(id),
+      ]);
   return result.fold((f) => throw Exception(f.message), (list) => list);
 });

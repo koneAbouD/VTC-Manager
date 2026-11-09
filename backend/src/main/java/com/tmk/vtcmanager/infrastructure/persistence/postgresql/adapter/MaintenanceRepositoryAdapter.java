@@ -107,15 +107,17 @@ public class MaintenanceRepositoryAdapter implements MaintenanceRepository {
 
     /**
      * Cumul en base (GROUP BY) plutôt que chargement des lignes. Jointure
-     * interne sur la catégorie : une maintenance d'avant les catégories n'a pas
-     * de type à présenter en tuile.
+     * interne sur les types : une maintenance d'avant les catégories n'a pas
+     * de type à présenter en tuile. Une intervention à plusieurs types compte
+     * dans la tuile de chacun, avec son coût entier : la tuile répond à
+     * « combien ont coûté les interventions qui ont touché aux freins ? ».
      */
     @Override
     public List<TotalMaintenanceParType> totauxParType(MaintenanceFiltres filtres) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<TotalMaintenanceParType> query = cb.createQuery(TotalMaintenanceParType.class);
         Root<MaintenanceEntity> root = query.from(MaintenanceEntity.class);
-        Join<MaintenanceEntity, CategorieOperationEntity> categorie = root.join("categorieType");
+        Join<MaintenanceEntity, CategorieOperationEntity> categorie = root.join("categoriesTypes");
 
         // Seules les terminées ont coûté ; les autres restent hors de la somme.
         Expression<BigDecimal> coutRealise = cb.<BigDecimal>selectCase()

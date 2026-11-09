@@ -229,7 +229,7 @@ class CatalogueElementMaintenanceUseCasesTest {
         void propose_selon_le_modele_du_vehicule() {
             vehicule(42L, S_PRESSO);
 
-            PropositionCatalogue p = actifsUseCase.execute(42L, null);
+            PropositionCatalogue p = actifsUseCase.execute(42L, List.of());
 
             assertThat(p.modeleId()).isEqualTo(S_PRESSO);
             // La plaquette a un tarif S-Presso, mais désactivé : pas proposée.
@@ -243,12 +243,22 @@ class CatalogueElementMaintenanceUseCasesTest {
         void combine_modele_et_type() {
             vehicule(42L, S_PRESSO);
 
-            assertThat(actifsUseCase.execute(42L, VIDANGE).elements())
+            assertThat(actifsUseCase.execute(42L, List.of(VIDANGE)).elements())
                     .extracting(ec -> ec.element().getId())
                     .containsExactly(1L, 3L);
-            assertThat(actifsUseCase.execute(42L, FREINAGE).elements())
+            assertThat(actifsUseCase.execute(42L, List.of(FREINAGE)).elements())
                     .extracting(ec -> ec.element().getId())
                     .containsExactly(3L);
+        }
+
+        @Test
+        @DisplayName("une intervention de plusieurs types se voit proposer les éléments de chacun")
+        void plusieurs_types() {
+            vehicule(42L, S_PRESSO);
+
+            assertThat(actifsUseCase.execute(42L, List.of(FREINAGE, VIDANGE)).elements())
+                    .extracting(ec -> ec.element().getId())
+                    .containsExactly(1L, 3L);
         }
 
         @Test
@@ -257,7 +267,7 @@ class CatalogueElementMaintenanceUseCasesTest {
             vehicule(43L, DZIRE);
             when(tarifRepository.findByModeleId(DZIRE)).thenReturn(List.of());
 
-            assertThat(actifsUseCase.execute(43L, null).elements()).isEmpty();
+            assertThat(actifsUseCase.execute(43L, List.of()).elements()).isEmpty();
         }
 
         @Test
@@ -265,7 +275,7 @@ class CatalogueElementMaintenanceUseCasesTest {
         void vehicule_sans_modele() {
             vehicule(44L, null);
 
-            PropositionCatalogue p = actifsUseCase.execute(44L, null);
+            PropositionCatalogue p = actifsUseCase.execute(44L, List.of());
 
             assertThat(p.modeleId()).isNull();
             assertThat(p.elements()).isEmpty();
@@ -274,7 +284,7 @@ class CatalogueElementMaintenanceUseCasesTest {
         @Test
         @DisplayName("sans véhicule, tous les éléments actifs, sans prix ni image")
         void sans_vehicule() {
-            PropositionCatalogue p = actifsUseCase.execute(null, null);
+            PropositionCatalogue p = actifsUseCase.execute(null, List.of());
 
             assertThat(p.modeleId()).isNull();
             assertThat(p.elements()).hasSize(3).allSatisfy(ec -> assertThat(ec.tarifs()).isEmpty());

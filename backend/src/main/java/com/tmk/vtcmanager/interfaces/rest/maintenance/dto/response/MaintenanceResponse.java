@@ -8,6 +8,7 @@ import com.tmk.vtcmanager.interfaces.rest.vehicule.dto.response.VehiculeResponse
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record MaintenanceResponse(
         Long id,
@@ -24,6 +25,8 @@ public record MaintenanceResponse(
         MaintenanceStatus statut,
         VehiculeResponse vehicule,
         CategorieOperationResponse categorieType,
+        /** Tous les types de l'intervention, type principal en tête. */
+        List<CategorieOperationResponse> categoriesTypes,
         DetailMaintenanceResponse detailMaintenance,
         /** Pourquoi l'intervention a été annulée ; nul tant qu'elle est au programme. */
         String motifAnnulation,

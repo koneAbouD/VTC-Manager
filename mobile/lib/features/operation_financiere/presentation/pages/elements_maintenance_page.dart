@@ -48,16 +48,17 @@ class ElementsMaintenancePage extends ConsumerStatefulWidget {
   /// modèle sont proposés. Sans véhicule, tout le catalogue actif.
   final int? vehiculeId;
 
-  /// Type de maintenance de l'intervention : seuls les éléments communs ou
-  /// réservés à ce type sont proposés. Sans type, aucune restriction.
-  final int? categorieTypeId;
+  /// Types de maintenance de l'intervention : seuls les éléments communs ou
+  /// réservés à l'un de ces types sont proposés. Sans type, aucune
+  /// restriction.
+  final List<int> categorieTypeIds;
 
   const ElementsMaintenancePage({
     super.key,
     required this.initial,
     this.partenaireDefautNom,
     this.vehiculeId,
-    this.categorieTypeId,
+    this.categorieTypeIds = const [],
   });
 
   @override
@@ -67,9 +68,9 @@ class ElementsMaintenancePage extends ConsumerStatefulWidget {
 
 class _ElementsMaintenancePageState
     extends ConsumerState<ElementsMaintenancePage> {
-  FiltreCatalogueMaintenance get _filtre => (
+  FiltreCatalogueMaintenance get _filtre => filtreCatalogueMaintenance(
         vehiculeId: widget.vehiculeId,
-        categorieTypeId: widget.categorieTypeId,
+        categorieTypeIds: widget.categorieTypeIds,
       );
 
   // Éléments catalogue sélectionnés : id → entry
