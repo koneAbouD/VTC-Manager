@@ -102,6 +102,22 @@ class VidangesHistoriquePage extends ConsumerWidget {
                           isFirst: i == 0,
                           isLast: i == vidanges.length - 1,
                           derniere: i == 0,
+                          // Seule la dernière saisie est corrigeable : elle
+                          // porte la prochaine vidange (cf. backend).
+                          onEdit: i == 0
+                              ? () async {
+                                  final ok = await showVidangeFormDialog(
+                                    context,
+                                    vehiculeId: vehiculeId,
+                                    kilometrageActuel: kilometrageActuel,
+                                    vidange: vidanges[i],
+                                  );
+                                  if (ok == true) {
+                                    ref.invalidate(
+                                        vidangesByVehiculeProvider(vehiculeId));
+                                  }
+                                }
+                              : null,
                         ),
                     ],
                   ),
@@ -422,11 +438,13 @@ class _TimelineTile extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
   final bool derniere;
+  final VoidCallback? onEdit;
   const _TimelineTile({
     required this.vidange,
     required this.isFirst,
     required this.isLast,
     required this.derniere,
+    this.onEdit,
   });
 
   @override
@@ -519,6 +537,22 @@ class _TimelineTile extends StatelessWidget {
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.primaryDark)),
                       ),
+                      if (onEdit != null) ...[
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: onEdit,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryTint,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.edit_rounded,
+                                size: 15, color: AppColors.primaryDark),
+                          ),
+                        ),
+                      ],
                     ]),
                     if (vidange.dateProchaineVidange != null ||
                         vidange.kilometrageProchaineVidange != null) ...[

@@ -44,7 +44,7 @@ class Vidange {
         commentaire: j['commentaire'] as String?,
       );
 
-  /// Payload de création (POST). Les dates sont envoyées au format `yyyy-MM-dd`.
+  /// Payload de création (POST) et de modification (PUT). Les dates sont envoyées au format `yyyy-MM-dd`.
   Map<String, dynamic> toCreateJson() => {
         'dateVidange': _fmtDate(dateVidange),
         'kilometrageVidange': kilometrageVidange,
@@ -79,6 +79,23 @@ Future<Vidange> creerVidange(
   final client = ref.read(apiClientProvider);
   final data = await client.post(
     '/vehicules/$vehiculeId/vidanges',
+    vidange.toCreateJson(),
+  );
+  ref.invalidate(vidangesByVehiculeProvider(vehiculeId));
+  return Vidange.fromJson(data as Map<String, dynamic>);
+}
+
+/// Corrige la dernière vidange saisie puis invalide le provider d'historique.
+/// Le backend refuse toute autre vidange que la plus récente.
+Future<Vidange> modifierVidange(
+  WidgetRef ref, {
+  required int vehiculeId,
+  required int vidangeId,
+  required Vidange vidange,
+}) async {
+  final client = ref.read(apiClientProvider);
+  final data = await client.put(
+    '/vehicules/$vehiculeId/vidanges/$vidangeId',
     vidange.toCreateJson(),
   );
   ref.invalidate(vidangesByVehiculeProvider(vehiculeId));

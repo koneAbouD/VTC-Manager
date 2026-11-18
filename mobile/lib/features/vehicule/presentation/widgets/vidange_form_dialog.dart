@@ -60,11 +60,14 @@ void _showToast(BuildContext context, String message, {bool error = false}) {
 // ── Entrée ────────────────────────────────────────────────────────────────────
 
 /// Ouvre le bottom sheet d'enregistrement d'une vidange (même style que la
-/// popup d'encaissement). Retourne `true` si une vidange a été créée.
+/// popup d'encaissement). Avec [vidange], le formulaire est pré-rempli et
+/// corrige cette vidange (la dernière saisie) au lieu d'en créer une.
+/// Retourne `true` si une vidange a été créée ou modifiée.
 Future<bool?> showVidangeFormDialog(
   BuildContext context, {
   required int vehiculeId,
   int? kilometrageActuel,
+  Vidange? vidange,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -77,6 +80,7 @@ Future<bool?> showVidangeFormDialog(
     builder: (_) => _VidangeFormSheet(
       vehiculeId: vehiculeId,
       kilometrageActuel: kilometrageActuel,
+      initiale: vidange,
     ),
   );
 }
@@ -86,10 +90,12 @@ Future<bool?> showVidangeFormDialog(
 class _VidangeFormSheet extends ConsumerStatefulWidget {
   final int vehiculeId;
   final int? kilometrageActuel;
+  final Vidange? initiale;
 
   const _VidangeFormSheet({
     required this.vehiculeId,
     this.kilometrageActuel,
+    this.initiale,
   });
 
   @override
@@ -99,10 +105,12 @@ class _VidangeFormSheet extends ConsumerStatefulWidget {
 class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _kmVidangeCtrl;
-  final _kmProchaineCtrl = TextEditingController();
+  late final TextEditingController _kmProchaineCtrl;
 
-  DateTime _dateVidange = DateTime.now();
+  late DateTime _dateVidange;
   DateTime? _dateProchaine;
+
+  bool get _edition => widget.initiale?.id != null;
 
   bool _submitting = false;
   String? _submitError;
@@ -110,10 +118,16 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
   @override
   void initState() {
     super.initState();
-    _kmVidangeCtrl = TextEditingController(
-      text:
-          widget.kilometrageActuel != null ? '${widget.kilometrageActuel}' : '',
+    final initiale = widget.initiale;
+    final km = initiale?.kilometrageVidange ?? widget.kilometrageActuel;
+    _kmVidangeCtrl = TextEditingController(text: km != null ? '$km' : '');
+    _kmProchaineCtrl = TextEditingController(
+      text: initiale?.kilometrageProchaineVidange != null
+          ? '${initiale!.kilometrageProchaineVidange}'
+          : '',
     );
+    _dateVidange = initiale?.dateVidange ?? DateTime.now();
+    _dateProchaine = initiale?.dateProchaineVidange;
   }
 
   @override
@@ -161,11 +175,21 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
       kilometrageProchaineVidange: _kmProchaineCtrl.text.trim().isEmpty
           ? null
           : int.tryParse(_kmProchaineCtrl.text.trim()),
+      // Le formulaire ne saisit pas le commentaire : on conserve l'existant.
+      commentaire: widget.initiale?.commentaire,
     );
 
     String? error;
     try {
-      await creerVidange(ref, vehiculeId: widget.vehiculeId, vidange: vidange);
+      if (_edition) {
+        await modifierVidange(ref,
+            vehiculeId: widget.vehiculeId,
+            vidangeId: widget.initiale!.id!,
+            vidange: vidange);
+      } else {
+        await creerVidange(ref,
+            vehiculeId: widget.vehiculeId, vidange: vidange);
+      }
     } on ApiException catch (e) {
       error = e.message;
     } catch (e) {
@@ -180,7 +204,8 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
 
     if (error == null) {
       Navigator.pop(context, true);
-      _showToast(context, 'Vidange enregistrée avec succès');
+      _showToast(context,
+          _edition ? 'Vidange modifiée' : 'Vidange enregistrée avec succès');
     }
   }
 
@@ -214,7 +239,7 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: Text(
-                'Enregistrer une vidange',
+                _edition ? 'Modifier la vidange' : 'Enregistrer une vidange',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 17,

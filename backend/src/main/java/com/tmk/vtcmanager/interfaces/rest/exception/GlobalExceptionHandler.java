@@ -543,7 +543,25 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest request) {
+        // Les exceptions natives de Spring MVC (route inconnue, méthode non
+        // supportée, corps illisible…) portent déjà leur statut : un robot qui
+        // sonde /v3/api-docs ou GET /api/auth/login est un 4xx, pas une panne.
+        if (ex instanceof org.springframework.web.ErrorResponse er) {
+            HttpStatus status = HttpStatus.resolve(er.getStatusCode().value());
+            if (status != null && status.is4xxClientError()) {
+                return respond(status, status.getReasonPhrase(), messageClient(status), request, ex);
+            }
+        }
         return respond(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
                 "Une erreur interne est survenue. Veuillez réessayer plus tard.", request, ex);
+    }
+
+    private static String messageClient(HttpStatus status) {
+        return switch (status) {
+            case NOT_FOUND -> "Ressource introuvable.";
+            case METHOD_NOT_ALLOWED -> "Méthode HTTP non autorisée sur cette ressource.";
+            case UNSUPPORTED_MEDIA_TYPE -> "Format de contenu non pris en charge.";
+            default -> "Requête invalide.";
+        };
     }
 }

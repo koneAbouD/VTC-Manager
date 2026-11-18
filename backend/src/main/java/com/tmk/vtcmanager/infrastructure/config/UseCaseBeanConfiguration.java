@@ -299,6 +299,14 @@ public class UseCaseBeanConfiguration {
     }
 
     @Bean
+    public ModifierDerniereVidangeUseCase modifierDerniereVidangeUseCase(
+            VidangeRepository vidangeRepository,
+            VehiculeRepository vehiculeRepository) {
+        return new ModifierDerniereVidangeUseCase(
+                vidangeRepository, vehiculeRepository);
+    }
+
+    @Bean
     public UploadVehiculePhotoUseCase uploadVehiculePhotoUseCase(
             VehiculeRepository vehiculeRepository,
             VehiculePhotoRepository photoRepository,

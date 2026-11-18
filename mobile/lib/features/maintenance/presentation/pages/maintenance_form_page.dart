@@ -17,7 +17,7 @@ import '../../../partenaire/presentation/providers/partenaire_providers.dart';
 import '../../domain/entities/maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import '../providers/type_maintenance_provider.dart';
-import '../widgets/maintenance_visuels.dart';
+import '../widgets/prerequis_elements_sheet.dart';
 import '../widgets/terminer_maintenance_dialog.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../screens/finance/finance_refresh.dart';
@@ -105,6 +105,11 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   /// désigne sans ambiguïté dans une flotte de mêmes marques et modèles.
   String? _vehiculeImmatriculation;
 
+  /// Champ des types, pour y ramener l'utilisateur ; mis en évidence un
+  /// instant quand on l'y conduit.
+  final _typesKey = GlobalKey();
+  bool _typesEnEvidence = false;
+
   bool _elementsExpanded = true;
   List<ElementMaintenance> _elements = [];
 
@@ -181,13 +186,26 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     }
   }
 
-  /// Coche ou décoche un type : le catalogue proposé en dépend. Seul le
+  /// Fait défiler jusqu'aux types et les souligne brièvement : c'est là que
+  /// l'utilisateur doit agir, autant le lui montrer.
+  Future<void> _montrerTypes() async {
+    final cible = _typesKey.currentContext;
+    if (cible == null) return;
+    await Scrollable.ensureVisible(cible,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        alignment: 0.1);
+    if (!mounted) return;
+    setState(() => _typesEnEvidence = true);
+    await Future<void>.delayed(const Duration(milliseconds: 1600));
+    if (mounted) setState(() => _typesEnEvidence = false);
+  }
+
+  /// Nouvelle sélection de types : le catalogue proposé en dépend. Seul le
   /// retrait d'un type peut rendre des éléments déjà retenus incompatibles.
-  Future<void> _basculerType(CategorieOperation cat) async {
-    final retire = _types.any((t) => t.id == cat.id);
-    setState(() => _types = retire
-        ? _types.where((t) => t.id != cat.id).toList()
-        : [..._types, cat]);
+  Future<void> _changerTypes(List<CategorieOperation> types) async {
+    final retire = _types.any((t) => !types.any((n) => n.id == t.id));
+    setState(() => _types = types);
     if (retire) await _retirerElementsIncompatibles('ces types de maintenance');
   }
 
@@ -235,16 +253,27 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
   Future<void> _openElementsPage() async {
     // Les éléments proposés dépendent des types de maintenance et du
-    // véhicule : ils se choisissent d'abord.
-    if (_types.isEmpty) {
-      _showToast(context, 'Sélectionnez d\'abord le type de maintenance',
-          error: true);
-      return;
-    }
-    if (_vehiculeId == null) {
-      _showToast(context, 'Sélectionnez d\'abord le véhicule concerné',
-          error: true);
-      return;
+    // véhicule : ils se choisissent d'abord. Ce n'est pas une erreur, c'est
+    // une étape : la feuille dit ce qui manque et y mène directement.
+    if (_types.isEmpty || _vehiculeId == null) {
+      final etape = await showPrerequisElementsSheet(
+        context,
+        typesLibelle: _types.isEmpty
+            ? null
+            : _types.map((t) => t.libelle).join(' · '),
+        vehiculeLibelle: _vehiculeId == null
+            ? null
+            : (_vehiculeImmatriculation ?? 'Véhicule choisi'),
+      );
+      if (!mounted || etape == null) return;
+      if (etape == PrerequisElements.types) {
+        await _montrerTypes();
+        return;
+      }
+      await _openVehiculeSelector();
+      // Véhicule choisi et types déjà là : on enchaîne sur les éléments,
+      // comme l'utilisateur l'avait demandé.
+      if (!mounted || _vehiculeId == null || _types.isEmpty) return;
     }
     final result = await Navigator.push<List<ElementMaintenance>>(
       context,
@@ -420,11 +449,13 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _LabeledField(
+                          key: _typesKey,
+                          enEvidence: _typesEnEvidence,
                           label: 'Types de maintenance',
                           isRequired: true,
-                          child: _TypesChips(
+                          child: _TypesField(
                             selection: _types,
-                            onToggle: _basculerType,
+                            onChanged: _changerTypes,
                             idsInitiaux: widget.initial != null
                                 ? widget.initial!.idsTypes
                                 : [
@@ -898,27 +929,28 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
 // ── Types de maintenance (sélection multiple) ─────────────────────────────────
 
-/// Les types se cochent en puces : un même passage au garage couvre souvent
-/// plusieurs types (vidange et freinage). L'ordre de sélection compte : le
-/// premier coché est le type principal.
-class _TypesChips extends ConsumerStatefulWidget {
+/// Les types se choisissent dans la même feuille que les autres listes de
+/// l'application, en choix multiple : un même passage au garage couvre
+/// souvent plusieurs types (vidange et freinage). L'ordre de sélection
+/// compte : le premier coché est le type principal.
+class _TypesField extends ConsumerStatefulWidget {
   final List<CategorieOperation> selection;
-  final void Function(CategorieOperation) onToggle;
+  final void Function(List<CategorieOperation>) onChanged;
   final List<int> idsInitiaux;
   final void Function(List<CategorieOperation>) onInitResolved;
 
-  const _TypesChips({
+  const _TypesField({
     required this.selection,
-    required this.onToggle,
+    required this.onChanged,
     required this.idsInitiaux,
     required this.onInitResolved,
   });
 
   @override
-  ConsumerState<_TypesChips> createState() => _TypesChipsState();
+  ConsumerState<_TypesField> createState() => _TypesFieldState();
 }
 
-class _TypesChipsState extends ConsumerState<_TypesChips> {
+class _TypesFieldState extends ConsumerState<_TypesField> {
   bool _initResolu = false;
 
   @override
@@ -926,8 +958,8 @@ class _TypesChipsState extends ConsumerState<_TypesChips> {
     final async = ref.watch(typeMaintenanceProvider('Maintenances'));
     final categories = async.value ?? [];
 
-    // Pré-cocher les types de la maintenance modifiée (ou le type imposé à la
-    // création), une fois la liste chargée, dans leur ordre d'origine.
+    // Pré-sélectionner les types de la maintenance modifiée (ou le type imposé
+    // à la création), une fois la liste chargée, dans leur ordre d'origine.
     if (!_initResolu && categories.isNotEmpty) {
       _initResolu = true;
       final trouves = [
@@ -950,7 +982,7 @@ class _TypesChipsState extends ConsumerState<_TypesChips> {
         ),
         child: Row(children: [
           Expanded(
-            child: Text('Chargement des types',
+            child: Text('Sélectionner les types',
                 style: TextStyle(color: _kHint, fontSize: 14)),
           ),
           SizedBox(
@@ -963,66 +995,22 @@ class _TypesChipsState extends ConsumerState<_TypesChips> {
       );
     }
 
-    final idsCoches = {for (final t in widget.selection) t.id};
-    // Un type désactivé n'est plus proposé, sauf s'il est déjà coché : la
-    // maintenance modifiée doit pouvoir garder ses types.
-    final proposes =
-        categories.where((c) => c.actif || idsCoches.contains(c.id)).toList();
+    final idsChoisis = [for (final t in widget.selection) t.id];
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final c in proposes)
-          _PuceType(
-            libelle: c.libelle,
-            icone: TypeMaintenanceVisuel.icone(code: c.code, libelle: c.libelle),
-            coche: idsCoches.contains(c.id),
-            onTap: () => widget.onToggle(c),
-          ),
-      ],
-    );
-  }
-}
-
-class _PuceType extends StatelessWidget {
-  final String libelle;
-  final IconData icone;
-  final bool coche;
-  final VoidCallback onTap;
-
-  const _PuceType({
-    required this.libelle,
-    required this.icone,
-    required this.coche,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: coche ? _kPrimary.withValues(alpha: 0.10) : _kFieldFill,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: coche ? _kPrimary : _kBorder),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(coche ? Icons.check_rounded : icone,
-                size: 16, color: coche ? _kPrimary : _kLabel),
-            const SizedBox(width: 6),
-            Text(libelle,
-                style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: coche ? FontWeight.w600 : FontWeight.w500,
-                    color: coche ? _kPrimary : _kDark)),
-          ]),
-        ),
-      ),
+    return PremiumMultiSelectField<int>(
+      values: idsChoisis,
+      hint: 'Sélectionner les types',
+      sheetTitle: 'Types de maintenance',
+      fillColor: _kFieldFill,
+      // Un type désactivé n'est plus proposé, sauf s'il est déjà choisi : la
+      // maintenance modifiée doit pouvoir garder ses types.
+      options: categories
+          .where((c) => c.actif || idsChoisis.contains(c.id))
+          .map((c) => SelectOption<int>(value: c.id, label: c.libelle))
+          .toList(),
+      onChanged: (ids) => widget.onChanged([
+        for (final id in ids) ...categories.where((c) => c.id == id),
+      ]),
     );
   }
 }
@@ -1092,9 +1080,14 @@ class _LabeledField extends StatelessWidget {
   final bool isRequired;
   final Widget child;
 
+  /// Souligne le champ un instant, quand on y ramène l'utilisateur.
+  final bool enEvidence;
+
   const _LabeledField({
+    super.key,
     required this.label,
     this.isRequired = false,
+    this.enEvidence = false,
     required this.child,
   });
 
@@ -1115,7 +1108,30 @@ class _LabeledField extends StatelessWidget {
           ],
         ]),
         const SizedBox(height: 6),
-        child,
+        // Le contour est peint autour du champ, sans en changer la taille :
+        // rien ne bouge dans le formulaire quand il apparaît.
+        Stack(clipBehavior: Clip.none, children: [
+          child,
+          Positioned.fill(
+            left: -6,
+            top: -6,
+            right: -6,
+            bottom: -6,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: enEvidence ? 1 : 0,
+                duration: const Duration(milliseconds: 250),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _kPrimary.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _kPrimary, width: 1.5),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ]),
       ],
     );
   }
