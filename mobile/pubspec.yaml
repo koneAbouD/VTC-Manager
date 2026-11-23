@@ -90,6 +90,6 @@ flutter_launcher_icons:
   remove_alpha_ios: true
   # ⚠️ Doit être une image CARRÉE (ex. 1024×1024, fond blanc).
   image_path: "assets/images/logo_tmk_icon.png"
-  # Icône adaptative Android (le logo a un fond blanc)
+  # Icône adaptative Android : fond blanc + premier plan dans la zone sûre
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/logo_tmk_icon.png"
+  adaptive_icon_foreground: "assets/images/logo_tmk_icon_foreground.png"
