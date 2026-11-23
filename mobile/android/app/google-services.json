@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "865027625937",
+    "project_id": "tmk-vtc",
+    "storage_bucket": "tmk-vtc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:865027625937:android:61a5216f4bfb763d1cc6f0",
+        "android_client_info": {
+          "package_name": "com.tmk.vtc_chauffeur"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQiX6ZFtPgLnItef9YF0jtdeoK5lvSeQY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:865027625937:android:bd8ea1f6919d01371cc6f0",
+        "android_client_info": {
+          "package_name": "com.tmk.vtc_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQiX6ZFtPgLnItef9YF0jtdeoK5lvSeQY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
