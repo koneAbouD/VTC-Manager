@@ -166,14 +166,25 @@ public class RecuPaiementPdfRenderer implements RecuDocumentRenderer {
 
         /**
          * Le reste à payer, quand il y en a un. Une créance soldée ne donne lieu
-         * à aucune mention : le montant reçu suffit à l'attester.
+         * à aucune mention : le montant reçu suffit à l'attester. La dette
+         * totale du chauffeur suit dès qu'elle dépasse ces créances : solder une
+         * journée ne solde pas les autres.
          */
         void solde() throws IOException {
-            if (recu.resteDu() == null || recu.resteDu().signum() <= 0) return;
-            place(18);
-            texte(BOLD, 10, MARGE, y,
-                    "Reste à payer sur ces créances : " + montant(recu.resteDu()), ENCRE);
-            y -= 16;
+            BigDecimal reste = recu.resteDu() == null ? BigDecimal.ZERO : recu.resteDu();
+            if (reste.signum() > 0) {
+                place(18);
+                texte(BOLD, 10, MARGE, y,
+                        "Reste à payer sur ces créances : " + montant(reste), ENCRE);
+                y -= 16;
+            }
+            BigDecimal dette = recu.detteChauffeur();
+            if (dette != null && dette.compareTo(reste) > 0) {
+                place(18);
+                texte(BOLD, 10, MARGE, y,
+                        "Total restant dû (recettes et cotisations) : " + montant(dette), ENCRE);
+                y -= 16;
+            }
         }
 
         void fermer() throws IOException {

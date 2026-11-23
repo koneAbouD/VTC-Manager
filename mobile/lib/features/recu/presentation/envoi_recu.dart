@@ -29,6 +29,20 @@ Future<IssueEnvoiPdf> envoyerRecuPdf({
     return const PdfIndisponible('aucune écriture à quittancer.');
   }
 
+  // Le reçu composé à l'écran — d'un lot, d'une pièce de caisse — ignore
+  // ce que le chauffeur doit sur ses autres journées et s'il roule
+  // aujourd'hui : sans cela, le message ne peut dire ni s'il est à jour, ni
+  // bonne route ou bon repos. Si le serveur ne répond pas, il s'en tient à ces
+  // créances et à un merci seul.
+  if (recu.detteTotale == null) {
+    final lu = await recus.getRecu(operationIds);
+    final serveur = lu.fold((_) => null, (r) => r.recu);
+    if (serveur != null) {
+      recu = recu.avecSituation(
+          detteTotale: serveur.detteTotale, auVolant: serveur.auVolant);
+    }
+  }
+
   final pdf = await recus.getRecuPdf(operationIds);
   return pdf.fold<Future<IssueEnvoiPdf>>(
     (echec) async => PdfIndisponible(echec.message),

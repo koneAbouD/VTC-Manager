@@ -1,10 +1,17 @@
 package com.tmk.vtcmanager.application.usecases.recu;
 
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
+import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
+import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
+import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
+import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.ModePaiement;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
+import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
+import com.tmk.vtcmanager.application.domain.recette.LigneRecetteFiltres;
+import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.domain.recu.RecuPaiement;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.domain.versement.ImputationVersement;
@@ -12,7 +19,10 @@ import com.tmk.vtcmanager.application.domain.versement.NatureImputation;
 import com.tmk.vtcmanager.application.exception.RecuImpossibleException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.document.RecuDocumentRenderer;
+import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
+import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.services.ChauffeursAuProgrammeService;
 import com.tmk.vtcmanager.application.services.LectureImputationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +56,9 @@ class GenererRecuPdfUseCaseTest {
     private OperationFinanciereRepository operationRepository;
     private LectureImputationService lecture;
     private RecuDocumentRenderer renderer;
+    private LigneRecetteRepository recettes;
+    private LigneCotisationRepository cotisations;
+    private ChauffeursAuProgrammeService planning;
     private GenererRecuPdfUseCase useCase;
 
     @BeforeEach
@@ -54,7 +67,13 @@ class GenererRecuPdfUseCaseTest {
         lecture = mock(LectureImputationService.class);
         renderer = mock(RecuDocumentRenderer.class);
         when(renderer.renderRecuPdf(any())).thenReturn(new byte[]{1, 2, 3});
-        useCase = new GenererRecuPdfUseCase(operationRepository, lecture, renderer);
+        recettes = mock(LigneRecetteRepository.class);
+        cotisations = mock(LigneCotisationRepository.class);
+        when(recettes.findByCriteres(any())).thenReturn(List.of());
+        when(cotisations.findByCriteres(any())).thenReturn(List.of());
+        planning = mock(ChauffeursAuProgrammeService.class);
+        useCase = new GenererRecuPdfUseCase(operationRepository, lecture, renderer, recettes, cotisations,
+                planning);
     }
 
     private static CategorieOperation categorie(String code) {
@@ -154,6 +173,68 @@ class GenererRecuPdfUseCaseTest {
         useCase.executer(List.of(501L, 502L));
 
         assertThat(recuRendu().resteDu()).isNull();
+    }
+
+    @Test
+    @DisplayName("la dette du chauffeur compte ses autres journées de recette et de cotisation")
+    void detteChauffeur() {
+        lu(ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3), NatureImputation.RECETTE, "Recette", 1, "0");
+        when(recettes.findByCriteres(any())).thenReturn(List.of(
+                LigneRecette.builder().montantAttendu(new BigDecimal("15000"))
+                        .montantEncaisse(new BigDecimal("5000")).build(),
+                // Au réel : pas de dû d'avance, rien à opposer au chauffeur.
+                LigneRecette.builder().montantEncaisse(BigDecimal.ZERO).build()));
+        when(cotisations.findByCriteres(any())).thenReturn(List.of(
+                LigneCotisation.builder().montantDu(new BigDecimal("2000"))
+                        .montantEncaisse(BigDecimal.ZERO).build()));
+
+        RecuPaiement recu = useCase.lire(List.of(501L));
+
+        assertThat(recu.resteDu()).isEqualByComparingTo("0");
+        assertThat(recu.detteChauffeur()).isEqualByComparingTo("12000");
+        ArgumentCaptor<LigneRecetteFiltres> filtreRecette = ArgumentCaptor.forClass(LigneRecetteFiltres.class);
+        verify(recettes).findByCriteres(filtreRecette.capture());
+        assertThat(filtreRecette.getValue().getChauffeurId()).isEqualTo(3L);
+        assertThat(filtreRecette.getValue().getStatuts())
+                .containsExactly(StatutLigneRecette.EN_ATTENTE, StatutLigneRecette.PARTIELLEMENT_ENCAISSE);
+        assertThat(filtreRecette.getValue().getDateFin()).isEqualTo(LocalDate.now());
+        ArgumentCaptor<LigneCotisationFiltres> filtreCotisation = ArgumentCaptor.forClass(LigneCotisationFiltres.class);
+        verify(cotisations).findByCriteres(filtreCotisation.capture());
+        assertThat(filtreCotisation.getValue().getStatuts())
+                .containsExactly(StatutLigneCotisation.EN_ATTENTE, StatutLigneCotisation.PARTIELLEMENT_ENCAISSE);
+    }
+
+    @Test
+    @DisplayName("sans autre dette, le chauffeur est à jour")
+    void chauffeurAJour() {
+        lu(ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3), NatureImputation.RECETTE, "Recette", 1, "0");
+
+        assertThat(useCase.lire(List.of(501L)).detteChauffeur()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("en service : au volant s'il est au planning du jour, au repos sinon")
+    void auVolantOuAuRepos() {
+        OperationFinanciere op = ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3);
+        op.getChauffeur().setStatut(ChauffeurStatus.EN_SERVICE);
+        lu(op, NatureImputation.RECETTE, "Recette", 1, "0");
+
+        when(planning.estAuProgramme(3L, LocalDate.now())).thenReturn(true);
+        assertThat(useCase.lire(List.of(501L)).chauffeurAuVolant()).isTrue();
+
+        when(planning.estAuProgramme(3L, LocalDate.now())).thenReturn(false);
+        assertThat(useCase.lire(List.of(501L)).chauffeurAuVolant()).isFalse();
+    }
+
+    @Test
+    @DisplayName("hors service, le reçu ne dit ni route ni repos")
+    void horsService() {
+        OperationFinanciere op = ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3);
+        op.getChauffeur().setStatut(ChauffeurStatus.EN_CONGE);
+        lu(op, NatureImputation.RECETTE, "Recette", 1, "0");
+
+        assertThat(useCase.lire(List.of(501L)).chauffeurAuVolant()).isNull();
+        verify(planning, never()).estAuProgramme(any(), any());
     }
 
     @Test

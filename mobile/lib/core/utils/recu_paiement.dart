@@ -48,6 +48,17 @@ class RecuPaiement {
   /// n'en dit rien plutôt que d'annoncer un solde faux.
   final double? resteDu;
 
+  /// Tout ce que le chauffeur doit encore en recettes et cotisations échues,
+  /// ces créances comprises, tel que le serveur le lit. C'est elle seule qui
+  /// permet de dire « à jour » : solder une journée ne solde pas les autres.
+  /// Null quand elle n'est pas connue — le reçu ne dit alors jamais « à jour ».
+  final double? detteTotale;
+
+  /// En service, le chauffeur roule aujourd'hui (vrai) ou c'est son tour de
+  /// repos (faux) ; nul pour tout autre statut ou quand le serveur ne l'a pas
+  /// dit. Il choisit le mot de la fin : bonne route, bon repos, ou merci seul.
+  final bool? auVolant;
+
   const RecuPaiement({
     this.chauffeur,
     this.vehicule,
@@ -56,7 +67,24 @@ class RecuPaiement {
     required this.date,
     this.reference,
     this.resteDu,
+    this.detteTotale,
+    this.auVolant,
   });
+
+  /// Le même reçu, avec ce que le serveur sait du chauffeur aujourd'hui : sa
+  /// dette et s'il roule.
+  RecuPaiement avecSituation({double? detteTotale, bool? auVolant}) =>
+      RecuPaiement(
+        chauffeur: chauffeur,
+        vehicule: vehicule,
+        lignes: lignes,
+        modePaiement: modePaiement,
+        date: date,
+        reference: reference,
+        resteDu: resteDu,
+        detteTotale: detteTotale,
+        auVolant: auVolant,
+      );
 
   double get total => lignes.fold(0, (t, l) => t + l.montant);
 }
@@ -96,11 +124,9 @@ String composerRecu(RecuPaiement recu, {bool avecPieceJointe = false}) {
     ],
   ];
 
+  final ligneSolde = _ligneSolde(recu);
   final solde = <String>[
-    if (recu.resteDu != null)
-      recu.resteDu! <= 0
-          ? 'Vous êtes à jour.'
-          : 'Reste à payer : *${montantRecu(recu.resteDu!)}*',
+    if (ligneSolde != null) ligneSolde,
     if (_renseigne(recu.vehicule) || _renseigne(recu.reference))
       [
         if (_renseigne(recu.vehicule)) 'Véhicule ${recu.vehicule!.trim()}',
@@ -113,9 +139,35 @@ String composerRecu(RecuPaiement recu, {bool avecPieceJointe = false}) {
     corps,
     solde,
     if (avecPieceJointe) ['📎 Le reçu détaillé vous est envoyé en PDF.'],
-    ['Merci et bonne route !'],
+    [_motDeLaFin(recu.auVolant)],
   ].where((bloc) => bloc.isNotEmpty).map((bloc) => bloc.join('\n')).join('\n\n');
 }
+
+/// Le solde annoncé au chauffeur. Sa dette totale prime : elle couvre ses
+/// autres journées de recette et de cotisation, que ce versement n'a pas
+/// soldées. Sans elle, seul un reste sur ces créances se dit — jamais « à
+/// jour », qu'on ne peut pas affirmer.
+String? _ligneSolde(RecuPaiement recu) {
+  final dette = recu.detteTotale;
+  if (dette != null) {
+    return dette <= 0
+        ? 'Vous êtes à jour.'
+        : 'Reste à payer (recettes et cotisations) : *${montantRecu(dette)}*';
+  }
+  final reste = recu.resteDu;
+  if (reste != null && reste > 0) {
+    return 'Reste à payer : *${montantRecu(reste)}*';
+  }
+  return null;
+}
+
+/// « Bonne route » à qui roule aujourd'hui, « bon repos » à qui est de repos ;
+/// à tout autre — en congé, sans véhicule, ou inconnu — un merci seul.
+String _motDeLaFin(bool? auVolant) => switch (auVolant) {
+      true => 'Merci et bonne route !',
+      false => 'Merci et bon repos !',
+      null => 'Merci !',
+    };
 
 bool _renseigne(String? valeur) => valeur != null && valeur.trim().isNotEmpty;
 

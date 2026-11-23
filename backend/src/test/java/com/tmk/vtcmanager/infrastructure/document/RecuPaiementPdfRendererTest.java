@@ -34,7 +34,7 @@ class RecuPaiementPdfRendererTest {
     private static RecuPaiement recu(String chauffeur, List<LigneRecuPaiement> lignes, String resteDu) {
         return new RecuPaiement("TMK", chauffeur, "0712345678", List.of("1234 AB 01"),
                 List.of(ModePaiement.ESPECES), lignes, resteDu == null ? null : new BigDecimal(resteDu),
-                LocalDateTime.of(2026, 9, 14, 11, 32));
+                null, null, LocalDateTime.of(2026, 9, 14, 11, 32));
     }
 
     private static String texte(byte[] pdf) throws Exception {
@@ -67,6 +67,18 @@ class RecuPaiementPdfRendererTest {
         assertThat(texte).contains("15 000 FCFA")
                 .doesNotContain("à jour")
                 .doesNotContain("soldée")
+                .doesNotContain("Reste à payer");
+    }
+
+    @Test
+    @DisplayName("une créance soldée n'efface pas les autres dettes du chauffeur")
+    void detteChauffeurAuDelaDesCreances() throws Exception {
+        RecuPaiement recu = new RecuPaiement("TMK", "Jean Kouassi", "0712345678", List.of("1234 AB 01"),
+                List.of(ModePaiement.ESPECES), List.of(ligne("Recette", NatureImputation.RECETTE, "15000")),
+                BigDecimal.ZERO, new BigDecimal("12000"), null, LocalDateTime.of(2026, 9, 14, 11, 32));
+
+        assertThat(texte(renderer.renderRecuPdf(recu)))
+                .contains("Total restant dû (recettes et cotisations) : 12 000 FCFA")
                 .doesNotContain("Reste à payer");
     }
 

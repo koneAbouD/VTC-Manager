@@ -1,8 +1,15 @@
 package com.tmk.vtcmanager.application.usecases.recu;
 
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
+import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
+import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
+import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
+import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
+import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
+import com.tmk.vtcmanager.application.domain.recette.LigneRecetteFiltres;
+import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.domain.recu.LigneRecuPaiement;
 import com.tmk.vtcmanager.application.domain.recu.RecuPaiement;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
@@ -10,11 +17,15 @@ import com.tmk.vtcmanager.application.domain.versement.ImputationVersement;
 import com.tmk.vtcmanager.application.exception.RecuImpossibleException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.document.RecuDocumentRenderer;
+import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
+import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
+import com.tmk.vtcmanager.application.services.ChauffeursAuProgrammeService;
 import com.tmk.vtcmanager.application.services.LectureImputationService;
 import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,6 +56,9 @@ public class GenererRecuPdfUseCase {
     private final OperationFinanciereRepository operationFinanciereRepository;
     private final LectureImputationService lectureImputationService;
     private final RecuDocumentRenderer recuDocumentRenderer;
+    private final LigneRecetteRepository ligneRecetteRepository;
+    private final LigneCotisationRepository ligneCotisationRepository;
+    private final ChauffeursAuProgrammeService chauffeursAuProgrammeService;
 
     public byte[] executer(List<Long> operationIds) {
         return recuDocumentRenderer.renderRecuPdf(construire(operationIds));
@@ -127,7 +141,54 @@ public class GenererRecuPdfUseCase {
                         .distinct().toList(),
                 List.copyOf(lignes),
                 resteDu(imputations),
+                chauffeur == null || chauffeur.getId() == null ? null : detteChauffeur(chauffeur.getId()),
+                auVolant(chauffeur),
                 LocalDateTime.now());
+    }
+
+    /**
+     * Tout ce que le chauffeur doit encore, recettes et cotisations confondues,
+     * sur les journées échues — celles de demain ne lui sont pas encore
+     * réclamées. Une recette au réel n'a pas de dû d'avance : elle n'y entre
+     * pas, faute de montant à opposer. Lu après l'encaissement, ce solde inclut
+     * déjà ce que le reçu atteste.
+     */
+    private BigDecimal detteChauffeur(Long chauffeurId) {
+        LocalDate aujourdHui = LocalDate.now();
+        BigDecimal recettes = ligneRecetteRepository.findByCriteres(LigneRecetteFiltres.builder()
+                        .chauffeurId(chauffeurId)
+                        .statuts(List.of(StatutLigneRecette.EN_ATTENTE, StatutLigneRecette.PARTIELLEMENT_ENCAISSE))
+                        .dateFin(aujourdHui)
+                        .build())
+                .stream().map(GenererRecuPdfUseCase::restant)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal cotisations = ligneCotisationRepository.findByCriteres(LigneCotisationFiltres.builder()
+                        .chauffeurId(chauffeurId)
+                        .statuts(List.of(StatutLigneCotisation.EN_ATTENTE, StatutLigneCotisation.PARTIELLEMENT_ENCAISSE))
+                        .dateFin(aujourdHui)
+                        .build())
+                .stream().filter(l -> l.getMontantDu() != null).map(LigneCotisation::montantRestant)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return recettes.add(cotisations);
+    }
+
+    /**
+     * En service, le chauffeur roule aujourd'hui ou c'est son tour de repos —
+     * le planning du jour tranche, comme sur la pastille de sa fiche. Tout
+     * autre statut ne se salue ni d'une route ni d'un repos.
+     */
+    private Boolean auVolant(Chauffeur chauffeur) {
+        if (chauffeur == null || chauffeur.getId() == null
+                || chauffeur.getStatut() != ChauffeurStatus.EN_SERVICE) {
+            return null;
+        }
+        return chauffeursAuProgrammeService.estAuProgramme(chauffeur.getId(), LocalDate.now());
+    }
+
+    private static BigDecimal restant(LigneRecette ligne) {
+        if (ligne.getMontantAttendu() == null) return BigDecimal.ZERO;
+        BigDecimal encaisse = ligne.getMontantEncaisse() != null ? ligne.getMontantEncaisse() : BigDecimal.ZERO;
+        return ligne.getMontantAttendu().subtract(encaisse).max(BigDecimal.ZERO);
     }
 
     /**

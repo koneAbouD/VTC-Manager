@@ -45,6 +45,8 @@ RecuEcritures recuEcrituresFromJson(Map<String, dynamic> json) {
               lignes.first['referenceEcriture']) as String?
           : null,
       resteDu: (json['resteDu'] as num?)?.toDouble(),
+      detteTotale: (json['detteChauffeur'] as num?)?.toDouble(),
+      auVolant: json['chauffeurAuVolant'] as bool?,
     ),
   );
 }

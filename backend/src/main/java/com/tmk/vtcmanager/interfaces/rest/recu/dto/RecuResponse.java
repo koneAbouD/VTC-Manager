@@ -19,7 +19,9 @@ public record RecuResponse(
         List<ModePaiement> modesPaiement,
         List<Ligne> lignes,
         BigDecimal total,
-        BigDecimal resteDu
+        BigDecimal resteDu,
+        BigDecimal detteChauffeur,
+        Boolean chauffeurAuVolant
 ) {
 
     public record Ligne(
@@ -40,7 +42,9 @@ public record RecuResponse(
                 recu.modesPaiement(),
                 recu.lignes().stream().map(RecuResponse::ligne).toList(),
                 recu.total(),
-                recu.resteDu());
+                recu.resteDu(),
+                recu.detteChauffeur(),
+                recu.chauffeurAuVolant());
     }
 
     private static Ligne ligne(LigneRecuPaiement l) {

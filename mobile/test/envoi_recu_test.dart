@@ -24,9 +24,12 @@ class _Recus implements RecuRepository {
     return reponse;
   }
 
+  /// Ce que `GET /recus/{ids}` rend : la dette du chauffeur, ou un échec.
+  Either<Failure, RecuEcritures> lecture = const Left(ServerFailure('indisponible'));
+
   @override
-  Future<Either<Failure, RecuEcritures>> getRecu(List<int> operationIds) =>
-      throw UnimplementedError();
+  Future<Either<Failure, RecuEcritures>> getRecu(List<int> operationIds) async =>
+      lecture;
 }
 
 void main() {
@@ -186,6 +189,34 @@ void main() {
     expect(enregistres, isEmpty);
     expect(conversations, isEmpty);
     expect(appelsNatifs, isEmpty);
+  });
+
+  test('la dette lue au serveur remplace le solde de ces seules créances',
+      () async {
+    final recus = _Recus(Right(pdf))
+      ..lecture = Right(RecuEcritures(
+          recu: recu.avecSituation(detteTotale: 12000, auVolant: false),
+          telephone: '0712345678'));
+
+    await envoyerRecuPdf(
+        recus: recus,
+        operationIds: const [501],
+        recu: recu,
+        telephone: '0712345678',
+        ouvrirConversation: ouvrir,
+        enregistrerFichier: enregistrer);
+
+    expect(conversations.single.$2,
+        contains('Reste à payer (recettes et cotisations) : *${montantRecu(12000)}*'));
+    expect(conversations.single.$2, isNot(contains('à jour')));
+    expect(conversations.single.$2, endsWith('Merci et bon repos !'));
+  });
+
+  test('dette illisible : le reçu ne prétend pas que le chauffeur est à jour',
+      () async {
+    await envoyer(telephone: '0712345678');
+
+    expect(conversations.single.$2, isNot(contains('à jour')));
   });
 
   test('sans écriture, le serveur n\'est même pas interrogé', () async {

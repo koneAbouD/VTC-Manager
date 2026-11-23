@@ -13,6 +13,8 @@ void main() {
     String? mode = 'Espèces',
     String? reference,
     double? resteDu,
+    double? detteTotale,
+    bool? auVolant = true,
   }) =>
       RecuPaiement(
         chauffeur: chauffeur,
@@ -23,6 +25,8 @@ void main() {
         date: DateTime(2026, 9, 11),
         reference: reference,
         resteDu: resteDu,
+        detteTotale: detteTotale,
+        auVolant: auVolant,
       );
 
   test('le montant reçu vient en premier, en gras, avec le jour et le mode', () {
@@ -57,9 +61,25 @@ void main() {
     expect(composerRecu(recu(mode: 'Mobile Money')), contains('par Mobile Money'));
   });
 
-  test('un solde nul dit au chauffeur qu\'il est à jour', () {
-    final texte = composerRecu(recu(resteDu: 0));
+  test('sans aucune dette, le chauffeur est à jour', () {
+    final texte = composerRecu(recu(resteDu: 0, detteTotale: 0));
     expect(texte, contains('Vous êtes à jour.'));
+    expect(texte, isNot(contains('Reste à payer')));
+  });
+
+  // Solder une journée ne solde pas les autres : la recette d'avant-hier ou
+  // une cotisation impayée restent dues.
+  test('une créance soldée n\'efface pas les autres dettes', () {
+    final texte = composerRecu(recu(resteDu: 0, detteTotale: 12000));
+    expect(texte, isNot(contains('à jour')));
+    expect(texte,
+        contains('Reste à payer (recettes et cotisations) : *${montantRecu(12000)}*'));
+  });
+
+  test('dette inconnue : un solde nul sur ces créances ne dit pas « à jour »',
+      () {
+    final texte = composerRecu(recu(resteDu: 0));
+    expect(texte, isNot(contains('à jour')));
     expect(texte, isNot(contains('Reste à payer')));
   });
 
@@ -90,6 +110,18 @@ void main() {
   test('véhicule et référence tiennent sur une ligne', () {
     expect(composerRecu(recu(reference: 'MP260911.1523.A1234')),
         contains('Véhicule 1234 AB 01 · Réf. MP260911.1523.A1234'));
+  });
+
+  test('au volant aujourd\'hui : bonne route ; de repos : bon repos', () {
+    expect(composerRecu(recu(auVolant: true)), endsWith('Merci et bonne route !'));
+    expect(composerRecu(recu(auVolant: false)), endsWith('Merci et bon repos !'));
+  });
+
+  test('hors service ou inconnu : un merci seul, ni route ni repos', () {
+    final texte = composerRecu(recu(auVolant: null));
+    expect(texte, endsWith('Merci !'));
+    expect(texte, isNot(contains('route')));
+    expect(texte, isNot(contains('repos')));
   });
 
   test('joint au PDF, le message le signale ; seul, il n\'en dit rien', () {

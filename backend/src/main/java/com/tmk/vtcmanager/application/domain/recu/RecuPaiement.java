@@ -18,6 +18,15 @@ import java.util.Objects;
  *
  * @param resteDu ce qui reste dû sur les créances couvertes, chacune comptée
  *                une fois ; nul dès qu'une créance l'ignore
+ * @param detteChauffeur tout ce que le chauffeur doit encore en recettes et
+ *                cotisations échues, ces créances comprises ; nulle quand le
+ *                reçu n'a pas de chauffeur. C'est elle, et non {@code resteDu},
+ *                qui dit s'il est à jour : solder une journée ne solde pas les
+ *                autres
+ * @param chauffeurAuVolant vrai si le chauffeur est en service et au planning
+ *                du jour, faux s'il est en service mais au repos aujourd'hui,
+ *                nul pour tout autre statut : le message le salue en
+ *                conséquence
  */
 public record RecuPaiement(
         String entreprise,
@@ -27,6 +36,8 @@ public record RecuPaiement(
         List<ModePaiement> modesPaiement,
         List<LigneRecuPaiement> lignes,
         BigDecimal resteDu,
+        BigDecimal detteChauffeur,
+        Boolean chauffeurAuVolant,
         LocalDateTime emisLe
 ) {
 

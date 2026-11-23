@@ -1052,9 +1052,13 @@ public class UseCaseBeanConfiguration {
     public GenererRecuPdfUseCase genererRecuPdfUseCase(
             OperationFinanciereRepository operationFinanciereRepository,
             LectureImputationService lectureImputationService,
-            RecuDocumentRenderer recuDocumentRenderer) {
+            RecuDocumentRenderer recuDocumentRenderer,
+            LigneRecetteRepository ligneRecetteRepository,
+            LigneCotisationRepository ligneCotisationRepository,
+            ChauffeursAuProgrammeService chauffeursAuProgrammeService) {
         return new GenererRecuPdfUseCase(operationFinanciereRepository, lectureImputationService,
-                recuDocumentRenderer);
+                recuDocumentRenderer, ligneRecetteRepository, ligneCotisationRepository,
+                chauffeursAuProgrammeService);
     }
 
     @Bean
