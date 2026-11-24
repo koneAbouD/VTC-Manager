@@ -68,5 +68,15 @@ public interface LigneCotisationRepository {
     /** Annule la restitution (arrête annulé) : détache l'arrêté et recalcule le statut depuis le montant encaissé. */
     void annulerRestitution(Long ligneId, BigDecimal montant);
 
+    /**
+     * Abandonne le reste d'une ligne ouverte (en attente, ou partiellement
+     * encaissée sans fonds à rendre) à l'arrêté du compte, en la rattachant à
+     * cet arrêté. Sans effet sur une ligne qui détient encore du fonds.
+     */
+    void annulerParArrete(Long ligneId, Long arreteId, String motif);
+
+    /** Arrêté annulé : rouvre les lignes qu'il avait annulées, statut recalculé depuis l'encaissé. */
+    void restaurerAnnuleesParArrete(Long arreteId);
+
     void deleteById(Long id);
 }

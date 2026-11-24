@@ -69,11 +69,27 @@ void main() {
 
   // Solder une journée ne solde pas les autres : la recette d'avant-hier ou
   // une cotisation impayée restent dues.
-  test('une créance soldée n\'efface pas les autres dettes', () {
+  test('une journée soldée n\'efface pas les autres créances', () {
     final texte = composerRecu(recu(resteDu: 0, detteTotale: 12000));
     expect(texte, isNot(contains('à jour')));
+    expect(texte, isNot(contains('Reste à payer')));
     expect(texte,
-        contains('Reste à payer (recettes et cotisations) : *${montantRecu(12000)}*'));
+        contains('\n\n📌 Total de vos créances à ce jour : *${montantRecu(12000)}*\n\n'));
+  });
+
+  test('reste du jour et total des créances se disent séparément', () {
+    final texte = composerRecu(recu(resteDu: 1500, detteTotale: 12000));
+    expect(texte,
+        contains('Reste à payer (recette et cotisation du jour) : *${montantRecu(1500)}*'));
+    expect(texte,
+        contains('📌 Total de vos créances à ce jour : *${montantRecu(12000)}*'));
+  });
+
+  test('aucune créance mais la cotisation du jour reste due : pas « à jour »',
+      () {
+    final texte = composerRecu(recu(resteDu: 500, detteTotale: 0));
+    expect(texte, isNot(contains('à jour')));
+    expect(texte, contains('Aucune autre créance en cours.'));
   });
 
   test('dette inconnue : un solde nul sur ces créances ne dit pas « à jour »',
@@ -85,7 +101,8 @@ void main() {
 
   test('un reste dû est annoncé en gras', () {
     expect(composerRecu(recu(resteDu: 5000)),
-        contains('Reste à payer : *${montantRecu(5000)}*'));
+        contains('Reste à payer (recette et cotisation du jour) : '
+            '*${montantRecu(5000)}*'));
   });
 
   // Une recette au réel n'a pas de dû d'avance : le reçu doit alors se taire

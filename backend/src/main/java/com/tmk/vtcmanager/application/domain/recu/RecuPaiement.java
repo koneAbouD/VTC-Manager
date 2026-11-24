@@ -16,13 +16,14 @@ import java.util.Objects;
  * et la cotisation du jour — ou toutes les journées qu'un chauffeur a soldées
  * d'un même geste de caisse.
  *
- * @param resteDu ce qui reste dû sur les créances couvertes, chacune comptée
- *                une fois ; nul dès qu'une créance l'ignore
- * @param detteChauffeur tout ce que le chauffeur doit encore en recettes et
- *                cotisations échues, ces créances comprises ; nulle quand le
- *                reçu n'a pas de chauffeur. C'est elle, et non {@code resteDu},
- *                qui dit s'il est à jour : solder une journée ne solde pas les
- *                autres
+ * @param resteDu ce qui reste à payer sur la recette et la cotisation des
+ *                journées couvertes (pour un reçu de pénalité seule : sur ses
+ *                créances) ; nul dès qu'une recette au réel l'ignore
+ * @param detteChauffeur le total des créances du chauffeur — recettes,
+ *                pénalités et contraventions échues, hors cotisation — tel que
+ *                le module Créances le lit ; nul quand le reçu n'a pas de
+ *                chauffeur. C'est lui, avec {@code resteDu}, qui dit s'il est
+ *                à jour : solder une journée ne solde pas les autres
  * @param chauffeurAuVolant vrai si le chauffeur est en service et au planning
  *                du jour, faux s'il est en service mais au repos aujourd'hui,
  *                nul pour tout autre statut : le message le salue en

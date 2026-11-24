@@ -3,20 +3,21 @@ package com.tmk.vtcmanager.application.usecases.recu;
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
-import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
+import com.tmk.vtcmanager.application.domain.finance.LigneCreance;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
-import com.tmk.vtcmanager.application.domain.recette.LigneRecetteFiltres;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.domain.recu.LigneRecuPaiement;
 import com.tmk.vtcmanager.application.domain.recu.RecuPaiement;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
 import com.tmk.vtcmanager.application.domain.versement.ImputationVersement;
+import com.tmk.vtcmanager.application.domain.versement.NatureImputation;
 import com.tmk.vtcmanager.application.exception.RecuImpossibleException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.document.RecuDocumentRenderer;
+import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
@@ -59,6 +60,7 @@ public class GenererRecuPdfUseCase {
     private final LigneRecetteRepository ligneRecetteRepository;
     private final LigneCotisationRepository ligneCotisationRepository;
     private final ChauffeursAuProgrammeService chauffeursAuProgrammeService;
+    private final CreanceRepository creanceRepository;
 
     public byte[] executer(List<Long> operationIds) {
         return recuDocumentRenderer.renderRecuPdf(construire(operationIds));
@@ -140,36 +142,62 @@ public class GenererRecuPdfUseCase {
                 ecritures.stream().map(OperationFinanciere::getModePaiement).filter(Objects::nonNull)
                         .distinct().toList(),
                 List.copyOf(lignes),
-                resteDu(imputations),
-                chauffeur == null || chauffeur.getId() == null ? null : detteChauffeur(chauffeur.getId()),
+                resteDuJour(chauffeur == null ? null : chauffeur.getId(), imputations),
+                chauffeur == null || chauffeur.getId() == null ? null : totalCreances(chauffeur.getId()),
                 auVolant(chauffeur),
                 LocalDateTime.now());
     }
 
     /**
-     * Tout ce que le chauffeur doit encore, recettes et cotisations confondues,
-     * sur les journées échues — celles de demain ne lui sont pas encore
-     * réclamées. Une recette au réel n'a pas de dû d'avance : elle n'y entre
-     * pas, faute de montant à opposer. Lu après l'encaissement, ce solde inclut
-     * déjà ce que le reçu atteste.
+     * Le total des créances du chauffeur, lu comme le module Créances le lit :
+     * sur {@code v_creances_chauffeurs}, où le réglé se recompte sur les
+     * encaissements non annulés (et non sur les colonnes dénormalisées
+     * {@code montant_encaisse} / {@code statut}, qui décrochent), et où entrent
+     * recettes, pénalités et contraventions échues. La cotisation n'y est pas :
+     * c'est l'épargne du chauffeur, pas une dette — elle se dit dans le reste
+     * du jour. Lu après l'encaissement, ce total tient déjà compte du reçu.
      */
-    private BigDecimal detteChauffeur(Long chauffeurId) {
-        LocalDate aujourdHui = LocalDate.now();
-        BigDecimal recettes = ligneRecetteRepository.findByCriteres(LigneRecetteFiltres.builder()
-                        .chauffeurId(chauffeurId)
-                        .statuts(List.of(StatutLigneRecette.EN_ATTENTE, StatutLigneRecette.PARTIELLEMENT_ENCAISSE))
-                        .dateFin(aujourdHui)
-                        .build())
-                .stream().map(GenererRecuPdfUseCase::restant)
+    private BigDecimal totalCreances(Long chauffeurId) {
+        return creanceRepository.getLignesCreance(chauffeurId).stream()
+                .map(LigneCreance::getRestant)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal cotisations = ligneCotisationRepository.findByCriteres(LigneCotisationFiltres.builder()
-                        .chauffeurId(chauffeurId)
-                        .statuts(List.of(StatutLigneCotisation.EN_ATTENTE, StatutLigneCotisation.PARTIELLEMENT_ENCAISSE))
-                        .dateFin(aujourdHui)
-                        .build())
-                .stream().filter(l -> l.getMontantDu() != null).map(LigneCotisation::montantRestant)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return recettes.add(cotisations);
+    }
+
+    /**
+     * Ce qui reste à payer sur la recette et la cotisation des journées que le
+     * reçu couvre — et seulement celles-là : la créance du jour que le
+     * versement n'a pas touchée (la cotisation quand seule la recette a été
+     * versée) y compte aussi. Un reçu qui ne couvre aucune recette ni
+     * cotisation — une pénalité seule — garde le reste de ses créances. Une
+     * recette au réel n'a pas de dû d'avance : le reste est alors inconnu.
+     */
+    private BigDecimal resteDuJour(Long chauffeurId, List<ImputationVersement> imputations) {
+        Set<LocalDate> journees = new LinkedHashSet<>();
+        for (ImputationVersement imputation : imputations) {
+            if ((imputation.nature() == NatureImputation.RECETTE
+                    || imputation.nature() == NatureImputation.COTISATION)
+                    && imputation.dateReference() != null) {
+                journees.add(imputation.dateReference());
+            }
+        }
+        if (chauffeurId == null || journees.isEmpty()) return resteDu(imputations);
+
+        BigDecimal reste = BigDecimal.ZERO;
+        for (LocalDate journee : journees) {
+            for (LigneRecette ligne : ligneRecetteRepository.findByChauffeurIdAndDateRecette(chauffeurId, journee)) {
+                if (ligne.getAnnuleLe() != null || ligne.getStatut() == StatutLigneRecette.ANNULEE) continue;
+                if (ligne.getMontantAttendu() == null) return null;
+                reste = reste.add(restant(ligne));
+            }
+            for (LigneCotisation ligne : ligneCotisationRepository.findByChauffeurIdAndDateCotisation(chauffeurId, journee)) {
+                if (ligne.getAnnuleLe() != null || ligne.getMontantDu() == null
+                        || ligne.getStatut() == StatutLigneCotisation.ANNULEE
+                        || ligne.getStatut() == StatutLigneCotisation.RESTITUEE) continue;
+                reste = reste.add(ligne.montantRestant());
+            }
+        }
+        return reste;
     }
 
     /**

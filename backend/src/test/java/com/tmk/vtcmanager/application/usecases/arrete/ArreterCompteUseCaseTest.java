@@ -47,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -269,6 +270,51 @@ class ArreterCompteUseCaseTest {
         verify(ligneRecetteRepository, never()).recalculerDepuisEncaissements(200L);
         verifieRestitution(100L, 1L, "100");
         verify(ligneCotisationRepository, never()).marquerRestituee(eq(101L), anyLong(), any());
+    }
+
+    private LigneCotisation ouverte(Long id, String du, String encaisse, String restitue) {
+        BigDecimal enc = new BigDecimal(encaisse);
+        return LigneCotisation.builder()
+                .id(id).vehiculeId(VEHICULE).chauffeurId(CHAUFFEUR)
+                .dateCotisation(LocalDate.of(2026, 6, 20)).nomCotisation("Entretien")
+                .montantDu(new BigDecimal(du)).montantEncaisse(enc)
+                .montantRestitue(new BigDecimal(restitue))
+                .statut(enc.signum() == 0 ? StatutLigneCotisation.EN_ATTENTE
+                        : StatutLigneCotisation.PARTIELLEMENT_ENCAISSE)
+                .build();
+    }
+
+    @Test
+    @DisplayName("Le compte arrêté, les cotisations ouvertes de la période sont annulées")
+    void annule_les_cotisations_ouvertes_de_la_periode() {
+        // 100 encaissée (rendue) ; 101 en attente ; 102 partielle déjà rendue ;
+        // 103 partielle qui détient encore du fonds, écartée par la sélection.
+        when(ligneCotisationRepository.findByCriteres(any())).thenReturn(List.of(
+                cotisation(100L, BigDecimal.valueOf(100)),
+                ouverte(101L, "100", "0", "0"),
+                ouverte(102L, "100", "40", "40"),
+                ouverte(103L, "100", "30", "0")));
+        when(creanceRepository.getLignesCreance(CHAUFFEUR)).thenReturn(List.of());
+        when(compteTresorerieResolver.resoudre(any(), eq(ModePaiement.ESPECES))).thenReturn(5L);
+
+        useCase.executer(PerimetreArrete.CHAUFFEUR, CHAUFFEUR, DEBUT, FIN,
+                LocalDate.of(2026, 7, 1), ModePaiement.ESPECES, null,
+                new SelectionArrete(java.util.Set.of(100L), null));
+
+        verify(ligneCotisationRepository).annulerParArrete(eq(101L), eq(1L), contains("ARR-2026-000001"));
+        verify(ligneCotisationRepository).annulerParArrete(eq(102L), eq(1L), anyString());
+        verify(ligneCotisationRepository, never()).annulerParArrete(eq(100L), anyLong(), anyString());
+        verify(ligneCotisationRepository, never()).annulerParArrete(eq(103L), anyLong(), anyString());
+
+        // Lues sur le périmètre de l'arrêté.
+        ArgumentCaptor<com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres> filtres =
+                ArgumentCaptor.forClass(com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres.class);
+        verify(ligneCotisationRepository, org.mockito.Mockito.atLeastOnce()).findByCriteres(filtres.capture());
+        assertThat(filtres.getAllValues()).anySatisfy(f -> {
+            assertThat(f.getChauffeurId()).isEqualTo(CHAUFFEUR);
+            assertThat(f.getVehiculeId()).isNull();
+            assertThat(f.getDateFin()).isEqualTo(FIN);
+        });
     }
 
     @Test

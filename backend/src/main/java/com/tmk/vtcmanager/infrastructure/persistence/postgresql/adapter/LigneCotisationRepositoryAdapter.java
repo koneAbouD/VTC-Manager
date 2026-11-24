@@ -65,6 +65,7 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
         // ligne a cessé d'être due, et son effacement qui la rend de nouveau
         // exigible à la restauration.
         entity.setAnnuleLe(ligne.getAnnuleLe());
+        entity.setAnnuleeParArreteId(ligne.getAnnuleeParArreteId());
 
         return mapper.toDomain(jpaRepository.save(entity));
     }
@@ -198,6 +199,18 @@ public class LigneCotisationRepositoryAdapter implements LigneCotisationReposito
     @Transactional
     public void annulerRestitution(Long ligneId, BigDecimal montant) {
         jpaRepository.annulerRestitution(ligneId, montant);
+    }
+
+    @Override
+    @Transactional
+    public void annulerParArrete(Long ligneId, Long arreteId, String motif) {
+        jpaRepository.annulerParArrete(ligneId, arreteId, motif);
+    }
+
+    @Override
+    @Transactional
+    public void restaurerAnnuleesParArrete(Long arreteId) {
+        jpaRepository.restaurerAnnuleesParArrete(arreteId);
     }
 
     @Override

@@ -191,11 +191,12 @@ void main() {
     expect(appelsNatifs, isEmpty);
   });
 
-  test('la dette lue au serveur remplace le solde de ces seules créances',
+  test('le serveur donne le reste du jour et le total des créances',
       () async {
     final recus = _Recus(Right(pdf))
       ..lecture = Right(RecuEcritures(
-          recu: recu.avecSituation(detteTotale: 12000, auVolant: false),
+          recu: recu.avecSituation(
+              resteDu: 1500, detteTotale: 12000, auVolant: false),
           telephone: '0712345678'));
 
     await envoyerRecuPdf(
@@ -206,8 +207,12 @@ void main() {
         ouvrirConversation: ouvrir,
         enregistrerFichier: enregistrer);
 
+    expect(
+        conversations.single.$2,
+        contains('Reste à payer (recette et cotisation du jour) : '
+            '*${montantRecu(1500)}*'));
     expect(conversations.single.$2,
-        contains('Reste à payer (recettes et cotisations) : *${montantRecu(12000)}*'));
+        contains('📌 Total de vos créances à ce jour : *${montantRecu(12000)}*'));
     expect(conversations.single.$2, isNot(contains('à jour')));
     expect(conversations.single.$2, endsWith('Merci et bon repos !'));
   });

@@ -43,15 +43,17 @@ class RecuPaiement {
   final DateTime date;
   final String? reference;
 
-  /// Ce qui reste dû après ce versement. Null quand le montant n'est pas
-  /// connu — une recette au réel n'a pas de dû d'avance — auquel cas le reçu
-  /// n'en dit rien plutôt que d'annoncer un solde faux.
+  /// Ce qui reste à payer sur la recette et la cotisation du jour réglé — et
+  /// seulement celles-là. Null quand le montant n'est pas connu — une recette
+  /// au réel n'a pas de dû d'avance — auquel cas le reçu n'en dit rien plutôt
+  /// que d'annoncer un solde faux.
   final double? resteDu;
 
-  /// Tout ce que le chauffeur doit encore en recettes et cotisations échues,
-  /// ces créances comprises, tel que le serveur le lit. C'est elle seule qui
-  /// permet de dire « à jour » : solder une journée ne solde pas les autres.
-  /// Null quand elle n'est pas connue — le reçu ne dit alors jamais « à jour ».
+  /// Le total des créances du chauffeur — recettes, pénalités et
+  /// contraventions échues, hors cotisation — tel que le module Créances le
+  /// lit. Avec [resteDu], c'est lui qui permet de dire « à jour » : solder une
+  /// journée ne solde pas les autres. Null quand il n'est pas connu — le reçu
+  /// ne dit alors jamais « à jour ».
   final double? detteTotale;
 
   /// En service, le chauffeur roule aujourd'hui (vrai) ou c'est son tour de
@@ -71,9 +73,12 @@ class RecuPaiement {
     this.auVolant,
   });
 
-  /// Le même reçu, avec ce que le serveur sait du chauffeur aujourd'hui : sa
-  /// dette et s'il roule.
-  RecuPaiement avecSituation({double? detteTotale, bool? auVolant}) =>
+  /// Le même reçu, avec ce que le serveur sait du chauffeur aujourd'hui : le
+  /// reste du jour, le total de ses créances et s'il roule. Le reste du jour
+  /// du serveur prime : il compte aussi la créance du jour que le versement
+  /// n'a pas touchée.
+  RecuPaiement avecSituation(
+          {double? resteDu, double? detteTotale, bool? auVolant}) =>
       RecuPaiement(
         chauffeur: chauffeur,
         vehicule: vehicule,
@@ -81,7 +86,7 @@ class RecuPaiement {
         modePaiement: modePaiement,
         date: date,
         reference: reference,
-        resteDu: resteDu,
+        resteDu: resteDu ?? this.resteDu,
         detteTotale: detteTotale,
         auVolant: auVolant,
       );
@@ -124,9 +129,9 @@ String composerRecu(RecuPaiement recu, {bool avecPieceJointe = false}) {
     ],
   ];
 
-  final ligneSolde = _ligneSolde(recu);
+  final ligneReste = _ligneResteDuJour(recu);
   final solde = <String>[
-    if (ligneSolde != null) ligneSolde,
+    if (ligneReste != null) ligneReste,
     if (_renseigne(recu.vehicule) || _renseigne(recu.reference))
       [
         if (_renseigne(recu.vehicule)) 'Véhicule ${recu.vehicule!.trim()}',
@@ -138,27 +143,35 @@ String composerRecu(RecuPaiement recu, {bool avecPieceJointe = false}) {
     ['✅ *Paiement reçu — $nomEntrepriseRecu*'],
     corps,
     solde,
+    if (_ligneCreances(recu) case final creances?) [creances],
     if (avecPieceJointe) ['📎 Le reçu détaillé vous est envoyé en PDF.'],
     [_motDeLaFin(recu.auVolant)],
   ].where((bloc) => bloc.isNotEmpty).map((bloc) => bloc.join('\n')).join('\n\n');
 }
 
-/// Le solde annoncé au chauffeur. Sa dette totale prime : elle couvre ses
-/// autres journées de recette et de cotisation, que ce versement n'a pas
-/// soldées. Sans elle, seul un reste sur ces créances se dit — jamais « à
-/// jour », qu'on ne peut pas affirmer.
-String? _ligneSolde(RecuPaiement recu) {
-  final dette = recu.detteTotale;
-  if (dette != null) {
-    return dette <= 0
-        ? 'Vous êtes à jour.'
-        : 'Reste à payer (recettes et cotisations) : *${montantRecu(dette)}*';
+/// Le reste à payer sur la recette et la cotisation du jour, seulement : les
+/// autres journées se disent dans le total des créances. Rien quand ce reste
+/// est soldé ou inconnu.
+String? _ligneResteDuJour(RecuPaiement recu) {
+  final reste = recu.resteDu;
+  if (reste == null || reste <= 0) return null;
+  return 'Reste à payer (recette et cotisation du jour) : '
+      '*${montantRecu(reste)}*';
+}
+
+/// Le rappel du total des créances du chauffeur, en paragraphe à part. « À
+/// jour » seulement quand il est nul et que le jour est soldé ; inconnu, il
+/// se tait — on ne peut rien affirmer.
+String? _ligneCreances(RecuPaiement recu) {
+  final total = recu.detteTotale;
+  if (total == null) return null;
+  if (total > 0) {
+    return '📌 Total de vos créances à ce jour : *${montantRecu(total)}*';
   }
   final reste = recu.resteDu;
-  if (reste != null && reste > 0) {
-    return 'Reste à payer : *${montantRecu(reste)}*';
-  }
-  return null;
+  return reste == null || reste <= 0
+      ? 'Vous êtes à jour.'
+      : 'Aucune autre créance en cours.';
 }
 
 /// « Bonne route » à qui roule aujourd'hui, « bon repos » à qui est de repos ;

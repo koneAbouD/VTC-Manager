@@ -1055,10 +1055,11 @@ public class UseCaseBeanConfiguration {
             RecuDocumentRenderer recuDocumentRenderer,
             LigneRecetteRepository ligneRecetteRepository,
             LigneCotisationRepository ligneCotisationRepository,
-            ChauffeursAuProgrammeService chauffeursAuProgrammeService) {
+            ChauffeursAuProgrammeService chauffeursAuProgrammeService,
+            CreanceRepository creanceRepository) {
         return new GenererRecuPdfUseCase(operationFinanciereRepository, lectureImputationService,
                 recuDocumentRenderer, ligneRecetteRepository, ligneCotisationRepository,
-                chauffeursAuProgrammeService);
+                chauffeursAuProgrammeService, creanceRepository);
     }
 
     @Bean

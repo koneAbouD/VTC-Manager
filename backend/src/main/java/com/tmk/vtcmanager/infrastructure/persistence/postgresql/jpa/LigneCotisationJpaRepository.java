@@ -122,6 +122,48 @@ public interface LigneCotisationJpaRepository
             """, nativeQuery = true)
     void annulerRestitution(@Param("ligneId") Long ligneId, @Param("montant") BigDecimal montant);
 
+    /**
+     * Abandonne le reste d'une ligne ouverte à l'arrêté du compte. Ne touche
+     * qu'une ligne encore active et sans fonds à rendre : un dépôt détenu ne
+     * disparaît jamais sur une ligne annulée.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE lignes_cotisation
+            SET statut = 'ANNULEE',
+                annule_le = now(),
+                motif_annulation = :motif,
+                annulee_par_arrete_id = :arreteId,
+                updated_at = now()
+            WHERE id = :ligneId
+              AND statut IN ('EN_ATTENTE', 'PARTIELLEMENT_ENCAISSE')
+              AND montant_encaisse - montant_restitue <= 0
+            """, nativeQuery = true)
+    void annulerParArrete(@Param("ligneId") Long ligneId, @Param("arreteId") Long arreteId,
+                          @Param("motif") String motif);
+
+    /**
+     * Rouvre les lignes que l'arrêté avait annulées, au statut que dit leur
+     * encaissé. Celles restaurées puis réannulées à la main depuis ne portent
+     * plus sa marque et restent annulées.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE lignes_cotisation
+            SET statut = CASE
+                    WHEN montant_encaisse >= montant_du THEN 'ENCAISSE'
+                    WHEN montant_encaisse > 0 THEN 'PARTIELLEMENT_ENCAISSE'
+                    ELSE 'EN_ATTENTE'
+                END,
+                annule_le = NULL,
+                motif_annulation = NULL,
+                annulee_par_arrete_id = NULL,
+                updated_at = now()
+            WHERE annulee_par_arrete_id = :arreteId
+              AND statut = 'ANNULEE'
+            """, nativeQuery = true)
+    void restaurerAnnuleesParArrete(@Param("arreteId") Long arreteId);
+
     /** Cf. {@link LigneRecetteJpaRepository#findByChauffeurIdAndDateRecette} : tous statuts. */
     @EntityGraph(attributePaths = {"vehicule", "chauffeur"})
     List<LigneCotisationEntity> findByChauffeurIdAndDateCotisation(Long chauffeurId, LocalDate dateCotisation);

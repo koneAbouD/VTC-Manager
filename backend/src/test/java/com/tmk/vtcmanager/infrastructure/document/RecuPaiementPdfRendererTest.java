@@ -55,7 +55,7 @@ class RecuPaiementPdfRendererTest {
         assertThat(texte).contains("TMK", "REÇU DE PAIEMENT", "Jean Kouassi", "1234 AB 01",
                 "17 000 FCFA", "Recette", "Cotisation carburant", "15 000 FCFA", "2 000 FCFA",
                 "Payé le 11/09/2026", "En espèces", "réf. MP260911.1523",
-                "Reste à payer sur ces créances : 5 000 FCFA");
+                "Reste à payer (recette et cotisation du jour) : 5 000 FCFA");
     }
 
     @Test
@@ -78,7 +78,7 @@ class RecuPaiementPdfRendererTest {
                 BigDecimal.ZERO, new BigDecimal("12000"), null, LocalDateTime.of(2026, 9, 14, 11, 32));
 
         assertThat(texte(renderer.renderRecuPdf(recu)))
-                .contains("Total restant dû (recettes et cotisations) : 12 000 FCFA")
+                .contains("Total de vos créances : 12 000 FCFA")
                 .doesNotContain("Reste à payer");
     }
 

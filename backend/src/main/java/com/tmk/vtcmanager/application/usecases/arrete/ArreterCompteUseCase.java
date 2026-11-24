@@ -9,6 +9,7 @@ import com.tmk.vtcmanager.application.domain.arrete.SensArrete;
 import com.tmk.vtcmanager.application.domain.arrete.StatutArrete;
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
+import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.finance.LigneCreance;
 import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
@@ -52,6 +53,13 @@ import java.util.List;
  * encaissée. Partiellement payée, elle voit seulement sa part rendue consignée
  * et reste une créance ouverte pour le solde : la restituer en entier effacerait
  * de la balance âgée une dette que rien n'a éteinte.</p>
+ *
+ * <p>Le compte arrêté, les cotisations encore ouvertes de la période et du
+ * périmètre — en attente, ou partiellement encaissées dont le versé a été rendu
+ * — sont annulées : leur reste ne sera plus réclamé. Celles qui détiennent
+ * encore du fonds (écartées d'un arrêté partiel) restent ouvertes, sans quoi
+ * le dépôt disparaîtrait sur une ligne annulée. L'annulation de l'arrêté les
+ * rouvre.</p>
  *
  * <p>Le versement se résout toujours par bénéficiaire chauffeur : un arrêté par
  * véhicule multi-chauffeur produit plusieurs règlements.</p>
@@ -151,11 +159,13 @@ public class ArreterCompteUseCase {
 
         String reference = sequenceReferenceService.suivante(SequenceReferenceService.Journal.ARRETE);
 
+        LocalDate debutArrete = CalculerCompteCourantUseCase.debutEffectif(decomptes, periodeDebut);
+        LocalDate finArrete = CalculerCompteCourantUseCase.finEffective(decomptes, periodeFin);
         ArreteCompte entete = arreteCompteRepository.enregistrerEntete(ArreteCompte.builder()
                 .perimetre(perimetre)
                 .perimetreId(perimetreId)
-                .periodeDebut(CalculerCompteCourantUseCase.debutEffectif(decomptes, periodeDebut))
-                .periodeFin(CalculerCompteCourantUseCase.finEffective(decomptes, periodeFin))
+                .periodeDebut(debutArrete)
+                .periodeFin(finArrete)
                 .dateArrete(effetArrete)
                 .reference(reference)
                 .statut(StatutArrete.VALIDE)
@@ -185,6 +195,9 @@ public class ArreterCompteUseCase {
                 ligneCotisationRepository.marquerRestituee(cot.getId(), arreteId, partRendue);
             }
         }
+
+        abandonnerCotisationsOuvertes(perimetre, perimetreId,
+                debutArrete, finArrete, arreteId, reference);
 
         // Compensation des créances (au débit), par antériorité, cash-neutre.
         //
@@ -251,6 +264,29 @@ public class ArreterCompteUseCase {
         }
 
         return arreteCompteRepository.findById(arreteId).orElse(entete);
+    }
+
+    /**
+     * Annule les cotisations restées ouvertes sur la période arrêtée : en
+     * attente, ou partiellement encaissées sans plus rien à rendre. Lues après
+     * les restitutions de cet arrêté, qui viennent de vider le fonds des lignes
+     * retenues. Une ligne qui détient encore du fonds n'est pas touchée.
+     */
+    private void abandonnerCotisationsOuvertes(PerimetreArrete perimetre, Long perimetreId,
+                                               LocalDate debut, LocalDate fin,
+                                               Long arreteId, String reference) {
+        LigneCotisationFiltres filtres = LigneCotisationFiltres.builder()
+                .chauffeurId(perimetre == PerimetreArrete.CHAUFFEUR ? perimetreId : null)
+                .vehiculeId(perimetre == PerimetreArrete.VEHICULE ? perimetreId : null)
+                .dateDebut(debut)
+                .dateFin(fin)
+                .build();
+        String motif = "Reste abandonné à l'arrêté de compte " + reference;
+        ligneCotisationRepository.findByCriteres(filtres).stream()
+                .filter(LigneCotisation::estActive)
+                .filter(c -> c.getAnnuleLe() == null)
+                .filter(c -> c.fondRestituable().signum() == 0)
+                .forEach(c -> ligneCotisationRepository.annulerParArrete(c.getId(), arreteId, motif));
     }
 
     /** Éteint une créance sans mouvementer la trésorerie (compte null) ; renvoie l'id de l'opération de compensation. */

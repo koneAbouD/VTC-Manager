@@ -39,6 +39,12 @@ public class LigneCotisation {
     private LocalDateTime annuleLe;
     /** Arrêté de compte ayant soldé la ligne (RESTITUEE). Null tant qu'elle n'est pas restituée. */
     private Long arreteId;
+    /**
+     * Arrêté de compte qui a annulé la ligne en abandonnant son reste. Null
+     * pour une annulation manuelle : seul cet arrêté, s'il est annulé, la
+     * rouvre.
+     */
+    private Long annuleeParArreteId;
     @Builder.Default
     private List<EncaissementCotisation> encaissements = new ArrayList<>();
     /**
@@ -115,6 +121,7 @@ public class LigneCotisation {
         }
         this.motifAnnulation = null;
         this.annuleLe = null;
+        this.annuleeParArreteId = null;
     }
 
     /**

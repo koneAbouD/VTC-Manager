@@ -107,6 +107,7 @@ class AnnulerArreteUseCaseTest {
         verify(encaissementRepository).deleteById(700L);
         verify(ligneRecetteRepository).recalculerDepuisEncaissements(200L);
         verify(ligneCotisationRepository).annulerRestitution(eq(100L), any());
+        verify(ligneCotisationRepository).restaurerAnnuleesParArrete(1L);
         verify(arreteCompteRepository).annuler(1L, "Erreur de saisie");
     }
 
@@ -144,6 +145,27 @@ class AnnulerArreteUseCaseTest {
                 .hasMessageContaining("restaurez-la");
         verify(ligneCotisationRepository, never()).annulerRestitution(anyLong(), any());
         verify(operationFinanciereRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("Une cotisation annulée par l'arrêté lui-même ne bloque pas : elle est rouverte")
+    void rouvre_les_cotisations_annulees_par_l_arrete() {
+        when(arreteCompteRepository.findById(1L)).thenReturn(Optional.of(arreteValide()));
+        when(operationFinanciereRepository.findById(anyLong())).thenAnswer(inv ->
+                Optional.of(OperationFinanciere.builder().id(inv.getArgument(0)).statut(StatutOperation.ENCAISSE).build()));
+        when(ligneCotisationRepository.findById(100L)).thenReturn(Optional.of(
+                com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation.builder()
+                        .id(100L).dateCotisation(LocalDate.of(2026, 6, 10))
+                        .montantDu(BigDecimal.valueOf(200)).montantEncaisse(BigDecimal.valueOf(100))
+                        .statut(com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation.ANNULEE)
+                        .annuleeParArreteId(1L)
+                        .build()));
+
+        useCase.executer(1L, "Erreur de saisie");
+
+        verify(ligneCotisationRepository).restaurerAnnuleesParArrete(1L);
+        verify(ligneCotisationRepository).annulerRestitution(eq(100L), any());
+        verify(arreteCompteRepository).annuler(1L, "Erreur de saisie");
     }
 
     @Test

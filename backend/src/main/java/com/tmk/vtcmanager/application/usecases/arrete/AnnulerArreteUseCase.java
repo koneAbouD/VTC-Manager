@@ -28,7 +28,8 @@ import java.util.Optional;
  * Annule un arrêté de compte (avec motif obligatoire) en contre-passant tous ses
  * effets : les décaissements et les opérations de compensation sont annulés, les
  * créances rouvertes (recalcul depuis les encaissements restants) et les
- * cotisations rendues à leur statut d'origine, la part restituée reprise.
+ * cotisations rendues à leur statut d'origine, la part restituée reprise —
+ * y compris celles dont l'arrêté avait abandonné le reste.
  *
  * <p>Refusé si la période de l'arrêté est clôturée, ou si la caisse qui a versé
  * le net a été comptée depuis. Les écritures sont ici <b>neutralisées</b>
@@ -74,6 +75,8 @@ public class AnnulerArreteUseCase {
                 .map(l -> ligneCotisationRepository.findById(l.getDocumentId()))
                 .flatMap(Optional::stream)
                 .filter(c -> c.getStatut() == StatutLigneCotisation.ANNULEE)
+                // Annulée par cet arrêté lui-même : elle sera rouverte plus bas.
+                .filter(c -> !arreteId.equals(c.getAnnuleeParArreteId()))
                 .findFirst()
                 .ifPresent(c -> {
                     throw new IllegalStateException("La cotisation du " + c.getDateCotisation()
@@ -100,7 +103,10 @@ public class AnnulerArreteUseCase {
                 .filter(l -> l.getSens() == SensArrete.DEBIT)
                 .forEach(this::reverserCompensation);
 
-        // 3. Reprend la part que cet arrêté avait rendue et rouvre le fonds.
+        // 3. Rouvre les cotisations dont l'arrêté avait abandonné le reste.
+        ligneCotisationRepository.restaurerAnnuleesParArrete(arreteId);
+
+        // 4. Reprend la part que cet arrêté avait rendue et rouvre le fonds.
         //    C'est le montant de la ligne qui fait foi, pas l'encaissement de la
         //    cotisation : une ligne partiellement restituée n'a rendu qu'une part.
         arrete.getLignes().stream()

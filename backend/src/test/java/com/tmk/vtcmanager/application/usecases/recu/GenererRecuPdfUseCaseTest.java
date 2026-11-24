@@ -3,14 +3,13 @@ package com.tmk.vtcmanager.application.usecases.recu;
 import com.tmk.vtcmanager.application.domain.chauffeur.Chauffeur;
 import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
-import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisationFiltres;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
+import com.tmk.vtcmanager.application.domain.finance.LigneCreance;
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.ModePaiement;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
-import com.tmk.vtcmanager.application.domain.recette.LigneRecetteFiltres;
 import com.tmk.vtcmanager.application.domain.recette.StatutLigneRecette;
 import com.tmk.vtcmanager.application.domain.recu.RecuPaiement;
 import com.tmk.vtcmanager.application.domain.vehicule.Vehicule;
@@ -19,6 +18,7 @@ import com.tmk.vtcmanager.application.domain.versement.NatureImputation;
 import com.tmk.vtcmanager.application.exception.RecuImpossibleException;
 import com.tmk.vtcmanager.application.exception.ResourceNotFoundException;
 import com.tmk.vtcmanager.application.ports.document.RecuDocumentRenderer;
+import com.tmk.vtcmanager.application.ports.persistence.CreanceRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneCotisationRepository;
 import com.tmk.vtcmanager.application.ports.persistence.LigneRecetteRepository;
 import com.tmk.vtcmanager.application.ports.persistence.OperationFinanciereRepository;
@@ -59,6 +59,7 @@ class GenererRecuPdfUseCaseTest {
     private LigneRecetteRepository recettes;
     private LigneCotisationRepository cotisations;
     private ChauffeursAuProgrammeService planning;
+    private CreanceRepository creances;
     private GenererRecuPdfUseCase useCase;
 
     @BeforeEach
@@ -69,11 +70,13 @@ class GenererRecuPdfUseCaseTest {
         when(renderer.renderRecuPdf(any())).thenReturn(new byte[]{1, 2, 3});
         recettes = mock(LigneRecetteRepository.class);
         cotisations = mock(LigneCotisationRepository.class);
-        when(recettes.findByCriteres(any())).thenReturn(List.of());
-        when(cotisations.findByCriteres(any())).thenReturn(List.of());
+        when(recettes.findByChauffeurIdAndDateRecette(any(), any())).thenReturn(List.of());
+        when(cotisations.findByChauffeurIdAndDateCotisation(any(), any())).thenReturn(List.of());
         planning = mock(ChauffeursAuProgrammeService.class);
+        creances = mock(CreanceRepository.class);
+        when(creances.getLignesCreance(any())).thenReturn(List.of());
         useCase = new GenererRecuPdfUseCase(operationRepository, lecture, renderer, recettes, cotisations,
-                planning);
+                planning, creances);
     }
 
     private static CategorieOperation categorie(String code) {
@@ -103,6 +106,19 @@ class GenererRecuPdfUseCaseTest {
                 resteDu == null ? null : new BigDecimal(resteDu), null));
     }
 
+    private void recetteDuJour(String attendu, String encaisse) {
+        when(recettes.findByChauffeurIdAndDateRecette(3L, LA_JOURNEE)).thenReturn(List.of(
+                LigneRecette.builder().statut(StatutLigneRecette.PARTIELLEMENT_ENCAISSE)
+                        .montantAttendu(attendu == null ? null : new BigDecimal(attendu))
+                        .montantEncaisse(new BigDecimal(encaisse)).build()));
+    }
+
+    private void cotisationDuJour(String du, String encaisse) {
+        when(cotisations.findByChauffeurIdAndDateCotisation(3L, LA_JOURNEE)).thenReturn(List.of(
+                LigneCotisation.builder().statut(StatutLigneCotisation.EN_ATTENTE)
+                        .montantDu(new BigDecimal(du)).montantEncaisse(new BigDecimal(encaisse)).build()));
+    }
+
     private RecuPaiement recuRendu() {
         ArgumentCaptor<RecuPaiement> recu = ArgumentCaptor.forClass(RecuPaiement.class);
         verify(renderer).renderRecuPdf(recu.capture());
@@ -115,6 +131,8 @@ class GenererRecuPdfUseCaseTest {
         lu(ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3), NatureImputation.RECETTE, "Recette", 1, "5000");
         lu(ecriture(502, "ENCAISSEMENT_COTISATIONS", "2000", 3), NatureImputation.COTISATION,
                 "Cotisation carburant", 91, "0");
+        recetteDuJour("20000", "15000");
+        cotisationDuJour("2000", "2000");
 
         byte[] pdf = useCase.executer(List.of(502L, 501L));
 
@@ -137,6 +155,7 @@ class GenererRecuPdfUseCaseTest {
     @DisplayName("lire rend le reçu en données, sans produire de PDF")
     void lireSansPdf() {
         lu(ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3), NatureImputation.RECETTE, "Recette", 1, "5000");
+        recetteDuJour("20000", "15000");
 
         RecuPaiement recu = useCase.lire(List.of(501L));
 
@@ -158,6 +177,7 @@ class GenererRecuPdfUseCaseTest {
     void memeCreanceUneFois() {
         lu(ecriture(501, "ENCAISSEMENT_RECETTES", "5000", 3), NatureImputation.RECETTE, "Recette", 1, "3000");
         lu(ecriture(503, "ENCAISSEMENT_RECETTES", "7000", 3), NatureImputation.RECETTE, "Recette", 1, "3000");
+        recetteDuJour("15000", "12000");
 
         useCase.executer(List.of(501L, 503L));
 
@@ -169,6 +189,7 @@ class GenererRecuPdfUseCaseTest {
     void resteInconnu() {
         lu(ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3), NatureImputation.RECETTE, "Recette", 1, null);
         lu(ecriture(502, "ENCAISSEMENT_COTISATIONS", "2000", 3), NatureImputation.COTISATION, "Cotisation", 91, "0");
+        recetteDuJour(null, "15000");
 
         useCase.executer(List.of(501L, 502L));
 
@@ -176,32 +197,34 @@ class GenererRecuPdfUseCaseTest {
     }
 
     @Test
-    @DisplayName("la dette du chauffeur compte ses autres journées de recette et de cotisation")
-    void detteChauffeur() {
+    @DisplayName("le reste à payer ne porte que sur la recette et la cotisation du jour")
+    void resteDuJour() {
+        // Seule la recette est versée : la cotisation du même jour reste due.
         lu(ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3), NatureImputation.RECETTE, "Recette", 1, "0");
-        when(recettes.findByCriteres(any())).thenReturn(List.of(
-                LigneRecette.builder().montantAttendu(new BigDecimal("15000"))
-                        .montantEncaisse(new BigDecimal("5000")).build(),
-                // Au réel : pas de dû d'avance, rien à opposer au chauffeur.
-                LigneRecette.builder().montantEncaisse(BigDecimal.ZERO).build()));
-        when(cotisations.findByCriteres(any())).thenReturn(List.of(
-                LigneCotisation.builder().montantDu(new BigDecimal("2000"))
-                        .montantEncaisse(BigDecimal.ZERO).build()));
+        recetteDuJour("15000", "15000");
+        cotisationDuJour("2000", "500");
+
+        RecuPaiement recu = useCase.lire(List.of(501L));
+
+        assertThat(recu.resteDu()).isEqualByComparingTo("1500");
+        verify(recettes).findByChauffeurIdAndDateRecette(3L, LA_JOURNEE);
+        verify(cotisations).findByChauffeurIdAndDateCotisation(3L, LA_JOURNEE);
+    }
+
+    @Test
+    @DisplayName("le total des créances est celui du module Créances, hors cotisation")
+    void totalCreances() {
+        lu(ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3), NatureImputation.RECETTE, "Recette", 1, "0");
+        recetteDuJour("15000", "15000");
+        when(creances.getLignesCreance(3L)).thenReturn(List.of(
+                LigneCreance.builder().restant(new BigDecimal("10000")).build(),
+                LigneCreance.builder().restant(new BigDecimal("2000")).build()));
 
         RecuPaiement recu = useCase.lire(List.of(501L));
 
         assertThat(recu.resteDu()).isEqualByComparingTo("0");
         assertThat(recu.detteChauffeur()).isEqualByComparingTo("12000");
-        ArgumentCaptor<LigneRecetteFiltres> filtreRecette = ArgumentCaptor.forClass(LigneRecetteFiltres.class);
-        verify(recettes).findByCriteres(filtreRecette.capture());
-        assertThat(filtreRecette.getValue().getChauffeurId()).isEqualTo(3L);
-        assertThat(filtreRecette.getValue().getStatuts())
-                .containsExactly(StatutLigneRecette.EN_ATTENTE, StatutLigneRecette.PARTIELLEMENT_ENCAISSE);
-        assertThat(filtreRecette.getValue().getDateFin()).isEqualTo(LocalDate.now());
-        ArgumentCaptor<LigneCotisationFiltres> filtreCotisation = ArgumentCaptor.forClass(LigneCotisationFiltres.class);
-        verify(cotisations).findByCriteres(filtreCotisation.capture());
-        assertThat(filtreCotisation.getValue().getStatuts())
-                .containsExactly(StatutLigneCotisation.EN_ATTENTE, StatutLigneCotisation.PARTIELLEMENT_ENCAISSE);
+        verify(creances).getLignesCreance(3L);
     }
 
     @Test
