@@ -71,14 +71,15 @@ class RecuPaiementPdfRendererTest {
     }
 
     @Test
-    @DisplayName("une créance soldée n'efface pas les autres dettes du chauffeur")
-    void detteChauffeurAuDelaDesCreances() throws Exception {
+    @DisplayName("le total des créances du chauffeur n'apparaît pas sur le reçu")
+    void detteChauffeurNonAffichee() throws Exception {
         RecuPaiement recu = new RecuPaiement("TMK", "Jean Kouassi", "0712345678", List.of("1234 AB 01"),
                 List.of(ModePaiement.ESPECES), List.of(ligne("Recette", NatureImputation.RECETTE, "15000")),
                 BigDecimal.ZERO, new BigDecimal("12000"), null, LocalDateTime.of(2026, 9, 14, 11, 32));
 
         assertThat(texte(renderer.renderRecuPdf(recu)))
-                .contains("Total de vos créances : 12 000 FCFA")
+                .doesNotContain("Total de vos créances")
+                .doesNotContain("12 000 FCFA")
                 .doesNotContain("Reste à payer");
     }
 
