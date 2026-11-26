@@ -778,7 +778,9 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                       },
                 child: const Text('Configurer le véhicule',
                     style:
-                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
             ),
             const SizedBox(height: 10),
@@ -791,7 +793,9 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 },
                 child: Text('Configurer plus tard',
                     style:
-                        TextStyle(fontSize: 15, color: AppColors.grey600)),
+                        TextStyle(fontSize: 15, color: AppColors.grey600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
             ),
           ],
@@ -886,7 +890,9 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 ),
                 child: const Text('Annuler',
                     style:
-                        TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
               FilledButton(
                 onPressed: motifCtrl.text.trim().isEmpty
@@ -903,7 +909,9 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
                 ),
                 child: const Text('Supprimer',
                     style:
-                        TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
             ],
           );
@@ -1588,7 +1596,7 @@ class _VehiculeFormPageState extends ConsumerState<VehiculeFormPage>
         OutlinedButton.icon(
           onPressed: _showAddDocumentSheet,
           icon: const Icon(Icons.add, size: 18),
-          label: const Text('Ajouter une pièce'),
+          label: const Text('Ajouter une pièce', maxLines: 1, overflow: TextOverflow.ellipsis),
           style: OutlinedButton.styleFrom(
             foregroundColor: _kPrimary,
             side: BorderSide(color: _kPrimary),
@@ -2415,7 +2423,9 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                             ? 'Modifier'
                             : 'Ajouter',
                         style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600)),
+                            fontSize: 15, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
                   ),
                 ),
               ],
@@ -2614,7 +2624,7 @@ class _PhotoViewerState extends State<_PhotoViewer> {
                       child: OutlinedButton.icon(
                         onPressed: () => widget.onReplace(_current),
                         icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('Remplacer'),
+                        label: const Text('Remplacer', maxLines: 1, overflow: TextOverflow.ellipsis),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white70,
                           side: const BorderSide(color: Colors.white24),
@@ -2631,7 +2641,7 @@ class _PhotoViewerState extends State<_PhotoViewer> {
                       child: FilledButton.icon(
                         onPressed: () => widget.onRemove(_current),
                         icon: const Icon(Icons.delete_outline, size: 16),
-                        label: const Text('Supprimer'),
+                        label: const Text('Supprimer', maxLines: 1, overflow: TextOverflow.ellipsis),
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFFB91C1C),
                           padding: const EdgeInsets.symmetric(vertical: 12),

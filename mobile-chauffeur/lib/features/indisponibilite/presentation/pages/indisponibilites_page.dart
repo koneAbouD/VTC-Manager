@@ -104,7 +104,7 @@ class IndisponibilitesPage extends ConsumerWidget {
                 minimumSize: const Size(0, 32),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Terminer'),
+              child: const Text('Terminer', maxLines: 1, overflow: TextOverflow.ellipsis),
             )
           : null,
     );

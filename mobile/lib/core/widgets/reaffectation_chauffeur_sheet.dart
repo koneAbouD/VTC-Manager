@@ -495,7 +495,7 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
           child: TextButton.icon(
             onPressed: _envoi ? null : _retour,
             icon: const Icon(Icons.chevron_left_rounded, size: 20),
-            label: const Text('Retour au choix'),
+            label: const Text('Retour au choix', maxLines: 1, overflow: TextOverflow.ellipsis),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.label,
               padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -666,7 +666,9 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Annuler',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
             ),
             const SizedBox(width: 10),
@@ -690,7 +692,9 @@ class _ReaffectationSheetState extends State<_ReaffectationSheet> {
                             strokeWidth: 2, color: Colors.white))
                     : const Text('Réaffecter',
                         style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 13.5)),
+                            fontWeight: FontWeight.w700, fontSize: 13.5),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
               ),
             ),
           ],

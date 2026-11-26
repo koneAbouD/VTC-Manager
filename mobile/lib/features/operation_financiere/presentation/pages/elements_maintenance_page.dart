@@ -350,11 +350,11 @@ class _ElementsMaintenancePageState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler'),
+              child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Quitter'),
+              child: const Text('Quitter', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -738,11 +738,11 @@ class _QuantiteLigne extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
+            child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, int.tryParse(ctrl.text)),
-            child: const Text('Valider'),
+            child: const Text('Valider', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),

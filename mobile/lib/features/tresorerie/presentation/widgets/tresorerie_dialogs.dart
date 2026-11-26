@@ -885,7 +885,9 @@ class _DernierReleve extends StatelessWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: const Text('Voir les relevés',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -1581,7 +1583,9 @@ class _CarteReleveState extends State<_CarteReleve> {
                           icon: const Icon(Icons.close_rounded, size: 16),
                           label: const Text('Annuler le retour',
                               style: TextStyle(
-                                  fontSize: 12.5, fontWeight: FontWeight.w700)),
+                                  fontSize: 12.5, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                           style: FilledButton.styleFrom(
                             backgroundColor: _kAmber,
                             padding: const EdgeInsets.symmetric(
@@ -1598,7 +1602,9 @@ class _CarteReleveState extends State<_CarteReleve> {
                           icon: const Icon(Icons.replay_rounded, size: 16),
                           label: const Text('Revenir sur l\'imputation',
                               style: TextStyle(
-                                  fontSize: 12.5, fontWeight: FontWeight.w700)),
+                                  fontSize: 12.5, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: _kAmber,
                             side: BorderSide(
@@ -1660,7 +1666,9 @@ class _CarteReleveState extends State<_CarteReleve> {
                       ),
                       child: const Text('Confirmer le retour',
                           style: TextStyle(
-                              fontSize: 13.5, fontWeight: FontWeight.w700)),
+                              fontSize: 13.5, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ],
@@ -1691,7 +1699,9 @@ class _CarteReleveState extends State<_CarteReleve> {
                           icon: const Icon(Icons.close_rounded, size: 16),
                           label: const Text('Annuler le retrait',
                               style: TextStyle(
-                                  fontSize: 12.5, fontWeight: FontWeight.w700)),
+                                  fontSize: 12.5, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                           style: FilledButton.styleFrom(
                             backgroundColor: _kError,
                             padding: const EdgeInsets.symmetric(
@@ -1707,7 +1717,9 @@ class _CarteReleveState extends State<_CarteReleve> {
                           icon: const Icon(Icons.undo_rounded, size: 16),
                           label: const Text('Retirer ce relevé',
                               style: TextStyle(
-                                  fontSize: 12.5, fontWeight: FontWeight.w700)),
+                                  fontSize: 12.5, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: _kError,
                             side: BorderSide(
@@ -1770,7 +1782,9 @@ class _CarteReleveState extends State<_CarteReleve> {
                       ),
                       child: const Text('Confirmer le retrait',
                           style: TextStyle(
-                              fontSize: 13.5, fontWeight: FontWeight.w700)),
+                              fontSize: 13.5, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ],
@@ -2233,7 +2247,9 @@ class _CarteEcartState extends State<_CarteEcart> {
                   child: Text(
                       _perte ? 'Passer au résultat' : 'Mettre à sa charge',
                       style: const TextStyle(
-                          fontSize: 13.5, fontWeight: FontWeight.w700)),
+                          fontSize: 13.5, fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ),
               ),
             ],
@@ -2265,6 +2281,8 @@ class _BoutonDecision extends StatelessWidget {
     const padding = EdgeInsets.symmetric(vertical: 12, horizontal: 6);
     final texte = Text(label,
         textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700));
 
     if (selectionne) {
@@ -2518,6 +2536,8 @@ class _SubmitButton extends StatelessWidget {
         label: Text(
           submitting ? submittingLabel : label,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         style: FilledButton.styleFrom(
           backgroundColor: accent,

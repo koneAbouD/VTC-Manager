@@ -178,12 +178,12 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annuler'),
+            child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Effacer le code'),
+            child: const Text('Effacer le code', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -235,6 +235,8 @@ class _PinLockPageState extends ConsumerState<PinLockPage> {
           child: const Text(
             'Code TMK oublié ?',
             style: TextStyle(fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),
@@ -275,6 +277,8 @@ class _LogoutDialog extends StatelessWidget {
             child: const Text(
               'OUI',
               style: TextStyle(fontWeight: FontWeight.w700),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),
@@ -291,6 +295,8 @@ class _LogoutDialog extends StatelessWidget {
             child: const Text(
               'NON',
               style: TextStyle(fontWeight: FontWeight.w700),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),

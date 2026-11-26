@@ -451,7 +451,7 @@ class _LignesCotisationPageState extends ConsumerState<LignesCotisationPage> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('OK')),
+                  child: const Text('OK', maxLines: 1, overflow: TextOverflow.ellipsis)),
             ],
           ),
         );

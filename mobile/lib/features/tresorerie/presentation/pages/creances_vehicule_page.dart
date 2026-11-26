@@ -44,7 +44,7 @@ class CreancesVehiculePage extends ConsumerWidget {
                 onPressed: () =>
                     ref.invalidate(creancesVehiculeProvider(vehiculeId)),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Réessayer'),
+                label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ],
           ),

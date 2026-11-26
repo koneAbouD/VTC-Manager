@@ -100,11 +100,11 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
+              child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis)),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Supprimer'),
+            child: const Text('Supprimer', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -376,7 +376,7 @@ class _ReferentielListePageState extends ConsumerState<ReferentielListePage> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white),
               icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Réessayer'),
+              label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),

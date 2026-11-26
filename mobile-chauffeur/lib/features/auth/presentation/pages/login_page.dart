@@ -180,7 +180,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         FilledButton.icon(
           onPressed: _loading ? null : _envoyerOtp,
           icon: _loading ? _spinner() : const Icon(Icons.chat_rounded),
-          label: Text(_loading ? 'Envoi…' : 'Recevoir le code'),
+          label: Text(_loading ? 'Envoi…' : 'Recevoir le code', maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
       ],
     );
@@ -222,13 +222,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         const SizedBox(height: 20),
         FilledButton(
           onPressed: _loading ? null : _connexionMotDePasse,
-          child: _loading ? _spinner() : const Text('Se connecter'),
+          child: _loading ? _spinner() : const Text('Se connecter', maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: _loading ? null : _motDePasseOublie,
-            child: const Text('Mot de passe oublié ?'),
+            child: const Text('Mot de passe oublié ?', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ),
         const SizedBox(height: 4),

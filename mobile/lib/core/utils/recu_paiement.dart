@@ -49,9 +49,9 @@ class RecuPaiement {
   /// que d'annoncer un solde faux.
   final double? resteDu;
 
-  /// Le total des créances du chauffeur — recettes, pénalités et
-  /// contraventions échues, hors cotisation — tel que le module Créances le
-  /// lit. Avec [resteDu], c'est lui qui permet de dire « à jour » : solder une
+  /// Le total des créances du chauffeur — recettes, pénalités et cotisations
+  /// échues (ni annulées ni restituées), hors contraventions — calculé par le
+  /// serveur. Avec [resteDu], c'est lui qui permet de dire « à jour » : solder une
   /// journée ne solde pas les autres. Null quand il n'est pas connu — le reçu
   /// ne dit alors jamais « à jour ».
   final double? detteTotale;

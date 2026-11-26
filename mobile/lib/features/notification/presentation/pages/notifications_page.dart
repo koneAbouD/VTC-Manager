@@ -128,7 +128,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               child: TextButton.icon(
                 onPressed: _toutMarquerLu,
                 icon: const Icon(Icons.done_all_rounded, size: 16),
-                label: const Text('Tout marquer comme lu'),
+                label: const Text('Tout marquer comme lu', maxLines: 1, overflow: TextOverflow.ellipsis),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   textStyle: const TextStyle(

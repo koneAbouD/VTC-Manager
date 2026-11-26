@@ -1390,7 +1390,9 @@ class _TousTypesSheet extends StatelessWidget {
                 TextButton(
                   onPressed: onEffacer,
                   child: Text('Effacer',
-                      style: TextStyle(color: AppColors.primary)),
+                      style: TextStyle(color: AppColors.primary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ),
             ]),
           ),

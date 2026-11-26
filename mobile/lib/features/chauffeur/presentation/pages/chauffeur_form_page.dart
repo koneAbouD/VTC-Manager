@@ -919,7 +919,7 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
         OutlinedButton.icon(
           onPressed: _showAddDocumentSheet,
           icon: const Icon(Icons.add, size: 18),
-          label: const Text('Ajouter une pièce'),
+          label: const Text('Ajouter une pièce', maxLines: 1, overflow: TextOverflow.ellipsis),
           style: OutlinedButton.styleFrom(
             foregroundColor: _kPrimary,
             side: BorderSide(color: _kPrimary),
@@ -1078,7 +1078,9 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                     borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Annuler',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             ),
             FilledButton(
               onPressed: motifCtrl.text.trim().isEmpty
@@ -1097,7 +1099,9 @@ class _ChauffeurFormPageState extends ConsumerState<ChauffeurFormPage>
                     borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Supprimer',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -1685,7 +1689,7 @@ class _ChauffeurPhotoViewer extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: onReplace,
                         icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('Remplacer'),
+                        label: const Text('Remplacer', maxLines: 1, overflow: TextOverflow.ellipsis),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white70,
                           side: const BorderSide(color: Colors.white24),
@@ -1703,7 +1707,7 @@ class _ChauffeurPhotoViewer extends StatelessWidget {
                         child: FilledButton.icon(
                           onPressed: onRemove,
                           icon: const Icon(Icons.delete_outline, size: 16),
-                          label: const Text('Supprimer'),
+                          label: const Text('Supprimer', maxLines: 1, overflow: TextOverflow.ellipsis),
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFFB91C1C),
                             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -2813,6 +2817,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                           : 'Ajouter',
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),

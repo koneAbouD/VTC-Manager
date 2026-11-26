@@ -295,7 +295,9 @@ class _ReferentielFormPageState extends ConsumerState<ReferentielFormPage> {
                     : const Icon(Icons.check_rounded, size: 19),
                 label: Text(_edition ? 'Enregistrer' : 'Créer',
                     style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700)),
+                        fontSize: 15, fontWeight: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
             ),
           ),

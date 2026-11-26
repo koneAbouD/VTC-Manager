@@ -227,7 +227,7 @@ class _ConditionTravailSelectorPageState
             OutlinedButton.icon(
               onPressed: () => ref.refresh(_conditionsTravailProvider),
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Réessayer'),
+              label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: BorderSide(color: AppColors.primary),
@@ -312,7 +312,7 @@ class _ConditionTravailSelectorPageState
               FilledButton.icon(
                 onPressed: _openWizard,
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Créer une condition'),
+                label: const Text('Créer une condition', maxLines: 1, overflow: TextOverflow.ellipsis),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(

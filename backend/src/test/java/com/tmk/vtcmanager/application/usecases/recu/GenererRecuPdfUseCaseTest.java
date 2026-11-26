@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.domain.finance.LigneCreance;
+import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 import com.tmk.vtcmanager.application.domain.operation.CategorieOperation;
 import com.tmk.vtcmanager.application.domain.operation.ModePaiement;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
@@ -75,6 +76,7 @@ class GenererRecuPdfUseCaseTest {
         planning = mock(ChauffeursAuProgrammeService.class);
         creances = mock(CreanceRepository.class);
         when(creances.getLignesCreance(any())).thenReturn(List.of());
+        when(creances.getResteCotisations(any())).thenReturn(BigDecimal.ZERO);
         useCase = new GenererRecuPdfUseCase(operationRepository, lecture, renderer, recettes, cotisations,
                 planning, creances);
     }
@@ -212,19 +214,25 @@ class GenererRecuPdfUseCaseTest {
     }
 
     @Test
-    @DisplayName("le total des créances est celui du module Créances, hors cotisation")
+    @DisplayName("le total des créances : recettes, pénalités et cotisations, hors contraventions")
     void totalCreances() {
         lu(ecriture(501, "ENCAISSEMENT_RECETTES", "15000", 3), NatureImputation.RECETTE, "Recette", 1, "0");
         recetteDuJour("15000", "15000");
         when(creances.getLignesCreance(3L)).thenReturn(List.of(
-                LigneCreance.builder().restant(new BigDecimal("10000")).build(),
-                LigneCreance.builder().restant(new BigDecimal("2000")).build()));
+                LigneCreance.builder().document(TypeDocumentCreance.RECETTE)
+                        .restant(new BigDecimal("10000")).build(),
+                LigneCreance.builder().document(TypeDocumentCreance.PENALITE)
+                        .restant(new BigDecimal("2000")).build(),
+                LigneCreance.builder().document(TypeDocumentCreance.CONTRAVENTION)
+                        .restant(new BigDecimal("25000")).build()));
+        when(creances.getResteCotisations(3L)).thenReturn(new BigDecimal("3000"));
 
         RecuPaiement recu = useCase.lire(List.of(501L));
 
         assertThat(recu.resteDu()).isEqualByComparingTo("0");
-        assertThat(recu.detteChauffeur()).isEqualByComparingTo("12000");
+        assertThat(recu.detteChauffeur()).isEqualByComparingTo("15000");
         verify(creances).getLignesCreance(3L);
+        verify(creances).getResteCotisations(3L);
     }
 
     @Test

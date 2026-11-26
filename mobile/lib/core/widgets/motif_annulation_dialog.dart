@@ -152,7 +152,9 @@ Future<SaisieAnnulation?> showSaisieAnnulationDialog(
                           ),
                           child: const Text('Retour',
                               style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700)),
+                                  fontSize: 15, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ),
@@ -178,7 +180,9 @@ Future<SaisieAnnulation?> showSaisieAnnulationDialog(
                           ),
                           child: const Text('Confirmer',
                               style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700)),
+                                  fontSize: 15, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ),

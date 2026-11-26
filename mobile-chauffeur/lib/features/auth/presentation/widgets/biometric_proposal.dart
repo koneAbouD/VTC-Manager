@@ -131,6 +131,8 @@ class _ProposalDialog extends StatelessWidget {
               child: const Text(
                 'ACTIVER',
                 style: TextStyle(fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(height: 10),
@@ -144,6 +146,8 @@ class _ProposalDialog extends StatelessWidget {
               child: const Text(
                 'PLUS TARD',
                 style: TextStyle(fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

@@ -107,7 +107,7 @@ class SelectionActionBar extends StatelessWidget {
                         strokeWidth: 2, color: Colors.white),
                   )
                 : const Icon(Icons.payments_outlined, size: 18),
-            label: Text('Encaisser${count > 0 ? ' ($count)' : ''}'),
+            label: Text('Encaisser${count > 0 ? ' ($count)' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ]),
       ),

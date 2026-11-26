@@ -347,10 +347,10 @@ class _ConditionTravailWizardPageState
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuler')),
+              child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis)),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Continuer')),
+              child: const Text('Continuer', maxLines: 1, overflow: TextOverflow.ellipsis)),
         ],
       ),
     );
@@ -522,17 +522,27 @@ class _ConditionTravailWizardPageState
                           ? [
                               Icon(icon, size: 18),
                               const SizedBox(width: 8),
-                              Text(
-                                label,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700, fontSize: 15),
+                              Flexible(
+                                child: Text(
+                                  label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15),
+                                ),
                               ),
                             ]
                           : [
-                              Text(
-                                label,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700, fontSize: 15),
+                              Flexible(
+                                child: Text(
+                                  label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15),
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Icon(icon, size: 18),
@@ -1164,7 +1174,9 @@ class _ConditionTravailWizardPageState
                   ),
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('Annuler',
-                      style: TextStyle(color: AppColors.noir87)),
+                      style: TextStyle(color: AppColors.noir87),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1185,7 +1197,7 @@ class _ConditionTravailWizardPageState
                         .add(CotisationLocal(nom: nom, montant: montant)));
                     Navigator.pop(ctx);
                   },
-                  child: const Text('Ajouter'),
+                  child: const Text('Ajouter', maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
               ),
             ]),
@@ -1241,7 +1253,7 @@ class _ConditionTravailWizardPageState
                         borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Annuler'),
+                  child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1264,7 +1276,7 @@ class _ConditionTravailWizardPageState
                     });
                     Navigator.pop(ctx);
                   },
-                  child: const Text('Enregistrer'),
+                  child: const Text('Enregistrer', maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
               ),
             ]),
@@ -2121,7 +2133,9 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
                       ),
                       onPressed: () => Navigator.pop(context),
                       child: Text('Annuler',
-                          style: TextStyle(color: AppColors.noir87)),
+                          style: TextStyle(color: AppColors.noir87),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -2138,7 +2152,9 @@ class _SanctionSheetState extends ConsumerState<_SanctionSheet> {
                       ),
                       onPressed: canSubmit ? _submit : null,
                       child: Text(isEdit ? 'Enregistrer' : 'Ajouter',
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ]),

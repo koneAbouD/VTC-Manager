@@ -546,7 +546,9 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                       ),
                       child: Text(_aDesReussites ? 'Fermer' : 'Annuler',
                           style: const TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
+                              fontSize: 15, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ),
@@ -572,6 +574,8 @@ class _EncaissementLotSheetState extends State<_EncaissementLotSheet> {
                             : 'Encaisser${retenues > 0 ? ' ($retenues)' : ''}',
                         style: const TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w700),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,

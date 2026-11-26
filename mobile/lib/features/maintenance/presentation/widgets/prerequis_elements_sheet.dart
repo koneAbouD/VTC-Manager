@@ -142,7 +142,9 @@ class _PrerequisSheet extends StatelessWidget {
                       ? 'Choisir le véhicule'
                       : 'Choisir les types',
                   style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700)),
+                      fontSize: 15, fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             ),
           ),
           const SizedBox(height: 4),
@@ -150,7 +152,9 @@ class _PrerequisSheet extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(foregroundColor: AppColors.label),
             child: const Text('Plus tard',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
           ),
         ],
       ),

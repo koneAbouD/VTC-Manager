@@ -310,7 +310,9 @@ class _CatalogueElementMaintenanceFormPageState
                             ? 'Ajouter au modèle'
                             : 'Créer',
                     style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700)),
+                        fontSize: 15, fontWeight: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
             ),
           ),

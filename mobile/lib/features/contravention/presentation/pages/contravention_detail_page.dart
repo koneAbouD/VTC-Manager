@@ -204,7 +204,9 @@ class _ContraventionDetailPageState
                         ),
                         child: const Text('Annuler',
                             style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w700)),
+                                fontSize: 15, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ),
@@ -224,7 +226,9 @@ class _ContraventionDetailPageState
                             const Icon(Icons.account_balance_outlined, size: 18),
                         label: const Text('Reverser',
                             style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w700)),
+                                fontSize: 15, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ),
@@ -329,14 +333,14 @@ class _ContraventionDetailPageState
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Retour')),
+              child: const Text('Retour', maxLines: 1, overflow: TextOverflow.ellipsis)),
           FilledButton(
             onPressed: () {
               final saisi = motifCtrl.text.trim();
               if (saisi.isEmpty) return;
               Navigator.pop(ctx, saisi);
             },
-            child: const Text('Annuler la contravention'),
+            child: const Text('Annuler la contravention', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -388,11 +392,11 @@ class _ContraventionDetailPageState
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
+              child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer'),
+            child: const Text('Supprimer', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -574,7 +578,9 @@ class _ContraventionDetailPageState
               ),
               icon: const Icon(Icons.account_balance_outlined, size: 18),
               label: const Text('Reverser',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             ),
           ),
         ),
@@ -597,7 +603,9 @@ class _ContraventionDetailPageState
                 size: 18),
             label: Text(aMouvemente ? 'Annuler' : 'Supprimer',
                 style:
-                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
           ),
         )),
     ]);
@@ -621,7 +629,9 @@ class _ContraventionDetailPageState
                   ? 'Encaisser le remboursement'
                   : 'Encaisser le paiement',
               style:
-                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
         ),
       ),
       const SizedBox(height: 12),
@@ -716,7 +726,7 @@ class _DocumentViewerPage extends ConsumerWidget {
               side: const BorderSide(color: Colors.white24),
             ),
             icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Réessayer'),
+            label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),

@@ -305,7 +305,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Fermer'),
+            child: const Text('Fermer', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),

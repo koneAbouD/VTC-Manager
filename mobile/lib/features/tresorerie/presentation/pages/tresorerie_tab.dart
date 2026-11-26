@@ -41,7 +41,7 @@ class TresorerieTab extends ConsumerWidget {
                     onPressed: () => showTransfertDialog(
                         context, ref, summary.comptes),
                     icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                    label: const Text('Transfert'),
+                    label: const Text('Transfert', maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -57,7 +57,7 @@ class TresorerieTab extends ConsumerWidget {
                       ],
                     ),
                     icon: const Icon(Icons.lock_outline_rounded, size: 18),
-                    label: const Text('Clôturer la caisse'),
+                    label: const Text('Clôturer la caisse', maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                 ),
               ],
@@ -416,7 +416,7 @@ class _ErrorRetry extends StatelessWidget {
           child: TextButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Réessayer'),
+            label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ),
       ],

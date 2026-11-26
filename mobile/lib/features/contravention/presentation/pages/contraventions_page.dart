@@ -505,7 +505,9 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                         ),
                         child: const Text('Annuler',
                             style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w700)),
+                                fontSize: 15, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ),
@@ -525,7 +527,9 @@ class _ContraventionsPageState extends ConsumerState<ContraventionsPage> {
                             size: 18),
                         label: const Text('Reverser',
                             style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w700)),
+                                fontSize: 15, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ),
@@ -829,18 +833,21 @@ class _ListToolbar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
       child: Row(
         children: [
-          Text('$count contravention(s)',
-              style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.label)),
-          const Spacer(),
+          Expanded(
+            child: Text('$count contravention(s)',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.label)),
+          ),
           TextButton.icon(
             onPressed: onToggleAll,
             icon: Icon(
                 allSelected ? Icons.close_rounded : Icons.done_all_rounded,
                 size: 18),
-            label: Text(allSelected ? 'Annuler' : 'Tout sélectionner'),
+            label: Text(allSelected ? 'Annuler' : 'Tout sélectionner', maxLines: 1, overflow: TextOverflow.ellipsis),
             style: TextButton.styleFrom(foregroundColor: AppColors.primary),
           ),
         ],
@@ -910,7 +917,7 @@ class _SelectionActionBar extends StatelessWidget {
                           strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.account_balance_outlined, size: 18),
-              label: Text('Reverser${count > 0 ? ' ($count)' : ''}'),
+              label: Text('Reverser${count > 0 ? ' ($count)' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -1294,7 +1301,7 @@ class _EmptyView extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: const Text('Rafraîchir'),
+            label: const Text('Rafraîchir', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -1326,7 +1333,7 @@ class _ErrorView extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Réessayer'),
+                  label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
               ],
             ),

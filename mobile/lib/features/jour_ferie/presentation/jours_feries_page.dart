@@ -144,7 +144,7 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
           TextButton.icon(
             onPressed: _loading ? null : _genererAnnee,
             icon: const Icon(Icons.auto_awesome, size: 18),
-            label: const Text('Générer'),
+            label: const Text('Générer', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -164,7 +164,7 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
             children: [
               Text(_error!, textAlign: TextAlign.center),
               const SizedBox(height: 12),
-              TextButton(onPressed: _charger, child: const Text('Réessayer')),
+              TextButton(onPressed: _charger, child: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis)),
             ],
           ),
         ),
@@ -290,11 +290,13 @@ class _JoursFeriesPageState extends ConsumerState<JoursFeriesPage> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
+              child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis)),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Supprimer',
-                  style: TextStyle(color: Colors.red))),
+                  style: TextStyle(color: Colors.red),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis)),
         ],
       ),
     );
@@ -474,7 +476,7 @@ class _AjoutJourFerieSheetState extends State<_AjoutJourFerieSheet> {
                       width: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Enregistrer'),
+                  : const Text('Enregistrer', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ),
         ],

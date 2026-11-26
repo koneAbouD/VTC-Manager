@@ -74,7 +74,9 @@ Future<bool?> showConfirmationRestaurationDialog(
                       ),
                       child: const Text('Retour',
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
+                              fontSize: 15, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ),
@@ -92,7 +94,9 @@ Future<bool?> showConfirmationRestaurationDialog(
                       ),
                       child: const Text('Restaurer',
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
+                              fontSize: 15, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ),

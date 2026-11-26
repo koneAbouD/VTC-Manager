@@ -291,7 +291,9 @@ class _FormState extends ConsumerState<IndisponibiliteFormPage> {
                                   strokeWidth: 2.4, color: Colors.white))
                           : const Text("Déclarer l'indisponibilité",
                               style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700)),
+                                  fontSize: 15, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ],

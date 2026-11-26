@@ -245,7 +245,9 @@ class _PaiementSheetState extends ConsumerState<_PaiementSheet> {
                         strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.lock_rounded),
             label: Text(cible == null ? 'Payer' : 'Payer ${Fmt.money(cible.montant)}',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
           ),
         ),
       ],
@@ -301,7 +303,7 @@ class _PaiementSheetState extends ConsumerState<_PaiementSheet> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () => Navigator.of(context).pop(p.estReussi),
-                child: const Text('Terminer'),
+                child: const Text('Terminer', maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ),
           if (p.estEchoue)
@@ -310,7 +312,7 @@ class _PaiementSheetState extends ConsumerState<_PaiementSheet> {
                 _paiement = null;
                 _enCours = false;
               }),
-              child: const Text('Réessayer'),
+              child: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
         ],
       ),

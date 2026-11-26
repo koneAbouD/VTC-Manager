@@ -175,7 +175,9 @@ class _ReversementImportPageState extends ConsumerState<ReversementImportPage> {
                       : const Icon(Icons.search_rounded, size: 18),
                   label: Text(_loading ? 'Analyse en cours…' : 'Analyser',
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700)),
+                          fontSize: 15, fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ),
               ),
             ],

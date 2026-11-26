@@ -313,7 +313,9 @@ class _FormState extends ConsumerState<IndisponibiliteVehiculeFormPage> {
                   : Text(
                       _isEdit ? 'Enregistrer' : 'Créer l\'immobilisation',
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700)),
+                          fontSize: 15, fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
             ),
           ),
         ],

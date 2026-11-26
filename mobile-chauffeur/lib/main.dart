@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -27,6 +28,10 @@ Future<void> main() async {
   // rendue qu'une seule fois, au tout premier démarrage qui suit. Elle sera
   // retenue jusqu'au déverrouillage.
   await PushService.instance.initialiser();
+  // Bord à bord sur toutes les versions d'Android (imposé dès Android 15) :
+  // l'application dessine sous les barres système et s'en écarte elle-même
+  // (voir le `builder` de MaterialApp), d'un comportement identique partout.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   runApp(const ProviderScope(child: ChauffeurApp()));
 }
 
@@ -64,13 +69,24 @@ class ChauffeurApp extends ConsumerWidget {
           ],
           // Hors connexion, les écrans montrent leurs dernières données : le
           // bandeau dit de quand elles datent.
-          builder: (context, child) => BandeauHorsLigne(
-            fond: AppColors.warningTint,
-            texte: AppColors.warning,
-            child: CouvertureVerrou(
-              conservation: conservation,
-              ecranVerrou: const PinLockPage(),
-              child: child ?? const SizedBox.shrink(),
+          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarDividerColor: Colors.transparent,
+              systemNavigationBarIconBrightness: Brightness.dark,
+              systemNavigationBarContrastEnforced: false,
+            ),
+            child: _HorsBarreNavigation(
+              child: BandeauHorsLigne(
+                fond: AppColors.warningTint,
+                texte: AppColors.warning,
+                child: CouvertureVerrou(
+                  conservation: conservation,
+                  ecranVerrou: const PinLockPage(),
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
             ),
           ),
           home: _AuthGate(conservation: conservation),
@@ -148,4 +164,30 @@ class _Splash extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: CircularProgressIndicator()));
+}
+
+/// Tient toute l'application au-dessus de la barre de navigation du système
+/// (boutons ou barre de gestes Android, indicateur d'accueil iOS).
+///
+/// Posé une seule fois autour du navigateur racine : pages, feuilles du bas,
+/// dialogues et barres d'onglets s'arrêtent tous au-dessus de la barre. La
+/// marge est retirée du `MediaQuery` des descendants, qui ne la comptent donc
+/// pas une seconde fois. Clavier ouvert, la marge tombe à zéro : le clavier
+/// recouvre déjà la barre.
+class _HorsBarreNavigation extends StatelessWidget {
+  final Widget child;
+
+  const _HorsBarreNavigation({required this.child});
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+        // Bande sous la barre système : couleur des pages, sans rupture.
+        color: AppColors.scaffold,
+        child: SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          child: child,
+        ),
+      );
 }

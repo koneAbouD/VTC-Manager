@@ -1357,7 +1357,7 @@ class _EmptyState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onAction,
               icon: const Icon(Icons.add_rounded),
-              label: Text(actionLabel),
+              label: Text(actionLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -1399,7 +1399,7 @@ class _NoResultState extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onClear,
                 icon: const Icon(Icons.filter_alt_off_rounded),
-                label: const Text('Réinitialiser'),
+                label: const Text('Réinitialiser', maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ],
           ),
@@ -1440,7 +1440,7 @@ class _ErrorState extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Réessayer'),
+                label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ],
           ),

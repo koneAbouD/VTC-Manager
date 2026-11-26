@@ -149,12 +149,12 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annuler'),
+            child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Se déconnecter'),
+            child: const Text('Se déconnecter', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),

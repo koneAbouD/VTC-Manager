@@ -257,7 +257,9 @@ class _GestionnaireFormPageState
                       : const Text('Créer le gestionnaire',
                           style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              fontSize: 16)),
+                              fontSize: 16),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                 ),
               ),
             ),

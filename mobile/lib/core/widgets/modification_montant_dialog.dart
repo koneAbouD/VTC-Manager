@@ -170,7 +170,9 @@ Future<bool?> showModificationMontantDialog(
                       ),
                       child: const Text('Retour',
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
+                              fontSize: 15, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ),
@@ -196,7 +198,9 @@ Future<bool?> showModificationMontantDialog(
                                   strokeWidth: 2, color: Colors.white))
                           : const Text('Corriger',
                               style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700)),
+                                  fontSize: 15, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ),

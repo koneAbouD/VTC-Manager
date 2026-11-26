@@ -21,7 +21,7 @@ class _AccueilState extends State<_Accueil> {
             Text('Onglet $_onglet'),
             TextButton(
               onPressed: () => setState(() => _onglet++),
-              child: const Text('Onglet suivant'),
+              child: const Text('Onglet suivant', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).push(
@@ -33,7 +33,7 @@ class _AccueilState extends State<_Accueil> {
                   ),
                 ),
               ),
-              child: const Text('Ouvrir le détail'),
+              child: const Text('Ouvrir le détail', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),

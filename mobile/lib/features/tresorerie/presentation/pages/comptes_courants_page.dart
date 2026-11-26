@@ -371,7 +371,7 @@ class _Error extends StatelessWidget {
         child: TextButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Réessayer')),
+            label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis)),
       ),
     ]);
   }

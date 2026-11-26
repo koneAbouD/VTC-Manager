@@ -482,14 +482,14 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                         minimumSize: Size.zero,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                    child: const Text('Tout', style: TextStyle(fontSize: 12.5))),
+                    child: const Text('Tout', style: TextStyle(fontSize: 12.5), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 TextButton(
                     onPressed: _toutDecocher,
                     style: TextButton.styleFrom(
                         minimumSize: Size.zero,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                    child: const Text('Rien', style: TextStyle(fontSize: 12.5))),
+                    child: const Text('Rien', style: TextStyle(fontSize: 12.5), maxLines: 1, overflow: TextOverflow.ellipsis)),
               ],
             ),
             const SizedBox(height: 4),
@@ -540,7 +540,9 @@ class _ArreteFormPageState extends ConsumerState<ArreteFormPage> {
                         : 'Sélectionnez au moins une cotisation')
                     : decompte.totalNet > 0
                         ? 'Verser ${CurrencyFormatter.format(decompte.totalNet)}'
-                        : 'Compenser (aucun versement)'),
+                        : 'Compenser (aucun versement)',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
                 style:
                     FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               ),

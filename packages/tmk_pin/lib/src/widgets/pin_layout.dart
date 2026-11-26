@@ -73,6 +73,7 @@ class PinLayout extends StatelessWidget {
   /// Zone réservée sous les cases : le pavé ne bouge pas selon qu'un message
   /// s'affiche ou non.
   static const _messageHeight = 48.0;
+  static const _messageHeightCompact = 40.0;
 
   /// Hauteurs des bandes fixes (barre d'action en haut, lien de pied de page).
   static const _actionHeight = 48.0;
@@ -86,11 +87,34 @@ class PinLayout extends StatelessWidget {
   /// Largeur maximale du pavé.
   static const _largeurPaveMax = 320.0;
 
+  /// Largeur maximale du bloc saisie + pavé : sur tablette, la consigne ne
+  /// s'étire pas d'un bord à l'autre et le pavé reste près des cases.
+  static const _largeurContenuMax = 440.0;
+
+  /// Hauteurs entre lesquelles la saisie passe de compacte (logo réduit,
+  /// espacements resserrés) à aérée. En dessous de la première, tout est au
+  /// plus serré ; au-dessus de la seconde, rien n'est réduit.
+  static const _hauteurCompacte = 520.0;
+  static const _hauteurAeree = 760.0;
+
+  /// Hauteur du logo, au plus serré et au plus aéré.
+  static const _logoMin = 52.0;
+  static const _logoMax = 96.0;
+
   /// Le pavé est une grille 3 × 4 de touches au format 1,5 : sa hauteur vaut
   /// donc 8/9 de sa largeur. On l'inverse pour tenir dans la place restante
   /// plutôt que de déborder.
   static double _largeurPavePourHauteur(double hauteurDisponible) =>
-      (hauteurDisponible * 9 / 8).clamp(180.0, _largeurPaveMax);
+      (hauteurDisponible * 9 / 8).clamp(0.0, _largeurPaveMax);
+
+  /// 0 sur un écran court, 1 sur un écran haut : règle l'aération de la
+  /// saisie entre les deux.
+  static double _aeration(double hauteur) =>
+      ((hauteur - _hauteurCompacte) / (_hauteurAeree - _hauteurCompacte))
+          .clamp(0.0, 1.0);
+
+  static double _entre(double min, double max, double t) =>
+      min + (max - min) * t;
 
   @override
   Widget build(BuildContext context) {
@@ -114,36 +138,63 @@ class PinLayout extends StatelessWidget {
             final hauteur = constraints.maxHeight;
             final enColonnes = hauteur < _hauteurBasculeColonnes &&
                 constraints.maxWidth > hauteur;
-            return enColonnes ? _deuxColonnes(hauteur) : _empile(hauteur);
+            return enColonnes
+                ? _deuxColonnes(hauteur, constraints.maxWidth)
+                : _empile(hauteur);
           },
         ),
       ),
     );
   }
 
-  /// Disposition habituelle : saisie au-dessus, pavé puis pied de page en bas.
+  /// Disposition habituelle : saisie puis pavé, groupés et centrés entre la
+  /// barre d'action et le pied de page.
+  ///
+  /// La saisie prend d'abord sa hauteur (resserrée sur écran court), le pavé
+  /// reçoit le reste : il rétrécit plutôt que de pousser les cases hors de
+  /// l'écran. Sur un écran haut, où le pavé plafonne, le surplus se répartit
+  /// au-dessus et au-dessous du groupe (davantage au-dessus) au lieu de
+  /// creuser un vide entre les cases et les touches.
   Widget _empile(double hauteur) {
-    // Le pavé cède du terrain avant que quoi que ce soit ne déborde : on lui
-    // laisse la place restante une fois les bandes fixes et un bloc de saisie
-    // minimal réservés.
-    final largeurPave = _largeurPavePourHauteur(
-        hauteur - _actionHeight - _footerHeight - _messageHeight - 110);
+    final aeration = _aeration(hauteur);
 
     return Column(
       children: [
         _barreAction(),
-        Expanded(child: SingleChildScrollView(child: _saisie())),
-        _pave(largeurPave),
+        Expanded(
+          // Un peu sous le centre : le pavé reste à portée de pouce.
+          child: Align(
+            alignment: const Alignment(0, 0.4),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: _largeurContenuMax),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _saisie(aeration),
+                  Flexible(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => _pave(
+                        _largeurPavePourHauteur(constraints.maxHeight)
+                            .clamp(0.0, constraints.maxWidth),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         _piedDePage(),
       ],
     );
   }
 
   /// Paysage : saisie à gauche, pavé et pied de page à droite. Le pavé est
-  /// dimensionné par la hauteur, jamais par la largeur disponible.
-  Widget _deuxColonnes(double hauteur) {
+  /// dimensionné par la hauteur, sans dépasser la moitié de la largeur.
+  Widget _deuxColonnes(double hauteur, double largeur) {
     final largeurPave =
-        _largeurPavePourHauteur(hauteur - _actionHeight - _footerHeight);
+        _largeurPavePourHauteur(hauteur - _actionHeight - _footerHeight)
+            .clamp(0.0, largeur / 2);
 
     return Column(
       children: [
@@ -153,7 +204,16 @@ class PinLayout extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: SingleChildScrollView(child: _saisie()),
+                // Centrée quand elle tient, défilante sinon : jamais rognée.
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Center(child: _saisie(_aeration(hauteur))),
+                    ),
+                  ),
+                ),
               ),
               SizedBox(
                 width: largeurPave,
@@ -209,34 +269,50 @@ class PinLayout extends StatelessWidget {
       );
 
   /// Marque, titre, consigne, cases et message : le bloc d'identification.
-  Widget _saisie() => Builder(
+  ///
+  /// [aeration] (0 à 1) règle logo, espacements et cases : resserrés sur un
+  /// écran court pour laisser au pavé une taille utilisable.
+  Widget _saisie(double aeration) => Builder(
         builder: (context) {
           final textTheme = Theme.of(context).textTheme;
+          double e(double min, double max) => _entre(min, max, aeration);
           return Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(height: topSpacing),
-              if (brand != null) brand!,
-              SizedBox(height: title == null ? 40 : 20),
+              SizedBox(height: e(topSpacing.clamp(0.0, 4.0), topSpacing)),
+              if (brand != null)
+                // Le logo est réduit d'un bloc, quelle que soit la taille que
+                // l'application lui a donnée.
+                SizedBox(
+                  height: e(_logoMin, _logoMax),
+                  child: FittedBox(child: brand!),
+                ),
+              SizedBox(height: title == null ? e(20, 40) : e(12, 20)),
               if (title != null) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Text(
                     title!,
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: textTheme.headlineSmall?.copyWith(
                       color: theme.digit,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -0.2,
+                      fontSize: e(20, 24),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: e(10, 24)),
               ],
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
                   prompt,
                   textAlign: TextAlign.center,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                   style: textTheme.bodyMedium?.copyWith(
                     color: theme.digit.withValues(alpha: 0.65),
                     fontWeight: FontWeight.w500,
@@ -244,7 +320,7 @@ class PinLayout extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: e(14, 20)),
               // La marge laisse respirer les cases sur écran étroit et donne
               // de la place à la secousse d'erreur.
               Padding(
@@ -254,10 +330,12 @@ class PinLayout extends StatelessWidget {
                   filled: filled,
                   errorTick: errorTick,
                   theme: theme,
+                  boxSize: e(48, 58),
+                  spacing: e(10, 14),
                 ),
               ),
               SizedBox(
-                height: _messageHeight,
+                height: e(_messageHeightCompact, _messageHeight),
                 child: Center(
                   child: _Feedback(theme: theme, busy: busy, message: message),
                 ),

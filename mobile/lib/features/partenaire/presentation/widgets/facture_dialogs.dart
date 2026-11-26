@@ -192,7 +192,9 @@ class _ReglementSheetState extends ConsumerState<_ReglementSheet> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : const Text('Enregistrer le règlement',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
               ),
             ],
           ),

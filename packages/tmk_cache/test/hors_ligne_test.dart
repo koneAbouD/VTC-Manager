@@ -147,7 +147,7 @@ class _CompteurState extends State<_Compteur> {
         body: Center(
           child: TextButton(
             onPressed: () => setState(() => _n++),
-            child: Text('$_n'),
+            child: Text('$_n', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ),
       );

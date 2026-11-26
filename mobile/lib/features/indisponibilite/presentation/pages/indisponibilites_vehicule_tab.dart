@@ -264,11 +264,11 @@ class _IndispoCard extends ConsumerWidget {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Non')),
+              child: const Text('Non', maxLines: 1, overflow: TextOverflow.ellipsis)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Oui, supprimer'),
+            child: const Text('Oui, supprimer', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -300,7 +300,7 @@ class _EmptyView extends StatelessWidget {
           FilledButton.icon(
             onPressed: onAdd,
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Ajouter'),
+            label: const Text('Ajouter', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -326,7 +326,7 @@ class _ErrorView extends StatelessWidget {
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            OutlinedButton(onPressed: onRetry, child: const Text('Réessayer')),
+            OutlinedButton(onPressed: onRetry, child: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis)),
           ],
         ),
       ),

@@ -20,8 +20,8 @@ import java.util.Objects;
  *                journées couvertes (pour un reçu de pénalité seule : sur ses
  *                créances) ; nul dès qu'une recette au réel l'ignore
  * @param detteChauffeur le total des créances du chauffeur — recettes,
- *                pénalités et contraventions échues, hors cotisation — tel que
- *                le module Créances le lit ; nul quand le reçu n'a pas de
+ *                pénalités et cotisations échues (ni annulées ni
+ *                restituées), hors contraventions ; nul quand le reçu n'a pas de
  *                chauffeur. C'est lui, avec {@code resteDu}, qui dit s'il est
  *                à jour : solder une journée ne solde pas les autres
  * @param chauffeurAuVolant vrai si le chauffeur est en service et au planning

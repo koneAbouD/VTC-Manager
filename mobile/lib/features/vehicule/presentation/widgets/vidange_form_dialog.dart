@@ -386,6 +386,8 @@ class _VidangeFormSheetState extends ConsumerState<_VidangeFormSheet> {
                   _submitting ? 'Enregistrement…' : 'Enregistrer',
                   style: const TextStyle(
                       fontSize: 15, fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: _kGreen,

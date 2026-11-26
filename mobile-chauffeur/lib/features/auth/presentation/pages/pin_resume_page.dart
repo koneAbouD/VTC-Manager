@@ -99,11 +99,11 @@ class _PinResumePageState extends ConsumerState<PinResumePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annuler'),
+            child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Choisir un nouveau code'),
+            child: const Text('Choisir un nouveau code', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -147,6 +147,8 @@ class _PinResumePageState extends ConsumerState<PinResumePage> {
           child: const Text(
             'Code TMK oublié ?',
             style: TextStyle(fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),

@@ -669,7 +669,7 @@ class _ErrorView extends StatelessWidget {
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          label: const Text('Réessayer'),
+          label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
       ]),
     );

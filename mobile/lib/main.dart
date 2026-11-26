@@ -34,6 +34,10 @@ void main() async {
   // L'apparence choisie est lue avant le premier frame : l'application s'ouvre
   // directement dans la bonne couleur, sans flash de l'apparence par défaut.
   final apparence = await ThemeSettings.charger(const SecureStorage());
+  // Bord à bord sur toutes les versions d'Android (imposé dès Android 15) :
+  // l'application dessine sous les barres système et s'en écarte elle-même
+  // (voir le `builder` de MaterialApp), d'un comportement identique partout.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   runApp(ProviderScope(
     overrides: [themeSettingsInitialProvider.overrideWithValue(apparence)],
     child: const VtcManagerApp(),
@@ -150,16 +154,26 @@ class _VtcManagerAppState extends ConsumerState<VtcManagerApp>
                 value: (sombre
                         ? SystemUiOverlayStyle.light
                         : SystemUiOverlayStyle.dark)
-                    .copyWith(statusBarColor: Colors.transparent),
-                // Hors connexion, les écrans montrent leurs dernières données : le
-                // bandeau dit de quand elles datent.
-                child: BandeauHorsLigne(
-                  fond: AppColors.warningTint,
-                  texte: AppColors.warning,
-                  child: CouvertureVerrou(
-                    conservation: conservation,
-                    ecranVerrou: const PinLockPage(),
-                    child: child ?? const SizedBox.shrink(),
+                    .copyWith(
+                  statusBarColor: Colors.transparent,
+                  systemNavigationBarColor: Colors.transparent,
+                  systemNavigationBarDividerColor: Colors.transparent,
+                  systemNavigationBarIconBrightness:
+                      sombre ? Brightness.light : Brightness.dark,
+                  systemNavigationBarContrastEnforced: false,
+                ),
+                child: _HorsBarreNavigation(
+                  fond: AppColors.scaffold,
+                  // Hors connexion, les écrans montrent leurs dernières données : le
+                  // bandeau dit de quand elles datent.
+                  child: BandeauHorsLigne(
+                    fond: AppColors.warningTint,
+                    texte: AppColors.warning,
+                    child: CouvertureVerrou(
+                      conservation: conservation,
+                      ecranVerrou: const PinLockPage(),
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   ),
                 ),
               );
@@ -231,4 +245,31 @@ class _SplashScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Tient toute l'application au-dessus de la barre de navigation du système
+/// (boutons ou barre de gestes Android, indicateur d'accueil iOS).
+///
+/// Posé une seule fois autour du navigateur racine : pages, feuilles du bas,
+/// dialogues et barres d'onglets s'arrêtent tous au-dessus de la barre. La
+/// marge est retirée du `MediaQuery` des descendants, qui ne la comptent donc
+/// pas une seconde fois. Clavier ouvert, la marge tombe à zéro : le clavier
+/// recouvre déjà la barre.
+class _HorsBarreNavigation extends StatelessWidget {
+  final Color fond;
+  final Widget child;
+
+  const _HorsBarreNavigation({required this.fond, required this.child});
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+        // Bande sous la barre système : couleur des pages, sans rupture.
+        color: fond,
+        child: SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          child: child,
+        ),
+      );
 }

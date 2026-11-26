@@ -1008,7 +1008,7 @@ class _DocumentViewerDialogState extends ConsumerState<_DocumentViewerDialog> {
                           )
                         : const Icon(Icons.download_outlined, size: 18),
                     label:
-                        Text(_downloading ? 'Téléchargement…' : 'Télécharger'),
+                        Text(_downloading ? 'Téléchargement…' : 'Télécharger', maxLines: 1, overflow: TextOverflow.ellipsis),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white.withValues(alpha: 0.12),
                       foregroundColor: Colors.white,
@@ -1167,7 +1167,9 @@ class _DocViewerError extends StatelessWidget {
               onPressed: onRetry,
               icon: const Icon(Icons.refresh, color: Colors.white54, size: 16),
               label: const Text('Réessayer',
-                  style: TextStyle(color: Colors.white54, fontSize: 13)),
+                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             ),
           ],
         ],
@@ -1249,7 +1251,7 @@ class _NoConditionView extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onReload,
                 icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Recharger'),
+                label: const Text('Recharger', maxLines: 1, overflow: TextOverflow.ellipsis),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: BorderSide(color: AppColors.primary),
@@ -2327,6 +2329,8 @@ class _EmptyProgrammeView extends StatelessWidget {
             child: const Text(
               'Configurer les chauffeurs',
               style: TextStyle(fontSize: 16),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),

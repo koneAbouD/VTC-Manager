@@ -215,7 +215,9 @@ class _GroupeFormPageState extends ConsumerState<GroupeFormPage> {
                           icon: const Icon(Icons.person_add_outlined,
                               size: 16),
                           label: const Text('Nouveau',
-                              style: TextStyle(fontSize: 13)),
+                              style: TextStyle(fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                           style: TextButton.styleFrom(
                             foregroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(
@@ -281,7 +283,9 @@ class _GroupeFormPageState extends ConsumerState<GroupeFormPage> {
                       : const Text('Créer le groupe',
                           style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              fontSize: 16)),
+                              fontSize: 16),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                 ),
               ),
             ),
@@ -525,7 +529,7 @@ class _ErrorTile extends StatelessWidget {
               child: Text(message,
                   style: TextStyle(color: Colors.red.shade700))),
           TextButton(
-              onPressed: onRetry, child: const Text('Réessayer')),
+              onPressed: onRetry, child: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis)),
         ],
       ),
     );

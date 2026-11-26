@@ -328,7 +328,9 @@ class _TerminerMaintenanceDialogState
                         ),
                         child: const Text('Annuler',
                             style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w700)),
+                                fontSize: 15, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ),
@@ -346,7 +348,9 @@ class _TerminerMaintenanceDialogState
                         label: Text(
                             _aCredit ? 'Créer la dette' : widget.validerLabel,
                             style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w700)),
+                                fontSize: 15, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primaryDark,
                           disabledBackgroundColor: _kBorder,

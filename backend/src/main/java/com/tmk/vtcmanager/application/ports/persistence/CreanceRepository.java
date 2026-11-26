@@ -36,6 +36,14 @@ public interface CreanceRepository {
 
     List<LigneCreance> getLignesCreance(Long chauffeurId, FiltreCreances filtre);
 
+    /**
+     * Reste à verser, à l'instant, sur les cotisations échues d'un chauffeur :
+     * dû moins encaissements non annulés, cotisations annulées ou restituées exclues. Absente
+     * de la vue des créances (c'est une épargne, pas une dette), elle se lit à
+     * part pour qui veut dire au chauffeur tout ce qu'il lui reste à verser.
+     */
+    BigDecimal getResteCotisations(Long chauffeurId);
+
     /** Balance âgée agrégée par véhicule, triée par total décroissant. */
     default List<CreanceVehicule> getBalanceAgeeParVehicule() {
         return getBalanceAgeeParVehicule(FiltreCreances.AUCUN);

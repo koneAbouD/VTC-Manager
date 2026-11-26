@@ -99,7 +99,7 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
                       height: 20,
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
-                  : const Text('Enregistrer'),
+                  : const Text('Enregistrer', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),

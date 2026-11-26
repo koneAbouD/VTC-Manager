@@ -204,7 +204,7 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
                     TextButton(
                         onPressed: () =>
                             ref.invalidate(rapportFinancierProvider(params)),
-                        child: const Text('Réessayer')),
+                        child: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis)),
                   ],
                 ),
               ),
@@ -644,13 +644,19 @@ class _RapportFinancierPageState extends ConsumerState<RapportFinancierPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Liste des opérations',
-                style:
-                    TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const Expanded(
+              child: Text('Liste des opérations',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ),
             TextButton(
               onPressed: _ouvrirOngletOperations,
               child: const Text('Tout afficher',
-                  style: TextStyle(fontSize: 13)),
+                  style: TextStyle(fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             ),
           ],
         ),

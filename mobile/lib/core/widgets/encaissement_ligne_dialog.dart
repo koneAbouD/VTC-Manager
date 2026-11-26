@@ -579,6 +579,8 @@ class _EncaissementLigneSheetState extends State<_EncaissementLigneSheet> {
                   _submitting ? 'Encaissement en cours…' : 'Encaisser',
                   style: const TextStyle(
                       fontSize: 15, fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,

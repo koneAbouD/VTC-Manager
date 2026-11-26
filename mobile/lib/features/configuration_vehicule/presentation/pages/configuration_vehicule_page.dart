@@ -307,7 +307,7 @@ class _ConfigurationVehiculePageState
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary),
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Compris'),
+            child: const Text('Compris', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -355,11 +355,11 @@ class _ConfigurationVehiculePageState
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Annuler')),
+                child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis)),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Continuer'),
+              child: const Text('Continuer', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -623,7 +623,9 @@ class _ConfigurationVehiculePageState
                             onPressed: _invertChauffeurs,
                             icon: const Icon(Icons.swap_horiz, size: 18),
                             label: const Text(
-                                'Inverser le programme des chauffeurs'),
+                                'Inverser le programme des chauffeurs',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
                               side: BorderSide(
@@ -658,7 +660,9 @@ class _ConfigurationVehiculePageState
                       ),
                       onPressed: () => Navigator.of(context).pop(),
                       child: Text('Annuler',
-                          style: TextStyle(color: AppColors.grey600)),
+                          style: TextStyle(color: AppColors.grey600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -685,7 +689,9 @@ class _ConfigurationVehiculePageState
                             )
                           : const Text('Confirmer',
                               style: TextStyle(
-                                  fontWeight: FontWeight.w600)),
+                                  fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ],

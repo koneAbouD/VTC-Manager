@@ -335,7 +335,9 @@ class RapportsTab extends ConsumerWidget {
                           ),
                           child: const Text('Annuler',
                               style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700)),
+                                  fontSize: 15, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ),
@@ -353,7 +355,9 @@ class RapportsTab extends ConsumerWidget {
                           ),
                           child: Text(action,
                               style: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700)),
+                                  fontSize: 15, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ),

@@ -142,6 +142,8 @@ class _ProposalDialog extends StatelessWidget {
               child: const Text(
                 'PLUS TARD',
                 style: TextStyle(fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

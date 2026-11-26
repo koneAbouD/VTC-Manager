@@ -425,7 +425,7 @@ class _MonCompteCardState extends State<_MonCompteCard> {
                     child: FilledButton.icon(
                       onPressed: _onPayer,
                       icon: const Icon(Icons.add, size: 14),
-                      label: const Text('Payer'),
+                      label: const Text('Payer', maxLines: 1, overflow: TextOverflow.ellipsis),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -573,7 +573,7 @@ class _PlusOperationsBouton extends StatelessWidget {
       child: TextButton.icon(
         onPressed: onTap,
         icon: const Icon(Icons.unfold_more_rounded, size: 16),
-        label: const Text("Plus d'opérations"),
+        label: const Text("Plus d'opérations", maxLines: 1, overflow: TextOverflow.ellipsis),
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primaryDark,
           backgroundColor: AppColors.primaryTint,

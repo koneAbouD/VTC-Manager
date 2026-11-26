@@ -189,7 +189,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 24, vertical: 12),
               ),
-              child: const Text('Compris'),
+              child: const Text('Compris', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -239,7 +239,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               padding: const EdgeInsets.symmetric(
                   horizontal: 20, vertical: 12),
             ),
-            child: const Text('Annuler'),
+            child: const Text('Annuler', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -250,7 +250,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               padding: const EdgeInsets.symmetric(
                   horizontal: 20, vertical: 12),
             ),
-            child: const Text('Supprimer'),
+            child: const Text('Supprimer', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -486,7 +486,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
             OutlinedButton.icon(
               onPressed: () => ref.invalidate(_groupesProvider),
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Réessayer'),
+              label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: BorderSide(color: AppColors.primary),
@@ -571,7 +571,7 @@ class _GroupeSelectorPageState extends ConsumerState<GroupeSelectorPage> {
               FilledButton.icon(
                 onPressed: _openForm,
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Créer un groupe'),
+                label: const Text('Créer un groupe', maxLines: 1, overflow: TextOverflow.ellipsis),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(

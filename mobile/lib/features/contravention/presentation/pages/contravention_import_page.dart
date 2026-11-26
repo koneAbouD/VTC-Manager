@@ -119,7 +119,7 @@ class _ContraventionImportPageState
                       if (aUnFichier)
                         TextButton(
                           onPressed: _loading ? null : _pickPdf,
-                          child: const Text('Changer de fichier'),
+                          child: const Text('Changer de fichier', maxLines: 1, overflow: TextOverflow.ellipsis),
                         ),
                     ],
                   ),
@@ -152,7 +152,9 @@ class _ContraventionImportPageState
                   label: Text(
                       _loading ? 'Analyse en cours…' : 'Analyser le relevé',
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700)),
+                          fontSize: 15, fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ),
               ),
             ],

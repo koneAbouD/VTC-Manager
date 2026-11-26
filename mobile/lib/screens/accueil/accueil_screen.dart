@@ -174,7 +174,7 @@ class _AccueilScreenState extends ConsumerState<AccueilScreen> {
                   ref.read(homeTabIndexProvider.notifier).state = 3;
                 },
                 icon: const Icon(Icons.unfold_more_rounded, size: 16),
-                label: const Text("Plus d'opérations"),
+                label: const Text("Plus d'opérations", maxLines: 1, overflow: TextOverflow.ellipsis),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primaryDark,
                   backgroundColor: AppColors.primaryTint,
@@ -740,7 +740,7 @@ class _SoldeCardState extends ConsumerState<_SoldeCard> {
                       onPressed: () =>
                           showEncaissementRapideDialog(context, ref),
                       icon: const Icon(Icons.add, size: 14),
-                      label: const Text('Encaisser'),
+                      label: const Text('Encaisser', maxLines: 1, overflow: TextOverflow.ellipsis),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,

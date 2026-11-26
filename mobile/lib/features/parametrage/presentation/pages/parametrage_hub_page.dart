@@ -158,7 +158,7 @@ class _Erreur extends StatelessWidget {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white),
               icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Réessayer'),
+              label: const Text('Réessayer', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),

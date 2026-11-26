@@ -407,7 +407,9 @@ class _MaintenanceDetailPageState
                             style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.red)),
+                                color: Colors.red),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.red, width: 1.5),
                           shape: RoundedRectangleBorder(

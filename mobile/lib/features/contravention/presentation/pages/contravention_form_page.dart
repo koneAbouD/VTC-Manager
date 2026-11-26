@@ -392,7 +392,9 @@ class _ContraventionFormPageState extends ConsumerState<ContraventionFormPage> {
                 label: Text(
                     _isEditing ? 'Enregistrer' : 'Créer la contravention',
                     style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700)),
+                        fontSize: 15, fontWeight: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
             ),
           ],

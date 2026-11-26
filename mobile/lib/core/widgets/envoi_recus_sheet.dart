@@ -254,7 +254,9 @@ class _EnvoiSheetState<T extends DestinataireWhatsApp>
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.label)),
+                        color: AppColors.label),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
             ),
           ),
@@ -340,13 +342,17 @@ class _DestinataireTile extends StatelessWidget {
               ? TextButton(
                   onPressed: onMessageSeul,
                   child: const Text('Message seul',
-                      style: TextStyle(fontSize: 12.5)))
+                      style: TextStyle(fontSize: 12.5),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis))
               : ouvert
                   ? TextButton(
                       onPressed: onEnvoyer,
                       child: Text('Renvoyer',
                           style:
-                              TextStyle(fontSize: 12.5, color: AppColors.label)))
+                              TextStyle(fontSize: 12.5, color: AppColors.label),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis))
                   : Icon(Icons.chevron_right_rounded,
                       color: AppColors.hint),
       onTap: enCours ? null : onEnvoyer,

@@ -120,12 +120,12 @@ class _OtpVerifyPageState extends ConsumerState<OtpVerifyPage> {
                         height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Text('Se connecter'),
+                    : const Text('Se connecter', maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: _renvoi ? null : _renvoyer,
-                child: Text(_renvoi ? 'Envoi…' : 'Renvoyer le code'),
+                child: Text(_renvoi ? 'Envoi…' : 'Renvoyer le code', maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ],
           ),

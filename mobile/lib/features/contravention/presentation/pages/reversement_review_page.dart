@@ -369,7 +369,9 @@ class _ReversementReviewPageState extends ConsumerState<ReversementReviewPage> {
                   : const Icon(Icons.account_balance_outlined, size: 18),
               label: Text('Reverser${count > 0 ? ' ($count)' : ''}',
                   style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700)),
+                      fontSize: 15, fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             ),
           ],
         ),

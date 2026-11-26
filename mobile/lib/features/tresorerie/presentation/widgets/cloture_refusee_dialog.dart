@@ -199,7 +199,9 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
                         ),
                         child: const Text('Fermer',
                             style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w700)),
+                                fontSize: 15, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ),
@@ -219,7 +221,9 @@ class _ClotureRefuseeDialogState extends State<ClotureRefuseeDialog> {
                           child: Text(actionLabel,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w700)),
+                                  fontSize: 14, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ),

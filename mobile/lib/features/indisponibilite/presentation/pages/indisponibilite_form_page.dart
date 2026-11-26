@@ -396,7 +396,9 @@ class _FormState extends ConsumerState<IndisponibiliteFormPage> {
                           strokeWidth: 2.4, color: Colors.white))
                   : Text(_isEdit ? 'Enregistrer' : 'Créer l\'indisponibilité',
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700)),
+                          fontSize: 15, fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
             ),
           ),
         ],

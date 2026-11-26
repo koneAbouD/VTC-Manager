@@ -211,7 +211,17 @@ class _KeyState extends State<_Key> {
                       highlightColor:
                           widget.theme.accent.withValues(alpha: 0.08),
                       splashColor: widget.theme.accent.withValues(alpha: 0.14),
-                      child: Center(child: widget.child),
+                      // Chiffre ou icône réduits avec la pastille : sur un
+                      // pavé resserré, ils ne la débordent jamais.
+                      child: Center(
+                        child: SizedBox.square(
+                          dimension: diametre * 0.6,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: widget.child,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

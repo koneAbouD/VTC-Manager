@@ -5,6 +5,7 @@ import com.tmk.vtcmanager.application.domain.chauffeur.ChauffeurStatus;
 import com.tmk.vtcmanager.application.domain.cotisation.LigneCotisation;
 import com.tmk.vtcmanager.application.domain.cotisation.StatutLigneCotisation;
 import com.tmk.vtcmanager.application.domain.finance.LigneCreance;
+import com.tmk.vtcmanager.application.domain.finance.TypeDocumentCreance;
 import com.tmk.vtcmanager.application.domain.operation.OperationFinanciere;
 import com.tmk.vtcmanager.application.domain.operation.StatutOperation;
 import com.tmk.vtcmanager.application.domain.recette.LigneRecette;
@@ -153,15 +154,21 @@ public class GenererRecuPdfUseCase {
      * sur {@code v_creances_chauffeurs}, où le réglé se recompte sur les
      * encaissements non annulés (et non sur les colonnes dénormalisées
      * {@code montant_encaisse} / {@code statut}, qui décrochent), et où entrent
-     * recettes, pénalités et contraventions échues. La cotisation n'y est pas :
-     * c'est l'épargne du chauffeur, pas une dette — elle se dit dans le reste
-     * du jour. Lu après l'encaissement, ce total tient déjà compte du reçu.
+     * recettes et pénalités échues — auxquelles s'ajoute le reste à verser
+     * sur ses cotisations échues, ni annulées ni restituées, que la vue ne porte pas : le
+     * reçu dit au chauffeur tout ce qu'il lui reste à verser. Les
+     * contraventions n'y sont pas : le reçu ne parle que de ce que le
+     * chauffeur doit sur son exploitation (le module Créances, lui, les garde).
+     * Lu après l'encaissement, ce total tient déjà compte du reçu.
      */
     private BigDecimal totalCreances(Long chauffeurId) {
-        return creanceRepository.getLignesCreance(chauffeurId).stream()
+        BigDecimal creances = creanceRepository.getLignesCreance(chauffeurId).stream()
+                .filter(l -> l.getDocument() != TypeDocumentCreance.CONTRAVENTION)
                 .map(LigneCreance::getRestant)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal cotisations = creanceRepository.getResteCotisations(chauffeurId);
+        return cotisations == null ? creances : creances.add(cotisations);
     }
 
     /**

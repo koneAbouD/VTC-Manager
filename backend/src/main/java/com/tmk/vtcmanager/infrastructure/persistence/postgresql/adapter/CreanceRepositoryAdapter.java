@@ -192,6 +192,28 @@ public class CreanceRepositoryAdapter implements CreanceRepository {
     }
 
     @Override
+    public BigDecimal getResteCotisations(Long chauffeurId) {
+        // Même restant que getResteAEncaisser : dû moins encaissements non
+        // annulés, ce qui est échu seulement, ni annulé ni restitué.
+        BigDecimal montant = jdbcTemplate.queryForObject("""
+                SELECT COALESCE(SUM(GREATEST(lc.montant_du - enc.regle, 0)), 0)
+                FROM lignes_cotisation lc
+                CROSS JOIN LATERAL (
+                    SELECT COALESCE(SUM(e.montant), 0) AS regle
+                    FROM encaissements_cotisation e
+                    WHERE e.ligne_cotisation_id = lc.id
+                      AND e.annule_le IS NULL
+                ) enc
+                WHERE lc.chauffeur_id = ?
+                  AND lc.statut NOT IN ('ANNULEE', 'RESTITUEE')
+                  AND lc.annule_le IS NULL
+                  AND lc.montant_du IS NOT NULL
+                  AND lc.date_cotisation <= CURRENT_DATE
+                """, BigDecimal.class, chauffeurId);
+        return montant == null ? BigDecimal.ZERO : montant;
+    }
+
+    @Override
     public BigDecimal getResteAEncaisser(LocalDate debut, LocalDate fin) {
         // Recettes et amendes : même restant que la balance âgée (vue
         // v_creances_chauffeurs). Cotisations : la vue ne les porte plus, leur
